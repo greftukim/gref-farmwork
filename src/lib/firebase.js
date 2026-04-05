@@ -1,5 +1,6 @@
 import { initializeApp } from 'firebase/app';
 import { getMessaging, getToken, onMessage } from 'firebase/messaging';
+import { supabase } from './supabase';
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
@@ -18,25 +19,58 @@ let messaging = null;
 try {
   messaging = getMessaging(app);
 } catch (e) {
-  // messaging not supported (e.g. no service worker)
+  // messaging not supported
 }
 
-export async function requestNotificationPermission() {
+// FCM 전용 서비스 워커 등록
+async function registerFCMServiceWorker() {
+  try {
+    const registration = await navigator.serviceWorker.register('/firebase-messaging-sw.js', {
+      scope: '/firebase-cloud-messaging-push-scope',
+    });
+    return registration;
+  } catch (e) {
+    console.warn('FCM SW 등록 실패:', e);
+    return null;
+  }
+}
+
+export async function requestNotificationPermission(employeeId) {
   if (!messaging) return null;
   try {
     const permission = await Notification.requestPermission();
     if (permission !== 'granted') return null;
 
+    const swRegistration = await registerFCMServiceWorker();
+    if (!swRegistration) return null;
+
     const token = await getToken(messaging, {
       vapidKey: VAPID_KEY,
-      serviceWorkerRegistration: await navigator.serviceWorker.getRegistration(),
+      serviceWorkerRegistration: swRegistration,
     });
-    console.log('FCM Token:', token);
+
+    if (token && employeeId) {
+      await saveTokenToSupabase(employeeId, token);
+    }
+
     return token;
   } catch (e) {
     console.warn('FCM token 등록 실패:', e);
     return null;
   }
+}
+
+async function saveTokenToSupabase(employeeId, token) {
+  const { error } = await supabase.from('fcm_tokens').upsert(
+    {
+      employee_id: employeeId,
+      token,
+      device_info: navigator.userAgent,
+      updated_at: new Date().toISOString(),
+    },
+    { onConflict: 'employee_id,token' }
+  );
+  if (error) console.warn('FCM 토큰 저장 실패:', error.message);
 }
 
 export function onForegroundMessage(callback) {

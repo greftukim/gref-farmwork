@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { supabase } from '../lib/supabase';
 import { snakeToCamel } from '../lib/dbHelpers';
+import { sendPushToAdmins } from '../lib/pushNotify';
 
 const useCallStore = create((set) => ({
   calls: [],
@@ -21,6 +22,12 @@ const useCallStore = create((set) => ({
     }).select().single();
     if (!error && data) {
       set((s) => ({ calls: [...s.calls, snakeToCamel(data)] }));
+      sendPushToAdmins({
+        title: '긴급 호출',
+        body: `${call.type}: ${call.memo || '긴급 호출이 접수되었습니다'}`,
+        type: 'emergency_call',
+        urgent: true,
+      });
     }
   },
 

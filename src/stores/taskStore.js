@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { supabase } from '../lib/supabase';
 import { snakeToCamel } from '../lib/dbHelpers';
+import { sendPushToAdmins } from '../lib/pushNotify';
 
 const useTaskStore = create((set, get) => ({
   tasks: [],
@@ -54,7 +55,14 @@ const useTaskStore = create((set, get) => ({
       quantity,
     }).eq('id', taskId).select().single();
     if (data) {
-      set((s) => ({ tasks: s.tasks.map((t) => (t.id === taskId ? snakeToCamel(data) : t)) }));
+      const completed = snakeToCamel(data);
+      set((s) => ({ tasks: s.tasks.map((t) => (t.id === taskId ? completed : t)) }));
+      sendPushToAdmins({
+        title: '작업 완료',
+        body: `${completed.title} 작업이 완료되었습니다`,
+        type: 'task_completed',
+        urgent: false,
+      });
     }
   },
 

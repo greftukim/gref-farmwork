@@ -6,12 +6,14 @@ import ToastContainer from '../common/ToastContainer';
 import useDataLoader from '../../hooks/useDataLoader';
 import useRealtimeSubscriptions from '../../hooks/useRealtimeSubscriptions';
 import useNotificationStore from '../../stores/notificationStore';
+import useAuthStore from '../../stores/authStore';
 import { requestNotificationPermission, onForegroundMessage } from '../../lib/firebase';
 
 export default function AdminLayout() {
   useDataLoader();
 
   const addNotification = useNotificationStore((s) => s.addNotification);
+  const currentUser = useAuthStore((s) => s.currentUser);
 
   const handleNotification = useCallback((n) => {
     addNotification(n);
@@ -20,12 +22,14 @@ export default function AdminLayout() {
   useRealtimeSubscriptions(handleNotification);
 
   useEffect(() => {
-    requestNotificationPermission();
+    if (currentUser?.id) {
+      requestNotificationPermission(currentUser.id);
+    }
     const unsub = onForegroundMessage((msg) => {
       addNotification(msg);
     });
     return unsub;
-  }, [addNotification]);
+  }, [addNotification, currentUser]);
 
   return (
     <div className="flex min-h-screen bg-gray-50">
