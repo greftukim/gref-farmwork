@@ -1,11 +1,66 @@
-function App() {
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import useAuthStore from './stores/authStore';
+import LoginPage from './pages/LoginPage';
+import AdminLayout from './components/layout/AdminLayout';
+import WorkerLayout from './components/layout/WorkerLayout';
+import AdminDashboard from './pages/admin/AdminDashboard';
+import WorkerHome from './pages/worker/WorkerHome';
+
+function ProtectedRoute({ children, role }) {
+  const { isAuthenticated, currentUser } = useAuthStore();
+  if (!isAuthenticated) return <Navigate to="/login" replace />;
+  if (role && currentUser?.role !== role) {
+    return <Navigate to={currentUser.role === 'admin' ? '/admin' : '/worker'} replace />;
+  }
+  return children;
+}
+
+function AppRedirect() {
+  const { isAuthenticated, currentUser } = useAuthStore();
+  if (!isAuthenticated) return <Navigate to="/login" replace />;
+  return <Navigate to={currentUser.role === 'admin' ? '/admin' : '/worker'} replace />;
+}
+
+function PlaceholderPage({ title }) {
   return (
-    <div className="min-h-screen bg-gray-50 font-body">
-      <h1 className="text-2xl font-heading font-bold text-emerald-900 p-8">
-        GREF FarmWork
-      </h1>
+    <div className="text-gray-400 text-center py-20">
+      <div className="text-lg font-medium">{title}</div>
+      <div className="text-sm mt-1">준비 중입니다</div>
     </div>
   );
 }
 
-export default App;
+export default function App() {
+  return (
+    <BrowserRouter>
+      <Routes>
+        <Route path="/login" element={<LoginPage />} />
+
+        <Route path="/admin" element={
+          <ProtectedRoute role="admin"><AdminLayout /></ProtectedRoute>
+        }>
+          <Route index element={<AdminDashboard />} />
+          <Route path="employees" element={<PlaceholderPage title="직원 관리" />} />
+          <Route path="attendance" element={<PlaceholderPage title="근무 관리" />} />
+          <Route path="leave" element={<PlaceholderPage title="휴가 관리" />} />
+          <Route path="tasks" element={<PlaceholderPage title="작업 관리" />} />
+          <Route path="records" element={<PlaceholderPage title="기록 조회" />} />
+          <Route path="stats" element={<PlaceholderPage title="통계 분석" />} />
+          <Route path="notices" element={<PlaceholderPage title="공지사항" />} />
+        </Route>
+
+        <Route path="/worker" element={
+          <ProtectedRoute role="worker"><WorkerLayout /></ProtectedRoute>
+        }>
+          <Route index element={<WorkerHome />} />
+          <Route path="tasks" element={<PlaceholderPage title="작업" />} />
+          <Route path="survey" element={<PlaceholderPage title="생육조사" />} />
+          <Route path="attendance" element={<PlaceholderPage title="근태" />} />
+          <Route path="more" element={<PlaceholderPage title="더보기" />} />
+        </Route>
+
+        <Route path="*" element={<AppRedirect />} />
+      </Routes>
+    </BrowserRouter>
+  );
+}
