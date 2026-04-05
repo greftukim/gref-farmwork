@@ -7,7 +7,11 @@ import useDataLoader from '../../hooks/useDataLoader';
 import useRealtimeSubscriptions from '../../hooks/useRealtimeSubscriptions';
 import useNotificationStore from '../../stores/notificationStore';
 import useAuthStore from '../../stores/authStore';
-import { requestNotificationPermission, onForegroundMessage } from '../../lib/firebase';
+import {
+  ensureFCMServiceWorker,
+  requestNotificationPermission,
+  onForegroundMessage,
+} from '../../lib/firebase';
 
 export default function AdminLayout() {
   useDataLoader();
@@ -21,15 +25,25 @@ export default function AdminLayout() {
 
   useRealtimeSubscriptions(handleNotification);
 
+  // 1단계: 앱 진입 시 FCM SW 즉시 등록 (알림 권한과 무관)
+  useEffect(() => {
+    ensureFCMServiceWorker();
+  }, []);
+
+  // 2단계: 사용자 ID 확보 후 알림 권한 요청 + 토큰 저장
   useEffect(() => {
     if (currentUser?.id) {
       requestNotificationPermission(currentUser.id);
     }
+  }, [currentUser]);
+
+  // 3단계: 포그라운드 메시지 수신
+  useEffect(() => {
     const unsub = onForegroundMessage((msg) => {
       addNotification(msg);
     });
     return unsub;
-  }, [addNotification, currentUser]);
+  }, [addNotification]);
 
   return (
     <div className="flex min-h-screen bg-gray-50">

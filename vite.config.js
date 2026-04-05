@@ -7,6 +7,13 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'autoUpdate',
+      workbox: {
+        // firebase-messaging-sw.js는 PWA 캐싱에서 제외
+        navigateFallbackDenylist: [/^\/firebase-messaging-sw\.js$/],
+        // 새 SW 활성화 시 즉시 적용
+        skipWaiting: true,
+        clientsClaim: true,
+      },
       manifest: {
         name: 'GREF FarmWork',
         short_name: 'FarmWork',

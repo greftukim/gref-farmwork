@@ -22,13 +22,19 @@ try {
   // messaging not supported
 }
 
-// FCM 전용 서비스 워커 등록
-async function registerFCMServiceWorker() {
+// FCM SW를 앱 시작 시 즉시 등록 (알림 권한과 무관하게)
+let fcmSwRegistration = null;
+
+export async function ensureFCMServiceWorker() {
+  if (fcmSwRegistration) return fcmSwRegistration;
+  if (!('serviceWorker' in navigator)) return null;
   try {
-    const registration = await navigator.serviceWorker.register('/firebase-messaging-sw.js', {
-      scope: '/firebase-cloud-messaging-push-scope',
-    });
-    return registration;
+    fcmSwRegistration = await navigator.serviceWorker.register(
+      '/firebase-messaging-sw.js',
+      { scope: '/' }
+    );
+    console.log('FCM SW 등록 완료, scope:', fcmSwRegistration.scope);
+    return fcmSwRegistration;
   } catch (e) {
     console.warn('FCM SW 등록 실패:', e);
     return null;
@@ -36,18 +42,34 @@ async function registerFCMServiceWorker() {
 }
 
 export async function requestNotificationPermission(employeeId) {
-  if (!messaging) return null;
+  if (!messaging) {
+    console.warn('FCM: messaging not supported');
+    return null;
+  }
   try {
     const permission = await Notification.requestPermission();
+    console.log('알림 권한:', permission);
     if (permission !== 'granted') return null;
 
-    const swRegistration = await registerFCMServiceWorker();
-    if (!swRegistration) return null;
+    const swReg = await ensureFCMServiceWorker();
+    if (!swReg) return null;
+
+    // SW가 활성화될 때까지 대기
+    if (!swReg.active) {
+      await new Promise((resolve) => {
+        const sw = swReg.installing || swReg.waiting;
+        if (!sw) { resolve(); return; }
+        sw.addEventListener('statechange', () => {
+          if (sw.state === 'activated') resolve();
+        });
+      });
+    }
 
     const token = await getToken(messaging, {
       vapidKey: VAPID_KEY,
-      serviceWorkerRegistration: swRegistration,
+      serviceWorkerRegistration: swReg,
     });
+    console.log('FCM 토큰 획득:', token ? token.substring(0, 20) + '...' : 'null');
 
     if (token && employeeId) {
       await saveTokenToSupabase(employeeId, token);
@@ -61,7 +83,6 @@ export async function requestNotificationPermission(employeeId) {
 }
 
 async function saveTokenToSupabase(employeeId, token) {
-  // 먼저 기존 토큰 확인
   const { data: existing } = await supabase
     .from('fcm_tokens')
     .select('id')
@@ -70,16 +91,14 @@ async function saveTokenToSupabase(employeeId, token) {
     .maybeSingle();
 
   if (existing) {
-    // 이미 존재 → updated_at만 갱신
     await supabase
       .from('fcm_tokens')
       .update({ updated_at: new Date().toISOString(), device_info: navigator.userAgent })
       .eq('id', existing.id);
-    console.log('FCM 토큰 갱신 완료');
+    console.log('FCM 토큰 갱신 완료 (DB)');
     return;
   }
 
-  // 새로 삽입
   const { error } = await supabase.from('fcm_tokens').insert({
     employee_id: employeeId,
     token,
@@ -90,7 +109,7 @@ async function saveTokenToSupabase(employeeId, token) {
   if (error) {
     console.warn('FCM 토큰 저장 실패:', error.message);
   } else {
-    console.log('FCM 토큰 저장 완료');
+    console.log('FCM 토큰 저장 완료 (DB)');
   }
 }
 
