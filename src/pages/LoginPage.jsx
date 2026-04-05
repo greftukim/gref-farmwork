@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import useAuthStore from '../stores/authStore';
 import useEmployeeStore from '../stores/employeeStore';
@@ -7,7 +7,8 @@ import Button from '../components/common/Button';
 export default function LoginPage() {
   const navigate = useNavigate();
   const login = useAuthStore((s) => s.login);
-  const employees = useEmployeeStore((s) => s.getActiveEmployees());
+  const allEmployees = useEmployeeStore((s) => s.employees);
+  const employees = useMemo(() => allEmployees.filter((e) => e.isActive), [allEmployees]);
   const [selectedEmployee, setSelectedEmployee] = useState(null);
   const [pin, setPin] = useState('');
   const [error, setError] = useState('');

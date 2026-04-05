@@ -1,8 +1,10 @@
+import { useMemo } from 'react';
 import Card from '../../components/common/Card';
 import useEmployeeStore from '../../stores/employeeStore';
 
 export default function AdminDashboard() {
-  const workers = useEmployeeStore((s) => s.getWorkers());
+  const employees = useEmployeeStore((s) => s.employees);
+  const workers = useMemo(() => employees.filter((e) => e.role === 'worker' && e.isActive), [employees]);
 
   return (
     <div>
