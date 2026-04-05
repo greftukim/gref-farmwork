@@ -61,16 +61,37 @@ export async function requestNotificationPermission(employeeId) {
 }
 
 async function saveTokenToSupabase(employeeId, token) {
-  const { error } = await supabase.from('fcm_tokens').upsert(
-    {
-      employee_id: employeeId,
-      token,
-      device_info: navigator.userAgent,
-      updated_at: new Date().toISOString(),
-    },
-    { onConflict: 'employee_id,token' }
-  );
-  if (error) console.warn('FCM 토큰 저장 실패:', error.message);
+  // 먼저 기존 토큰 확인
+  const { data: existing } = await supabase
+    .from('fcm_tokens')
+    .select('id')
+    .eq('employee_id', employeeId)
+    .eq('token', token)
+    .maybeSingle();
+
+  if (existing) {
+    // 이미 존재 → updated_at만 갱신
+    await supabase
+      .from('fcm_tokens')
+      .update({ updated_at: new Date().toISOString(), device_info: navigator.userAgent })
+      .eq('id', existing.id);
+    console.log('FCM 토큰 갱신 완료');
+    return;
+  }
+
+  // 새로 삽입
+  const { error } = await supabase.from('fcm_tokens').insert({
+    employee_id: employeeId,
+    token,
+    device_info: navigator.userAgent,
+    updated_at: new Date().toISOString(),
+  });
+
+  if (error) {
+    console.warn('FCM 토큰 저장 실패:', error.message);
+  } else {
+    console.log('FCM 토큰 저장 완료');
+  }
 }
 
 export function onForegroundMessage(callback) {
