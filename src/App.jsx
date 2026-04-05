@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import useAuthStore from './stores/authStore';
 import LoginPage from './pages/LoginPage';
@@ -27,8 +28,22 @@ import WorkerNoticePage from './pages/worker/WorkerNoticePage';
 import WorkerMorePage from './pages/worker/WorkerMorePage';
 
 function HydrationGate({ children }) {
-  const hasHydrated = useAuthStore.persist?.hasHydrated?.() ?? true;
-  if (!hasHydrated) {
+  const [hydrated, setHydrated] = useState(useAuthStore.persist.hasHydrated());
+
+  useEffect(() => {
+    // 이미 hydration 완료된 경우
+    if (useAuthStore.persist.hasHydrated()) {
+      setHydrated(true);
+      return;
+    }
+    // 아직 안 된 경우: 완료 시 콜백
+    const unsub = useAuthStore.persist.onFinishHydration(() => {
+      setHydrated(true);
+    });
+    return unsub;
+  }, []);
+
+  if (!hydrated) {
     return (
       <div className="min-h-screen bg-emerald-950 flex items-center justify-center">
         <div className="text-emerald-300 text-sm">로딩 중...</div>
@@ -39,7 +54,8 @@ function HydrationGate({ children }) {
 }
 
 function ProtectedRoute({ children, role }) {
-  const { isAuthenticated, currentUser } = useAuthStore();
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
+  const currentUser = useAuthStore((s) => s.currentUser);
   if (!isAuthenticated) return <Navigate to="/login" replace />;
   if (role && currentUser?.role !== role) {
     return <Navigate to={currentUser.role === 'admin' ? '/admin' : '/worker'} replace />;
@@ -48,7 +64,8 @@ function ProtectedRoute({ children, role }) {
 }
 
 function AppRedirect() {
-  const { isAuthenticated, currentUser } = useAuthStore();
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
+  const currentUser = useAuthStore((s) => s.currentUser);
   if (!isAuthenticated) return <Navigate to="/login" replace />;
   return <Navigate to={currentUser.role === 'admin' ? '/admin' : '/worker'} replace />;
 }

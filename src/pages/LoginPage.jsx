@@ -4,6 +4,56 @@ import useAuthStore from '../stores/authStore';
 import useEmployeeStore from '../stores/employeeStore';
 import Button from '../components/common/Button';
 
+function DebugPanel() {
+  const [info, setInfo] = useState({});
+  const [show, setShow] = useState(false);
+
+  useEffect(() => {
+    const gather = () => {
+      try {
+        const raw = localStorage.getItem('gref-auth');
+        const parsed = raw ? JSON.parse(raw) : null;
+        const storeState = useAuthStore.getState();
+        setInfo({
+          localStorage: raw ? `저장됨 (${raw.length}B)` : '비어있음',
+          lsAuth: parsed?.state?.isAuthenticated ?? 'N/A',
+          lsUser: parsed?.state?.currentUser?.name ?? 'N/A',
+          storeAuth: String(storeState.isAuthenticated),
+          storeUser: storeState.currentUser?.name ?? 'null',
+          hydrated: String(useAuthStore.persist.hasHydrated()),
+          swCount: 'checking...',
+        });
+        navigator.serviceWorker?.getRegistrations().then((regs) => {
+          setInfo((prev) => ({ ...prev, swCount: String(regs.length) }));
+        });
+      } catch (e) {
+        setInfo({ error: e.message });
+      }
+    };
+    gather();
+  }, [show]);
+
+  return (
+    <div className="fixed bottom-2 left-2 z-50">
+      <button onClick={() => setShow(!show)}
+        className="bg-gray-800/80 text-white text-xs px-2 py-1 rounded">
+        {show ? '닫기' : '디버그'}
+      </button>
+      {show && (
+        <div className="bg-gray-900/95 text-emerald-300 text-xs p-3 rounded-lg mt-1 space-y-1 max-w-[280px]">
+          {Object.entries(info).map(([k, v]) => (
+            <div key={k}><span className="text-gray-400">{k}:</span> {v}</div>
+          ))}
+          <button onClick={() => { localStorage.removeItem('gref-auth'); window.location.reload(); }}
+            className="mt-2 bg-red-600 text-white px-2 py-1 rounded text-xs w-full">
+            캐시 초기화 + 새로고침
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function LoginPage() {
   const navigate = useNavigate();
   const login = useAuthStore((s) => s.login);
@@ -43,6 +93,7 @@ export default function LoginPage() {
   if (!selectedEmployee) {
     return (
       <div className="min-h-screen bg-emerald-950 flex flex-col items-center justify-center p-6">
+        <DebugPanel />
         <h1 className="text-2xl font-heading font-bold text-white mb-2">GREF FarmWork</h1>
         <p className="text-emerald-300 mb-8">직원을 선택하세요</p>
         <div className="w-full max-w-sm space-y-3">
