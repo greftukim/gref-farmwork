@@ -13,6 +13,17 @@ export default defineConfig({
         // 새 SW 활성화 시 즉시 적용
         skipWaiting: true,
         clientsClaim: true,
+        // navigation 요청은 네트워크 우선 → 항상 최신 index.html 제공
+        runtimeCaching: [
+          {
+            urlPattern: ({ request }) => request.mode === 'navigate',
+            handler: 'NetworkFirst',
+            options: {
+              cacheName: 'pages',
+              networkTimeoutSeconds: 3,
+            },
+          },
+        ],
       },
       manifest: {
         name: 'GREF FarmWork',
