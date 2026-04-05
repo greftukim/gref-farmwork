@@ -2,15 +2,15 @@ import { initializeApp } from 'firebase/app';
 import { getMessaging, getToken, onMessage } from 'firebase/messaging';
 
 const firebaseConfig = {
-  apiKey: 'AIzaSyARFBu7vy_x9nqUiL1g0_gHzClqxzuTbIA',
-  authDomain: 'gref-farmwork.firebaseapp.com',
-  projectId: 'gref-farmwork',
-  storageBucket: 'gref-farmwork.firebasestorage.app',
-  messagingSenderId: '991796861535',
-  appId: '1:991796861535:web:a1ef4563d38e3bbb5f19ea',
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+  appId: import.meta.env.VITE_FIREBASE_APP_ID,
 };
 
-const VAPID_KEY = 'BCDT9xLIKDtGLJ4uXxLsRk54vBA19MQABqj8x-wRyp0uwtS8FWZpi52dk3j3pEaXoINpQGG0ntF3tV6WRIULwmI';
+const VAPID_KEY = import.meta.env.VITE_FIREBASE_VAPID_KEY;
 
 const app = initializeApp(firebaseConfig);
 
