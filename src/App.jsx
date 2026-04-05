@@ -26,6 +26,18 @@ import EmergencyCallPage from './pages/worker/EmergencyCallPage';
 import WorkerNoticePage from './pages/worker/WorkerNoticePage';
 import WorkerMorePage from './pages/worker/WorkerMorePage';
 
+function HydrationGate({ children }) {
+  const hasHydrated = useAuthStore.persist?.hasHydrated?.() ?? true;
+  if (!hasHydrated) {
+    return (
+      <div className="min-h-screen bg-emerald-950 flex items-center justify-center">
+        <div className="text-emerald-300 text-sm">로딩 중...</div>
+      </div>
+    );
+  }
+  return children;
+}
+
 function ProtectedRoute({ children, role }) {
   const { isAuthenticated, currentUser } = useAuthStore();
   if (!isAuthenticated) return <Navigate to="/login" replace />;
@@ -52,44 +64,46 @@ function PlaceholderPage({ title }) {
 
 export default function App() {
   return (
-    <BrowserRouter>
-      <Routes>
-        <Route path="/login" element={<LoginPage />} />
+    <HydrationGate>
+      <BrowserRouter>
+        <Routes>
+          <Route path="/login" element={<LoginPage />} />
 
-        <Route path="/admin" element={
-          <ProtectedRoute role="admin"><AdminLayout /></ProtectedRoute>
-        }>
-          <Route index element={<AdminDashboard />} />
-          <Route path="employees" element={<EmployeesPage />} />
-          <Route path="attendance" element={<AttendancePage />} />
-          <Route path="leave" element={<LeavePage />} />
-          <Route path="schedule" element={<SchedulePage />} />
-          <Route path="crops" element={<CropZonePage />} />
-          <Route path="tasks" element={<TaskPlanPage />} />
-          <Route path="board" element={<TaskBoardPage />} />
-          <Route path="records" element={<IssueCallPage />} />
-          <Route path="stats" element={<StatsPage />} />
-          <Route path="work-stats" element={<WorkStatsPage />} />
-          <Route path="report" element={<DailyReportPage />} />
-          <Route path="notices" element={<NoticePage />} />
-        </Route>
+          <Route path="/admin" element={
+            <ProtectedRoute role="admin"><AdminLayout /></ProtectedRoute>
+          }>
+            <Route index element={<AdminDashboard />} />
+            <Route path="employees" element={<EmployeesPage />} />
+            <Route path="attendance" element={<AttendancePage />} />
+            <Route path="leave" element={<LeavePage />} />
+            <Route path="schedule" element={<SchedulePage />} />
+            <Route path="crops" element={<CropZonePage />} />
+            <Route path="tasks" element={<TaskPlanPage />} />
+            <Route path="board" element={<TaskBoardPage />} />
+            <Route path="records" element={<IssueCallPage />} />
+            <Route path="stats" element={<StatsPage />} />
+            <Route path="work-stats" element={<WorkStatsPage />} />
+            <Route path="report" element={<DailyReportPage />} />
+            <Route path="notices" element={<NoticePage />} />
+          </Route>
 
-        <Route path="/worker" element={
-          <ProtectedRoute role="worker"><WorkerLayout /></ProtectedRoute>
-        }>
-          <Route index element={<WorkerHome />} />
-          <Route path="tasks" element={<WorkerTasksPage />} />
-          <Route path="survey" element={<GrowthSurveyPage />} />
-          <Route path="attendance" element={<WorkerAttendancePage />} />
-          <Route path="leave" element={<WorkerLeavePage />} />
-          <Route path="issues" element={<IssuePage />} />
-          <Route path="emergency" element={<EmergencyCallPage />} />
-          <Route path="notices" element={<WorkerNoticePage />} />
-          <Route path="more" element={<WorkerMorePage />} />
-        </Route>
+          <Route path="/worker" element={
+            <ProtectedRoute role="worker"><WorkerLayout /></ProtectedRoute>
+          }>
+            <Route index element={<WorkerHome />} />
+            <Route path="tasks" element={<WorkerTasksPage />} />
+            <Route path="survey" element={<GrowthSurveyPage />} />
+            <Route path="attendance" element={<WorkerAttendancePage />} />
+            <Route path="leave" element={<WorkerLeavePage />} />
+            <Route path="issues" element={<IssuePage />} />
+            <Route path="emergency" element={<EmergencyCallPage />} />
+            <Route path="notices" element={<WorkerNoticePage />} />
+            <Route path="more" element={<WorkerMorePage />} />
+          </Route>
 
-        <Route path="*" element={<AppRedirect />} />
-      </Routes>
-    </BrowserRouter>
+          <Route path="*" element={<AppRedirect />} />
+        </Routes>
+      </BrowserRouter>
+    </HydrationGate>
   );
 }
