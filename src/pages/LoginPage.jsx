@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import useAuthStore from '../stores/authStore';
 import useEmployeeStore from '../stores/employeeStore';
@@ -13,6 +13,10 @@ export default function LoginPage() {
   const [pin, setPin] = useState('');
   const [error, setError] = useState('');
 
+  useEffect(() => {
+    useEmployeeStore.getState().fetchEmployees();
+  }, []);
+
   const handlePinPress = (digit) => {
     if (pin.length < 6) {
       setPin((prev) => prev + digit);
@@ -25,9 +29,9 @@ export default function LoginPage() {
     setError('');
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!selectedEmployee || pin.length !== 6) return;
-    const result = login(selectedEmployee.id, pin);
+    const result = await login(selectedEmployee.id, pin);
     if (result.success) {
       navigate(result.role === 'admin' ? '/admin' : '/worker', { replace: true });
     } else {

@@ -1,54 +1,79 @@
 import { create } from 'zustand';
-import { mockTasks } from '../lib/mockData';
+import { supabase } from '../lib/supabase';
+import { snakeToCamel } from '../lib/dbHelpers';
 
-const useTaskStore = create((set) => ({
-  tasks: [...mockTasks],
+const useTaskStore = create((set, get) => ({
+  tasks: [],
+  loading: false,
 
-  addTask: (task) => {
-    const id = `task-${Date.now()}`;
-    set((state) => ({
-      tasks: [...state.tasks, {
-        ...task,
-        id,
-        status: 'pending',
-        assignedAt: new Date().toISOString(),
-        startedAt: null,
-        completedAt: null,
-        durationMinutes: null,
-      }],
-    }));
+  fetchTasks: async () => {
+    set({ loading: true });
+    const { data } = await supabase.from('tasks').select('*').order('date', { ascending: false });
+    if (data) set({ tasks: data.map(snakeToCamel) });
+    set({ loading: false });
   },
 
-  startTask: (taskId) => {
-    set((state) => ({
-      tasks: state.tasks.map((t) =>
-        t.id === taskId ? { ...t, status: 'in_progress', startedAt: new Date().toISOString() } : t
-      ),
-    }));
+  addTask: async (task) => {
+    const { data, error } = await supabase.from('tasks').insert({
+      worker_id: task.workerId,
+      title: task.title,
+      date: task.date,
+      zone_id: task.zoneId,
+      row_range: task.rowRange,
+      crop_id: task.cropId,
+      task_type: task.taskType,
+      description: task.description,
+      estimated_minutes: task.estimatedMinutes,
+      quantity_unit: task.quantityUnit,
+    }).select().single();
+    if (!error && data) {
+      set((s) => ({ tasks: [...s.tasks, snakeToCamel(data)] }));
+    }
   },
 
-  completeTask: (taskId, quantity) => {
+  startTask: async (taskId) => {
+    const { data } = await supabase.from('tasks').update({
+      status: 'in_progress',
+      started_at: new Date().toISOString(),
+    }).eq('id', taskId).select().single();
+    if (data) {
+      set((s) => ({ tasks: s.tasks.map((t) => (t.id === taskId ? snakeToCamel(data) : t)) }));
+    }
+  },
+
+  completeTask: async (taskId, quantity) => {
+    const task = get().tasks.find((t) => t.id === taskId);
+    if (!task) return;
     const now = new Date();
-    set((state) => ({
-      tasks: state.tasks.map((t) => {
-        if (t.id !== taskId) return t;
-        const started = new Date(t.startedAt);
-        const durationMinutes = Math.round((now - started) / 60000);
-        return { ...t, status: 'completed', completedAt: now.toISOString(), durationMinutes, quantity };
-      }),
-    }));
+    const durationMinutes = task.startedAt ? Math.round((now - new Date(task.startedAt)) / 60000) : 0;
+
+    const { data } = await supabase.from('tasks').update({
+      status: 'completed',
+      completed_at: now.toISOString(),
+      duration_minutes: durationMinutes,
+      quantity,
+    }).eq('id', taskId).select().single();
+    if (data) {
+      set((s) => ({ tasks: s.tasks.map((t) => (t.id === taskId ? snakeToCamel(data) : t)) }));
+    }
   },
 
-  updateTask: (taskId, updates) => {
-    set((state) => ({
-      tasks: state.tasks.map((t) => (t.id === taskId ? { ...t, ...updates } : t)),
-    }));
+  updateTask: async (taskId, updates) => {
+    const row = {};
+    for (const [k, v] of Object.entries(updates)) {
+      row[k.replace(/[A-Z]/g, (c) => '_' + c.toLowerCase())] = v;
+    }
+    const { data } = await supabase.from('tasks').update(row).eq('id', taskId).select().single();
+    if (data) {
+      set((s) => ({ tasks: s.tasks.map((t) => (t.id === taskId ? snakeToCamel(data) : t)) }));
+    }
   },
 
-  deleteTask: (taskId) => {
-    set((state) => ({
-      tasks: state.tasks.filter((t) => t.id !== taskId),
-    }));
+  deleteTask: async (taskId) => {
+    const { error } = await supabase.from('tasks').delete().eq('id', taskId);
+    if (!error) {
+      set((s) => ({ tasks: s.tasks.filter((t) => t.id !== taskId) }));
+    }
   },
 }));
 

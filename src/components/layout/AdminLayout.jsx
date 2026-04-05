@@ -1,8 +1,10 @@
 import { Outlet } from 'react-router-dom';
 import Sidebar from './Sidebar';
 import TopBar from './TopBar';
+import useDataLoader from '../../hooks/useDataLoader';
 
 export default function AdminLayout() {
+  useDataLoader();
   return (
     <div className="flex min-h-screen bg-gray-50">
       <Sidebar />

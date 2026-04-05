@@ -1,28 +1,37 @@
 import { create } from 'zustand';
-import { mockCalls } from '../lib/mockData';
+import { supabase } from '../lib/supabase';
+import { snakeToCamel } from '../lib/dbHelpers';
 
 const useCallStore = create((set) => ({
-  calls: [...mockCalls],
+  calls: [],
+  loading: false,
 
-  addCall: (call) => {
-    const id = `call-${Date.now()}`;
-    set((state) => ({
-      calls: [...state.calls, {
-        ...call,
-        id,
-        isConfirmed: false,
-        confirmedAt: null,
-        createdAt: new Date().toISOString(),
-      }],
-    }));
+  fetchCalls: async () => {
+    set({ loading: true });
+    const { data } = await supabase.from('calls').select('*').order('created_at', { ascending: false });
+    if (data) set({ calls: data.map(snakeToCamel) });
+    set({ loading: false });
   },
 
-  confirmCall: (callId) => {
-    set((state) => ({
-      calls: state.calls.map((c) =>
-        c.id === callId ? { ...c, isConfirmed: true, confirmedAt: new Date().toISOString() } : c
-      ),
-    }));
+  addCall: async (call) => {
+    const { data, error } = await supabase.from('calls').insert({
+      worker_id: call.workerId,
+      type: call.type,
+      memo: call.memo,
+    }).select().single();
+    if (!error && data) {
+      set((s) => ({ calls: [...s.calls, snakeToCamel(data)] }));
+    }
+  },
+
+  confirmCall: async (callId) => {
+    const { data } = await supabase.from('calls').update({
+      is_confirmed: true,
+      confirmed_at: new Date().toISOString(),
+    }).eq('id', callId).select().single();
+    if (data) {
+      set((s) => ({ calls: s.calls.map((c) => (c.id === callId ? snakeToCamel(data) : c)) }));
+    }
   },
 }));
 
