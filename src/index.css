@@ -1,0 +1,6 @@
+@import 'tailwindcss';
+
+@theme {
+  --font-heading: 'Work Sans', sans-serif;
+  --font-body: 'Public Sans', sans-serif;
+}
