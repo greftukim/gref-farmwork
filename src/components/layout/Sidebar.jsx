@@ -6,8 +6,10 @@ const menuItems = [
   { to: '/admin/attendance', label: '근무 관리', icon: '🕐' },
   { to: '/admin/leave', label: '휴가 관리', icon: '🌴' },
   { to: '/admin/schedule', label: '주간 일정', icon: '📅' },
-  { to: '/admin/tasks', label: '작업 관리', icon: '📋' },
-  { to: '/admin/records', label: '기록 조회', icon: '📁' },
+  { to: '/admin/crops', label: '작물·구역', icon: '🌿' },
+  { to: '/admin/tasks', label: '작업 배정', icon: '📋' },
+  { to: '/admin/board', label: '작업 현황', icon: '📌' },
+  { to: '/admin/records', label: '신고·호출', icon: '🚨' },
   { to: '/admin/stats', label: '통계 분석', icon: '📈' },
   { to: '/admin/notices', label: '공지사항', icon: '📢' },
 ];

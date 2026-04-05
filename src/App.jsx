@@ -8,9 +8,20 @@ import EmployeesPage from './pages/admin/EmployeesPage';
 import AttendancePage from './pages/admin/AttendancePage';
 import LeavePage from './pages/admin/LeavePage';
 import SchedulePage from './pages/admin/SchedulePage';
+import CropZonePage from './pages/admin/CropZonePage';
+import TaskPlanPage from './pages/admin/TaskPlanPage';
+import TaskBoardPage from './pages/admin/TaskBoardPage';
+import IssueCallPage from './pages/admin/IssueCallPage';
+import NoticePage from './pages/admin/NoticePage';
 import WorkerHome from './pages/worker/WorkerHome';
+import WorkerTasksPage from './pages/worker/WorkerTasksPage';
+import GrowthSurveyPage from './pages/worker/GrowthSurveyPage';
 import WorkerAttendancePage from './pages/worker/WorkerAttendancePage';
 import WorkerLeavePage from './pages/worker/WorkerLeavePage';
+import IssuePage from './pages/worker/IssuePage';
+import EmergencyCallPage from './pages/worker/EmergencyCallPage';
+import WorkerNoticePage from './pages/worker/WorkerNoticePage';
+import WorkerMorePage from './pages/worker/WorkerMorePage';
 
 function ProtectedRoute({ children, role }) {
   const { isAuthenticated, currentUser } = useAuthStore();
@@ -50,21 +61,26 @@ export default function App() {
           <Route path="attendance" element={<AttendancePage />} />
           <Route path="leave" element={<LeavePage />} />
           <Route path="schedule" element={<SchedulePage />} />
-          <Route path="tasks" element={<PlaceholderPage title="작업 관리" />} />
-          <Route path="records" element={<PlaceholderPage title="기록 조회" />} />
+          <Route path="crops" element={<CropZonePage />} />
+          <Route path="tasks" element={<TaskPlanPage />} />
+          <Route path="board" element={<TaskBoardPage />} />
+          <Route path="records" element={<IssueCallPage />} />
           <Route path="stats" element={<PlaceholderPage title="통계 분석" />} />
-          <Route path="notices" element={<PlaceholderPage title="공지사항" />} />
+          <Route path="notices" element={<NoticePage />} />
         </Route>
 
         <Route path="/worker" element={
           <ProtectedRoute role="worker"><WorkerLayout /></ProtectedRoute>
         }>
           <Route index element={<WorkerHome />} />
-          <Route path="tasks" element={<PlaceholderPage title="작업" />} />
-          <Route path="survey" element={<PlaceholderPage title="생육조사" />} />
+          <Route path="tasks" element={<WorkerTasksPage />} />
+          <Route path="survey" element={<GrowthSurveyPage />} />
           <Route path="attendance" element={<WorkerAttendancePage />} />
           <Route path="leave" element={<WorkerLeavePage />} />
-          <Route path="more" element={<PlaceholderPage title="더보기" />} />
+          <Route path="issues" element={<IssuePage />} />
+          <Route path="emergency" element={<EmergencyCallPage />} />
+          <Route path="notices" element={<WorkerNoticePage />} />
+          <Route path="more" element={<WorkerMorePage />} />
         </Route>
 
         <Route path="*" element={<AppRedirect />} />
