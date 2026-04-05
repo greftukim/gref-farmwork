@@ -5,6 +5,7 @@ const menuItems = [
   { to: '/admin/employees', label: '직원 관리', icon: '👥' },
   { to: '/admin/attendance', label: '근무 관리', icon: '🕐' },
   { to: '/admin/leave', label: '휴가 관리', icon: '🌴' },
+  { to: '/admin/schedule', label: '주간 일정', icon: '📅' },
   { to: '/admin/tasks', label: '작업 관리', icon: '📋' },
   { to: '/admin/records', label: '기록 조회', icon: '📁' },
   { to: '/admin/stats', label: '통계 분석', icon: '📈' },

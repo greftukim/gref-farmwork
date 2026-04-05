@@ -4,7 +4,13 @@ import LoginPage from './pages/LoginPage';
 import AdminLayout from './components/layout/AdminLayout';
 import WorkerLayout from './components/layout/WorkerLayout';
 import AdminDashboard from './pages/admin/AdminDashboard';
+import EmployeesPage from './pages/admin/EmployeesPage';
+import AttendancePage from './pages/admin/AttendancePage';
+import LeavePage from './pages/admin/LeavePage';
+import SchedulePage from './pages/admin/SchedulePage';
 import WorkerHome from './pages/worker/WorkerHome';
+import WorkerAttendancePage from './pages/worker/WorkerAttendancePage';
+import WorkerLeavePage from './pages/worker/WorkerLeavePage';
 
 function ProtectedRoute({ children, role }) {
   const { isAuthenticated, currentUser } = useAuthStore();
@@ -40,9 +46,10 @@ export default function App() {
           <ProtectedRoute role="admin"><AdminLayout /></ProtectedRoute>
         }>
           <Route index element={<AdminDashboard />} />
-          <Route path="employees" element={<PlaceholderPage title="직원 관리" />} />
-          <Route path="attendance" element={<PlaceholderPage title="근무 관리" />} />
-          <Route path="leave" element={<PlaceholderPage title="휴가 관리" />} />
+          <Route path="employees" element={<EmployeesPage />} />
+          <Route path="attendance" element={<AttendancePage />} />
+          <Route path="leave" element={<LeavePage />} />
+          <Route path="schedule" element={<SchedulePage />} />
           <Route path="tasks" element={<PlaceholderPage title="작업 관리" />} />
           <Route path="records" element={<PlaceholderPage title="기록 조회" />} />
           <Route path="stats" element={<PlaceholderPage title="통계 분석" />} />
@@ -55,7 +62,8 @@ export default function App() {
           <Route index element={<WorkerHome />} />
           <Route path="tasks" element={<PlaceholderPage title="작업" />} />
           <Route path="survey" element={<PlaceholderPage title="생육조사" />} />
-          <Route path="attendance" element={<PlaceholderPage title="근태" />} />
+          <Route path="attendance" element={<WorkerAttendancePage />} />
+          <Route path="leave" element={<WorkerLeavePage />} />
           <Route path="more" element={<PlaceholderPage title="더보기" />} />
         </Route>
 
