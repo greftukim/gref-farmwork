@@ -13,6 +13,9 @@ import TaskPlanPage from './pages/admin/TaskPlanPage';
 import TaskBoardPage from './pages/admin/TaskBoardPage';
 import IssueCallPage from './pages/admin/IssueCallPage';
 import NoticePage from './pages/admin/NoticePage';
+import StatsPage from './pages/admin/StatsPage';
+import WorkStatsPage from './pages/admin/WorkStatsPage';
+import DailyReportPage from './pages/admin/DailyReportPage';
 import WorkerHome from './pages/worker/WorkerHome';
 import WorkerTasksPage from './pages/worker/WorkerTasksPage';
 import GrowthSurveyPage from './pages/worker/GrowthSurveyPage';
@@ -65,7 +68,9 @@ export default function App() {
           <Route path="tasks" element={<TaskPlanPage />} />
           <Route path="board" element={<TaskBoardPage />} />
           <Route path="records" element={<IssueCallPage />} />
-          <Route path="stats" element={<PlaceholderPage title="통계 분석" />} />
+          <Route path="stats" element={<StatsPage />} />
+          <Route path="work-stats" element={<WorkStatsPage />} />
+          <Route path="report" element={<DailyReportPage />} />
           <Route path="notices" element={<NoticePage />} />
         </Route>
 

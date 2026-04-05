@@ -10,7 +10,9 @@ const menuItems = [
   { to: '/admin/tasks', label: '작업 배정', icon: '📋' },
   { to: '/admin/board', label: '작업 현황', icon: '📌' },
   { to: '/admin/records', label: '신고·호출', icon: '🚨' },
-  { to: '/admin/stats', label: '통계 분석', icon: '📈' },
+  { to: '/admin/stats', label: '성과 분석', icon: '📈' },
+  { to: '/admin/work-stats', label: '근무·수확', icon: '📊' },
+  { to: '/admin/report', label: '일일 보고서', icon: '📄' },
   { to: '/admin/notices', label: '공지사항', icon: '📢' },
 ];
 
