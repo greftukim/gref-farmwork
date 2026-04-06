@@ -6,8 +6,8 @@
 // 시크릿 설정:
 //   supabase secrets set FIREBASE_SERVICE_ACCOUNT='<서비스 계정 JSON 전체>'
 
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
-import { SignJWT, importPKCS8 } from 'https://esm.sh/jose@5.2.0';
+import { createClient } from 'npm:@supabase/supabase-js@2';
+import { SignJWT, importPKCS8 } from 'npm:jose@5';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
