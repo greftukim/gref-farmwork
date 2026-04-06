@@ -270,14 +270,11 @@ function AdminLogin() {
 
       {/* 오른쪽: 이미지 (모바일 숨김) */}
       <div className="hidden lg:block lg:flex-1 relative">
-        {/* 배경: 이미지 + 반투명 오버레이 */}
         <img
           src="/images/login-bg.jpg"
           alt="온실"
           className="absolute inset-0 w-full h-full object-cover"
-          onError={(e) => { e.target.style.display = 'none'; }}
         />
-        <div className="absolute inset-0 bg-gradient-to-br from-blue-900/30 via-transparent to-slate-900/40" />
       </div>
     </div>
   );
