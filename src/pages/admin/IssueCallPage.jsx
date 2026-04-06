@@ -48,13 +48,13 @@ export default function IssueCallPage() {
       <div className="flex gap-2 mb-4">
         <button onClick={() => setTab('issues')}
           className={`px-3 py-1.5 rounded-lg text-sm font-medium min-h-[36px] transition-colors ${
-            tab === 'issues' ? 'bg-emerald-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+            tab === 'issues' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
           }`}>
           이상 신고 {unresolvedIssues > 0 && <span className="ml-1 bg-red-500 text-white rounded-full px-1.5 text-xs">{unresolvedIssues}</span>}
         </button>
         <button onClick={() => setTab('calls')}
           className={`px-3 py-1.5 rounded-lg text-sm font-medium min-h-[36px] transition-colors ${
-            tab === 'calls' ? 'bg-emerald-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+            tab === 'calls' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
           }`}>
           긴급 호출 {unconfirmedCalls > 0 && <span className="ml-1 bg-red-500 text-white rounded-full px-1.5 text-xs">{unconfirmedCalls}</span>}
         </button>
@@ -63,7 +63,7 @@ export default function IssueCallPage() {
       {tab === 'issues' && (
         <div className="space-y-3">
           {sortedIssues.map((issue) => (
-            <Card key={issue.id} accent={issue.isResolved ? 'emerald' : 'red'} className="p-4">
+            <Card key={issue.id} accent={issue.isResolved ? 'blue' : 'red'} className="p-4">
               <div className="flex items-center justify-between mb-1">
                 <div>
                   <span className="font-medium text-gray-900">{empMap[issue.workerId]?.name}</span>
@@ -90,7 +90,7 @@ export default function IssueCallPage() {
       {tab === 'calls' && (
         <div className="space-y-3">
           {sortedCalls.map((call) => (
-            <Card key={call.id} accent={call.isConfirmed ? 'emerald' : 'red'} className="p-4">
+            <Card key={call.id} accent={call.isConfirmed ? 'blue' : 'red'} className="p-4">
               <div className="flex items-center justify-between mb-1">
                 <div>
                   <span className="font-medium text-gray-900">{empMap[call.workerId]?.name}</span>

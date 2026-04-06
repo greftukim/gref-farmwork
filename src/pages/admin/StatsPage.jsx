@@ -70,7 +70,7 @@ export default function StatsPage() {
         {tabs.map((t) => (
           <button key={t.key} onClick={() => setTab(t.key)}
             className={`px-3 py-1.5 rounded-lg text-sm font-medium min-h-[36px] transition-colors ${
-              tab === t.key ? 'bg-emerald-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+              tab === t.key ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
             }`}>{t.label}</button>
         ))}
       </div>
@@ -79,7 +79,7 @@ export default function StatsPage() {
         <p className="text-gray-400 text-sm text-center py-12">완료된 작업 데이터가 없습니다</p>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <Card accent="emerald" className="p-5">
+          <Card accent="blue" className="p-5">
             <h3 className="text-sm font-semibold text-gray-500 mb-4">완료 건수</h3>
             <div className="h-64">
               <ResponsiveContainer width="100%" height="100%">

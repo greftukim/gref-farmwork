@@ -99,7 +99,7 @@ export default function GrowthSurveyPage() {
 
       <div className="space-y-3">
         {recentSurveys.map((s) => (
-          <Card key={s.id} accent="emerald" className="p-4">
+          <Card key={s.id} accent="blue" className="p-4">
             <div className="flex items-center justify-between mb-2">
               <span className="font-medium text-gray-900">{s.surveyDate}</span>
               <span className="text-xs text-gray-400">
@@ -166,7 +166,7 @@ export default function GrowthSurveyPage() {
                 <label className="block text-xs font-medium text-gray-700 mb-1">
                   {f.label}
                   {previousSurvey && form[f.key] && diff(Number(form[f.key]), previousSurvey[f.key]) && (
-                    <span className={`ml-1 ${Number(form[f.key]) > previousSurvey[f.key] ? 'text-emerald-500' : 'text-red-500'}`}>
+                    <span className={`ml-1 ${Number(form[f.key]) > previousSurvey[f.key] ? 'text-blue-500' : 'text-red-500'}`}>
                       ({diff(Number(form[f.key]), previousSurvey[f.key])})
                     </span>
                   )}

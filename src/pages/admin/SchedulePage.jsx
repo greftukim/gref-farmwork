@@ -24,8 +24,8 @@ function TimeBlock({ schedule }) {
     return <div className="h-12 bg-gray-50 rounded-lg border border-dashed border-gray-200" />;
   }
   return (
-    <div className="h-12 bg-emerald-100 rounded-lg border border-emerald-200 flex items-center justify-center px-2">
-      <span className="text-xs font-medium text-emerald-700 truncate">
+    <div className="h-12 bg-blue-100 rounded-lg border border-blue-200 flex items-center justify-center px-2">
+      <span className="text-xs font-medium text-blue-700 truncate">
         {schedule.startTime} - {schedule.endTime}
       </span>
     </div>
@@ -108,7 +108,7 @@ export default function SchedulePage() {
 
       <div className="flex items-center gap-4 mt-4 text-xs text-gray-400">
         <div className="flex items-center gap-1.5">
-          <div className="w-4 h-3 bg-emerald-100 rounded border border-emerald-200" />
+          <div className="w-4 h-3 bg-blue-100 rounded border border-blue-200" />
           <span>근무 예정</span>
         </div>
         <div className="flex items-center gap-1.5">

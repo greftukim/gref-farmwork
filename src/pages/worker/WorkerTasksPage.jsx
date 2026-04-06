@@ -86,7 +86,7 @@ export default function WorkerTasksPage() {
           return (
             <Card
               key={task.id}
-              accent={task.status === 'completed' ? 'emerald' : task.status === 'in_progress' ? 'blue' : 'amber'}
+              accent={task.status === 'completed' ? 'blue' : task.status === 'in_progress' ? 'blue' : 'amber'}
               className="p-4"
             >
               <div className="flex items-center justify-between mb-2">

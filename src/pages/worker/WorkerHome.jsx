@@ -50,12 +50,12 @@ export default function WorkerHome() {
       </h2>
 
       {message && (
-        <div className="bg-emerald-50 text-emerald-700 px-4 py-2.5 rounded-lg text-sm mb-4">
+        <div className="bg-blue-50 text-blue-700 px-4 py-2.5 rounded-lg text-sm mb-4">
           {message}
         </div>
       )}
 
-      <Card accent="emerald" className="p-5 mb-4">
+      <Card accent="blue" className="p-5 mb-4">
         <div className="text-sm text-gray-500 mb-3">출퇴근</div>
         {todayRecord && (
           <div className="flex gap-4 mb-3 text-sm">

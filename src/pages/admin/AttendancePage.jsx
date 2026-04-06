@@ -79,7 +79,7 @@ export default function AttendancePage() {
         <button
           onClick={() => setView('daily')}
           className={`px-3 py-1.5 rounded-lg text-sm font-medium min-h-[36px] transition-colors ${
-            view === 'daily' ? 'bg-emerald-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+            view === 'daily' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
           }`}
         >
           일별 기록
@@ -87,7 +87,7 @@ export default function AttendancePage() {
         <button
           onClick={() => setView('monthly')}
           className={`px-3 py-1.5 rounded-lg text-sm font-medium min-h-[36px] transition-colors ${
-            view === 'monthly' ? 'bg-emerald-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+            view === 'monthly' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
           }`}
         >
           월별 집계

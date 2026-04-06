@@ -1,6 +1,6 @@
 const accentColors = {
-  emerald: 'border-l-emerald-500',
   blue: 'border-l-blue-500',
+  green: 'border-l-green-500',
   amber: 'border-l-amber-500',
   red: 'border-l-red-500',
   gray: 'border-l-gray-300',
@@ -8,14 +8,14 @@ const accentColors = {
 
 export default function Card({
   children,
-  accent = 'emerald',
+  accent = 'blue',
   className = '',
   onClick,
 }) {
   return (
     <div
       className={`
-        bg-white rounded-xl shadow-sm border-l-4
+        bg-white rounded-2xl shadow-md border-l-4
         ${accentColors[accent]}
         ${onClick ? 'cursor-pointer active:scale-[0.98] transition-transform' : ''}
         ${className}

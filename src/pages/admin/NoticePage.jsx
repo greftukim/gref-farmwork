@@ -73,7 +73,7 @@ export default function NoticePage() {
               {priorities.map((p) => (
                 <button key={p.value} onClick={() => setForm({ ...form, priority: p.value })}
                   className={`px-3 py-1.5 rounded-lg text-sm font-medium min-h-[36px] transition-colors ${
-                    form.priority === p.value ? 'bg-emerald-600 text-white' : 'bg-gray-100 text-gray-600'
+                    form.priority === p.value ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600'
                   }`}>{p.label}</button>
               ))}
             </div>

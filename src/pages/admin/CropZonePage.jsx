@@ -55,7 +55,7 @@ function CropSection() {
       </div>
       <div className="space-y-3">
         {crops.map((crop) => (
-          <Card key={crop.id} accent={crop.isActive ? 'emerald' : 'gray'} className="p-4">
+          <Card key={crop.id} accent={crop.isActive ? 'blue' : 'gray'} className="p-4">
             <div className="flex items-center justify-between mb-2">
               <div className="flex items-center gap-2">
                 <span className="font-medium text-gray-900">{crop.name}</span>
@@ -72,7 +72,7 @@ function CropSection() {
             </div>
             <div className="flex flex-wrap gap-1.5">
               {crop.taskTypes.map((t) => (
-                <span key={t} className="px-2 py-0.5 rounded-full text-xs bg-emerald-50 text-emerald-700">{t}</span>
+                <span key={t} className="px-2 py-0.5 rounded-full text-xs bg-blue-50 text-blue-700">{t}</span>
               ))}
             </div>
           </Card>
@@ -97,7 +97,7 @@ function CropSection() {
                 key={t}
                 onClick={() => toggleTaskType(t)}
                 className={`px-3 py-1.5 rounded-lg text-sm font-medium min-h-[36px] transition-colors ${
-                  form.taskTypes.includes(t) ? 'bg-emerald-600 text-white' : 'bg-gray-100 text-gray-600'
+                  form.taskTypes.includes(t) ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600'
                 }`}
               >
                 {t}
@@ -208,11 +208,11 @@ export default function CropZonePage() {
       <div className="flex gap-2 mb-6">
         <button onClick={() => setTab('crops')}
           className={`px-3 py-1.5 rounded-lg text-sm font-medium min-h-[36px] transition-colors ${
-            tab === 'crops' ? 'bg-emerald-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+            tab === 'crops' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
           }`}>작물</button>
         <button onClick={() => setTab('zones')}
           className={`px-3 py-1.5 rounded-lg text-sm font-medium min-h-[36px] transition-colors ${
-            tab === 'zones' ? 'bg-emerald-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+            tab === 'zones' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
           }`}>구역</button>
       </div>
       {tab === 'crops' ? <CropSection /> : <ZoneSection />}

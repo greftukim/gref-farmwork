@@ -46,13 +46,13 @@ export default function AdminDashboard() {
       <h2 className="text-xl font-heading font-semibold text-gray-900 mb-6">대시보드</h2>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-        <Card accent="emerald" className="p-5">
+        <Card accent="blue" className="p-5">
           <div className="text-sm text-gray-500 mb-1">출근 현황</div>
           <div className="flex items-end gap-1">
             <span className="text-3xl font-bold text-gray-900">{checkedInCount}</span>
             <span className="text-sm text-gray-400 mb-1">/ {workers.length}명</span>
           </div>
-          <div className="text-xs text-emerald-600 mt-1">{workingCount}명 근무 중</div>
+          <div className="text-xs text-blue-600 mt-1">{workingCount}명 근무 중</div>
         </Card>
 
         <Card accent="blue" className="p-5">

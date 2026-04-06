@@ -42,7 +42,7 @@ export default function EmergencyCallPage() {
           <p className="text-gray-400 text-sm text-center py-6">호출 이력이 없습니다</p>
         )}
         {myCalls.map((call) => (
-          <Card key={call.id} accent={call.isConfirmed ? 'emerald' : 'red'} className="p-4">
+          <Card key={call.id} accent={call.isConfirmed ? 'blue' : 'red'} className="p-4">
             <div className="flex items-center justify-between mb-1">
               <span className="font-medium text-gray-900">{call.type}</span>
               <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${

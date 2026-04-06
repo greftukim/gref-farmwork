@@ -88,17 +88,17 @@ export default function WorkStatsPage() {
       <div className="flex gap-2 mb-6">
         <button onClick={() => setTab('hours')}
           className={`px-3 py-1.5 rounded-lg text-sm font-medium min-h-[36px] transition-colors ${
-            tab === 'hours' ? 'bg-emerald-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+            tab === 'hours' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
           }`}>근무 시간</button>
         <button onClick={() => setTab('harvest')}
           className={`px-3 py-1.5 rounded-lg text-sm font-medium min-h-[36px] transition-colors ${
-            tab === 'harvest' ? 'bg-emerald-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+            tab === 'harvest' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
           }`}>수확량 추이</button>
       </div>
 
       {tab === 'hours' && (
         <div className="space-y-6">
-          <Card accent="emerald" className="p-5">
+          <Card accent="blue" className="p-5">
             <h3 className="text-sm font-semibold text-gray-500 mb-4">일별 근무 시간 (시간)</h3>
             <div className="h-72">
               {hoursByWorker.length === 0 ? (

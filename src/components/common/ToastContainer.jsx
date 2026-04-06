@@ -1,7 +1,7 @@
 import useNotificationStore from '../../stores/notificationStore';
 
 const typeStyles = {
-  task_completed: { bg: 'bg-emerald-600', icon: '✅' },
+  task_completed: { bg: 'bg-green-600', icon: '✅' },
   emergency_call: { bg: 'bg-red-600', icon: '🚨' },
   issue_report: { bg: 'bg-amber-600', icon: '⚠️' },
   info: { bg: 'bg-blue-600', icon: 'ℹ️' },

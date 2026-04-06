@@ -22,7 +22,7 @@ export default function QrCodePage() {
         앱 배포 QR코드
       </h1>
 
-      <div className="bg-white rounded-xl shadow-sm border-l-4 border-l-emerald-500 p-8 max-w-md">
+      <div className="bg-white rounded-xl shadow-sm border-l-4 border-l-blue-500 p-8 max-w-md">
         <p className="text-sm text-gray-500 mb-1">배포 주소</p>
         <p className="text-base font-medium text-gray-800 mb-6 break-all">
           {DEPLOY_URL}
@@ -42,7 +42,7 @@ export default function QrCodePage() {
 
         <button
           onClick={handleDownload}
-          className="w-full bg-emerald-600 text-white py-2.5 px-4 rounded-lg text-base font-medium hover:bg-emerald-700 active:scale-[0.98] transition-all min-h-[44px]"
+          className="w-full bg-blue-600 text-white py-2.5 px-4 rounded-lg text-base font-medium hover:bg-blue-700 active:scale-[0.98] transition-all min-h-[44px]"
         >
           QR 이미지 저장
         </button>

@@ -132,7 +132,7 @@ export default function EmployeesPage() {
             onClick={() => setFilter(f.key)}
             className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors min-h-[36px] ${
               filter === f.key
-                ? 'bg-emerald-600 text-white'
+                ? 'bg-blue-600 text-white'
                 : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
             }`}
           >
@@ -165,7 +165,7 @@ export default function EmployeesPage() {
                     <span
                       className={`px-2 py-0.5 rounded-full text-xs font-medium ${
                         emp.role === 'admin'
-                          ? 'bg-emerald-100 text-emerald-700'
+                          ? 'bg-blue-100 text-blue-700'
                           : 'bg-blue-100 text-blue-700'
                       }`}
                     >

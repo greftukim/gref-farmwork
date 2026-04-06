@@ -46,8 +46,8 @@ function HydrationGate({ children }) {
 
   if (!hydrated) {
     return (
-      <div className="min-h-screen bg-emerald-950 flex items-center justify-center">
-        <div className="text-emerald-300 text-sm">로딩 중...</div>
+      <div className="min-h-screen bg-slate-900 flex items-center justify-center">
+        <div className="text-blue-300 text-sm">로딩 중...</div>
       </div>
     );
   }
@@ -68,7 +68,7 @@ function AppRedirect() {
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
   const currentUser = useAuthStore((s) => s.currentUser);
   if (!isAuthenticated) return <Navigate to="/login" replace />;
-  return <Navigate to={currentUser.role === 'admin' ? '/admin' : '/worker'} replace />;
+  return <Navigate to={currentUser?.role === 'admin' ? '/admin' : '/worker'} replace />;
 }
 
 function PlaceholderPage({ title }) {

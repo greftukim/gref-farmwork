@@ -51,7 +51,7 @@ export default function IssuePage() {
 
       <div className="space-y-3">
         {myIssues.map((issue) => (
-          <Card key={issue.id} accent={issue.isResolved ? 'emerald' : 'red'} className="p-4">
+          <Card key={issue.id} accent={issue.isResolved ? 'blue' : 'red'} className="p-4">
             <div className="flex items-center justify-between mb-1">
               <div className="flex items-center gap-2">
                 <span className="font-medium text-gray-900">{issue.type}</span>

@@ -50,7 +50,7 @@ export default function LeavePage() {
         <button
           onClick={() => setView('requests')}
           className={`px-3 py-1.5 rounded-lg text-sm font-medium min-h-[36px] transition-colors ${
-            view === 'requests' ? 'bg-emerald-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+            view === 'requests' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
           }`}
         >
           신청 목록
@@ -58,7 +58,7 @@ export default function LeavePage() {
         <button
           onClick={() => setView('balances')}
           className={`px-3 py-1.5 rounded-lg text-sm font-medium min-h-[36px] transition-colors ${
-            view === 'balances' ? 'bg-emerald-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+            view === 'balances' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
           }`}
         >
           잔여 현황
@@ -73,7 +73,7 @@ export default function LeavePage() {
             return (
               <Card
                 key={req.id}
-                accent={req.status === 'pending' ? 'amber' : req.status === 'approved' ? 'emerald' : 'red'}
+                accent={req.status === 'pending' ? 'amber' : req.status === 'approved' ? 'blue' : 'red'}
                 className="p-4"
               >
                 <div className="flex items-center justify-between mb-2">
@@ -128,7 +128,7 @@ export default function LeavePage() {
                     <td className="px-4 py-3 text-gray-600">{b.totalDays}일</td>
                     <td className="px-4 py-3 text-gray-600">{b.usedDays}일</td>
                     <td className="px-4 py-3">
-                      <span className={`font-bold ${b.remaining <= 3 ? 'text-red-500' : 'text-emerald-600'}`}>
+                      <span className={`font-bold ${b.remaining <= 3 ? 'text-red-500' : 'text-blue-600'}`}>
                         {b.remaining}일
                       </span>
                     </td>

@@ -88,7 +88,7 @@ export default function TaskPlanPage() {
         {dayTasks.map((task) => {
           const st = statusMap[task.status] || statusMap.pending;
           return (
-            <Card key={task.id} accent={task.status === 'completed' ? 'emerald' : task.status === 'in_progress' ? 'blue' : 'amber'} className="p-4">
+            <Card key={task.id} accent={task.status === 'completed' ? 'blue' : task.status === 'in_progress' ? 'blue' : 'amber'} className="p-4">
               <div className="flex items-center justify-between mb-1">
                 <span className="font-medium text-gray-900">{task.title}</span>
                 <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${st.color}`}>{st.label}</span>
@@ -97,7 +97,7 @@ export default function TaskPlanPage() {
                 {empMap[task.workerId]?.name || '미배정'} · {zoneMap[task.zoneId]?.name || ''} {task.rowRange && `${task.rowRange}열`} · 예상 {task.estimatedMinutes}분
               </div>
               {task.status === 'completed' && task.quantity && (
-                <div className="text-sm text-emerald-600">수량: {task.quantity}{task.quantityUnit}</div>
+                <div className="text-sm text-blue-600">수량: {task.quantity}{task.quantityUnit}</div>
               )}
               {task.status === 'pending' && (
                 <Button size="sm" variant="danger" onClick={() => deleteTask(task.id)}>삭제</Button>
@@ -132,7 +132,7 @@ export default function TaskPlanPage() {
                 {taskTypes.map((t) => (
                   <button key={t} onClick={() => setForm({ ...form, taskType: t })}
                     className={`px-3 py-1.5 rounded-lg text-sm font-medium min-h-[36px] transition-colors ${
-                      form.taskType === t ? 'bg-emerald-600 text-white' : 'bg-gray-100 text-gray-600'
+                      form.taskType === t ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600'
                     }`}>{t}</button>
                 ))}
               </div>

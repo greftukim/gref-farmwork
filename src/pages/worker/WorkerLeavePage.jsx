@@ -51,7 +51,7 @@ export default function WorkerLeavePage() {
       </div>
 
       {myBalance && (
-        <Card accent="emerald" className="p-4 mb-4">
+        <Card accent="blue" className="p-4 mb-4">
           <div className="text-sm text-gray-500 mb-2">잔여 휴가</div>
           <div className="flex gap-6 text-sm">
             <div>
@@ -64,7 +64,7 @@ export default function WorkerLeavePage() {
             </div>
             <div>
               <span className="text-gray-400">잔여 </span>
-              <span className="font-bold text-emerald-600">{myBalance.totalDays - myBalance.usedDays}일</span>
+              <span className="font-bold text-blue-600">{myBalance.totalDays - myBalance.usedDays}일</span>
             </div>
           </div>
         </Card>
@@ -77,7 +77,7 @@ export default function WorkerLeavePage() {
         {myRequests.map((req) => {
           const st = statusMap[req.status];
           return (
-            <Card key={req.id} accent={req.status === 'approved' ? 'emerald' : req.status === 'rejected' ? 'red' : 'amber'} className="p-4">
+            <Card key={req.id} accent={req.status === 'approved' ? 'blue' : req.status === 'rejected' ? 'red' : 'amber'} className="p-4">
               <div className="flex items-center justify-between mb-1">
                 <span className="font-medium text-gray-900">{req.date}</span>
                 <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${st.color}`}>
@@ -110,7 +110,7 @@ export default function WorkerLeavePage() {
                   onClick={() => setForm({ ...form, type: t })}
                   className={`px-3 py-2 rounded-lg text-sm font-medium min-h-[44px] transition-colors ${
                     form.type === t
-                      ? 'bg-emerald-600 text-white'
+                      ? 'bg-blue-600 text-white'
                       : 'bg-gray-100 text-gray-600'
                   }`}
                 >

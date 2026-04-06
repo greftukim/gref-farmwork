@@ -33,7 +33,7 @@ export default function WorkerAttendancePage() {
       <h2 className="text-lg font-heading font-semibold text-gray-900 mb-4">근태</h2>
 
       <div className="grid grid-cols-3 gap-3 mb-4">
-        <Card accent="emerald" className="p-3 text-center">
+        <Card accent="blue" className="p-3 text-center">
           <div className="text-xs text-gray-400">출근일</div>
           <div className="text-lg font-bold text-gray-900">{workDays}일</div>
         </Card>

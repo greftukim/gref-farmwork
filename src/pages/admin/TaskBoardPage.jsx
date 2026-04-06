@@ -7,7 +7,7 @@ import Card from '../../components/common/Card';
 const columns = [
   { key: 'pending', label: '대기', accent: 'amber', headerBg: 'bg-amber-50', headerText: 'text-amber-700' },
   { key: 'in_progress', label: '진행 중', accent: 'blue', headerBg: 'bg-blue-50', headerText: 'text-blue-700' },
-  { key: 'completed', label: '완료', accent: 'emerald', headerBg: 'bg-emerald-50', headerText: 'text-emerald-700' },
+  { key: 'completed', label: '완료', accent: 'blue', headerBg: 'bg-blue-50', headerText: 'text-blue-700' },
 ];
 
 export default function TaskBoardPage() {
@@ -42,7 +42,7 @@ export default function TaskBoardPage() {
           className="border border-gray-200 rounded-lg px-3 py-2 text-sm min-h-[44px]" />
         <div className="flex items-center gap-2 flex-1">
           <div className="flex-1 h-3 bg-gray-100 rounded-full overflow-hidden">
-            <div className="h-full bg-emerald-500 rounded-full transition-all" style={{ width: `${progressPct}%` }} />
+            <div className="h-full bg-blue-500 rounded-full transition-all" style={{ width: `${progressPct}%` }} />
           </div>
           <span className="text-sm font-medium text-gray-600 min-w-[80px] text-right">
             {completedCount}/{total} ({progressPct}%)
@@ -73,7 +73,7 @@ export default function TaskBoardPage() {
                     </div>
                   )}
                   {task.status === 'completed' && (
-                    <div className="text-xs text-emerald-600 mt-1">
+                    <div className="text-xs text-blue-600 mt-1">
                       {task.durationMinutes}분 소요
                       {task.quantity != null && ` · ${task.quantity}${task.quantityUnit}`}
                     </div>
