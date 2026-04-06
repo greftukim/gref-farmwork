@@ -16,7 +16,13 @@ UPDATE employees
   SET name = '김현도', username = 'hyundo', password = '1234'
   WHERE emp_no = 'A001';
 
--- 관리팀 김지현 추가 (이미 있으면 업데이트)
-INSERT INTO employees (name, emp_no, phone, role, job_type, hire_date, work_hours_per_week, annual_leave_days, pin_code, is_active, username, password)
-VALUES ('김지현', 'A002', '010-1234-0001', 'admin', '관리', '2024-01-15', 40, 15, '000001', true, 'jihyun', '1234')
-ON CONFLICT (emp_no) DO UPDATE SET username = 'jihyun', password = '1234', name = '김지현';
+-- 관리팀 김지현: 이미 있으면 업데이트, 없으면 추가
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM employees WHERE emp_no = 'A002') THEN
+    UPDATE employees SET name = '김지현', username = 'jihyun', password = '1234' WHERE emp_no = 'A002';
+  ELSE
+    INSERT INTO employees (name, emp_no, phone, role, job_type, hire_date, work_hours_per_week, annual_leave_days, pin_code, is_active, username, password)
+    VALUES ('김지현', 'A002', '010-1234-0001', 'admin', '관리', '2024-01-15', 40, 15, '000001', true, 'jihyun', '1234');
+  END IF;
+END $$;
