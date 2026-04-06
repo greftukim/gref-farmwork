@@ -18,6 +18,7 @@ import StatsPage from './pages/admin/StatsPage';
 import WorkStatsPage from './pages/admin/WorkStatsPage';
 import DailyReportPage from './pages/admin/DailyReportPage';
 import LocationSettingsPage from './pages/admin/LocationSettingsPage';
+import GrowthSurveyAdminPage from './pages/admin/GrowthSurveyAdminPage';
 import WorkerHome from './pages/worker/WorkerHome';
 import WorkerTasksPage from './pages/worker/WorkerTasksPage';
 import GrowthSurveyPage from './pages/worker/GrowthSurveyPage';
@@ -103,6 +104,7 @@ export default function App() {
             <Route path="work-stats" element={<WorkStatsPage />} />
             <Route path="report" element={<DailyReportPage />} />
             <Route path="notices" element={<NoticePage />} />
+            <Route path="survey" element={<GrowthSurveyAdminPage />} />
             <Route path="location" element={<LocationSettingsPage />} />
           </Route>
 
