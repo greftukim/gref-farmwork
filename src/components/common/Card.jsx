@@ -3,7 +3,7 @@ const accentColors = {
   green: 'border-l-green-500',
   amber: 'border-l-amber-500',
   red: 'border-l-red-500',
-  gray: 'border-l-gray-300',
+  gray: 'border-l-gray-200',
 };
 
 export default function Card({
@@ -15,7 +15,7 @@ export default function Card({
   return (
     <div
       className={`
-        bg-white rounded-2xl shadow-md border-l-4
+        bg-white rounded-2xl shadow-sm border border-gray-100 border-l-4
         ${accentColors[accent]}
         ${onClick ? 'cursor-pointer active:scale-[0.98] transition-transform' : ''}
         ${className}
