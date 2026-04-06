@@ -267,14 +267,14 @@ function AdminLogin() {
 
       {/* 오른쪽: 이미지 (모바일 숨김) */}
       <div className="hidden lg:block lg:flex-1 relative">
+        {/* 배경: 이미지 + 반투명 오버레이 */}
         <img
           src="/images/login-bg.jpg"
           alt="온실"
           className="absolute inset-0 w-full h-full object-cover"
           onError={(e) => { e.target.style.display = 'none'; }}
         />
-        {/* 이미지 없을 때 그라데이션 폴백 */}
-        <div className="absolute inset-0 bg-gradient-to-br from-blue-600 via-blue-700 to-slate-900" />
+        <div className="absolute inset-0 bg-gradient-to-br from-blue-900/70 via-blue-800/50 to-slate-900/80" />
         <div className="absolute inset-0 flex flex-col items-center justify-center text-white p-12">
           <div className="w-16 h-16 rounded-2xl bg-white/20 backdrop-blur flex items-center justify-center mb-6">
             <span className="text-3xl font-bold">G</span>
