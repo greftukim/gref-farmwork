@@ -18,10 +18,11 @@ const useNotificationStore = create((set, get) => ({
     };
     set((s) => ({ notifications: [...s.notifications, item] }));
 
-    // Auto-remove after 6 seconds (urgent stays 10 seconds)
+    // Auto-remove: urgent 10초, fcm_error 15초, 일반 6초
+    const duration = item.urgent ? 10000 : item.type === 'fcm_error' ? 15000 : 6000;
     setTimeout(() => {
       set((s) => ({ notifications: s.notifications.filter((n) => n.id !== id) }));
-    }, item.urgent ? 10000 : 6000);
+    }, duration);
 
     // Play sound
     if (get().soundEnabled) {

@@ -32,10 +32,25 @@ export default function AdminLayout() {
 
   // 2단계: 사용자 ID 확보 후 알림 권한 요청 + 토큰 저장
   useEffect(() => {
-    if (currentUser?.id) {
-      requestNotificationPermission(currentUser.id);
-    }
-  }, [currentUser]);
+    if (!currentUser?.id) return;
+
+    requestNotificationPermission(currentUser.id)
+      .then((token) => {
+        if (token) {
+          console.log('[FCM] 토큰 저장 완료:', token.substring(0, 20) + '...');
+        }
+      })
+      .catch((err) => {
+        console.error('[FCM] 오류:', err);
+        addNotification({
+          type: 'fcm_error',
+          title: '[디버그] FCM 토큰 저장 실패',
+          message: err.message || '알 수 없는 오류',
+          urgent: false,
+        });
+      });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentUser?.id]);
 
   // 3단계: 포그라운드 메시지 수신
   useEffect(() => {

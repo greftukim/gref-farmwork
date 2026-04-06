@@ -43,58 +43,84 @@ export async function ensureFCMServiceWorker() {
 
 export async function requestNotificationPermission(employeeId) {
   if (!messaging) {
-    console.warn('FCM: messaging not supported');
-    return null;
+    throw new Error('FCM messaging이 지원되지 않는 브라우저입니다 (HTTPS 필요)');
   }
-  try {
-    const permission = await Notification.requestPermission();
-    console.log('알림 권한:', permission);
-    if (permission !== 'granted') return null;
 
-    const swReg = await ensureFCMServiceWorker();
-    if (!swReg) return null;
+  const permission = await Notification.requestPermission();
+  console.log('알림 권한:', permission);
+  // 사용자가 직접 거부한 경우는 에러가 아니므로 null 반환
+  if (permission !== 'granted') return null;
 
-    // SW가 활성화될 때까지 대기
-    if (!swReg.active) {
-      await new Promise((resolve) => {
-        const sw = swReg.installing || swReg.waiting;
-        if (!sw) { resolve(); return; }
-        sw.addEventListener('statechange', () => {
-          if (sw.state === 'activated') resolve();
-        });
+  const swReg = await ensureFCMServiceWorker();
+  if (!swReg) {
+    throw new Error('FCM 서비스 워커 등록에 실패했습니다');
+  }
+
+  // SW가 활성화될 때까지 최대 10초 대기
+  if (!swReg.active) {
+    await new Promise((resolve, reject) => {
+      const sw = swReg.installing || swReg.waiting;
+      if (!sw) {
+        // 상태 불명확 시 1초 뒤 재시도
+        setTimeout(resolve, 1000);
+        return;
+      }
+      const timeout = setTimeout(
+        () => reject(new Error('서비스 워커 활성화 타임아웃 (10초 초과)')),
+        10000
+      );
+      sw.addEventListener('statechange', () => {
+        if (sw.state === 'activated') {
+          clearTimeout(timeout);
+          resolve();
+        }
       });
-    }
+    });
+  }
 
-    const token = await getToken(messaging, {
+  let token;
+  try {
+    token = await getToken(messaging, {
       vapidKey: VAPID_KEY,
       serviceWorkerRegistration: swReg,
     });
-    console.log('FCM 토큰 획득:', token ? token.substring(0, 20) + '...' : 'null');
-
-    if (token && employeeId) {
-      await saveTokenToSupabase(employeeId, token);
-    }
-
-    return token;
   } catch (e) {
-    console.warn('FCM token 등록 실패:', e);
-    return null;
+    throw new Error(`FCM 토큰 발급 실패: ${e.message}`);
   }
+
+  console.log('FCM 토큰 획득:', token ? token.substring(0, 20) + '...' : 'null');
+
+  if (!token) {
+    throw new Error('FCM 토큰이 빈 값입니다 (VAPID 키 또는 Firebase 프로젝트 설정을 확인하세요)');
+  }
+
+  if (employeeId) {
+    await saveTokenToSupabase(employeeId, token);
+  }
+
+  return token;
 }
 
 async function saveTokenToSupabase(employeeId, token) {
-  const { data: existing } = await supabase
+  const { data: existing, error: selectError } = await supabase
     .from('fcm_tokens')
     .select('id')
     .eq('employee_id', employeeId)
     .eq('token', token)
     .maybeSingle();
 
+  if (selectError) {
+    throw new Error(`fcm_tokens 조회 실패: ${selectError.message}`);
+  }
+
   if (existing) {
-    await supabase
+    const { error: updateError } = await supabase
       .from('fcm_tokens')
       .update({ updated_at: new Date().toISOString(), device_info: navigator.userAgent })
       .eq('id', existing.id);
+    if (updateError) {
+      throw new Error(`fcm_tokens 갱신 실패: ${updateError.message}`);
+    }
     console.log('FCM 토큰 갱신 완료 (DB)');
     return;
   }
@@ -107,10 +133,9 @@ async function saveTokenToSupabase(employeeId, token) {
   });
 
   if (error) {
-    console.warn('FCM 토큰 저장 실패:', error.message);
-  } else {
-    console.log('FCM 토큰 저장 완료 (DB)');
+    throw new Error(`FCM 토큰 저장 실패: ${error.message}`);
   }
+  console.log('FCM 토큰 저장 완료 (DB)');
 }
 
 export function onForegroundMessage(callback) {

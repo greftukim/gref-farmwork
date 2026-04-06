@@ -5,6 +5,7 @@ const typeStyles = {
   emergency_call: { bg: 'bg-red-600', icon: '🚨' },
   issue_report: { bg: 'bg-amber-600', icon: '⚠️' },
   info: { bg: 'bg-blue-600', icon: 'ℹ️' },
+  fcm_error: { bg: 'bg-rose-700', icon: '🔕' },
 };
 
 export default function ToastContainer() {
