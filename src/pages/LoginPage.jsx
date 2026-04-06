@@ -176,18 +176,17 @@ function AdminLogin() {
   const canSubmit = username.length > 0 && password.length > 0;
 
   return (
-    <div className="min-h-screen flex">
-      {/* 왼쪽: 로그인 폼 */}
-      <div className="flex-1 flex flex-col justify-center px-8 md:px-16 lg:px-24 bg-white">
-        <div className="w-full max-w-md mx-auto">
-          {/* 로고 */}
-          <div className="flex items-center gap-3 mb-10">
-            <div className="w-10 h-10 rounded-xl bg-blue-600 flex items-center justify-center">
-              <span className="text-white text-lg font-bold">G</span>
-            </div>
-            <span className="text-xl font-heading font-bold text-gray-900">GREF FarmWork</span>
+    <div className="min-h-screen bg-gray-50 flex items-center justify-center p-6">
+      <div className="w-full max-w-md">
+        {/* 로고 */}
+        <div className="flex items-center justify-center gap-3 mb-10">
+          <div className="w-10 h-10 rounded-xl bg-blue-600 flex items-center justify-center">
+            <span className="text-white text-lg font-bold">G</span>
           </div>
+          <span className="text-xl font-heading font-bold text-gray-900">GREF FarmWork</span>
+        </div>
 
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
           <h2 className="text-2xl font-bold text-gray-900 mb-1">관리자 로그인</h2>
           <p className="text-gray-400 mb-8">온실 인력관리 시스템에 로그인하세요</p>
 
@@ -258,23 +257,14 @@ function AdminLogin() {
               로그인
             </button>
           </form>
-
-          <div className="flex justify-center mt-6">
-            <img src="/images/login-bear.png" alt="" className="w-[120px] opacity-80" />
-          </div>
-          <p className="text-xs text-gray-400 text-center mt-4">
-            © GREF FarmWork · 대한제강 부산LAB
-          </p>
         </div>
-      </div>
 
-      {/* 오른쪽: 이미지 (모바일 숨김) */}
-      <div className="hidden lg:block lg:flex-1 relative">
-        <img
-          src="/images/login-bg.jpg"
-          alt="온실"
-          className="absolute inset-0 w-full h-full object-cover"
-        />
+        <div className="flex justify-center mt-6">
+          <img src="/images/login-bear.png" alt="" className="w-[120px] opacity-80" />
+        </div>
+        <p className="text-xs text-gray-400 text-center mt-4">
+          © GREF FarmWork · 대한제강 부산LAB
+        </p>
       </div>
     </div>
   );
