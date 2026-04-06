@@ -22,12 +22,16 @@ const useCallStore = create((set) => ({
     }).select().single();
     if (!error && data) {
       set((s) => ({ calls: [...s.calls, snakeToCamel(data)] }));
-      sendPushToAdmins({
-        title: '긴급 호출',
-        body: `${call.type}: ${call.memo || '긴급 호출이 접수되었습니다'}`,
-        type: 'emergency_call',
-        urgent: true,
-      });
+      try {
+        await sendPushToAdmins({
+          title: '긴급 호출',
+          body: `${call.type}: ${call.memo || '긴급 호출이 접수되었습니다'}`,
+          type: 'emergency_call',
+          urgent: true,
+        });
+      } catch (pushErr) {
+        console.error('[callStore] 푸시 전송 실패:', pushErr);
+      }
     }
   },
 

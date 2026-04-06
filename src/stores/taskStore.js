@@ -57,12 +57,16 @@ const useTaskStore = create((set, get) => ({
     if (data) {
       const completed = snakeToCamel(data);
       set((s) => ({ tasks: s.tasks.map((t) => (t.id === taskId ? completed : t)) }));
-      sendPushToAdmins({
-        title: '작업 완료',
-        body: `${completed.title} 작업이 완료되었습니다`,
-        type: 'task_completed',
-        urgent: false,
-      });
+      try {
+        await sendPushToAdmins({
+          title: '작업 완료',
+          body: `${completed.title} 작업이 완료되었습니다`,
+          type: 'task_completed',
+          urgent: false,
+        });
+      } catch (pushErr) {
+        console.error('[taskStore] 푸시 전송 실패:', pushErr);
+      }
     }
   },
 
