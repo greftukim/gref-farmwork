@@ -9,7 +9,8 @@ const leaveTypes = ['연차', '오전반차', '오후반차', '특별휴가'];
 
 const statusMap = {
   pending: { label: '대기', color: 'bg-amber-100 text-amber-700' },
-  approved: { label: '승인', color: 'bg-green-100 text-green-700' },
+  farm_approved: { label: '1차 승인', color: 'bg-blue-100 text-blue-700' },
+  hr_approved: { label: '최종 승인', color: 'bg-green-100 text-green-700' },
   rejected: { label: '반려', color: 'bg-red-100 text-red-700' },
 };
 
@@ -77,7 +78,7 @@ export default function WorkerLeavePage() {
         {myRequests.map((req) => {
           const st = statusMap[req.status];
           return (
-            <Card key={req.id} accent={req.status === 'approved' ? 'blue' : req.status === 'rejected' ? 'red' : 'amber'} className="p-4">
+            <Card key={req.id} accent={req.status === 'hr_approved' ? 'green' : req.status === 'farm_approved' ? 'blue' : req.status === 'rejected' ? 'red' : 'amber'} className="p-4">
               <div className="flex items-center justify-between mb-1">
                 <span className="font-medium text-gray-900">{req.date}</span>
                 <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${st.color}`}>

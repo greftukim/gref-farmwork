@@ -1,21 +1,18 @@
 import { useState, useMemo } from 'react';
 import useLeaveStore from '../../stores/leaveStore';
 import useEmployeeStore from '../../stores/employeeStore';
-import useAuthStore from '../../stores/authStore';
 import Card from '../../components/common/Card';
-import Button from '../../components/common/Button';
 
 const statusMap = {
   pending: { label: '대기', color: 'bg-amber-100 text-amber-700' },
-  approved: { label: '승인', color: 'bg-green-100 text-green-700' },
+  farm_approved: { label: '1차 승인', color: 'bg-blue-100 text-blue-700' },
+  hr_approved: { label: '최종 승인', color: 'bg-green-100 text-green-700' },
   rejected: { label: '반려', color: 'bg-red-100 text-red-700' },
 };
 
 export default function LeavePage() {
-  const currentUser = useAuthStore((s) => s.currentUser);
   const requests = useLeaveStore((s) => s.requests);
   const balances = useLeaveStore((s) => s.balances);
-  const reviewRequest = useLeaveStore((s) => s.reviewRequest);
   const employees = useEmployeeStore((s) => s.employees);
   const [view, setView] = useState('requests');
 
@@ -73,7 +70,7 @@ export default function LeavePage() {
             return (
               <Card
                 key={req.id}
-                accent={req.status === 'pending' ? 'amber' : req.status === 'approved' ? 'blue' : 'red'}
+                accent={req.status === 'pending' ? 'amber' : req.status === 'hr_approved' ? 'green' : req.status === 'farm_approved' ? 'blue' : 'red'}
                 className="p-4"
               >
                 <div className="flex items-center justify-between mb-2">
@@ -85,24 +82,7 @@ export default function LeavePage() {
                     {st.label}
                   </span>
                 </div>
-                <div className="text-sm text-gray-500 mb-2">{req.type} · {req.reason}</div>
-                {req.status === 'pending' && (
-                  <div className="flex gap-2">
-                    <Button
-                      size="sm"
-                      onClick={() => reviewRequest(req.id, 'approved', currentUser.id)}
-                    >
-                      승인
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="danger"
-                      onClick={() => reviewRequest(req.id, 'rejected', currentUser.id)}
-                    >
-                      반려
-                    </Button>
-                  </div>
-                )}
+                <div className="text-sm text-gray-500">{req.type} · {req.reason}</div>
               </Card>
             );
           })}

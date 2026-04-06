@@ -23,23 +23,41 @@ const useLeaveStore = create((set, get) => ({
       date: request.date,
       type: request.type,
       reason: request.reason,
+      status: 'pending',
     }).select().single();
     if (!error && data) {
-      set((s) => ({ requests: [...s.requests, snakeToCamel(data)] }));
+      set((s) => ({ requests: [snakeToCamel(data), ...s.requests] }));
     }
   },
 
-  reviewRequest: async (requestId, status, reviewerId) => {
+  // 1차 승인: 재배팀 관리자
+  farmReview: async (requestId, approved, reviewerId) => {
+    const status = approved ? 'farm_approved' : 'rejected';
     const { data, error } = await supabase.from('leave_requests').update({
       status,
-      reviewed_by: reviewerId,
-      reviewed_at: new Date().toISOString(),
+      farm_reviewed_by: reviewerId,
+      farm_reviewed_at: new Date().toISOString(),
+    }).eq('id', requestId).select().single();
+
+    if (!error && data) {
+      set((s) => ({ requests: s.requests.map((r) => (r.id === requestId ? snakeToCamel(data) : r)) }));
+    }
+  },
+
+  // 최종 승인: 관리팀
+  hrReview: async (requestId, approved, reviewerId) => {
+    const status = approved ? 'hr_approved' : 'rejected';
+    const { data, error } = await supabase.from('leave_requests').update({
+      status,
+      hr_reviewed_by: reviewerId,
+      hr_reviewed_at: new Date().toISOString(),
     }).eq('id', requestId).select().single();
 
     if (!error && data) {
       set((s) => ({ requests: s.requests.map((r) => (r.id === requestId ? snakeToCamel(data) : r)) }));
 
-      if (status === 'approved') {
+      // 최종 승인 시 잔여 휴가 차감
+      if (status === 'hr_approved') {
         const req = get().requests.find((r) => r.id === requestId) || snakeToCamel(data);
         const days = req.type === '연차' ? 1 : 0.5;
         const balance = get().balances.find((b) => b.employeeId === req.employeeId && b.year === new Date().getFullYear());
