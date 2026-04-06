@@ -16,6 +16,20 @@ const useBranchStore = create((set) => ({
 
   setSelectedBranch: (branchId) => set({ selectedBranch: branchId }),
 
+  addBranch: async (branch) => {
+    const { data, error } = await supabase.from('branches').insert({
+      code: branch.code,
+      name: branch.name,
+      latitude: branch.latitude || null,
+      longitude: branch.longitude || null,
+      radius_meters: branch.radiusMeters || 200,
+    }).select().single();
+    if (!error && data) {
+      set((s) => ({ branches: [...s.branches, snakeToCamel(data)] }));
+    }
+    return { error };
+  },
+
   updateBranch: async (id, updates) => {
     const row = {};
     if (updates.latitude !== undefined) row.latitude = updates.latitude;

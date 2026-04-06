@@ -21,6 +21,7 @@ import QrCodePage from './pages/admin/QrCodePage';
 import AttendanceStatusPage from './pages/admin/AttendanceStatusPage';
 import LeaveApprovalPage from './pages/admin/LeaveApprovalPage';
 import BranchSettingsPage from './pages/admin/BranchSettingsPage';
+import AttendanceRecordsPage from './pages/admin/AttendanceRecordsPage';
 import WorkerHome from './pages/worker/WorkerHome';
 import WorkerTasksPage from './pages/worker/WorkerTasksPage';
 import GrowthSurveyPage from './pages/worker/GrowthSurveyPage';
@@ -109,6 +110,7 @@ export default function App() {
             <Route path="attendance-status" element={<AttendanceStatusPage />} />
             <Route path="leave-approval" element={<LeaveApprovalPage />} />
             <Route path="branch-settings" element={<BranchSettingsPage />} />
+            <Route path="attendance-records" element={<AttendanceRecordsPage />} />
             <Route path="qr" element={<QrCodePage />} />
           </Route>
 
