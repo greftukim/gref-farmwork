@@ -10,6 +10,7 @@ import useGrowthSurveyStore from '../stores/growthSurveyStore';
 import useIssueStore from '../stores/issueStore';
 import useCallStore from '../stores/callStore';
 import useNoticeStore from '../stores/noticeStore';
+import useBranchStore from '../stores/branchStore';
 
 export default function useDataLoader() {
   const fetchEmployees = useEmployeeStore((s) => s.fetchEmployees);
@@ -24,8 +25,10 @@ export default function useDataLoader() {
   const fetchIssues = useIssueStore((s) => s.fetchIssues);
   const fetchCalls = useCallStore((s) => s.fetchCalls);
   const fetchNotices = useNoticeStore((s) => s.fetchNotices);
+  const fetchBranches = useBranchStore((s) => s.fetchBranches);
 
   useEffect(() => {
+    fetchBranches();
     fetchEmployees();
     fetchRecords();
     fetchRequests();
