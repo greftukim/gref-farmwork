@@ -152,15 +152,14 @@ function WorkerLogin() {
   );
 }
 
-// ─── 관리자 로그인 (PC): 팀 선택 → 아이디/비번 ───
+// ─── 관리자 로그인 (PC): 2분할 레이아웃 ───
 function AdminLogin() {
   const navigate = useNavigate();
   const loginWithPassword = useAuthStore((s) => s.loginWithPassword);
-  const [team, setTeam] = useState(null);
+  const [team, setTeam] = useState('farm');
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
-  const [focusField, setFocusField] = useState(null);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -176,103 +175,117 @@ function AdminLogin() {
 
   const canSubmit = username.length > 0 && password.length > 0;
 
-  if (!team) {
-    return (
-      <div className="min-h-screen bg-slate-900 flex flex-col items-center justify-center p-6">
-        <div className="w-16 h-16 rounded-2xl bg-blue-600 flex items-center justify-center mb-6">
-          <span className="text-white text-2xl font-bold">G</span>
-        </div>
-        <h1 className="text-3xl font-heading font-bold text-white mb-2">GREF FarmWork</h1>
-        <p className="text-slate-400 mb-10">관리자 로그인</p>
-        <div className="w-full max-w-sm space-y-4">
-          <button
-            onClick={() => setTeam('farm')}
-            className="w-full bg-blue-600 hover:bg-blue-500 text-white
-              rounded-2xl px-6 py-5 text-lg font-medium transition-all
-              active:scale-95 min-h-[64px] shadow-lg shadow-blue-600/20"
-          >
-            재배팀
-          </button>
-          <button
-            onClick={() => setTeam('management')}
-            className="w-full bg-slate-800 hover:bg-slate-700 text-white
-              rounded-2xl px-6 py-5 text-lg font-medium transition-all
-              active:scale-95 min-h-[64px] border border-slate-700/50"
-          >
-            관리팀
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-  const getInputBorder = (field) => {
-    if (error) return 'border-red-500 focus:ring-red-500';
-    if (focusField === field) return 'border-blue-500 focus:ring-blue-500';
-    return 'border-slate-600 focus:ring-blue-500';
-  };
-
   return (
-    <div className="min-h-screen bg-slate-900 flex flex-col items-center justify-center p-6">
-      <button
-        onClick={() => { setTeam(null); setUsername(''); setPassword(''); setError(''); }}
-        className="text-blue-300 mb-6 min-h-[44px] flex items-center gap-1"
-      >
-        ← 팀 선택으로
-      </button>
-      <div className="w-12 h-12 rounded-2xl bg-blue-600 flex items-center justify-center mb-4">
-        <span className="text-white text-xl font-bold">G</span>
+    <div className="min-h-screen flex">
+      {/* 왼쪽: 로그인 폼 */}
+      <div className="flex-1 flex flex-col justify-center px-8 md:px-16 lg:px-24 bg-white">
+        <div className="w-full max-w-md mx-auto">
+          {/* 로고 */}
+          <div className="flex items-center gap-3 mb-10">
+            <div className="w-10 h-10 rounded-xl bg-blue-600 flex items-center justify-center">
+              <span className="text-white text-lg font-bold">G</span>
+            </div>
+            <span className="text-xl font-heading font-bold text-gray-900">GREF FarmWork</span>
+          </div>
+
+          <h2 className="text-2xl font-bold text-gray-900 mb-1">관리자 로그인</h2>
+          <p className="text-gray-400 mb-8">온실 인력관리 시스템에 로그인하세요</p>
+
+          {/* 팀 선택 */}
+          <div className="flex gap-2 mb-6">
+            <button
+              type="button"
+              onClick={() => setTeam('farm')}
+              className={`flex-1 py-2.5 rounded-xl text-sm font-medium transition-all min-h-[44px] ${
+                team === 'farm'
+                  ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/20'
+                  : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
+              }`}
+            >
+              재배팀
+            </button>
+            <button
+              type="button"
+              onClick={() => setTeam('management')}
+              className={`flex-1 py-2.5 rounded-xl text-sm font-medium transition-all min-h-[44px] ${
+                team === 'management'
+                  ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/20'
+                  : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
+              }`}
+            >
+              관리팀
+            </button>
+          </div>
+
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1.5">아이디</label>
+              <input
+                type="text"
+                placeholder="아이디를 입력하세요"
+                value={username}
+                onChange={(e) => { setUsername(e.target.value); setError(''); }}
+                className={`w-full rounded-xl px-4 py-3 text-sm min-h-[48px] outline-none transition-all
+                  border ${error ? 'border-red-400 focus:border-red-500' : 'border-gray-200 focus:border-blue-500'}
+                  focus:ring-2 focus:ring-blue-500/20 placeholder:text-gray-400`}
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1.5">비밀번호</label>
+              <input
+                type="password"
+                placeholder="비밀번호를 입력하세요"
+                value={password}
+                onChange={(e) => { setPassword(e.target.value); setError(''); }}
+                className={`w-full rounded-xl px-4 py-3 text-sm min-h-[48px] outline-none transition-all
+                  border ${error ? 'border-red-400 focus:border-red-500' : 'border-gray-200 focus:border-blue-500'}
+                  focus:ring-2 focus:ring-blue-500/20 placeholder:text-gray-400`}
+              />
+            </div>
+
+            {error && <p className="text-red-500 text-sm">{error}</p>}
+
+            <button
+              type="submit"
+              disabled={!canSubmit}
+              className={`w-full text-white text-base font-bold rounded-xl
+                min-h-[48px] active:scale-95 transition-all mt-2 ${
+                  canSubmit
+                    ? 'bg-blue-600 hover:bg-blue-500 shadow-lg shadow-blue-600/20'
+                    : 'bg-gray-200 text-gray-400 cursor-not-allowed shadow-none'
+                }`}
+            >
+              로그인
+            </button>
+          </form>
+
+          <p className="text-xs text-gray-400 text-center mt-8">
+            © GREF FarmWork · 대한제강 부산LAB
+          </p>
+        </div>
       </div>
-      <h1 className="text-2xl font-heading font-bold text-white mb-1">GREF FarmWork</h1>
-      <p className="text-blue-300 mb-8">
-        {team === 'farm' ? '재배팀' : '관리팀'} 로그인
-      </p>
 
-      <form onSubmit={handleSubmit} className="w-full max-w-sm space-y-4">
-        <div>
-          <input
-            type="text"
-            placeholder="아이디"
-            value={username}
-            onChange={(e) => { setUsername(e.target.value); setError(''); }}
-            onFocus={() => setFocusField('username')}
-            onBlur={() => setFocusField(null)}
-            className={`w-full bg-slate-800 text-white rounded-2xl px-4 py-3.5
-              border-2 ${getInputBorder('username')} outline-none
-              focus:ring-2 transition-all min-h-[52px]
-              placeholder:text-slate-500`}
-          />
+      {/* 오른쪽: 이미지 (모바일 숨김) */}
+      <div className="hidden lg:block lg:flex-1 relative">
+        <img
+          src="/images/login-bg.jpg"
+          alt="온실"
+          className="absolute inset-0 w-full h-full object-cover"
+          onError={(e) => { e.target.style.display = 'none'; }}
+        />
+        {/* 이미지 없을 때 그라데이션 폴백 */}
+        <div className="absolute inset-0 bg-gradient-to-br from-blue-600 via-blue-700 to-slate-900" />
+        <div className="absolute inset-0 flex flex-col items-center justify-center text-white p-12">
+          <div className="w-16 h-16 rounded-2xl bg-white/20 backdrop-blur flex items-center justify-center mb-6">
+            <span className="text-3xl font-bold">G</span>
+          </div>
+          <h2 className="text-3xl font-bold mb-3">스마트 온실 관리</h2>
+          <p className="text-blue-200 text-center max-w-xs leading-relaxed">
+            인력 관리부터 작업 배정, 생육 조사까지<br />
+            온실 운영의 모든 것을 한 곳에서
+          </p>
         </div>
-        <div>
-          <input
-            type="password"
-            placeholder="비밀번호"
-            value={password}
-            onChange={(e) => { setPassword(e.target.value); setError(''); }}
-            onFocus={() => setFocusField('password')}
-            onBlur={() => setFocusField(null)}
-            className={`w-full bg-slate-800 text-white rounded-2xl px-4 py-3.5
-              border-2 ${getInputBorder('password')} outline-none
-              focus:ring-2 transition-all min-h-[52px]
-              placeholder:text-slate-500`}
-          />
-        </div>
-
-        {error && <p className="text-red-400 text-sm">{error}</p>}
-
-        <button
-          type="submit"
-          disabled={!canSubmit}
-          className={`w-full text-white text-base font-bold rounded-2xl
-            min-h-[52px] active:scale-95 transition-all ${
-              canSubmit
-                ? 'bg-blue-600 hover:bg-blue-500 shadow-lg shadow-blue-600/20'
-                : 'bg-slate-700/50 text-slate-500 cursor-not-allowed'
-            }`}
-        >
-          로그인
-        </button>
-      </form>
+      </div>
     </div>
   );
 }
