@@ -4,7 +4,7 @@ import { snakeToCamel } from '../lib/dbHelpers';
 
 const useBranchStore = create((set) => ({
   branches: [],
-  selectedBranch: 'all', // 'all' | branch id
+  selectedBranch: 'all',
   loading: false,
 
   fetchBranches: async () => {
@@ -15,6 +15,19 @@ const useBranchStore = create((set) => ({
   },
 
   setSelectedBranch: (branchId) => set({ selectedBranch: branchId }),
+
+  updateBranch: async (id, updates) => {
+    const row = {};
+    if (updates.latitude !== undefined) row.latitude = updates.latitude;
+    if (updates.longitude !== undefined) row.longitude = updates.longitude;
+    if (updates.radiusMeters !== undefined) row.radius_meters = updates.radiusMeters;
+    if (updates.name !== undefined) row.name = updates.name;
+
+    const { data, error } = await supabase.from('branches').update(row).eq('id', id).select().single();
+    if (!error && data) {
+      set((s) => ({ branches: s.branches.map((b) => (b.id === id ? snakeToCamel(data) : b)) }));
+    }
+  },
 }));
 
 export default useBranchStore;
