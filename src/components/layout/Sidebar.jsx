@@ -1,19 +1,20 @@
 import { NavLink } from 'react-router-dom';
 
 const menuItems = [
-  { to: '/admin', label: '대시보드', icon: '📊' },
-  { to: '/admin/employees', label: '직원 관리', icon: '👥' },
-  { to: '/admin/attendance', label: '근무 관리', icon: '🕐' },
-  { to: '/admin/leave', label: '휴가 관리', icon: '🌴' },
-  { to: '/admin/schedule', label: '주간 일정', icon: '📅' },
-  { to: '/admin/crops', label: '작물·구역', icon: '🌿' },
-  { to: '/admin/tasks', label: '작업 배정', icon: '📋' },
-  { to: '/admin/board', label: '작업 현황', icon: '📌' },
-  { to: '/admin/records', label: '신고·호출', icon: '🚨' },
-  { to: '/admin/stats', label: '성과 분석', icon: '📈' },
-  { to: '/admin/work-stats', label: '근무·수확', icon: '📊' },
-  { to: '/admin/report', label: '일일 보고서', icon: '📄' },
-  { to: '/admin/notices', label: '공지사항', icon: '📢' },
+  { to: '/admin', label: '대시보드' },
+  { to: '/admin/employees', label: '직원 관리' },
+  { to: '/admin/attendance', label: '근무 관리' },
+  { to: '/admin/leave', label: '휴가 관리' },
+  { to: '/admin/schedule', label: '주간 일정' },
+  { to: '/admin/crops', label: '작물·구역' },
+  { to: '/admin/tasks', label: '작업 배정' },
+  { to: '/admin/board', label: '작업 현황' },
+  { to: '/admin/records', label: '신고·호출' },
+  { to: '/admin/stats', label: '성과 분석' },
+  { to: '/admin/work-stats', label: '근무·수확' },
+  { to: '/admin/report', label: '일일 보고서' },
+  { to: '/admin/notices', label: '공지사항' },
+  { to: '/admin/qr', label: '앱 배포 QR' },
 ];
 
 export default function Sidebar() {
@@ -36,7 +37,6 @@ export default function Sidebar() {
                 }`
               }
             >
-              <span>{item.icon}</span>
               <span>{item.label}</span>
             </NavLink>
           </li>

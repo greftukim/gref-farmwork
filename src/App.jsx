@@ -17,6 +17,7 @@ import NoticePage from './pages/admin/NoticePage';
 import StatsPage from './pages/admin/StatsPage';
 import WorkStatsPage from './pages/admin/WorkStatsPage';
 import DailyReportPage from './pages/admin/DailyReportPage';
+import QrCodePage from './pages/admin/QrCodePage';
 import WorkerHome from './pages/worker/WorkerHome';
 import WorkerTasksPage from './pages/worker/WorkerTasksPage';
 import GrowthSurveyPage from './pages/worker/GrowthSurveyPage';
@@ -102,6 +103,7 @@ export default function App() {
             <Route path="work-stats" element={<WorkStatsPage />} />
             <Route path="report" element={<DailyReportPage />} />
             <Route path="notices" element={<NoticePage />} />
+            <Route path="qr" element={<QrCodePage />} />
           </Route>
 
           <Route path="/worker" element={
