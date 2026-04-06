@@ -1,5 +1,5 @@
 import { initializeApp } from 'firebase/app';
-import { getMessaging, getToken, onMessage } from 'firebase/messaging';
+import { getMessaging, getToken, onMessage, isSupported } from 'firebase/messaging';
 import { supabase } from './supabase';
 
 const firebaseConfig = {
@@ -15,12 +15,10 @@ const VAPID_KEY = import.meta.env.VITE_FIREBASE_VAPID_KEY;
 
 const app = initializeApp(firebaseConfig);
 
-let messaging = null;
-try {
-  messaging = getMessaging(app);
-} catch (e) {
-  // messaging not supported
-}
+// isSupported()로 비동기 정확히 판별 — 동기 getMessaging()은 모바일에서 오탐 발생
+const messagingPromise = isSupported()
+  .then((supported) => (supported ? getMessaging(app) : null))
+  .catch(() => null);
 
 // FCM SW를 앱 시작 시 즉시 등록 (알림 권한과 무관하게)
 let fcmSwRegistration = null;
@@ -42,8 +40,9 @@ export async function ensureFCMServiceWorker() {
 }
 
 export async function requestNotificationPermission(employeeId) {
+  const messaging = await messagingPromise;
   if (!messaging) {
-    throw new Error('FCM messaging이 지원되지 않는 브라우저입니다 (HTTPS 필요)');
+    throw new Error('이 브라우저는 FCM 푸시 알림을 지원하지 않습니다');
   }
 
   const permission = await Notification.requestPermission();
@@ -139,13 +138,17 @@ async function saveTokenToSupabase(employeeId, token) {
 }
 
 export function onForegroundMessage(callback) {
-  if (!messaging) return () => {};
-  return onMessage(messaging, (payload) => {
-    callback({
-      title: payload.notification?.title || '알림',
-      message: payload.notification?.body || '',
-      type: payload.data?.type || 'info',
-      urgent: payload.data?.urgent === 'true',
+  let unsub = null;
+  messagingPromise.then((messaging) => {
+    if (!messaging) return;
+    unsub = onMessage(messaging, (payload) => {
+      callback({
+        title: payload.notification?.title || '알림',
+        message: payload.notification?.body || '',
+        type: payload.data?.type || 'info',
+        urgent: payload.data?.urgent === 'true',
+      });
     });
   });
+  return () => { if (unsub) unsub(); };
 }
