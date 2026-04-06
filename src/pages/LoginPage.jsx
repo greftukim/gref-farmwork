@@ -259,7 +259,10 @@ function AdminLogin() {
             </button>
           </form>
 
-          <p className="text-xs text-gray-400 text-center mt-8">
+          <div className="flex justify-center mt-6">
+            <img src="/images/login-bear.png" alt="" className="w-[120px] opacity-80" />
+          </div>
+          <p className="text-xs text-gray-400 text-center mt-4">
             © GREF FarmWork · 대한제강 부산LAB
           </p>
         </div>
@@ -274,17 +277,7 @@ function AdminLogin() {
           className="absolute inset-0 w-full h-full object-cover"
           onError={(e) => { e.target.style.display = 'none'; }}
         />
-        <div className="absolute inset-0 bg-gradient-to-br from-blue-900/70 via-blue-800/50 to-slate-900/80" />
-        <div className="absolute inset-0 flex flex-col items-center justify-center text-white p-12">
-          <div className="w-16 h-16 rounded-2xl bg-white/20 backdrop-blur flex items-center justify-center mb-6">
-            <span className="text-3xl font-bold">G</span>
-          </div>
-          <h2 className="text-3xl font-bold mb-3">스마트 온실 관리</h2>
-          <p className="text-blue-200 text-center max-w-xs leading-relaxed">
-            인력 관리부터 작업 배정, 생육 조사까지<br />
-            온실 운영의 모든 것을 한 곳에서
-          </p>
-        </div>
+        <div className="absolute inset-0 bg-gradient-to-br from-blue-900/30 via-transparent to-slate-900/40" />
       </div>
     </div>
   );
