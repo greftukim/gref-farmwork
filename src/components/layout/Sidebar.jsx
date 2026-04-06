@@ -14,6 +14,7 @@ const menuItems = [
   { to: '/admin/work-stats', label: '근무·수확', icon: '📊' },
   { to: '/admin/report', label: '일일 보고서', icon: '📄' },
   { to: '/admin/notices', label: '공지사항', icon: '📢' },
+  { to: '/admin/location', label: '온실 위치', icon: '📍' },
 ];
 
 export default function Sidebar() {
