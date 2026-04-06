@@ -13,7 +13,12 @@ const firebaseConfig = {
 
 const VAPID_KEY = import.meta.env.VITE_FIREBASE_VAPID_KEY;
 
-const app = initializeApp(firebaseConfig);
+let app = null;
+try {
+  app = initializeApp(firebaseConfig);
+} catch (e) {
+  console.error('[Firebase] initializeApp 실패:', e);
+}
 
 /**
  * FCM 필수 API를 하나씩 체크하여 미지원 항목을 배열로 반환.
@@ -33,11 +38,13 @@ function checkFCMSupport() {
 // messaging 인스턴스 — 지연 초기화 (getMessaging 자체 실패 대비)
 let _messaging = null;
 let _messagingError = null;
-try {
-  _messaging = getMessaging(app);
-} catch (e) {
-  _messagingError = e;
-  console.error('[FCM] getMessaging 초기화 실패:', e);
+if (app) {
+  try {
+    _messaging = getMessaging(app);
+  } catch (e) {
+    _messagingError = e;
+    console.error('[FCM] getMessaging 초기화 실패:', e);
+  }
 }
 
 // FCM SW를 앱 시작 시 즉시 등록 (알림 권한과 무관하게)

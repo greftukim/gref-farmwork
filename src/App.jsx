@@ -1,6 +1,25 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Component } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import useAuthStore from './stores/authStore';
+
+class ErrorBoundary extends Component {
+  constructor(props) { super(props); this.state = { error: null }; }
+  static getDerivedStateFromError(error) { return { error }; }
+  componentDidCatch(error, info) { console.error('[ErrorBoundary]', error, info); }
+  render() {
+    if (this.state.error) {
+      return (
+        <div className="min-h-screen bg-slate-900 flex flex-col items-center justify-center p-6 text-center">
+          <div className="text-red-400 text-lg font-bold mb-2">앱 오류 발생</div>
+          <div className="text-slate-400 text-sm mb-4 max-w-md">{this.state.error.message}</div>
+          <button onClick={() => { localStorage.removeItem('gref-auth'); window.location.href = '/login'; }}
+            className="bg-blue-600 text-white px-4 py-2 rounded-xl text-sm">초기화 후 로그인</button>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
 import LoginPage from './pages/LoginPage';
 import AdminLayout from './components/layout/AdminLayout';
 import WorkerLayout from './components/layout/WorkerLayout';
@@ -61,8 +80,8 @@ function HydrationGate({ children }) {
 function ProtectedRoute({ children, role }) {
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
   const currentUser = useAuthStore((s) => s.currentUser);
-  if (!isAuthenticated) return <Navigate to="/login" replace />;
-  if (role && currentUser?.role !== role) {
+  if (!isAuthenticated || !currentUser) return <Navigate to="/login" replace />;
+  if (role && currentUser.role !== role) {
     return <Navigate to={currentUser.role === 'admin' ? '/admin' : '/worker'} replace />;
   }
   return children;
@@ -86,6 +105,7 @@ function PlaceholderPage({ title }) {
 
 export default function App() {
   return (
+    <ErrorBoundary>
     <HydrationGate>
       <BrowserRouter>
         <Routes>
@@ -132,5 +152,6 @@ export default function App() {
         </Routes>
       </BrowserRouter>
     </HydrationGate>
+    </ErrorBoundary>
   );
 }
