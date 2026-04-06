@@ -8,7 +8,11 @@ export default defineConfig({
     VitePWA({
       registerType: 'autoUpdate',
       workbox: {
-        // firebase-messaging-sw.js는 PWA 캐싱에서 제외
+        // 구버전 캐시 자동 정리 → 구 CSS/JS가 잔류해 스타일 깨지는 문제 방지
+        cleanupOutdatedCaches: true,
+        // SPA 네비게이션 폴백: 모든 navigate 요청을 index.html로
+        navigateFallback: '/index.html',
+        // firebase-messaging-sw.js는 PWA 캐싱·폴백에서 제외
         navigateFallbackDenylist: [/^\/firebase-messaging-sw\.js$/],
         // 새 SW 활성화 시 즉시 적용
         skipWaiting: true,

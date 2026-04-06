@@ -1,5 +1,5 @@
 import { initializeApp } from 'firebase/app';
-import { getMessaging, getToken, onMessage, isSupported } from 'firebase/messaging';
+import { getMessaging, getToken, onMessage } from 'firebase/messaging';
 import { supabase } from './supabase';
 
 const firebaseConfig = {
@@ -15,10 +15,30 @@ const VAPID_KEY = import.meta.env.VITE_FIREBASE_VAPID_KEY;
 
 const app = initializeApp(firebaseConfig);
 
-// isSupported()로 비동기 정확히 판별 — 동기 getMessaging()은 모바일에서 오탐 발생
-const messagingPromise = isSupported()
-  .then((supported) => (supported ? getMessaging(app) : null))
-  .catch(() => null);
+/**
+ * FCM 필수 API를 하나씩 체크하여 미지원 항목을 배열로 반환.
+ * isSupported()는 내부 동작이 불투명해 모바일에서 오탐이 많아 사용하지 않음.
+ */
+function checkFCMSupport() {
+  const missing = [];
+  if (!('serviceWorker' in navigator))      missing.push('ServiceWorker 미지원');
+  if (!('PushManager' in window))           missing.push('PushManager 미지원');
+  if (!('Notification' in window))          missing.push('Notification API 미지원');
+  if (!('showNotification' in ServiceWorkerRegistration.prototype))
+                                            missing.push('showNotification 미지원');
+  if (!('indexedDB' in window))             missing.push('IndexedDB 미지원');
+  return missing;
+}
+
+// messaging 인스턴스 — 지연 초기화 (getMessaging 자체 실패 대비)
+let _messaging = null;
+let _messagingError = null;
+try {
+  _messaging = getMessaging(app);
+} catch (e) {
+  _messagingError = e;
+  console.error('[FCM] getMessaging 초기화 실패:', e);
+}
 
 // FCM SW를 앱 시작 시 즉시 등록 (알림 권한과 무관하게)
 let fcmSwRegistration = null;
@@ -40,10 +60,19 @@ export async function ensureFCMServiceWorker() {
 }
 
 export async function requestNotificationPermission(employeeId) {
-  const messaging = await messagingPromise;
-  if (!messaging) {
-    throw new Error('이 브라우저는 FCM 푸시 알림을 지원하지 않습니다');
+  // 개별 API 체크 — 어느 항목이 없는지 명확히 파악
+  const missing = checkFCMSupport();
+  if (missing.length > 0) {
+    throw new Error(`FCM 미지원 항목: ${missing.join(', ')}`);
   }
+
+  // getMessaging 초기화 실패 시
+  if (!_messaging) {
+    throw new Error(
+      `FCM messaging 초기화 실패: ${_messagingError?.message ?? '원인 불명'}`
+    );
+  }
+  const messaging = _messaging;
 
   const permission = await Notification.requestPermission();
   console.log('알림 권한:', permission);
@@ -138,17 +167,13 @@ async function saveTokenToSupabase(employeeId, token) {
 }
 
 export function onForegroundMessage(callback) {
-  let unsub = null;
-  messagingPromise.then((messaging) => {
-    if (!messaging) return;
-    unsub = onMessage(messaging, (payload) => {
-      callback({
-        title: payload.notification?.title || '알림',
-        message: payload.notification?.body || '',
-        type: payload.data?.type || 'info',
-        urgent: payload.data?.urgent === 'true',
-      });
+  if (!_messaging) return () => {};
+  return onMessage(_messaging, (payload) => {
+    callback({
+      title: payload.notification?.title || '알림',
+      message: payload.notification?.body || '',
+      type: payload.data?.type || 'info',
+      urgent: payload.data?.urgent === 'true',
     });
   });
-  return () => { if (unsub) unsub(); };
 }
