@@ -11,7 +11,11 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_employees_username
   ON employees (username)
   WHERE username IS NOT NULL;
 
--- 기존 관리자 계정에 기본 아이디/비밀번호 설정 (운영 전 반드시 변경)
+-- 기존 '관리자' 시드 계정을 재배팀 김현도로 변경
 UPDATE employees
-  SET username = 'admin', password = 'admin1234'
-  WHERE role = 'admin' AND username IS NULL;
+  SET name = '김현도', username = '김현도', password = '1234'
+  WHERE emp_no = 'A001';
+
+-- 관리팀 김지현 추가
+INSERT INTO employees (name, emp_no, phone, role, job_type, hire_date, work_hours_per_week, annual_leave_days, pin_code, is_active, username, password)
+VALUES ('김지현', 'A002', '010-1234-0001', 'admin', '관리', '2024-01-15', 40, 15, '000001', true, '김지현', '1234');
