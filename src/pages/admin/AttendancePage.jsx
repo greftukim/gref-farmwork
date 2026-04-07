@@ -1,12 +1,14 @@
 import { useState, useMemo } from 'react';
 import useAttendanceStore from '../../stores/attendanceStore';
 import useEmployeeStore from '../../stores/employeeStore';
+import useBranchFilter from '../../hooks/useBranchFilter';
 import Card from '../../components/common/Card';
 import Button from '../../components/common/Button';
 
 export default function AttendancePage() {
   const records = useAttendanceStore((s) => s.records);
   const employees = useEmployeeStore((s) => s.employees);
+  const { branchFilter } = useBranchFilter();
   const [view, setView] = useState('daily');
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
   const [selectedMonth, setSelectedMonth] = useState(
@@ -14,8 +16,12 @@ export default function AttendancePage() {
   );
 
   const workers = useMemo(
-    () => employees.filter((e) => e.role === 'worker' && e.isActive),
-    [employees]
+    () => employees.filter((e) =>
+      e.role === 'worker' &&
+      e.isActive &&
+      (!branchFilter || e.branch === branchFilter)
+    ),
+    [employees, branchFilter]
   );
 
   const empMap = useMemo(

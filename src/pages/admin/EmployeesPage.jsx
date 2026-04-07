@@ -1,5 +1,6 @@
 import { useState, useMemo } from 'react';
 import useEmployeeStore from '../../stores/employeeStore';
+import useBranchFilter from '../../hooks/useBranchFilter';
 import Button from '../../components/common/Button';
 import Card from '../../components/common/Card';
 import Modal from '../../components/common/Modal';
@@ -71,6 +72,7 @@ export default function EmployeesPage() {
   const addEmployee = useEmployeeStore((s) => s.addEmployee);
   const updateEmployee = useEmployeeStore((s) => s.updateEmployee);
   const toggleActive = useEmployeeStore((s) => s.toggleActive);
+  const { branchFilter } = useBranchFilter();
 
   const [showModal, setShowModal] = useState(false);
   const [editTarget, setEditTarget] = useState(null);
@@ -78,10 +80,12 @@ export default function EmployeesPage() {
   const [filter, setFilter] = useState('all');
 
   const filtered = useMemo(() => {
-    if (filter === 'active') return employees.filter((e) => e.isActive);
-    if (filter === 'inactive') return employees.filter((e) => !e.isActive);
-    return employees;
-  }, [employees, filter]);
+    let list = employees;
+    if (branchFilter) list = list.filter((e) => e.branch === branchFilter);
+    if (filter === 'active') return list.filter((e) => e.isActive);
+    if (filter === 'inactive') return list.filter((e) => !e.isActive);
+    return list;
+  }, [employees, filter, branchFilter]);
 
   const openAdd = () => {
     setEditTarget(null);

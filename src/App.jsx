@@ -8,6 +8,7 @@ import AdminDashboard from './pages/admin/AdminDashboard';
 import EmployeesPage from './pages/admin/EmployeesPage';
 import AttendancePage from './pages/admin/AttendancePage';
 import LeavePage from './pages/admin/LeavePage';
+import LeaveApprovalPage from './pages/admin/LeaveApprovalPage';
 import SchedulePage from './pages/admin/SchedulePage';
 import CropZonePage from './pages/admin/CropZonePage';
 import TaskPlanPage from './pages/admin/TaskPlanPage';
@@ -95,6 +96,7 @@ export default function App() {
             <Route path="employees" element={<EmployeesPage />} />
             <Route path="attendance" element={<AttendancePage />} />
             <Route path="leave" element={<LeavePage />} />
+            <Route path="leave-approval" element={<LeaveApprovalPage />} />
             <Route path="schedule" element={<SchedulePage />} />
             <Route path="crops" element={<CropZonePage />} />
             <Route path="tasks" element={<TaskPlanPage />} />
