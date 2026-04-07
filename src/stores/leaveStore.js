@@ -41,7 +41,11 @@ const useLeaveStore = create((set, get) => ({
 
     if (!error && data) {
       set((s) => ({ requests: s.requests.map((r) => (r.id === requestId ? snakeToCamel(data) : r)) }));
+      // 처리 후 전체 재조회 (화면 자동 갱신)
+      const { data: allData } = await supabase.from('leave_requests').select('*').order('created_at', { ascending: false });
+      if (allData) set({ requests: allData.map(snakeToCamel) });
     }
+    return !error;
   },
 
   // 최종 승인: 관리팀

@@ -28,6 +28,7 @@ import AdminDashboard from './pages/admin/AdminDashboard';
 import EmployeesPage from './pages/admin/EmployeesPage';
 import AttendancePage from './pages/admin/AttendancePage';
 import LeavePage from './pages/admin/LeavePage';
+import LeaveApprovalPage from './pages/admin/LeaveApprovalPage';
 import SchedulePage from './pages/admin/SchedulePage';
 import CropZonePage from './pages/admin/CropZonePage';
 import TaskPlanPage from './pages/admin/TaskPlanPage';
@@ -39,7 +40,6 @@ import WorkStatsPage from './pages/admin/WorkStatsPage';
 import DailyReportPage from './pages/admin/DailyReportPage';
 import QrCodePage from './pages/admin/QrCodePage';
 import AttendanceStatusPage from './pages/admin/AttendanceStatusPage';
-import LeaveApprovalPage from './pages/admin/LeaveApprovalPage';
 import BranchSettingsPage from './pages/admin/BranchSettingsPage';
 import AttendanceRecordsPage from './pages/admin/AttendanceRecordsPage';
 import GrowthSurveyAdminPage from './pages/admin/GrowthSurveyAdminPage';
@@ -124,6 +124,7 @@ export default function App() {
             <Route path="employees" element={<EmployeesPage />} />
             <Route path="attendance" element={<AttendancePage />} />
             <Route path="leave" element={<LeavePage />} />
+            <Route path="leave-approval" element={<LeaveApprovalPage />} />
             <Route path="schedule" element={<SchedulePage />} />
             <Route path="crops" element={<CropZonePage />} />
             <Route path="tasks" element={<TaskPlanPage />} />
@@ -134,7 +135,6 @@ export default function App() {
             <Route path="report" element={<DailyReportPage />} />
             <Route path="notices" element={<NoticePage />} />
             <Route path="attendance-status" element={<AttendanceStatusPage />} />
-            <Route path="leave-approval" element={<LeaveApprovalPage />} />
             <Route path="branch-settings" element={<BranchSettingsPage />} />
             <Route path="attendance-records" element={<AttendanceRecordsPage />} />
             <Route path="qr" element={<QrCodePage />} />
