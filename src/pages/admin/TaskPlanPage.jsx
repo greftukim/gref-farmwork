@@ -47,7 +47,11 @@ export default function TaskPlanPage() {
   const activeCrops = useMemo(() => crops.filter((c) => c.isActive), [crops]);
 
   const selectedCrop = useMemo(() => crops.find((c) => c.id === form.cropId), [crops, form.cropId]);
-  const taskTypes = selectedCrop?.taskTypes || [];
+  // 등록된 작업 유형에 "생육 조사"를 항상 포함
+  const taskTypes = useMemo(() => {
+    const base = selectedCrop?.taskTypes || [];
+    return base.includes('생육 조사') ? base : [...base, '생육 조사'];
+  }, [selectedCrop]);
 
   const empMap = useMemo(() => Object.fromEntries(employees.map((e) => [e.id, e])), [employees]);
   const cropMap = useMemo(() => Object.fromEntries(crops.map((c) => [c.id, c])), [crops]);

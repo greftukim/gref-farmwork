@@ -7,6 +7,7 @@ import useCropStore from '../stores/cropStore';
 import useZoneStore from '../stores/zoneStore';
 import useTaskStore from '../stores/taskStore';
 import useGrowthSurveyStore from '../stores/growthSurveyStore';
+import useGrowthSurveyItemStore from '../stores/growthSurveyItemStore';
 import useIssueStore from '../stores/issueStore';
 import useCallStore from '../stores/callStore';
 import useNoticeStore from '../stores/noticeStore';
@@ -22,6 +23,7 @@ export default function useDataLoader() {
   const fetchZones = useZoneStore((s) => s.fetchZones);
   const fetchTasks = useTaskStore((s) => s.fetchTasks);
   const fetchSurveys = useGrowthSurveyStore((s) => s.fetchSurveys);
+  const fetchSurveyItems = useGrowthSurveyItemStore((s) => s.fetchItems);
   const fetchIssues = useIssueStore((s) => s.fetchIssues);
   const fetchCalls = useCallStore((s) => s.fetchCalls);
   const fetchNotices = useNoticeStore((s) => s.fetchNotices);
@@ -38,6 +40,7 @@ export default function useDataLoader() {
     fetchZones();
     fetchTasks();
     fetchSurveys();
+    fetchSurveyItems();
     fetchIssues();
     fetchCalls();
     fetchNotices();

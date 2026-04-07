@@ -21,13 +21,15 @@ const useGrowthSurveyStore = create((set) => ({
       zone_id: survey.zoneId,
       row_number: survey.rowNumber,
       plant_number: survey.plantNumber,
-      plant_height: survey.plantHeight,
-      stem_diameter: survey.stemDiameter,
-      leaf_count: survey.leafCount,
-      truss_number: survey.trussNumber,
-      fruit_count: survey.fruitCount,
-      fruit_weight: survey.fruitWeight,
-      notes: survey.notes,
+      measurements: survey.measurements || null,
+      // 기존 컬럼 유지 (호환성)
+      plant_height: survey.plantHeight || null,
+      stem_diameter: survey.stemDiameter || null,
+      leaf_count: survey.leafCount || null,
+      truss_number: survey.trussNumber || null,
+      fruit_count: survey.fruitCount || null,
+      fruit_weight: survey.fruitWeight || null,
+      notes: survey.notes || '',
       photos: survey.photos || [],
     }).select().single();
     if (!error && data) {

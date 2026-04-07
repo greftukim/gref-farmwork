@@ -2,8 +2,8 @@ import { useState, useMemo, useEffect, useCallback } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import useAuthStore from '../../stores/authStore';
 import useGrowthSurveyStore from '../../stores/growthSurveyStore';
+import useGrowthSurveyItemStore from '../../stores/growthSurveyItemStore';
 import useTaskStore from '../../stores/taskStore';
-import useCropStore from '../../stores/cropStore';
 import useZoneStore from '../../stores/zoneStore';
 import Card from '../../components/common/Card';
 import Button from '../../components/common/Button';
@@ -48,29 +48,14 @@ function Stepper({ value, onChange, step = 1, min = 0 }) {
   );
 }
 
-const measureFields = [
-  { key: 'plantHeight', label: '초장', unit: 'cm', step: 0.5 },
-  { key: 'stemDiameter', label: '경경', unit: 'mm', step: 0.1 },
-  { key: 'leafCount', label: '엽수', unit: '매', step: 1 },
-  { key: 'trussNumber', label: '화방', unit: '번째', step: 1 },
-  { key: 'fruitCount', label: '착과수', unit: '개', step: 1 },
-  { key: 'fruitWeight', label: '과중', unit: 'g', step: 0.5 },
-];
-
-const emptyEntry = {
-  zoneId: '',
-  rowNumber: '',
-  plantNumber: '',
-  plantHeight: '',
-  stemDiameter: '',
-  leafCount: '',
-  trussNumber: '',
-  fruitCount: '',
-  fruitWeight: '',
-};
-
 function draftKey(taskId) {
   return taskId ? `survey_draft_${taskId}` : 'survey_draft_standalone';
+}
+
+function makeEmptyEntry(cropItems) {
+  const entry = { zoneId: '', rowNumber: '', plantNumber: '' };
+  cropItems.forEach((item) => { entry[item.id] = ''; });
+  return entry;
 }
 
 export default function GrowthSurveyPage() {
@@ -79,17 +64,26 @@ export default function GrowthSurveyPage() {
   const taskId = searchParams.get('taskId');
 
   const currentUser = useAuthStore((s) => s.currentUser);
-  const surveys = useGrowthSurveyStore((s) => s.surveys);
   const addSurvey = useGrowthSurveyStore((s) => s.addSurvey);
+  const allItems = useGrowthSurveyItemStore((s) => s.items);
+  const fetchItems = useGrowthSurveyItemStore((s) => s.fetchItems);
   const tasks = useTaskStore((s) => s.tasks);
   const completeTask = useTaskStore((s) => s.completeTask);
-  const crops = useCropStore((s) => s.crops);
   const zones = useZoneStore((s) => s.zones);
 
   const task = useMemo(() => tasks.find((t) => t.id === taskId), [tasks, taskId]);
-  const activeCrops = useMemo(() => crops.filter((c) => c.isActive), [crops]);
-  const cropMap = useMemo(() => Object.fromEntries(crops.map((c) => [c.id, c])), [crops]);
-  const zoneMap = useMemo(() => Object.fromEntries(zones.map((z) => [z.id, z])), [zones]);
+
+  // 작업에 연결된 작물의 조사 항목
+  const cropItems = useMemo(
+    () => allItems.filter((i) => i.cropId === task?.cropId),
+    [allItems, task]
+  );
+
+  // 항목이 없는 경우 로딩 후 재시도
+  useEffect(() => {
+    if (allItems.length === 0) fetchItems();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // 임시저장: localStorage에서 불러오기
   const [entries, setEntries] = useState(() => {
@@ -100,13 +94,21 @@ export default function GrowthSurveyPage() {
     return [];
   });
 
-  // 현재 입력 중인 폼
-  const [currentForm, setCurrentForm] = useState(() => {
-    // 작업에 연결된 cropId가 있으면 기본값으로 사용
-    return { ...emptyEntry };
-  });
+  const [currentForm, setCurrentForm] = useState(() => makeEmptyEntry([]));
   const [submitting, setSubmitting] = useState(false);
-  const [editIndex, setEditIndex] = useState(null); // 수정 중인 항목 인덱스
+  const [editIndex, setEditIndex] = useState(null);
+
+  // cropItems 로드 완료 시 currentForm 초기화 (항목 키 반영)
+  useEffect(() => {
+    setCurrentForm((prev) => {
+      const next = makeEmptyEntry(cropItems);
+      // 기존에 입력한 공통 필드 유지
+      next.zoneId = prev.zoneId || '';
+      next.rowNumber = prev.rowNumber || '';
+      next.plantNumber = prev.plantNumber || '';
+      return next;
+    });
+  }, [cropItems]);
 
   // entries 변경 시 localStorage 저장
   useEffect(() => {
@@ -124,16 +126,14 @@ export default function GrowthSurveyPage() {
   const handleAddEntry = () => {
     if (!canAddEntry) return;
     if (editIndex !== null) {
-      // 수정 모드
       setEntries((prev) => prev.map((e, i) => (i === editIndex ? { ...currentForm } : e)));
       setEditIndex(null);
     } else {
       setEntries((prev) => [...prev, { ...currentForm }]);
     }
-    // 열/주 번호 자동 증가 (같은 구역 연속 입력 편의)
     const nextPlant = currentForm.plantNumber ? String(Number(currentForm.plantNumber) + 1) : '';
     setCurrentForm({
-      ...emptyEntry,
+      ...makeEmptyEntry(cropItems),
       zoneId: currentForm.zoneId,
       rowNumber: currentForm.rowNumber,
       plantNumber: nextPlant,
@@ -149,57 +149,46 @@ export default function GrowthSurveyPage() {
     setEntries((prev) => prev.filter((_, i) => i !== idx));
     if (editIndex === idx) {
       setEditIndex(null);
-      setCurrentForm({ ...emptyEntry });
+      setCurrentForm(makeEmptyEntry(cropItems));
     }
   };
 
   const handleSubmit = async () => {
-    if (entries.length === 0) return;
-    if (submitting) return;
+    if (entries.length === 0 || submitting) return;
     setSubmitting(true);
 
     const today = new Date().toISOString().split('T')[0];
-    const cropId = task?.cropId || null;
 
     for (const e of entries) {
+      // 동적 항목을 measurements 배열로 변환
+      const measurements = cropItems
+        .map((item) => ({
+          itemId: item.id,
+          name: item.name,
+          unit: item.unit || '',
+          value: e[item.id] !== '' && e[item.id] != null ? e[item.id] : null,
+        }))
+        .filter((m) => m.value !== null);
+
       await addSurvey({
         workerId: currentUser.id,
         surveyDate: today,
-        cropId,
+        cropId: task?.cropId || null,
         zoneId: e.zoneId || null,
         rowNumber: e.rowNumber ? Number(e.rowNumber) : null,
         plantNumber: e.plantNumber ? Number(e.plantNumber) : null,
-        plantHeight: e.plantHeight ? Number(e.plantHeight) : null,
-        stemDiameter: e.stemDiameter ? Number(e.stemDiameter) : null,
-        leafCount: e.leafCount ? Number(e.leafCount) : null,
-        trussNumber: e.trussNumber ? Number(e.trussNumber) : null,
-        fruitCount: e.fruitCount ? Number(e.fruitCount) : null,
-        fruitWeight: e.fruitWeight ? Number(e.fruitWeight) : null,
-        notes: '',
-        photos: [],
+        measurements,
       });
     }
 
-    // 작업 완료 처리
-    if (taskId) {
-      await completeTask(taskId, null);
-    }
+    if (taskId) await completeTask(taskId, null);
 
-    // 임시저장 삭제
     try { localStorage.removeItem(draftKey(taskId)); } catch {}
-
     setSubmitting(false);
     navigate(-1);
   };
 
-  // 최근 조사 목록 (task-linked 아닐 때)
-  const recentSurveys = useMemo(
-    () => surveys
-      .filter((s) => s.workerId === currentUser?.id)
-      .sort((a, b) => b.surveyDate.localeCompare(a.surveyDate))
-      .slice(0, 10),
-    [surveys, currentUser]
-  );
+  const zoneMap = useMemo(() => Object.fromEntries(zones.map((z) => [z.id, z])), [zones]);
 
   return (
     <div className="pb-6">
@@ -216,6 +205,13 @@ export default function GrowthSurveyPage() {
           </button>
         )}
       </div>
+
+      {/* 조사 항목 없음 안내 */}
+      {task && cropItems.length === 0 && (
+        <div className="mb-4 p-4 bg-amber-50 border border-amber-200 rounded-xl text-sm text-amber-700">
+          이 작물에 등록된 조사 항목이 없습니다. 관리자 화면의 [생육 조사 → 조사 항목]에서 먼저 항목을 등록해 주세요.
+        </div>
+      )}
 
       {/* 입력 폼 */}
       <Card accent="blue" className="p-4 mb-4">
@@ -250,21 +246,34 @@ export default function GrowthSurveyPage() {
           </div>
         </div>
 
-        {/* 측정 필드 */}
-        <div className="space-y-3 mb-4">
-          {measureFields.map((f) => (
-            <div key={f.key}>
-              <label className="block text-xs font-medium text-gray-500 mb-1">
-                {f.label} <span className="text-gray-400">({f.unit})</span>
-              </label>
-              <Stepper
-                value={currentForm[f.key]}
-                onChange={(v) => setField(f.key, v)}
-                step={f.step}
-              />
-            </div>
-          ))}
-        </div>
+        {/* 동적 조사 항목 */}
+        {cropItems.length > 0 && (
+          <div className="space-y-3 mb-4">
+            {cropItems.map((item) => (
+              <div key={item.id}>
+                <label className="block text-xs font-medium text-gray-500 mb-1">
+                  {item.name}
+                  {item.unit && <span className="text-gray-400 ml-1">({item.unit})</span>}
+                </label>
+                {item.inputType === 'text' ? (
+                  <input
+                    type="text"
+                    value={currentForm[item.id] || ''}
+                    onChange={(e) => setField(item.id, e.target.value)}
+                    className="w-full h-12 border border-gray-200 rounded-lg px-3 text-sm"
+                    placeholder={item.name}
+                  />
+                ) : (
+                  <Stepper
+                    value={currentForm[item.id] || ''}
+                    onChange={(v) => setField(item.id, v)}
+                    step={0.1}
+                  />
+                )}
+              </div>
+            ))}
+          </div>
+        )}
 
         <button
           onClick={handleAddEntry}
@@ -289,49 +298,54 @@ export default function GrowthSurveyPage() {
             조사 항목 ({entries.length}건)
           </div>
           <div className="space-y-2">
-            {entries.map((e, idx) => (
-              <Card key={idx} accent={editIndex === idx ? 'blue' : 'gray'} className="p-3">
-                <div className="flex items-start justify-between gap-2">
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-1 flex-wrap">
-                      <span className="text-xs font-semibold text-gray-500">#{idx + 1}</span>
-                      {e.zoneId && (
-                        <span className="text-xs bg-blue-50 text-blue-600 px-1.5 py-0.5 rounded">
-                          {zoneMap[e.zoneId]?.name || '구역'}
+            {entries.map((e, idx) => {
+              const filledItems = cropItems.filter(
+                (item) => e[item.id] !== '' && e[item.id] != null
+              );
+              return (
+                <Card key={idx} accent={editIndex === idx ? 'blue' : 'gray'} className="p-3">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-1 flex-wrap">
+                        <span className="text-xs font-semibold text-gray-500">#{idx + 1}</span>
+                        {e.zoneId && (
+                          <span className="text-xs bg-blue-50 text-blue-600 px-1.5 py-0.5 rounded">
+                            {zoneMap[e.zoneId]?.name || '구역'}
+                          </span>
+                        )}
+                        <span className="text-sm font-medium text-gray-800">
+                          {e.rowNumber}열 {e.plantNumber}번주
                         </span>
-                      )}
-                      <span className="text-sm font-medium text-gray-800">
-                        {e.rowNumber}열 {e.plantNumber}번주
-                      </span>
-                    </div>
-                    <div className="grid grid-cols-3 gap-x-3 gap-y-0.5">
-                      {measureFields.map((f) =>
-                        e[f.key] ? (
-                          <div key={f.key} className="text-xs text-gray-500">
-                            <span className="text-gray-400">{f.label} </span>
-                            <span className="font-medium text-gray-700">{e[f.key]}{f.unit}</span>
+                      </div>
+                      <div className="grid grid-cols-3 gap-x-3 gap-y-0.5">
+                        {filledItems.map((item) => (
+                          <div key={item.id} className="text-xs text-gray-500">
+                            <span className="text-gray-400">{item.name} </span>
+                            <span className="font-medium text-gray-700">
+                              {e[item.id]}{item.unit}
+                            </span>
                           </div>
-                        ) : null
-                      )}
+                        ))}
+                      </div>
+                    </div>
+                    <div className="flex gap-1 flex-shrink-0">
+                      <button
+                        onClick={() => handleEditEntry(idx)}
+                        className="px-2 py-1.5 text-xs text-blue-600 bg-blue-50 rounded-lg active:bg-blue-100"
+                      >
+                        수정
+                      </button>
+                      <button
+                        onClick={() => handleDeleteEntry(idx)}
+                        className="px-2 py-1.5 text-xs text-red-500 bg-red-50 rounded-lg active:bg-red-100"
+                      >
+                        삭제
+                      </button>
                     </div>
                   </div>
-                  <div className="flex gap-1 flex-shrink-0">
-                    <button
-                      onClick={() => handleEditEntry(idx)}
-                      className="px-2 py-1.5 text-xs text-blue-600 bg-blue-50 rounded-lg active:bg-blue-100"
-                    >
-                      수정
-                    </button>
-                    <button
-                      onClick={() => handleDeleteEntry(idx)}
-                      className="px-2 py-1.5 text-xs text-red-500 bg-red-50 rounded-lg active:bg-red-100"
-                    >
-                      삭제
-                    </button>
-                  </div>
-                </div>
-              </Card>
-            ))}
+                </Card>
+              );
+            })}
           </div>
         </div>
       )}
@@ -350,40 +364,6 @@ export default function GrowthSurveyPage() {
             ? `제출하기 (${entries.length}건) · 작업 완료`
             : `저장하기 (${entries.length}건)`}
         </Button>
-      )}
-
-      {/* 최근 조사 목록 (task-linked 아닐 때만) */}
-      {!taskId && recentSurveys.length > 0 && (
-        <div className="mt-6">
-          <div className="text-sm font-semibold text-gray-700 mb-2">최근 조사 기록</div>
-          <div className="space-y-2">
-            {recentSurveys.map((s) => (
-              <Card key={s.id} accent="gray" className="p-3">
-                <div className="flex items-center justify-between mb-1">
-                  <span className="text-sm font-medium text-gray-800">{s.surveyDate}</span>
-                  <div className="flex items-center gap-2 text-xs text-gray-400">
-                    {s.cropId && (
-                      <span className="bg-emerald-50 text-emerald-700 px-1.5 py-0.5 rounded-full font-medium">
-                        {cropMap[s.cropId]?.name}
-                      </span>
-                    )}
-                    <span>{zoneMap[s.zoneId]?.name} {s.rowNumber}열 {s.plantNumber}번주</span>
-                  </div>
-                </div>
-                <div className="grid grid-cols-3 gap-x-3 gap-y-0.5">
-                  {measureFields.map((f) =>
-                    s[f.key] != null ? (
-                      <div key={f.key} className="text-xs text-gray-500">
-                        <span className="text-gray-400">{f.label} </span>
-                        <span className="font-medium text-gray-700">{s[f.key]}{f.unit}</span>
-                      </div>
-                    ) : null
-                  )}
-                </div>
-              </Card>
-            ))}
-          </div>
-        </div>
       )}
     </div>
   );

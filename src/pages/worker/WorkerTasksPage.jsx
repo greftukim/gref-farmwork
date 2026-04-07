@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import useAuthStore from '../../stores/authStore';
 import useTaskStore from '../../stores/taskStore';
@@ -9,30 +9,6 @@ import Button from '../../components/common/Button';
 import BottomSheet from '../../components/common/BottomSheet';
 
 const SURVEY_TASK_TYPE = '생육 조사';
-
-function Timer({ startedAt }) {
-  const [elapsed, setElapsed] = useState(0);
-
-  useEffect(() => {
-    if (!startedAt) return;
-    const start = new Date(startedAt).getTime();
-    const tick = () => setElapsed(Math.floor((Date.now() - start) / 1000));
-    tick();
-    const interval = setInterval(tick, 1000);
-    return () => clearInterval(interval);
-  }, [startedAt]);
-
-  const h = Math.floor(elapsed / 3600);
-  const m = Math.floor((elapsed % 3600) / 60);
-  const s = elapsed % 60;
-  const pad = (n) => String(n).padStart(2, '0');
-
-  return (
-    <span className="font-mono text-lg font-bold text-blue-600">
-      {pad(h)}:{pad(m)}:{pad(s)}
-    </span>
-  );
-}
 
 const statusMap = {
   pending: { label: '대기', color: 'bg-amber-100 text-amber-700' },
@@ -99,19 +75,12 @@ export default function WorkerTasksPage() {
               </div>
 
               <div className="text-sm text-gray-500 mb-3">
-                {zone?.name} {task.rowRange && `${task.rowRange}열`} · 예상 {task.estimatedMinutes}분
+                {[zone?.name, task.rowRange && `${task.rowRange}열`].filter(Boolean).join(' ')}
               </div>
 
-              {task.status === 'in_progress' && (
-                <div className="flex items-center justify-between mb-3">
-                  <Timer startedAt={task.startedAt} />
-                </div>
-              )}
-
-              {task.status === 'completed' && (
+              {task.status === 'completed' && task.quantity != null && (
                 <div className="text-sm text-gray-500 mb-2">
-                  소요 {task.durationMinutes}분
-                  {task.quantity != null && ` · ${task.quantity}${task.quantityUnit}`}
+                  {task.quantity}{task.quantityUnit}
                 </div>
               )}
 
