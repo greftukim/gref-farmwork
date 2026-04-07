@@ -38,7 +38,6 @@ export default function WorkerHome() {
 
   const [message, setMessage] = useState('');
   const [msgType, setMsgType] = useState('info'); // 'info' | 'error' | 'warn'
-  const [elapsed, setElapsed] = useState(0);
   const [gpsStatus, setGpsStatus] = useState('checking'); // 'checking' | 'in_range' | 'out_range' | 'no_gps'
 
   const today = new Date().toISOString().split('T')[0];
@@ -90,26 +89,10 @@ export default function WorkerHome() {
     );
   }, [myBranch]);
 
-  // 근무 타이머
-  useEffect(() => {
-    if (!isWorking || !todayRecord?.checkIn) return;
-    const interval = setInterval(() => {
-      setElapsed(Math.floor((Date.now() - new Date(todayRecord.checkIn).getTime()) / 1000));
-    }, 1000);
-    return () => clearInterval(interval);
-  }, [isWorking, todayRecord]);
-
   const showMsg = (text, type = 'info') => {
     setMessage(text);
     setMsgType(type);
     setTimeout(() => setMessage(''), type === 'error' ? 4000 : 2500);
-  };
-
-  const formatElapsed = (sec) => {
-    const h = Math.floor(sec / 3600);
-    const m = Math.floor((sec % 3600) / 60);
-    const s = sec % 60;
-    return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
   };
 
   const formatTime = (iso) => {
@@ -181,11 +164,11 @@ export default function WorkerHome() {
       <Card accent="blue" className="p-6 mb-4">
         {isWorking ? (
           <>
-            <div className="text-sm text-gray-500 mb-2">근무 중</div>
-            <div className="text-4xl font-bold text-blue-600 text-center mb-4 font-mono">
-              {formatElapsed(elapsed)}
+            <div className="flex items-center justify-center gap-2 mb-4">
+              <span className="inline-block w-2.5 h-2.5 rounded-full bg-blue-500 animate-pulse" />
+              <span className="text-base font-semibold text-blue-600">근무 중</span>
             </div>
-            <div className="text-sm text-gray-400 text-center mb-4">
+            <div className="text-sm text-gray-400 text-center mb-5">
               출근 {formatTime(todayRecord.checkIn)}
               {myEmployee?.workEndTime && (
                 <span className="ml-2 text-gray-300">· 퇴근 기준 {myEmployee.workEndTime}</span>

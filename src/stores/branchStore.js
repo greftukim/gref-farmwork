@@ -42,6 +42,14 @@ const useBranchStore = create((set) => ({
       set((s) => ({ branches: s.branches.map((b) => (b.id === id ? snakeToCamel(data) : b)) }));
     }
   },
+
+  deleteBranch: async (id) => {
+    const { error } = await supabase.from('branches').delete().eq('id', id);
+    if (!error) {
+      set((s) => ({ branches: s.branches.filter((b) => b.id !== id) }));
+    }
+    return { error };
+  },
 }));
 
 export default useBranchStore;
