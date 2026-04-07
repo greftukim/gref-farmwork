@@ -2,6 +2,7 @@ import { Outlet } from 'react-router-dom';
 import TopBar from './TopBar';
 import BottomNav from './BottomNav';
 import useDataLoader from '../../hooks/useDataLoader';
+import InstallPromptBanner from '../common/InstallPromptBanner';
 
 export default function WorkerLayout() {
   useDataLoader();
@@ -12,6 +13,7 @@ export default function WorkerLayout() {
         <Outlet />
       </main>
       <BottomNav />
+      <InstallPromptBanner />
     </div>
   );
 }
