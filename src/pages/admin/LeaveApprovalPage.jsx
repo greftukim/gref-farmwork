@@ -64,7 +64,7 @@ export default function LeaveApprovalPage() {
       sendPushToEmployee({
         employeeId: req.employeeId,
         title: `근태 신청이 ${label}되었습니다`,
-        body: `${req.date} ${req.type} 신청이 ${label} 처리되었습니다`,
+        body: `${req.date} ${req.type}${req.reason ? ` · ${req.reason}` : ''} 신청이 ${label} 처리되었습니다`,
         type: 'leave',
       }).catch(() => {});
     }
@@ -84,7 +84,7 @@ export default function LeaveApprovalPage() {
       sendPushToEmployee({
         employeeId: req.employeeId,
         title: '근태 신청이 반려되었습니다',
-        body: `${req.date} ${req.type} 신청이 반려 처리되었습니다`,
+        body: `${req.date} ${req.type}${req.reason ? ` · ${req.reason}` : ''} 신청이 반려 처리되었습니다`,
         type: 'leave',
       }).catch(() => {});
     }

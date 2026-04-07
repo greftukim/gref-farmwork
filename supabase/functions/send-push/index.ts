@@ -127,12 +127,18 @@ Deno.serve(async (req) => {
       const message = {
         message: {
           token,
+          // 플랫폼 공통 notification (백그라운드 자동 표시용)
           notification: { title, body },
           webpush: {
+            // webpush.notification이 있으면 notification을 덮어씀 →
+            // title/body를 명시해야 브라우저가 올바르게 표시한다
             notification: {
+              title,
+              body,
               icon: '/icons/icon-192.png',
               badge: '/icons/icon-192.png',
               tag: type || 'default',
+              requireInteraction: urgent || false,
             },
             fcm_options: { link: '/' },
           },
