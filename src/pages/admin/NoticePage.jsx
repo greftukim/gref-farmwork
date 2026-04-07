@@ -44,7 +44,7 @@ export default function NoticePage() {
 
   const handleAdd = async () => {
     if (!form.title.trim() || !form.body.trim()) return;
-    await addNotice({ ...form, createdBy: currentUser.id });
+    await addNotice({ ...form, createdBy: currentUser.id, authorTeam: currentUser.team || null });
 
     if (sendPush) {
       setPushing(true);
@@ -85,14 +85,25 @@ export default function NoticePage() {
       <div className="space-y-3">
         {sorted.map((n) => {
           const pr = priorityLabel(n.priority);
+          const canDelete = !n.authorTeam || n.authorTeam === currentUser?.team;
+          const teamBadge = n.authorTeam === 'farm'
+            ? { label: '재배팀', cls: 'bg-emerald-100 text-emerald-700' }
+            : n.authorTeam === 'management'
+            ? { label: '관리팀', cls: 'bg-blue-100 text-blue-700' }
+            : null;
           return (
             <Card key={n.id} accent={accentFor(n.priority)} className="p-4">
               <div className="flex items-center justify-between mb-2">
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 flex-wrap">
                   <span className="font-medium text-gray-900">{n.title}</span>
                   <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${pr?.color}`}>{pr?.label}</span>
+                  {teamBadge && (
+                    <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${teamBadge.cls}`}>{teamBadge.label}</span>
+                  )}
                 </div>
-                <Button size="sm" variant="ghost" onClick={() => deleteNotice(n.id)}>삭제</Button>
+                {canDelete && (
+                  <Button size="sm" variant="ghost" onClick={() => deleteNotice(n.id)}>삭제</Button>
+                )}
               </div>
               <p className="text-sm text-gray-600 whitespace-pre-wrap">{n.body}</p>
               <div className="text-xs text-gray-400 mt-2">{new Date(n.createdAt).toLocaleDateString('ko-KR')}</div>

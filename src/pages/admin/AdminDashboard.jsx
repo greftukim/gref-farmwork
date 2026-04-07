@@ -10,6 +10,7 @@ import useLeaveStore from '../../stores/leaveStore';
 import useNoticeStore from '../../stores/noticeStore';
 import useAuthStore from '../../stores/authStore';
 import useBranchStore from '../../stores/branchStore';
+import useCropStore from '../../stores/cropStore';
 import Card from '../../components/common/Card';
 
 const today = () => new Date().toISOString().split('T')[0];
@@ -35,10 +36,14 @@ export default function AdminDashboard() {
   const calls = useCallStore((s) => s.calls);
   const leaveRequests = useLeaveStore((s) => s.requests);
   const notices = useNoticeStore((s) => s.notices);
+  const crops = useCropStore((s) => s.crops);
   const selectedBranch = useBranchStore((s) => s.selectedBranch);
 
   const [missedDays, setMissedDays] = useState(7);
   const todayStr = today();
+  const todayLabel = new Date().toLocaleDateString('ko-KR', {
+    year: 'numeric', month: 'long', day: 'numeric', weekday: 'short',
+  });
 
   // 지점 필터링
   const filteredEmployees = useMemo(() => {
@@ -99,6 +104,27 @@ export default function AdminDashboard() {
   const taskInProgress = todayTasks.filter((t) => t.status === 'in_progress').length;
   const taskPending = todayTasks.filter((t) => t.status === 'pending').length;
 
+  const cropMap = useMemo(() => Object.fromEntries(crops.map((c) => [c.id, c])), [crops]);
+
+  // 작업 그룹: cropId + taskType 조합별 집계
+  const taskGroups = useMemo(() => {
+    const groups = {};
+    todayTasks.forEach((t) => {
+      const key = `${t.cropId ?? ''}-${t.taskType ?? ''}`;
+      if (!groups[key]) {
+        groups[key] = { cropId: t.cropId, taskType: t.taskType, total: 0, completed: 0, inProgress: 0 };
+      }
+      groups[key].total++;
+      if (t.status === 'completed') groups[key].completed++;
+      else if (t.status === 'in_progress') groups[key].inProgress++;
+    });
+    return Object.values(groups).sort((a, b) => {
+      // 진행중 → 대기 → 완료 순
+      const score = (g) => (g.inProgress > 0 ? 0 : g.completed < g.total ? 1 : 2);
+      return score(a) - score(b);
+    });
+  }, [todayTasks]);
+
   const donutData = [
     { name: '완료', value: taskCompleted, color: '#10B981' },
     { name: '진행', value: taskInProgress, color: '#2563EB' },
@@ -108,7 +134,10 @@ export default function AdminDashboard() {
 
   return (
     <div>
-      <h2 className="text-2xl font-heading font-bold text-gray-900 mb-6">대시보드</h2>
+      <div className="flex items-baseline gap-3 mb-6 flex-wrap">
+        <h2 className="text-2xl font-heading font-bold text-gray-900">대시보드</h2>
+        <span className="text-sm text-gray-400">{todayLabel}</span>
+      </div>
 
       {/* 1행: 출근 현황 4열 카드 */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
@@ -122,44 +151,50 @@ export default function AdminDashboard() {
       <div className={`grid grid-cols-1 ${isFarmTeam ? 'md:grid-cols-2' : ''} gap-4 mb-4`}>
         {isFarmTeam && (
           <Card accent="blue" className="p-6">
-            <div className="text-sm font-medium text-gray-500 mb-4">작업 진행</div>
-            <div className="flex items-center gap-6">
-              <div className="w-32 h-32">
+            <div className="flex items-center justify-between mb-4">
+              <div className="text-sm font-medium text-gray-500">작업 진행</div>
+              <span className="text-xs text-gray-400">총 {taskTotal}건</span>
+            </div>
+            <div className="flex items-start gap-4">
+              {/* 도넛 차트 */}
+              <div className="w-24 h-24 flex-shrink-0">
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
-                    <Pie
-                      data={donutData}
-                      cx="50%"
-                      cy="50%"
-                      innerRadius={35}
-                      outerRadius={55}
-                      dataKey="value"
-                      strokeWidth={0}
-                    >
-                      {donutData.map((entry, i) => (
-                        <Cell key={i} fill={entry.color} />
-                      ))}
+                    <Pie data={donutData} cx="50%" cy="50%" innerRadius={25} outerRadius={42} dataKey="value" strokeWidth={0}>
+                      {donutData.map((entry, i) => <Cell key={i} fill={entry.color} />)}
                     </Pie>
                   </PieChart>
                 </ResponsiveContainer>
               </div>
-              <div className="space-y-2">
-                <div className="flex items-center gap-2 text-sm">
-                  <span className="w-3 h-3 rounded-full bg-green-500" />
-                  <span className="text-gray-600">완료</span>
-                  <span className="font-bold text-gray-900 ml-auto">{taskCompleted}</span>
-                </div>
-                <div className="flex items-center gap-2 text-sm">
-                  <span className="w-3 h-3 rounded-full bg-blue-600" />
-                  <span className="text-gray-600">진행</span>
-                  <span className="font-bold text-gray-900 ml-auto">{taskInProgress}</span>
-                </div>
-                <div className="flex items-center gap-2 text-sm">
-                  <span className="w-3 h-3 rounded-full bg-gray-300" />
-                  <span className="text-gray-600">대기</span>
-                  <span className="font-bold text-gray-900 ml-auto">{taskPending}</span>
-                </div>
+              {/* 작업 그룹 목록 */}
+              <div className="flex-1 min-w-0 space-y-1.5 max-h-[140px] overflow-y-auto">
+                {taskGroups.length === 0 ? (
+                  <p className="text-xs text-gray-400 pt-2">오늘 배정된 작업 없음</p>
+                ) : (
+                  taskGroups.map((g, i) => {
+                    const allDone = g.completed === g.total;
+                    const isActive = g.inProgress > 0;
+                    return (
+                      <div key={i} className={`flex items-center justify-between text-xs rounded-lg px-2.5 py-1.5 ${
+                        allDone ? 'bg-green-50 text-green-700' : isActive ? 'bg-blue-50 text-blue-700' : 'bg-gray-50 text-gray-600'
+                      }`}>
+                        <span className="font-medium truncate mr-2">
+                          {cropMap[g.cropId]?.name || '—'} {g.taskType}
+                        </span>
+                        <span className="flex-shrink-0 font-semibold">
+                          {allDone ? '완료' : isActive ? '진행중'  : '대기'} ({g.completed}/{g.total})
+                        </span>
+                      </div>
+                    );
+                  })
+                )}
               </div>
+            </div>
+            {/* 범례 */}
+            <div className="flex gap-3 mt-3 pt-3 border-t border-gray-100 text-xs text-gray-500">
+              <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-green-500" />완료 {taskCompleted}</span>
+              <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-blue-600" />진행 {taskInProgress}</span>
+              <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-gray-300" />대기 {taskPending}</span>
             </div>
           </Card>
         )}

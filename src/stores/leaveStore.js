@@ -39,13 +39,17 @@ const useLeaveStore = create((set, get) => ({
       farm_reviewed_at: new Date().toISOString(),
     }).eq('id', requestId).select().single();
 
-    if (!error && data) {
+    if (error) {
+      console.error('[leaveStore] farmReview 실패:', error.message, error.details);
+      return false;
+    }
+    if (data) {
       set((s) => ({ requests: s.requests.map((r) => (r.id === requestId ? snakeToCamel(data) : r)) }));
       // 처리 후 전체 재조회 (화면 자동 갱신)
       const { data: allData } = await supabase.from('leave_requests').select('*').order('created_at', { ascending: false });
       if (allData) set({ requests: allData.map(snakeToCamel) });
     }
-    return !error;
+    return true;
   },
 
   // 최종 승인: 관리팀
@@ -57,7 +61,11 @@ const useLeaveStore = create((set, get) => ({
       hr_reviewed_at: new Date().toISOString(),
     }).eq('id', requestId).select().single();
 
-    if (!error && data) {
+    if (error) {
+      console.error('[leaveStore] hrReview 실패:', error.message, error.details);
+      return false;
+    }
+    if (data) {
       set((s) => ({ requests: s.requests.map((r) => (r.id === requestId ? snakeToCamel(data) : r)) }));
 
       // 최종 승인 시 잔여 휴가 차감
@@ -76,6 +84,7 @@ const useLeaveStore = create((set, get) => ({
         }
       }
     }
+    return true;
   },
 }));
 

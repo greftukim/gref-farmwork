@@ -38,7 +38,6 @@ import NoticePage from './pages/admin/NoticePage';
 import StatsPage from './pages/admin/StatsPage';
 import WorkStatsPage from './pages/admin/WorkStatsPage';
 import DailyReportPage from './pages/admin/DailyReportPage';
-import QrCodePage from './pages/admin/QrCodePage';
 import AttendanceStatusPage from './pages/admin/AttendanceStatusPage';
 import BranchSettingsPage from './pages/admin/BranchSettingsPage';
 import AttendanceRecordsPage from './pages/admin/AttendanceRecordsPage';
@@ -137,7 +136,6 @@ export default function App() {
             <Route path="attendance-status" element={<AttendanceStatusPage />} />
             <Route path="branch-settings" element={<BranchSettingsPage />} />
             <Route path="attendance-records" element={<AttendanceRecordsPage />} />
-            <Route path="qr" element={<QrCodePage />} />
             <Route path="survey" element={<GrowthSurveyAdminPage />} />
             <Route path="location" element={<LocationSettingsPage />} />
           </Route>

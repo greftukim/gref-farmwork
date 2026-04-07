@@ -2,6 +2,7 @@ import { useState, useMemo, useRef } from 'react';
 import { QRCodeCanvas } from 'qrcode.react';
 import useEmployeeStore from '../../stores/employeeStore';
 import useBranchStore from '../../stores/branchStore';
+import useAuthStore from '../../stores/authStore';
 import Button from '../../components/common/Button';
 import Card from '../../components/common/Card';
 import Modal from '../../components/common/Modal';
@@ -167,6 +168,9 @@ function QrModal({ employee, onClose, onReissue, onRevoke }) {
 }
 
 export default function EmployeesPage() {
+  const currentUser = useAuthStore((s) => s.currentUser);
+  const isManagement = currentUser?.team === 'management';
+
   const employees = useEmployeeStore((s) => s.employees);
   const addEmployee = useEmployeeStore((s) => s.addEmployee);
   const updateEmployee = useEmployeeStore((s) => s.updateEmployee);
@@ -191,10 +195,15 @@ export default function EmployeesPage() {
   const [qrEmployee, setQrEmployee] = useState(null); // 현재 QR 보고 있는 직원
 
   const filtered = useMemo(() => {
-    if (filter === 'active') return employees.filter((e) => e.isActive);
-    if (filter === 'inactive') return employees.filter((e) => !e.isActive);
-    return employees;
-  }, [employees, filter]);
+    let list = employees;
+    // 재배팀: 본인 지점 직원만 표시
+    if (!isManagement && currentUser?.branch) {
+      list = list.filter((e) => e.branch === currentUser.branch);
+    }
+    if (filter === 'active') return list.filter((e) => e.isActive);
+    if (filter === 'inactive') return list.filter((e) => !e.isActive);
+    return list;
+  }, [employees, filter, isManagement, currentUser]);
 
   const openAdd = () => {
     setEditTarget(null);
@@ -261,7 +270,7 @@ export default function EmployeesPage() {
     <div>
       <div className="flex items-center justify-between mb-6">
         <h2 className="text-xl font-heading font-semibold text-gray-900">직원 관리</h2>
-        <Button onClick={openAdd}>+ 직원 등록</Button>
+        {isManagement && <Button onClick={openAdd}>+ 직원 등록</Button>}
       </div>
 
       <div className="flex gap-2 mb-4">
@@ -351,12 +360,14 @@ export default function EmployeesPage() {
                     )}
                   </td>
                   <td className="px-4 py-3">
-                    <div className="flex gap-1">
-                      <Button size="sm" variant="ghost" onClick={() => openEdit(emp)}>수정</Button>
-                      <Button size="sm" variant="ghost" onClick={() => toggleActive(emp.id)}>
-                        {emp.isActive ? '비활성' : '활성'}
-                      </Button>
-                    </div>
+                    {isManagement && (
+                      <div className="flex gap-1">
+                        <Button size="sm" variant="ghost" onClick={() => openEdit(emp)}>수정</Button>
+                        <Button size="sm" variant="ghost" onClick={() => toggleActive(emp.id)}>
+                          {emp.isActive ? '비활성' : '활성'}
+                        </Button>
+                      </div>
+                    )}
                   </td>
                 </tr>
               ))}

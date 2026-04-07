@@ -19,6 +19,7 @@ const useNoticeStore = create((set) => ({
       body: notice.body,
       priority: notice.priority,
       created_by: notice.createdBy,
+      author_team: notice.authorTeam || null,
     }).select().single();
     if (!error && data) {
       set((s) => ({ notices: [...s.notices, snakeToCamel(data)] }));

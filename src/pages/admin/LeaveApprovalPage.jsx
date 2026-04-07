@@ -1,7 +1,8 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import useLeaveStore from '../../stores/leaveStore';
 import useEmployeeStore from '../../stores/employeeStore';
 import useAuthStore from '../../stores/authStore';
+import useNotificationStore from '../../stores/notificationStore';
 import Card from '../../components/common/Card';
 import Button from '../../components/common/Button';
 import { sendPushToEmployee } from '../../lib/pushNotify';
@@ -19,9 +20,12 @@ export default function LeaveApprovalPage() {
   const farmReview = useLeaveStore((s) => s.farmReview);
   const hrReview = useLeaveStore((s) => s.hrReview);
   const employees = useEmployeeStore((s) => s.employees);
+  const addNotification = useNotificationStore((s) => s.addNotification);
 
   const isFarmTeam = currentUser?.team === 'farm';
   const title = isFarmTeam ? '근태 승인 (1차)' : '근태 승인 (최종)';
+
+  const [processing, setProcessing] = useState(null); // 처리 중인 requestId
 
   const empMap = useMemo(
     () => Object.fromEntries(employees.map((e) => [e.id, e])),
@@ -46,8 +50,15 @@ export default function LeaveApprovalPage() {
   }, [requests, isFarmTeam]);
 
   const handleApprove = async (id) => {
+    if (processing) return;
+    setProcessing(id);
     const req = requests.find((r) => r.id === id);
-    isFarmTeam ? farmReview(id, true, currentUser.id) : hrReview(id, true, currentUser.id);
+    const ok = await (isFarmTeam ? farmReview(id, true, currentUser.id) : hrReview(id, true, currentUser.id));
+    setProcessing(null);
+    if (!ok) {
+      addNotification({ type: 'info', title: '승인 실패', message: '처리 중 오류가 발생했습니다. 콘솔을 확인하세요.', urgent: false });
+      return;
+    }
     if (req) {
       const label = isFarmTeam ? '1차 승인' : '최종 승인';
       sendPushToEmployee({
@@ -60,8 +71,15 @@ export default function LeaveApprovalPage() {
   };
 
   const handleReject = async (id) => {
+    if (processing) return;
+    setProcessing(id);
     const req = requests.find((r) => r.id === id);
-    isFarmTeam ? farmReview(id, false, currentUser.id) : hrReview(id, false, currentUser.id);
+    const ok = await (isFarmTeam ? farmReview(id, false, currentUser.id) : hrReview(id, false, currentUser.id));
+    setProcessing(null);
+    if (!ok) {
+      addNotification({ type: 'info', title: '반려 실패', message: '처리 중 오류가 발생했습니다. 콘솔을 확인하세요.', urgent: false });
+      return;
+    }
     if (req) {
       sendPushToEmployee({
         employeeId: req.employeeId,
@@ -122,8 +140,10 @@ export default function LeaveApprovalPage() {
                     <td className="px-5 py-3 text-right">
                       {isPending ? (
                         <div className="flex gap-2 justify-end">
-                          <Button size="sm" onClick={() => handleApprove(req.id)}>승인</Button>
-                          <Button size="sm" variant="danger" onClick={() => handleReject(req.id)}>반려</Button>
+                          <Button size="sm" onClick={() => handleApprove(req.id)} disabled={processing === req.id}>
+                            {processing === req.id ? '처리 중...' : '승인'}
+                          </Button>
+                          <Button size="sm" variant="danger" onClick={() => handleReject(req.id)} disabled={processing === req.id}>반려</Button>
                         </div>
                       ) : (
                         <span className="text-xs text-gray-400">처리 완료</span>
