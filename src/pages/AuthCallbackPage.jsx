@@ -19,7 +19,9 @@ export default function AuthCallbackPage() {
 
     loginWithToken(token).then((result) => {
       if (result.success) {
-        navigate('/worker', { replace: true });
+        const user = useAuthStore.getState().currentUser;
+        const dest = user?.role === 'admin' ? '/admin' : '/worker';
+        navigate(dest, { replace: true });
       } else {
         setStatus('error');
         setErrorMsg('QR 코드가 만료되었거나 유효하지 않습니다. 관리자에게 QR을 재발급 받으세요.');

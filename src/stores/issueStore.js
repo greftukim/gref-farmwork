@@ -25,8 +25,9 @@ const useIssueStore = create((set) => ({
     if (!error && data) {
       set((s) => ({ issues: [...s.issues, snakeToCamel(data)] }));
       try {
+        const senderPrefix = issue.workerName ? `[${issue.workerName}] ` : '';
         await sendPushToAdmins({
-          title: '이상 신고',
+          title: `${senderPrefix}작물 이상 신고`,
           body: `[${issue.type}] ${issue.comment || '이상 신고가 접수되었습니다'}`,
           type: 'issue_report',
           urgent: issue.type === '병해충',

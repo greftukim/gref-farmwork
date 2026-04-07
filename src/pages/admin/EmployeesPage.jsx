@@ -346,7 +346,7 @@ export default function EmployeesPage() {
                     </span>
                   </td>
                   <td className="px-4 py-3">
-                    {emp.role === 'worker' && (
+                    {(emp.role === 'worker' || emp.role === 'admin') && (
                       <button
                         onClick={() => handleQrOpen(emp)}
                         className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-colors min-h-[32px] ${

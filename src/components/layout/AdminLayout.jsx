@@ -2,6 +2,7 @@ import { useCallback, useEffect } from 'react';
 import { Outlet } from 'react-router-dom';
 import Sidebar from './Sidebar';
 import TopBar from './TopBar';
+import AdminBottomNav from './AdminBottomNav';
 import ToastContainer from '../common/ToastContainer';
 import useDataLoader from '../../hooks/useDataLoader';
 import useRealtimeSubscriptions from '../../hooks/useRealtimeSubscriptions';
@@ -60,15 +61,22 @@ export default function AdminLayout() {
     return unsub;
   }, [addNotification]);
 
+  const isFarm = currentUser?.team === 'farm';
+
   return (
     <div className="flex min-h-screen bg-gray-50">
-      <Sidebar />
+      {/* 사이드바: 재배팀은 모바일에서 숨김 */}
+      <div className={isFarm ? 'hidden md:block' : ''}>
+        <Sidebar />
+      </div>
       <div className="flex-1 flex flex-col min-w-0">
         <TopBar />
-        <main className="flex-1 p-6">
+        <main className={`flex-1 p-4 md:p-6 ${isFarm ? 'pb-24 md:pb-6' : ''}`}>
           <Outlet />
         </main>
       </div>
+      {/* 재배팀 모바일 하단 네비 */}
+      {isFarm && <AdminBottomNav />}
       <ToastContainer />
     </div>
   );

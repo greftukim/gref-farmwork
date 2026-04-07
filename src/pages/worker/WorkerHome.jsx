@@ -185,7 +185,7 @@ export default function WorkerHome() {
   const handleCallSubmit = async () => {
     if (callSubmitting) return;
     setCallSubmitting(true);
-    await addCall({ workerId: currentUser.id, type: '긴급호출', memo: '' });
+    await addCall({ workerId: currentUser.id, workerName: currentUser.name, type: '긴급호출', memo: '' });
     setCallSubmitting(false);
     setShowFab(false);
     showMsg('호출이 전송되었습니다', 'info');
@@ -204,6 +204,7 @@ export default function WorkerHome() {
     setIssueSubmitting(true);
     await addIssue({
       workerId: currentUser.id,
+      workerName: currentUser.name,
       zoneId: issueForm.zoneId || null,
       type: issueCategory,
       comment: issueForm.comment,

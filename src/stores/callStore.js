@@ -23,9 +23,10 @@ const useCallStore = create((set) => ({
     if (!error && data) {
       set((s) => ({ calls: [...s.calls, snakeToCamel(data)] }));
       try {
+        const senderPrefix = call.workerName ? `[${call.workerName}] ` : '';
         await sendPushToAdmins({
-          title: '긴급 호출',
-          body: `${call.type}: ${call.memo || '긴급 호출이 접수되었습니다'}`,
+          title: `${senderPrefix}재배사 긴급 호출`,
+          body: call.memo || '긴급 호출이 접수되었습니다',
           type: 'emergency_call',
           urgent: true,
         });
