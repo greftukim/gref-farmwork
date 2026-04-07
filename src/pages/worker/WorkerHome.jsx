@@ -4,7 +4,6 @@ import useAttendanceStore from '../../stores/attendanceStore';
 import useTaskStore from '../../stores/taskStore';
 import useEmployeeStore from '../../stores/employeeStore';
 import useBranchStore from '../../stores/branchStore';
-import useLeaveStore from '../../stores/leaveStore';
 import useCallStore from '../../stores/callStore';
 import useIssueStore from '../../stores/issueStore';
 import useZoneStore from '../../stores/zoneStore';
@@ -59,7 +58,7 @@ function verifyGpsNow(myBranch) {
   });
 }
 
-const callTypes = ['긴급호출', '질문확인', '장비이상'];
+// callTypes 제거됨 - 재배사 호출은 유형 선택 없이 바로 전송
 
 const issueCategories = [
   { key: '작물이상', label: '작물 이상', desc: '병해충, 생육 불량 등', icon: '🌿' },
@@ -74,7 +73,6 @@ export default function WorkerHome() {
   const tasks = useTaskStore((s) => s.tasks);
   const employees = useEmployeeStore((s) => s.employees);
   const branches = useBranchStore((s) => s.branches);
-  const balances = useLeaveStore((s) => s.balances);
   const addCall = useCallStore((s) => s.addCall);
   const addIssue = useIssueStore((s) => s.addIssue);
   const zones = useZoneStore((s) => s.zones);
@@ -87,8 +85,8 @@ export default function WorkerHome() {
   const [showFab, setShowFab] = useState(false);
   const [fabTab, setFabTab] = useState('call');
 
-  // 재배팀 호출 폼
-  const [callForm, setCallForm] = useState({ type: '긴급호출', memo: '' });
+  // 재배사 호출 폼
+  const [callMemo, setCallMemo] = useState('');
   const [callSubmitting, setCallSubmitting] = useState(false);
 
   // 이상 신고 폼
@@ -114,11 +112,6 @@ export default function WorkerHome() {
   const todayTasks = useMemo(
     () => tasks.filter((t) => t.workerId === currentUser?.id && t.date === today),
     [tasks, currentUser, today]
-  );
-
-  const myBalance = useMemo(
-    () => balances.find((b) => b.employeeId === currentUser?.id && b.year === new Date().getFullYear()),
-    [balances, currentUser]
   );
 
   const isWorking = todayRecord && !todayRecord.checkOut;
@@ -187,7 +180,7 @@ export default function WorkerHome() {
 
   const openFab = () => {
     setFabTab('call');
-    setCallForm({ type: '긴급호출', memo: '' });
+    setCallMemo('');
     setIssueCategory('');
     setIssueForm({ zoneId: '', comment: '' });
     setIssuePhoto(null);
@@ -197,7 +190,7 @@ export default function WorkerHome() {
   const handleCallSubmit = async () => {
     if (callSubmitting) return;
     setCallSubmitting(true);
-    await addCall({ workerId: currentUser.id, type: callForm.type, memo: callForm.memo });
+    await addCall({ workerId: currentUser.id, type: '긴급호출', memo: callMemo });
     setCallSubmitting(false);
     setShowFab(false);
     showMsg('호출이 전송되었습니다', 'info');
@@ -332,27 +325,6 @@ export default function WorkerHome() {
         )}
       </Card>
 
-      {/* 잔여 연차 */}
-      {myBalance && (
-        <Card accent="gray" className="p-4 mb-4">
-          <div className="text-sm font-medium text-gray-700 mb-2">잔여 연차</div>
-          <div className="flex gap-6">
-            <div>
-              <span className="text-xs text-gray-400">총 </span>
-              <span className="font-bold text-gray-900">{myBalance.totalDays}일</span>
-            </div>
-            <div>
-              <span className="text-xs text-gray-400">사용 </span>
-              <span className="font-bold text-gray-900">{myBalance.usedDays}일</span>
-            </div>
-            <div>
-              <span className="text-xs text-gray-400">잔여 </span>
-              <span className="font-bold text-blue-600">{myBalance.totalDays - myBalance.usedDays}일</span>
-            </div>
-          </div>
-        </Card>
-      )}
-
       {/* 긴급 호출 / 이상 신고 FAB */}
       <button
         onClick={openFab}
@@ -368,66 +340,40 @@ export default function WorkerHome() {
 
       {/* 긴급 호출 / 이상 신고 바텀시트 */}
       <BottomSheet isOpen={showFab} onClose={() => setShowFab(false)} title="긴급 호출 / 이상 신고">
-        {/* 탭 */}
-        <div className="flex gap-2 mb-4">
-          <button
-            onClick={() => setFabTab('call')}
-            className={`flex-1 py-2.5 rounded-xl text-sm font-semibold transition-colors ${
-              fabTab === 'call' ? 'bg-red-500 text-white' : 'bg-gray-100 text-gray-600'
-            }`}
+        {/* 재배사 호출 섹션 (상단 강조) */}
+        <div className="mb-5">
+          <div className="text-sm font-semibold text-gray-700 mb-2">재배사 호출</div>
+          <div className="mb-3">
+            <label className="block text-sm font-medium text-gray-700 mb-1">메모 (선택)</label>
+            <textarea
+              value={callMemo}
+              onChange={(e) => setCallMemo(e.target.value)}
+              rows={2}
+              className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm"
+              placeholder="상황 설명"
+            />
+          </div>
+          <Button
+            size="lg"
+            variant="danger"
+            className="w-full"
+            onClick={handleCallSubmit}
+            disabled={callSubmitting}
           >
-            재배팀 호출
-          </button>
-          <button
-            onClick={() => setFabTab('issue')}
-            className={`flex-1 py-2.5 rounded-xl text-sm font-semibold transition-colors ${
-              fabTab === 'issue' ? 'bg-red-500 text-white' : 'bg-gray-100 text-gray-600'
-            }`}
-          >
-            이상 신고
-          </button>
+            {callSubmitting ? '전송 중...' : '재배사 긴급 호출'}
+          </Button>
         </div>
 
-        {/* 재배팀 호출 */}
-        {fabTab === 'call' && (
-          <div className="space-y-3">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">호출 유형</label>
-              <div className="flex flex-wrap gap-2">
-                {callTypes.map((t) => (
-                  <button
-                    key={t}
-                    onClick={() => setCallForm({ ...callForm, type: t })}
-                    className={`px-3 py-2 rounded-lg text-sm font-medium min-h-[44px] transition-colors ${
-                      callForm.type === t ? 'bg-red-500 text-white' : 'bg-gray-100 text-gray-600'
-                    }`}
-                  >
-                    {t}
-                  </button>
-                ))}
-              </div>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">메모 (선택)</label>
-              <textarea
-                value={callForm.memo}
-                onChange={(e) => setCallForm({ ...callForm, memo: e.target.value })}
-                rows={2}
-                className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm"
-                placeholder="상황 설명"
-              />
-            </div>
-            <Button
-              size="lg"
-              variant="danger"
-              className="w-full"
-              onClick={handleCallSubmit}
-              disabled={callSubmitting}
-            >
-              {callSubmitting ? '전송 중...' : '호출 전송'}
-            </Button>
-          </div>
-        )}
+        <div className="border-t border-gray-100 pt-5">
+          <button
+            onClick={() => setFabTab(fabTab === 'issue' ? 'call' : 'issue')}
+            className="w-full flex items-center justify-between text-sm font-semibold text-gray-700 mb-3"
+          >
+            <span>이상 신고</span>
+            <svg className={`w-4 h-4 text-gray-400 transition-transform ${fabTab === 'issue' ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+            </svg>
+          </button>
 
         {/* 이상 신고 */}
         {fabTab === 'issue' && (
@@ -531,6 +477,7 @@ export default function WorkerHome() {
             </Button>
           </div>
         )}
+        </div>
       </BottomSheet>
     </div>
   );

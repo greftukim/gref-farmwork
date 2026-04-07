@@ -33,7 +33,6 @@ export default function WorkerAttendancePage() {
   const addRequest = useLeaveStore((s) => s.addRequest);
 
   const today = new Date().toISOString().split('T')[0];
-  const thisMonth = today.slice(0, 7);
 
   const [viewDate, setViewDate] = useState(() => {
     const d = new Date();
@@ -45,10 +44,11 @@ export default function WorkerAttendancePage() {
 
   const { year, month } = viewDate;
 
-  // 이번 달 기준 통계 (화면 상단 카드)
+  // 캘린더에 표시되는 월 기준 통계
+  const viewMonth = `${year}-${String(month + 1).padStart(2, '0')}`;
   const monthRecords = useMemo(
-    () => records.filter((r) => r.employeeId === currentUser?.id && r.date.startsWith(thisMonth)),
-    [records, currentUser, thisMonth]
+    () => records.filter((r) => r.employeeId === currentUser?.id && r.date.startsWith(viewMonth)),
+    [records, currentUser, viewMonth]
   );
   const totalMinutes = useMemo(
     () => monthRecords.reduce((sum, r) => sum + (r.workMinutes || 0), 0),
@@ -143,11 +143,14 @@ export default function WorkerAttendancePage() {
       })
     : '';
 
+  const myBalance = useMemo(
+    () => balances.find((b) => b.employeeId === currentUser?.id && b.year === new Date().getFullYear()),
+    [balances, currentUser]
+  );
+
   return (
     <div>
-      <h2 className="text-lg font-heading font-semibold text-gray-900 mb-4">근태</h2>
-
-      {/* 이번 달 통계 */}
+      {/* 통계 카드 (캘린더 월 기준) */}
       <div className="grid grid-cols-3 gap-3 mb-4">
         <Card accent="blue" className="p-3 text-center">
           <div className="text-xs text-gray-400">출근일</div>
@@ -253,7 +256,7 @@ export default function WorkerAttendancePage() {
       </div>
 
       {/* 범례 */}
-      <div className="flex gap-3 px-1 mb-2 text-xs text-gray-400">
+      <div className="flex gap-3 px-1 mb-4 text-xs text-gray-400">
         <span className="flex items-center gap-1">
           <span className="w-2 h-2 rounded-full bg-green-400 flex-shrink-0" />출퇴근 완료
         </span>
@@ -264,6 +267,27 @@ export default function WorkerAttendancePage() {
           <span className="w-2 h-2 rounded-full bg-amber-400 flex-shrink-0" />근태 신청
         </span>
       </div>
+
+      {/* 잔여 연차 */}
+      {myBalance && (
+        <Card accent="gray" className="p-4 mb-4">
+          <div className="text-sm font-medium text-gray-700 mb-2">잔여 연차</div>
+          <div className="flex gap-6">
+            <div>
+              <span className="text-xs text-gray-400">총 </span>
+              <span className="font-bold text-gray-900">{myBalance.totalDays}일</span>
+            </div>
+            <div>
+              <span className="text-xs text-gray-400">사용 </span>
+              <span className="font-bold text-gray-900">{myBalance.usedDays}일</span>
+            </div>
+            <div>
+              <span className="text-xs text-gray-400">잔여 </span>
+              <span className="font-bold text-blue-600">{myBalance.totalDays - myBalance.usedDays}일</span>
+            </div>
+          </div>
+        </Card>
+      )}
 
       {/* 날짜 상세 바텀시트 */}
       <BottomSheet
