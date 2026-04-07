@@ -3,9 +3,28 @@ import { useNavigate } from 'react-router-dom';
 import useAuthStore from '../../stores/authStore';
 import useAttendanceStore from '../../stores/attendanceStore';
 import useTaskStore from '../../stores/taskStore';
+import useEmployeeStore from '../../stores/employeeStore';
 import useBranchStore from '../../stores/branchStore';
 import Card from '../../components/common/Card';
 import Button from '../../components/common/Button';
+
+const BRANCH_LABEL = { busan: '부산LAB', jinju: '진주', hadong: '하동' };
+
+// 현재 시각을 HH:MM 문자열로 반환
+function nowHHMM() {
+  const d = new Date();
+  return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+}
+
+// Haversine GPS 거리 (미터)
+function getDistance(lat1, lon1, lat2, lon2) {
+  const R = 6371e3;
+  const toRad = (deg) => (deg * Math.PI) / 180;
+  const dLat = toRad(lat2 - lat1);
+  const dLon = toRad(lon2 - lon1);
+  const a = Math.sin(dLat / 2) ** 2 + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
 
 export default function WorkerHome() {
   const navigate = useNavigate();
@@ -14,12 +33,21 @@ export default function WorkerHome() {
   const checkIn = useAttendanceStore((s) => s.checkIn);
   const checkOut = useAttendanceStore((s) => s.checkOut);
   const tasks = useTaskStore((s) => s.tasks);
+  const employees = useEmployeeStore((s) => s.employees);
   const branches = useBranchStore((s) => s.branches);
+
   const [message, setMessage] = useState('');
+  const [msgType, setMsgType] = useState('info'); // 'info' | 'error' | 'warn'
   const [elapsed, setElapsed] = useState(0);
-  const [gpsStatus, setGpsStatus] = useState('checking'); // 'checking' | 'in_range' | 'out_range'
+  const [gpsStatus, setGpsStatus] = useState('checking'); // 'checking' | 'in_range' | 'out_range' | 'no_gps'
 
   const today = new Date().toISOString().split('T')[0];
+
+  // 현재 로그인한 직원의 최신 정보 (DB에서)
+  const myEmployee = useMemo(
+    () => employees.find((e) => e.id === currentUser?.id),
+    [employees, currentUser]
+  );
 
   const todayRecord = useMemo(
     () => records.find((r) => r.employeeId === currentUser?.id && r.date === today),
@@ -34,32 +62,33 @@ export default function WorkerHome() {
   const isWorking = todayRecord && !todayRecord.checkOut;
   const hasCheckedOut = todayRecord && todayRecord.checkOut;
 
-  const branchName = useMemo(() => {
-    const branch = branches.find((b) => b.id === currentUser?.branchId);
-    return branch?.name || '';
-  }, [branches, currentUser]);
+  // 소속 지점 (branches 테이블에서 code로 매칭)
+  const myBranch = useMemo(
+    () => branches.find((b) => b.code === myEmployee?.branch),
+    [branches, myEmployee]
+  );
+  const branchDisplayName = myEmployee?.branch ? (BRANCH_LABEL[myEmployee.branch] || myEmployee.branch) : '';
 
-  // GPS 위치 확인
+  // GPS 위치 확인: 본인 지점만 허용
   useEffect(() => {
     if (!navigator.geolocation) {
+      setGpsStatus('no_gps');
+      return;
+    }
+    if (!myBranch?.latitude) {
+      // 지점 GPS 미설정 → 제한 없이 허용
       setGpsStatus('in_range');
       return;
     }
-    const branch = branches.find((b) => b.id === currentUser?.branchId);
-    if (!branch?.latitude) {
-      setGpsStatus('in_range');
-      return;
-    }
-
     navigator.geolocation.getCurrentPosition(
       (pos) => {
-        const dist = getDistance(pos.coords.latitude, pos.coords.longitude, branch.latitude, branch.longitude);
-        setGpsStatus(dist <= (branch.radiusMeters || 200) ? 'in_range' : 'out_range');
+        const dist = getDistance(pos.coords.latitude, pos.coords.longitude, myBranch.latitude, myBranch.longitude);
+        setGpsStatus(dist <= (myBranch.radiusMeters || 200) ? 'in_range' : 'out_range');
       },
-      () => setGpsStatus('in_range'),
+      () => setGpsStatus('in_range'), // GPS 오류 시 제한 없이 허용
       { enableHighAccuracy: true }
     );
-  }, [branches, currentUser]);
+  }, [myBranch]);
 
   // 근무 타이머
   useEffect(() => {
@@ -69,6 +98,12 @@ export default function WorkerHome() {
     }, 1000);
     return () => clearInterval(interval);
   }, [isWorking, todayRecord]);
+
+  const showMsg = (text, type = 'info') => {
+    setMessage(text);
+    setMsgType(type);
+    setTimeout(() => setMessage(''), type === 'error' ? 4000 : 2500);
+  };
 
   const formatElapsed = (sec) => {
     const h = Math.floor(sec / 3600);
@@ -84,30 +119,61 @@ export default function WorkerHome() {
   };
 
   const handleCheckIn = async () => {
-    const result = await checkIn(currentUser.id);
-    setMessage(result ? '출근 처리되었습니다' : '이미 출근 처리되었습니다');
-    setTimeout(() => setMessage(''), 2000);
+    if (gpsStatus === 'out_range') return;
+
+    // 출근 시간 검증: 기준 시간보다 늦으면 지각
+    const hhmm = nowHHMM();
+    const startTime = myEmployee?.workStartTime;
+    const isLate = startTime ? hhmm > startTime : false;
+
+    const ok = await checkIn(currentUser.id, null, isLate ? 'late' : 'working');
+    if (ok) {
+      showMsg(isLate ? `지각 출근 처리되었습니다 (기준: ${startTime})` : '출근 처리되었습니다', isLate ? 'warn' : 'info');
+    } else {
+      showMsg('이미 출근 처리되었습니다', 'error');
+    }
   };
 
   const handleCheckOut = async () => {
+    // 퇴근 시간 검증: 기준 시간 이전이면 차단
+    const hhmm = nowHHMM();
+    const endTime = myEmployee?.workEndTime;
+    if (endTime && hhmm < endTime) {
+      showMsg(`아직 퇴근 시간 전입니다 (${endTime} 이후 퇴근 가능)`, 'error');
+      return;
+    }
     await checkOut(currentUser.id);
-    setMessage('퇴근 처리되었습니다');
-    setTimeout(() => setMessage(''), 2000);
+    showMsg('퇴근 처리되었습니다');
   };
 
-  const canCheckIn = gpsStatus === 'in_range' && !todayRecord;
+  const canCheckIn = gpsStatus !== 'out_range' && !todayRecord;
+
+  const msgStyle = {
+    info:  'bg-blue-50 text-blue-700 border border-blue-100',
+    warn:  'bg-amber-50 text-amber-700 border border-amber-100',
+    error: 'bg-red-50 text-red-600 border border-red-100',
+  }[msgType] || 'bg-blue-50 text-blue-700';
 
   return (
     <div className="pb-4">
       {/* 상단 인사 + 지점 */}
       <div className="mb-5">
         <h2 className="text-xl font-bold text-gray-900">{currentUser?.name}님, 안녕하세요</h2>
-        {branchName && <p className="text-sm text-gray-400 mt-0.5">{branchName}</p>}
+        {branchDisplayName && (
+          <p className="text-sm text-gray-400 mt-0.5">{branchDisplayName}</p>
+        )}
       </div>
 
       {message && (
-        <div className="bg-blue-50 text-blue-700 px-4 py-3 rounded-2xl text-sm mb-4 border border-blue-100">
+        <div className={`px-4 py-3 rounded-2xl text-sm mb-4 ${msgStyle}`}>
           {message}
+        </div>
+      )}
+
+      {/* GPS 지점 범위 밖 경고 */}
+      {gpsStatus === 'out_range' && (
+        <div className="bg-amber-50 border border-amber-200 text-amber-700 text-sm px-4 py-3 rounded-xl mb-4 text-center">
+          본인 소속 지점({branchDisplayName})에서만 출퇴근 가능합니다
         </div>
       )}
 
@@ -121,6 +187,9 @@ export default function WorkerHome() {
             </div>
             <div className="text-sm text-gray-400 text-center mb-4">
               출근 {formatTime(todayRecord.checkIn)}
+              {myEmployee?.workEndTime && (
+                <span className="ml-2 text-gray-300">· 퇴근 기준 {myEmployee.workEndTime}</span>
+              )}
             </div>
             <Button size="xl" variant="danger" onClick={handleCheckOut}>
               퇴근하기
@@ -141,24 +210,22 @@ export default function WorkerHome() {
               <div className="text-center">
                 <div className="text-xs text-gray-400">근무</div>
                 <div className="text-lg font-bold text-gray-900">
-                  {todayRecord.workMinutes ? `${Math.floor(todayRecord.workMinutes / 60)}h ${todayRecord.workMinutes % 60}m` : '—'}
+                  {todayRecord.workMinutes
+                    ? `${Math.floor(todayRecord.workMinutes / 60)}h ${todayRecord.workMinutes % 60}m`
+                    : '—'}
                 </div>
               </div>
             </div>
           </>
         ) : (
           <>
-            <div className="text-sm text-gray-500 mb-3">출퇴근</div>
-            {gpsStatus === 'out_range' && (
-              <div className="text-xs text-amber-600 bg-amber-50 rounded-lg px-3 py-2 mb-3 text-center">
-                현재 위치가 사업장 범위 밖입니다
+            <div className="text-sm text-gray-500 mb-1">출퇴근</div>
+            {myEmployee?.workStartTime && (
+              <div className="text-xs text-gray-400 mb-3">
+                출근 기준 {myEmployee.workStartTime} · 퇴근 기준 {myEmployee.workEndTime || '—'}
               </div>
             )}
-            <Button
-              size="xl"
-              onClick={handleCheckIn}
-              disabled={!canCheckIn}
-            >
+            <Button size="xl" onClick={handleCheckIn} disabled={!canCheckIn}>
               출근하기
             </Button>
           </>
@@ -196,19 +263,10 @@ export default function WorkerHome() {
           active:scale-95 transition-all z-30"
       >
         <svg className="w-7 h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-          <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.34 16.5c-.77.833.192 2.5 1.732 2.5z" />
+          <path strokeLinecap="round" strokeLinejoin="round"
+            d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.34 16.5c-.77.833.192 2.5 1.732 2.5z" />
         </svg>
       </button>
     </div>
   );
-}
-
-// GPS 거리 계산 (Haversine)
-function getDistance(lat1, lon1, lat2, lon2) {
-  const R = 6371e3;
-  const toRad = (deg) => (deg * Math.PI) / 180;
-  const dLat = toRad(lat2 - lat1);
-  const dLon = toRad(lon2 - lon1);
-  const a = Math.sin(dLat / 2) ** 2 + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) ** 2;
-  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }

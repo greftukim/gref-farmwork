@@ -4,6 +4,14 @@ import Button from '../../components/common/Button';
 import Card from '../../components/common/Card';
 import Modal from '../../components/common/Modal';
 
+const BRANCH_OPTIONS = [
+  { value: '', label: '선택 안 함' },
+  { value: 'busan', label: '부산LAB' },
+  { value: 'jinju', label: '진주' },
+  { value: 'hadong', label: '하동' },
+];
+const BRANCH_LABEL = { busan: '부산LAB', jinju: '진주', hadong: '하동' };
+
 const emptyForm = {
   name: '',
   phone: '',
@@ -13,6 +21,9 @@ const emptyForm = {
   workHoursPerWeek: 40,
   annualLeaveDays: 15,
   pinCode: '',
+  branch: '',
+  workStartTime: '',
+  workEndTime: '',
 };
 
 function EmployeeForm({ form, setForm }) {
@@ -58,6 +69,27 @@ function EmployeeForm({ form, setForm }) {
         { value: '관리', label: '관리' },
         { value: '기타', label: '기타' },
       ])}
+      {field('근무 지점', 'branch', 'text', BRANCH_OPTIONS)}
+      <div className="grid grid-cols-2 gap-3 mb-3">
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">출근 시간</label>
+          <input
+            type="time"
+            value={form.workStartTime}
+            onChange={(e) => setForm({ ...form, workStartTime: e.target.value })}
+            className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm min-h-[44px]"
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">퇴근 시간</label>
+          <input
+            type="time"
+            value={form.workEndTime}
+            onChange={(e) => setForm({ ...form, workEndTime: e.target.value })}
+            className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm min-h-[44px]"
+          />
+        </div>
+      </div>
       {field('입사일', 'hireDate', 'date')}
       {field('주당 근무시간', 'workHoursPerWeek', 'number')}
       {field('연차 일수', 'annualLeaveDays', 'number')}
@@ -100,6 +132,9 @@ export default function EmployeesPage() {
       workHoursPerWeek: emp.workHoursPerWeek || 40,
       annualLeaveDays: emp.annualLeaveDays || 15,
       pinCode: emp.pinCode || '',
+      branch: emp.branch || '',
+      workStartTime: emp.workStartTime || '',
+      workEndTime: emp.workEndTime || '',
     });
     setShowModal(true);
   };
@@ -146,10 +181,11 @@ export default function EmployeesPage() {
           <table className="w-full text-sm">
             <thead>
               <tr className="bg-gray-50 text-left text-gray-500">
-                <th className="px-4 py-3 font-medium">사번</th>
                 <th className="px-4 py-3 font-medium">이름</th>
                 <th className="px-4 py-3 font-medium">역할</th>
                 <th className="px-4 py-3 font-medium">직무</th>
+                <th className="px-4 py-3 font-medium">근무 지점</th>
+                <th className="px-4 py-3 font-medium">근무 시간</th>
                 <th className="px-4 py-3 font-medium">연락처</th>
                 <th className="px-4 py-3 font-medium">입사일</th>
                 <th className="px-4 py-3 font-medium">상태</th>
@@ -159,28 +195,33 @@ export default function EmployeesPage() {
             <tbody className="divide-y divide-gray-100">
               {filtered.map((emp) => (
                 <tr key={emp.id} className={`${!emp.isActive ? 'opacity-50' : ''}`}>
-                  <td className="px-4 py-3 text-gray-500">{emp.empNo}</td>
                   <td className="px-4 py-3 font-medium text-gray-900">{emp.name}</td>
                   <td className="px-4 py-3">
-                    <span
-                      className={`px-2 py-0.5 rounded-full text-xs font-medium ${
-                        emp.role === 'admin'
-                          ? 'bg-blue-100 text-blue-700'
-                          : 'bg-blue-100 text-blue-700'
-                      }`}
-                    >
+                    <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-700">
                       {emp.role === 'admin' ? '관리자' : '작업자'}
                     </span>
                   </td>
                   <td className="px-4 py-3 text-gray-600">{emp.jobType}</td>
+                  <td className="px-4 py-3">
+                    {emp.branch ? (
+                      <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-700">
+                        {BRANCH_LABEL[emp.branch] || emp.branch}
+                      </span>
+                    ) : (
+                      <span className="text-gray-400">—</span>
+                    )}
+                  </td>
+                  <td className="px-4 py-3 text-gray-600 whitespace-nowrap">
+                    {emp.workStartTime && emp.workEndTime
+                      ? `${emp.workStartTime} ~ ${emp.workEndTime}`
+                      : '—'}
+                  </td>
                   <td className="px-4 py-3 text-gray-600">{emp.phone}</td>
                   <td className="px-4 py-3 text-gray-600">{emp.hireDate}</td>
                   <td className="px-4 py-3">
                     <span
                       className={`px-2 py-0.5 rounded-full text-xs font-medium ${
-                        emp.isActive
-                          ? 'bg-green-100 text-green-700'
-                          : 'bg-gray-100 text-gray-500'
+                        emp.isActive ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'
                       }`}
                     >
                       {emp.isActive ? '재직' : '비활성'}
@@ -188,14 +229,8 @@ export default function EmployeesPage() {
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex gap-1">
-                      <Button size="sm" variant="ghost" onClick={() => openEdit(emp)}>
-                        수정
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => toggleActive(emp.id)}
-                      >
+                      <Button size="sm" variant="ghost" onClick={() => openEdit(emp)}>수정</Button>
+                      <Button size="sm" variant="ghost" onClick={() => toggleActive(emp.id)}>
                         {emp.isActive ? '비활성' : '활성'}
                       </Button>
                     </div>

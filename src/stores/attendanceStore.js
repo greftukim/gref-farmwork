@@ -13,8 +13,9 @@ const useAttendanceStore = create((set, get) => ({
     set({ loading: false });
   },
 
-  /** gps: { lat, lng } | null — GPS 좌표 함께 저장 */
-  checkIn: async (employeeId, gps = null) => {
+  /** gps: { lat, lng } | null — GPS 좌표 함께 저장
+   *  initialStatus: 'working' (정상) | 'late' (지각) — WorkerHome에서 결정 */
+  checkIn: async (employeeId, gps = null, initialStatus = 'working') => {
     const today = new Date().toISOString().split('T')[0];
     const existing = get().records.find((r) => r.employeeId === employeeId && r.date === today);
     if (existing) return false;
@@ -23,7 +24,7 @@ const useAttendanceStore = create((set, get) => ({
       employee_id: employeeId,
       date: today,
       check_in: new Date().toISOString(),
-      status: 'working',
+      status: initialStatus,
       ...(gps && { check_in_lat: gps.lat, check_in_lng: gps.lng }),
     };
 
@@ -48,7 +49,8 @@ const useAttendanceStore = create((set, get) => ({
     const payload = {
       check_out: now.toISOString(),
       work_minutes: workMinutes,
-      status: record.status === 'working' ? 'normal' : record.status,
+      // 출근 시 'late'였으면 퇴근 후에도 late 유지, 그 외엔 normal
+      status: record.status === 'late' ? 'late' : 'normal',
       ...(gps && { check_out_lat: gps.lat, check_out_lng: gps.lng }),
     };
 
