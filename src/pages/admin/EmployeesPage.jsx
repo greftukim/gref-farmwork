@@ -293,7 +293,69 @@ export default function EmployeesPage() {
         ))}
       </div>
 
-      <Card accent="gray" className="overflow-hidden">
+      {/* 모바일 카드 뷰 */}
+      <div className="md:hidden space-y-3">
+        {filtered.length === 0 && (
+          <p className="text-center text-gray-400 py-12">등록된 직원이 없습니다</p>
+        )}
+        {filtered.map((emp) => (
+          <Card key={emp.id} accent="gray" className={`p-4 ${!emp.isActive ? 'opacity-50' : ''}`}>
+            <div className="flex items-start justify-between mb-2">
+              <span className="font-semibold text-gray-900 text-base">{emp.name}</span>
+              <div className="flex items-center gap-1.5">
+                <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
+                  emp.isActive ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'
+                }`}>
+                  {emp.isActive ? '재직' : '비활성'}
+                </span>
+                <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-700">
+                  {emp.role === 'admin' ? '관리자' : '작업자'}
+                </span>
+              </div>
+            </div>
+            <div className="text-sm text-gray-500 space-y-0.5 mb-3">
+              <div>
+                {emp.jobType}
+                {emp.branch && (
+                  <span className="ml-1.5 px-1.5 py-0.5 rounded text-xs bg-emerald-100 text-emerald-700">
+                    {branchNameMap[emp.branch] || emp.branch}
+                  </span>
+                )}
+              </div>
+              {(emp.workStartTime || emp.workEndTime) && (
+                <div>{emp.workStartTime || '—'} ~ {emp.workEndTime || '—'}</div>
+              )}
+              {emp.phone && <div>{emp.phone}</div>}
+              {emp.hireDate && <div>입사 {emp.hireDate}</div>}
+            </div>
+            <div className="flex gap-2 justify-end">
+              {(emp.role === 'worker' || emp.role === 'admin') && (
+                <button
+                  onClick={() => handleQrOpen(emp)}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors min-h-[36px] ${
+                    emp.deviceToken
+                      ? 'bg-emerald-100 text-emerald-700'
+                      : 'bg-blue-100 text-blue-700'
+                  }`}
+                >
+                  {emp.deviceToken ? 'QR확인' : 'QR발급'}
+                </button>
+              )}
+              {isManagement && (
+                <>
+                  <Button size="sm" variant="ghost" onClick={() => openEdit(emp)}>수정</Button>
+                  <Button size="sm" variant="ghost" onClick={() => toggleActive(emp.id)}>
+                    {emp.isActive ? '비활성' : '활성'}
+                  </Button>
+                </>
+              )}
+            </div>
+          </Card>
+        ))}
+      </div>
+
+      {/* 데스크탑 테이블 뷰 */}
+      <Card accent="gray" className="hidden md:block overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>

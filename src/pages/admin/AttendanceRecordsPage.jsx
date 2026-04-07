@@ -69,7 +69,33 @@ export default function AttendanceRecordsPage() {
         </select>
       </div>
 
-      <Card accent="gray" className="overflow-hidden">
+      {/* 모바일 카드 뷰 */}
+      <div className="md:hidden space-y-3">
+        {filtered.length === 0 ? (
+          <p className="text-center text-gray-400 py-12">해당 날짜에 출퇴근 기록이 없습니다</p>
+        ) : (
+          filtered.map((r) => {
+            const emp = empMap[r.employeeId];
+            return (
+              <Card key={r.id} accent="gray" className="p-4">
+                <div className="flex items-start justify-between mb-2">
+                  <span className="font-semibold text-gray-900">{emp?.name || '—'}</span>
+                  <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${statusColor(r.status)}`}>
+                    {statusLabel(r.status)}
+                  </span>
+                </div>
+                <div className="text-sm text-gray-600">
+                  출근 {formatTime(r.checkIn)} / 퇴근 {formatTime(r.checkOut)}
+                </div>
+                <div className="text-sm text-gray-400">{formatMinutes(r.workMinutes)}</div>
+              </Card>
+            );
+          })
+        )}
+      </div>
+
+      {/* 데스크탑 테이블 뷰 */}
+      <Card accent="gray" className="hidden md:block overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>

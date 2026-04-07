@@ -90,34 +90,55 @@ export default function LeavePage() {
       )}
 
       {view === 'balances' && (
-        <Card accent="gray" className="overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="bg-gray-50 text-left text-gray-500">
-                  <th className="px-4 py-3 font-medium">이름</th>
-                  <th className="px-4 py-3 font-medium">총 휴가</th>
-                  <th className="px-4 py-3 font-medium">사용</th>
-                  <th className="px-4 py-3 font-medium">잔여</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100">
-                {balanceList.map((b) => (
-                  <tr key={b.id}>
-                    <td className="px-4 py-3 font-medium text-gray-900">{b.employee?.name}</td>
-                    <td className="px-4 py-3 text-gray-600">{b.totalDays}일</td>
-                    <td className="px-4 py-3 text-gray-600">{b.usedDays}일</td>
-                    <td className="px-4 py-3">
-                      <span className={`font-bold ${b.remaining <= 3 ? 'text-red-500' : 'text-blue-600'}`}>
-                        {b.remaining}일
-                      </span>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+        <>
+          {/* 모바일 카드 뷰 */}
+          <div className="md:hidden space-y-3">
+            {balanceList.map((b) => (
+              <Card key={b.id} accent="gray" className="p-4">
+                <div className="flex items-center justify-between">
+                  <span className="font-semibold text-gray-900">{b.employee?.name}</span>
+                  <span className={`text-lg font-bold ${b.remaining <= 3 ? 'text-red-500' : 'text-blue-600'}`}>
+                    잔여 {b.remaining}일
+                  </span>
+                </div>
+                <div className="flex gap-4 mt-2 text-sm text-gray-500">
+                  <span>총 {b.totalDays}일</span>
+                  <span>사용 {b.usedDays}일</span>
+                </div>
+              </Card>
+            ))}
           </div>
-        </Card>
+
+          {/* 데스크탑 테이블 뷰 */}
+          <Card accent="gray" className="hidden md:block overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="bg-gray-50 text-left text-gray-500">
+                    <th className="px-4 py-3 font-medium">이름</th>
+                    <th className="px-4 py-3 font-medium">총 휴가</th>
+                    <th className="px-4 py-3 font-medium">사용</th>
+                    <th className="px-4 py-3 font-medium">잔여</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100">
+                  {balanceList.map((b) => (
+                    <tr key={b.id}>
+                      <td className="px-4 py-3 font-medium text-gray-900">{b.employee?.name}</td>
+                      <td className="px-4 py-3 text-gray-600">{b.totalDays}일</td>
+                      <td className="px-4 py-3 text-gray-600">{b.usedDays}일</td>
+                      <td className="px-4 py-3">
+                        <span className={`font-bold ${b.remaining <= 3 ? 'text-red-500' : 'text-blue-600'}`}>
+                          {b.remaining}일
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </Card>
+        </>
       )}
     </div>
   );

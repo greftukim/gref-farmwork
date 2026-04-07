@@ -67,7 +67,35 @@ export default function WorkStatsPage() {
           </div>
         </Card>
 
-        <Card accent="gray" className="overflow-hidden">
+        {/* 모바일 카드 뷰 */}
+        <div className="md:hidden space-y-3">
+          {hoursSummary.length === 0 ? (
+            <p className="text-center text-gray-400 py-8">데이터 없음</p>
+          ) : (
+            hoursSummary.map((s) => (
+              <Card key={s.name} accent="gray" className="p-4">
+                <div className="font-semibold text-gray-900 mb-3">{s.name}</div>
+                <div className="grid grid-cols-3 gap-2 text-center">
+                  <div>
+                    <div className="text-xs text-gray-400 mb-0.5">출근일</div>
+                    <div className="font-bold text-gray-900">{s.days}일</div>
+                  </div>
+                  <div>
+                    <div className="text-xs text-gray-400 mb-0.5">총 근무</div>
+                    <div className="font-bold text-gray-900">{s.totalHours}시간</div>
+                  </div>
+                  <div>
+                    <div className="text-xs text-gray-400 mb-0.5">일평균</div>
+                    <div className="font-bold text-gray-900">{s.avgHours}시간</div>
+                  </div>
+                </div>
+              </Card>
+            ))
+          )}
+        </div>
+
+        {/* 데스크탑 테이블 뷰 */}
+        <Card accent="gray" className="hidden md:block overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>

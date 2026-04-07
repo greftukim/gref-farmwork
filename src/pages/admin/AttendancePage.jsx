@@ -208,7 +208,59 @@ export default function AttendancePage() {
                     {BRANCH_LABEL[branchKey] || '미지정'}
                     <span className="text-xs text-gray-400 font-normal">({groupWorkers.length}명)</span>
                   </h3>
-                  <Card accent="gray" className="overflow-hidden mb-2">
+                  {/* 모바일 카드 뷰 */}
+                  <div className="md:hidden space-y-2 mb-2">
+                    {groupWorkers.map((w) => {
+                      const rec = dailyRecords.find((r) => r.employeeId === w.id);
+                      return (
+                        <Card key={w.id} accent="gray" className="p-4">
+                          <div className="flex items-start justify-between mb-2">
+                            <span className="font-semibold text-gray-900">{w.name}</span>
+                            {rec ? (
+                              <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${STATUS_COLOR[rec.status] || 'bg-gray-100 text-gray-600'}`}>
+                                {STATUS_LABEL[rec.status] || rec.status}
+                              </span>
+                            ) : (
+                              <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-400">미출근</span>
+                            )}
+                          </div>
+                          <div className="grid grid-cols-2 gap-2 mb-2">
+                            <div>
+                              <label className="block text-xs text-gray-400 mb-1">출근 기준</label>
+                              <input type="time"
+                                value={getEditTime(w, 'workStartTime')}
+                                onChange={(e) => handleTimeChange(w.id, 'workStartTime', e.target.value)}
+                                onBlur={() => handleTimeBlur(w, 'workStartTime')}
+                                className="w-full border border-gray-200 rounded px-2 py-1.5 text-sm min-h-[36px]" />
+                            </div>
+                            <div>
+                              <label className="block text-xs text-gray-400 mb-1">퇴근 기준</label>
+                              <input type="time"
+                                value={getEditTime(w, 'workEndTime')}
+                                onChange={(e) => handleTimeChange(w.id, 'workEndTime', e.target.value)}
+                                onBlur={() => handleTimeBlur(w, 'workEndTime')}
+                                className="w-full border border-gray-200 rounded px-2 py-1.5 text-sm min-h-[36px]" />
+                            </div>
+                          </div>
+                          {rec && (
+                            <div className="flex items-center justify-between text-sm">
+                              <span className="text-gray-600">
+                                출근 {formatTime(rec.checkIn)} / 퇴근 {formatTime(rec.checkOut)}
+                                {!isManagement && rec.workMinutes ? ` · ${formatMinutes(rec.workMinutes)}` : ''}
+                              </span>
+                              <button
+                                onClick={() => handleDeleteRecord(rec.id, w.name)}
+                                className="text-xs text-red-500 hover:text-red-700 px-2 py-1"
+                              >삭제</button>
+                            </div>
+                          )}
+                        </Card>
+                      );
+                    })}
+                  </div>
+
+                  {/* 데스크탑 테이블 뷰 */}
+                  <Card accent="gray" className="hidden md:block overflow-hidden mb-2">
                     <div className="overflow-x-auto">
                       <table className="w-full text-sm">
                         <thead>
@@ -304,7 +356,47 @@ export default function AttendancePage() {
                     <span className="inline-block w-2 h-2 rounded-full bg-blue-400" />
                     {BRANCH_LABEL[branchKey] || '미지정'}
                   </h3>
-                  <Card accent="gray" className="overflow-hidden mb-2">
+                  {/* 모바일 카드 뷰 */}
+                  <div className="md:hidden space-y-2 mb-2">
+                    {groupStats.map((s) => (
+                      <Card key={s.employee.id} accent="gray" className="p-4">
+                        <div className="flex items-start justify-between mb-2">
+                          <span className="font-semibold text-gray-900">{s.employee.name}</span>
+                          {s.lateDays > 0 && (
+                            <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-700">
+                              지각 {s.lateDays}회
+                            </span>
+                          )}
+                        </div>
+                        <div className="text-xs text-gray-400 mb-2">
+                          기준 {s.employee.workStartTime && s.employee.workEndTime
+                            ? `${s.employee.workStartTime}~${s.employee.workEndTime}`
+                            : '—'}
+                        </div>
+                        <div className="grid grid-cols-3 gap-2 text-center">
+                          <div>
+                            <div className="text-xs text-gray-400">출근일</div>
+                            <div className="font-bold text-gray-900">{s.workDays}일</div>
+                          </div>
+                          {!isManagement && (
+                            <>
+                              <div>
+                                <div className="text-xs text-gray-400">총 근무</div>
+                                <div className="font-bold text-gray-900">{formatMinutes(s.totalMinutes)}</div>
+                              </div>
+                              <div>
+                                <div className="text-xs text-gray-400">평균</div>
+                                <div className="font-bold text-gray-900">{formatMinutes(s.avgMinutes)}</div>
+                              </div>
+                            </>
+                          )}
+                        </div>
+                      </Card>
+                    ))}
+                  </div>
+
+                  {/* 데스크탑 테이블 뷰 */}
+                  <Card accent="gray" className="hidden md:block overflow-hidden mb-2">
                     <div className="overflow-x-auto">
                       <table className="w-full text-sm">
                         <thead>

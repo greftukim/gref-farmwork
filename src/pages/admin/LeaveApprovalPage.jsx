@@ -99,7 +99,50 @@ export default function LeaveApprovalPage() {
         <span className="text-sm text-gray-400">대기 {pendingRequests.length}건</span>
       </div>
 
-      <Card accent="gray" className="overflow-hidden">
+      {/* 모바일 카드 뷰 */}
+      <div className="md:hidden space-y-3">
+        {allRequests.length === 0 && (
+          <p className="text-center text-gray-400 py-12">근태 신청 내역이 없습니다</p>
+        )}
+        {allRequests.map((req) => {
+          const emp = empMap[req.employeeId];
+          const st = statusConfig[req.status];
+          const isPending = pendingRequests.some((p) => p.id === req.id);
+          return (
+            <Card key={req.id} accent="gray" className={`p-4 ${isPending ? 'border-l-amber-400' : ''}`}>
+              <div className="flex items-start justify-between mb-2">
+                <div>
+                  <span className="font-semibold text-gray-900">{emp?.name || '—'}</span>
+                  <span className="text-gray-500 text-sm ml-2">{req.type}</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <span className={`w-2 h-2 rounded-full ${st.dot}`} />
+                  <span className={`text-xs font-medium ${st.color}`}>{st.label}</span>
+                </div>
+              </div>
+              <div className="text-sm text-gray-600 mb-1">{req.date}</div>
+              {req.reason && (
+                <div className="text-sm text-gray-500 mb-3">{req.reason}</div>
+              )}
+              {isPending ? (
+                <div className="flex gap-2 justify-end mt-2">
+                  <Button size="sm" onClick={() => handleApprove(req.id)} disabled={processing === req.id}>
+                    {processing === req.id ? '처리 중...' : '승인'}
+                  </Button>
+                  <Button size="sm" variant="danger" onClick={() => handleReject(req.id)} disabled={processing === req.id}>
+                    반려
+                  </Button>
+                </div>
+              ) : (
+                <div className="text-right text-xs text-gray-400">처리 완료</div>
+              )}
+            </Card>
+          );
+        })}
+      </div>
+
+      {/* 데스크탑 테이블 뷰 */}
+      <Card accent="gray" className="hidden md:block overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
