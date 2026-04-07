@@ -6,6 +6,7 @@ import useZoneStore from '../../stores/zoneStore';
 import Button from '../../components/common/Button';
 import Card from '../../components/common/Card';
 import Modal from '../../components/common/Modal';
+import { sendPushToEmployee } from '../../lib/pushNotify';
 
 const statusMap = {
   pending: { label: '대기', color: 'bg-amber-100 text-amber-700' },
@@ -54,17 +55,25 @@ export default function TaskPlanPage() {
     [tasks, selectedDate]
   );
 
-  const handleAdd = () => {
+  const handleAdd = async () => {
     if (!form.workerId || !form.cropId || !form.taskType || !form.zoneId) return;
     const crop = cropMap[form.cropId];
     const zone = zoneMap[form.zoneId];
-    addTask({
+    const title = `${crop?.name || ''} ${form.taskType}`;
+    await addTask({
       ...form,
       date: selectedDate,
-      title: `${crop?.name || ''} ${form.taskType}`,
+      title,
       description: `${zone?.name || ''} ${form.rowRange ? form.rowRange + '열' : ''} ${crop?.name || ''} ${form.taskType}`,
       quantity: null,
     });
+    // 배정된 작업자에게 푸시 발송 (실패해도 무시)
+    sendPushToEmployee({
+      employeeId: form.workerId,
+      title: '새 작업이 배정되었습니다',
+      body: `${selectedDate} · ${title} (${zone?.name || ''})`,
+      type: 'task',
+    }).catch(() => {});
     setForm(emptyForm);
     setShowModal(false);
   };

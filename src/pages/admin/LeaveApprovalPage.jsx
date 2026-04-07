@@ -4,6 +4,7 @@ import useEmployeeStore from '../../stores/employeeStore';
 import useAuthStore from '../../stores/authStore';
 import Card from '../../components/common/Card';
 import Button from '../../components/common/Button';
+import { sendPushToEmployee } from '../../lib/pushNotify';
 
 const statusConfig = {
   pending: { label: '1차 대기', dot: 'bg-amber-400', color: 'text-amber-600' },
@@ -44,8 +45,32 @@ export default function LeaveApprovalPage() {
       .slice(0, 20);
   }, [requests, isFarmTeam]);
 
-  const handleApprove = (id) => isFarmTeam ? farmReview(id, true, currentUser.id) : hrReview(id, true, currentUser.id);
-  const handleReject = (id) => isFarmTeam ? farmReview(id, false, currentUser.id) : hrReview(id, false, currentUser.id);
+  const handleApprove = async (id) => {
+    const req = requests.find((r) => r.id === id);
+    isFarmTeam ? farmReview(id, true, currentUser.id) : hrReview(id, true, currentUser.id);
+    if (req) {
+      const label = isFarmTeam ? '1차 승인' : '최종 승인';
+      sendPushToEmployee({
+        employeeId: req.employeeId,
+        title: `근태 신청이 ${label}되었습니다`,
+        body: `${req.date} ${req.type} 신청이 ${label} 처리되었습니다`,
+        type: 'leave',
+      }).catch(() => {});
+    }
+  };
+
+  const handleReject = async (id) => {
+    const req = requests.find((r) => r.id === id);
+    isFarmTeam ? farmReview(id, false, currentUser.id) : hrReview(id, false, currentUser.id);
+    if (req) {
+      sendPushToEmployee({
+        employeeId: req.employeeId,
+        title: '근태 신청이 반려되었습니다',
+        body: `${req.date} ${req.type} 신청이 반려 처리되었습니다`,
+        type: 'leave',
+      }).catch(() => {});
+    }
+  };
 
   const allRequests = [...pendingRequests, ...processedRequests];
 

@@ -1,27 +1,35 @@
 import { supabase } from './supabase';
 
-// 이 앱은 Supabase Auth를 사용하지 않으므로 세션이 항상 null.
-// functions.invoke는 세션이 없으면 Authorization 헤더를 누락하거나 빈 값으로
-// 보내 401이 발생한다 → anon key를 명시적으로 헤더에 주입.
+// Supabase Auth 미사용 → anon key 명시 주입
 const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
+async function invoke(payload) {
+  const { data, error } = await supabase.functions.invoke('send-push', {
+    body: payload,
+    headers: { Authorization: `Bearer ${SUPABASE_ANON_KEY}` },
+  });
+  if (error) throw new Error(error.message ?? JSON.stringify(error));
+  return data;
+}
+
+/** 관리자 전체에게 푸시 */
 export async function sendPushToAdmins({ title, body, type, urgent = false }) {
-  console.log('[Push] sendPushToAdmins 호출:', { title, type, urgent });
-  try {
-    const { data, error } = await supabase.functions.invoke('send-push', {
-      body: { title, body, type, urgent, targetRole: 'admin' },
-      headers: {
-        Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
-      },
-    });
-    if (error) {
-      console.error('[Push] Edge Function 오류:', error);
-      throw new Error(error.message ?? JSON.stringify(error));
-    }
-    console.log('[Push] 전송 완료:', data);
-    return data;
-  } catch (e) {
-    console.error('[Push] 전송 실패:', e);
-    throw e;
-  }
+  return invoke({ title, body, type, urgent, targetRole: 'admin' });
+}
+
+/**
+ * 작업자에게 푸시 (전체 또는 필터)
+ * @param {string} [targetBranch] - 지점 코드 (busan/jinju/hadong) - 없으면 전체
+ * @param {string} [targetJobType] - 직무 ('재배'/'관리'/'기타') - 없으면 전체
+ */
+export async function sendPushToWorkers({ title, body, type = 'notice', urgent = false, targetBranch, targetJobType } = {}) {
+  return invoke({ title, body, type, urgent, targetRole: 'worker', targetBranch, targetJobType });
+}
+
+/**
+ * 특정 직원 1명에게 푸시
+ * @param {string} employeeId
+ */
+export async function sendPushToEmployee({ employeeId, title, body, type = 'info', urgent = false }) {
+  return invoke({ title, body, type, urgent, targetEmployeeId: employeeId });
 }

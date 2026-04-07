@@ -6,6 +6,7 @@ import useAuthStore from '../../stores/authStore';
 import useZoneStore from '../../stores/zoneStore';
 import Card from '../../components/common/Card';
 import Button from '../../components/common/Button';
+import { sendPushToEmployee } from '../../lib/pushNotify';
 
 export default function IssueCallPage() {
   const currentUser = useAuthStore((s) => s.currentUser);
@@ -79,7 +80,15 @@ export default function IssueCallPage() {
               <div className="flex items-center justify-between">
                 <span className="text-xs text-gray-400">{new Date(issue.createdAt).toLocaleDateString('ko-KR')}</span>
                 {!issue.isResolved && (
-                  <Button size="sm" onClick={() => resolveIssue(issue.id, currentUser.id)}>처리 완료</Button>
+                  <Button size="sm" onClick={() => {
+                    resolveIssue(issue.id, currentUser.id);
+                    sendPushToEmployee({
+                      employeeId: issue.workerId,
+                      title: '이상 신고가 처리되었습니다',
+                      body: `${issue.type} 신고가 처리 완료되었습니다`,
+                      type: 'issue',
+                    }).catch(() => {});
+                  }}>처리 완료</Button>
                 )}
               </div>
             </Card>
