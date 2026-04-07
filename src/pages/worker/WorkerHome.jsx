@@ -83,10 +83,7 @@ export default function WorkerHome() {
 
   // FAB 바텀시트
   const [showFab, setShowFab] = useState(false);
-  const [fabTab, setFabTab] = useState('call');
-
-  // 재배사 호출 폼
-  const [callMemo, setCallMemo] = useState('');
+  const [fabTab, setFabTab] = useState('call'); // 미사용 - 이상 신고 항상 펼침
   const [callSubmitting, setCallSubmitting] = useState(false);
 
   // 이상 신고 폼
@@ -179,8 +176,6 @@ export default function WorkerHome() {
     });
 
   const openFab = () => {
-    setFabTab('call');
-    setCallMemo('');
     setIssueCategory('');
     setIssueForm({ zoneId: '', comment: '' });
     setIssuePhoto(null);
@@ -190,7 +185,7 @@ export default function WorkerHome() {
   const handleCallSubmit = async () => {
     if (callSubmitting) return;
     setCallSubmitting(true);
-    await addCall({ workerId: currentUser.id, type: '긴급호출', memo: callMemo });
+    await addCall({ workerId: currentUser.id, type: '긴급호출', memo: '' });
     setCallSubmitting(false);
     setShowFab(false);
     showMsg('호출이 전송되었습니다', 'info');
@@ -343,16 +338,6 @@ export default function WorkerHome() {
         {/* 재배사 호출 섹션 (상단 강조) */}
         <div className="mb-5">
           <div className="text-sm font-semibold text-gray-700 mb-2">재배사 호출</div>
-          <div className="mb-3">
-            <label className="block text-sm font-medium text-gray-700 mb-1">메모 (선택)</label>
-            <textarea
-              value={callMemo}
-              onChange={(e) => setCallMemo(e.target.value)}
-              rows={2}
-              className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm"
-              placeholder="상황 설명"
-            />
-          </div>
           <Button
             size="lg"
             variant="danger"
@@ -365,18 +350,10 @@ export default function WorkerHome() {
         </div>
 
         <div className="border-t border-gray-100 pt-5">
-          <button
-            onClick={() => setFabTab(fabTab === 'issue' ? 'call' : 'issue')}
-            className="w-full flex items-center justify-between text-sm font-semibold text-gray-700 mb-3"
-          >
-            <span>이상 신고</span>
-            <svg className={`w-4 h-4 text-gray-400 transition-transform ${fabTab === 'issue' ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-            </svg>
-          </button>
+          <div className="text-sm font-semibold text-gray-700 mb-3">이상 신고</div>
 
-        {/* 이상 신고 */}
-        {fabTab === 'issue' && (
+        {/* 이상 신고 (항상 펼침) */}
+        {true && (
           <div className="space-y-3">
             {/* 신고 유형 */}
             <div>

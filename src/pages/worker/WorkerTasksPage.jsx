@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import useAuthStore from '../../stores/authStore';
 import useTaskStore from '../../stores/taskStore';
 import useCropStore from '../../stores/cropStore';
@@ -6,6 +7,8 @@ import useZoneStore from '../../stores/zoneStore';
 import Card from '../../components/common/Card';
 import Button from '../../components/common/Button';
 import BottomSheet from '../../components/common/BottomSheet';
+
+const SURVEY_TASK_TYPE = '생육 조사';
 
 function Timer({ startedAt }) {
   const [elapsed, setElapsed] = useState(0);
@@ -38,6 +41,7 @@ const statusMap = {
 };
 
 export default function WorkerTasksPage() {
+  const navigate = useNavigate();
   const currentUser = useAuthStore((s) => s.currentUser);
   const tasks = useTaskStore((s) => s.tasks);
   const startTask = useTaskStore((s) => s.startTask);
@@ -112,15 +116,25 @@ export default function WorkerTasksPage() {
               )}
 
               <div className="flex gap-2">
-                {task.status === 'pending' && (
-                  <Button size="lg" className="flex-1" onClick={() => startTask(task.id)}>
-                    작업 시작
-                  </Button>
-                )}
-                {task.status === 'in_progress' && (
-                  <Button size="lg" className="flex-1" onClick={() => { setCompleteTarget(task); setQuantity(''); }}>
-                    작업 완료
-                  </Button>
+                {task.taskType === SURVEY_TASK_TYPE ? (
+                  task.status !== 'completed' && (
+                    <Button size="lg" className="flex-1" onClick={() => navigate(`/worker/survey?taskId=${task.id}`)}>
+                      생육 조사 입력
+                    </Button>
+                  )
+                ) : (
+                  <>
+                    {task.status === 'pending' && (
+                      <Button size="lg" className="flex-1" onClick={() => startTask(task.id)}>
+                        작업 시작
+                      </Button>
+                    )}
+                    {task.status === 'in_progress' && (
+                      <Button size="lg" className="flex-1" onClick={() => { setCompleteTarget(task); setQuantity(''); }}>
+                        작업 완료
+                      </Button>
+                    )}
+                  </>
                 )}
               </div>
             </Card>
