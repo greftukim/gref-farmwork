@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import useAuthStore from '../../stores/authStore';
 import useAttendanceStore from '../../stores/attendanceStore';
@@ -24,6 +24,43 @@ function getDistance(lat1, lon1, lat2, lon2) {
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
+/**
+ * 클릭 시점에 GPS를 새로 가져와 지점 범위 검증
+ * @returns {Promise<{ ok: boolean, dist?: number, error?: string }>}
+ */
+function verifyGpsNow(myBranch) {
+  // 지점 GPS 미설정 → 제한 없음
+  if (!myBranch?.latitude) return Promise.resolve({ ok: true });
+
+  return new Promise((resolve) => {
+    if (!navigator.geolocation) {
+      resolve({ ok: false, error: '위치 권한을 허용해주세요' });
+      return;
+    }
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        const dist = Math.round(
+          getDistance(pos.coords.latitude, pos.coords.longitude, myBranch.latitude, myBranch.longitude)
+        );
+        const radius = myBranch.radiusMeters || 200;
+        if (dist <= radius) {
+          resolve({ ok: true, dist });
+        } else {
+          resolve({ ok: false, dist, error: `본인 소속 지점에서만 출퇴근이 가능합니다 (현재 거리: ${dist}m)` });
+        }
+      },
+      (err) => {
+        if (err.code === err.PERMISSION_DENIED) {
+          resolve({ ok: false, error: '위치 권한을 허용해주세요' });
+        } else {
+          resolve({ ok: false, error: '위치를 확인할 수 없습니다. 다시 시도해주세요' });
+        }
+      },
+      { enableHighAccuracy: true, timeout: 10000 }
+    );
+  });
+}
+
 export default function WorkerHome() {
   const navigate = useNavigate();
   const currentUser = useAuthStore((s) => s.currentUser);
@@ -36,11 +73,10 @@ export default function WorkerHome() {
 
   const [message, setMessage] = useState('');
   const [msgType, setMsgType] = useState('info'); // 'info' | 'error' | 'warn'
-  const [gpsStatus, setGpsStatus] = useState('checking'); // 'checking' | 'in_range' | 'out_range' | 'no_gps'
+  const [gpsLoading, setGpsLoading] = useState(false); // GPS 조회 중 버튼 중복 방지
 
   const today = new Date().toISOString().split('T')[0];
 
-  // 현재 로그인한 직원의 최신 정보 (DB에서)
   const myEmployee = useMemo(
     () => employees.find((e) => e.id === currentUser?.id),
     [employees, currentUser]
@@ -69,36 +105,10 @@ export default function WorkerHome() {
   // 직원에게 branch 코드가 설정됐지만 branches 테이블에 없는 경우
   const branchNotRegistered = myEmployee?.branch && !myBranch;
 
-  // GPS 위치 확인: 본인 지점만 허용
-  useEffect(() => {
-    // 지점 미등록 → 출퇴근 차단 (관리자에게 문의)
-    if (branchNotRegistered) {
-      setGpsStatus('out_range');
-      return;
-    }
-    if (!navigator.geolocation) {
-      setGpsStatus('no_gps');
-      return;
-    }
-    if (!myBranch?.latitude) {
-      // 지점 GPS 미설정 → 제한 없이 허용
-      setGpsStatus('in_range');
-      return;
-    }
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        const dist = getDistance(pos.coords.latitude, pos.coords.longitude, myBranch.latitude, myBranch.longitude);
-        setGpsStatus(dist <= (myBranch.radiusMeters || 200) ? 'in_range' : 'out_range');
-      },
-      () => setGpsStatus('in_range'), // GPS 오류 시 제한 없이 허용
-      { enableHighAccuracy: true }
-    );
-  }, [myBranch, branchNotRegistered]);
-
   const showMsg = (text, type = 'info') => {
     setMessage(text);
     setMsgType(type);
-    setTimeout(() => setMessage(''), type === 'error' ? 4000 : 2500);
+    setTimeout(() => setMessage(''), type === 'error' ? 5000 : 2500);
   };
 
   const formatTime = (iso) => {
@@ -107,57 +117,55 @@ export default function WorkerHome() {
     return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
   };
 
-  const handleCheckIn = async () => {
-    if (gpsStatus !== 'in_range') {
-      if (gpsStatus === 'checking') {
-        showMsg('GPS 위치 확인 중입니다. 잠시 후 다시 시도하세요.', 'warn');
-      } else if (branchNotRegistered) {
-        showMsg('근무 지점이 등록되지 않았습니다. 관리자에게 지점 설정을 요청하세요.', 'error');
-      } else {
-        showMsg('본인 소속 지점에서만 출근 가능합니다.', 'error');
-      }
+  // 클릭 시점 GPS 검증 후 처리 공통 로직
+  const withGpsVerify = async (action) => {
+    if (gpsLoading) return;
+
+    // 지점 미등록: 즉시 차단
+    if (branchNotRegistered) {
+      showMsg('근무 지점이 등록되지 않았습니다. 관리자에게 지점 설정을 요청하세요.', 'error');
       return;
     }
 
-    // 출근 시간 검증: 기준 시간보다 늦으면 지각
-    const hhmm = nowHHMM();
-    const startTime = myEmployee?.workStartTime;
-    const isLate = startTime ? hhmm > startTime : false;
+    setGpsLoading(true);
+    showMsg('위치 확인 중...', 'info');
 
-    const ok = await checkIn(currentUser.id, null, isLate ? 'late' : 'working');
-    if (ok) {
-      showMsg(isLate ? `지각 출근 처리되었습니다 (기준: ${startTime})` : '출근 처리되었습니다', isLate ? 'warn' : 'info');
-    } else {
-      showMsg('이미 출근 처리되었습니다', 'error');
+    const result = await verifyGpsNow(myBranch);
+    setGpsLoading(false);
+
+    if (!result.ok) {
+      showMsg(result.error, 'error');
+      return;
     }
+
+    await action();
   };
 
-  const handleCheckOut = async () => {
-    if (gpsStatus !== 'in_range') {
-      if (gpsStatus === 'checking') {
-        showMsg('GPS 위치 확인 중입니다. 잠시 후 다시 시도하세요.', 'warn');
-      } else if (branchNotRegistered) {
-        showMsg('근무 지점이 등록되지 않았습니다. 관리자에게 지점 설정을 요청하세요.', 'error');
-      } else {
-        showMsg('본인 소속 지점에서만 퇴근 가능합니다.', 'error');
-      }
-      return;
-    }
-    // 퇴근 시간 검증: 기준 시간 이전이면 차단
-    const hhmm = nowHHMM();
-    const endTime = myEmployee?.workEndTime;
-    if (endTime && hhmm < endTime) {
-      showMsg(`아직 퇴근 시간 전입니다 (${endTime} 이후 퇴근 가능)`, 'error');
-      return;
-    }
-    await checkOut(currentUser.id);
-    showMsg('퇴근 처리되었습니다');
-  };
+  const handleCheckIn = () =>
+    withGpsVerify(async () => {
+      const hhmm = nowHHMM();
+      const startTime = myEmployee?.workStartTime;
+      const isLate = startTime ? hhmm > startTime : false;
 
-  // GPS가 명확히 'in_range'일 때만 허용 ('checking'·'out_range'·'no_gps' 모두 차단)
-  const gpsOk = gpsStatus === 'in_range';
-  const canCheckIn = gpsOk && !todayRecord;
-  const canCheckOut = gpsOk && isWorking;
+      const ok = await checkIn(currentUser.id, null, isLate ? 'late' : 'working');
+      if (ok) {
+        showMsg(isLate ? `지각 출근 처리되었습니다 (기준: ${startTime})` : '출근 처리되었습니다', isLate ? 'warn' : 'info');
+      } else {
+        showMsg('이미 출근 처리되었습니다', 'error');
+      }
+    });
+
+  const handleCheckOut = () =>
+    withGpsVerify(async () => {
+      const hhmm = nowHHMM();
+      const endTime = myEmployee?.workEndTime;
+      if (endTime && hhmm < endTime) {
+        showMsg(`아직 퇴근 시간 전입니다 (${endTime} 이후 퇴근 가능)`, 'error');
+        return;
+      }
+      await checkOut(currentUser.id);
+      showMsg('퇴근 처리되었습니다');
+    });
 
   const msgStyle = {
     info:  'bg-blue-50 text-blue-700 border border-blue-100',
@@ -175,23 +183,16 @@ export default function WorkerHome() {
         )}
       </div>
 
-      {message && (
-        <div className={`px-4 py-3 rounded-2xl text-sm mb-4 ${msgStyle}`}>
-          {message}
+      {/* 지점 미등록 경고 (관리자에게 문의 필요) */}
+      {branchNotRegistered && (
+        <div className="bg-amber-50 border border-amber-200 text-amber-700 text-sm px-4 py-3 rounded-xl mb-4 text-center">
+          근무 지점이 지점 설정에 등록되지 않았습니다. 관리자에게 지점 설정을 요청하세요.
         </div>
       )}
 
-      {/* GPS 상태 배너 */}
-      {gpsStatus === 'checking' && (
-        <div className="bg-gray-50 border border-gray-200 text-gray-500 text-sm px-4 py-3 rounded-xl mb-4 text-center">
-          GPS 위치 확인 중입니다...
-        </div>
-      )}
-      {gpsStatus === 'out_range' && (
-        <div className="bg-amber-50 border border-amber-200 text-amber-700 text-sm px-4 py-3 rounded-xl mb-4 text-center">
-          {branchNotRegistered
-            ? '근무 지점이 지점 설정에 등록되지 않았습니다. 관리자에게 지점 설정을 요청하세요.'
-            : `본인 소속 지점(${branchDisplayName})에서만 출퇴근 가능합니다`}
+      {message && (
+        <div className={`px-4 py-3 rounded-2xl text-sm mb-4 ${msgStyle}`}>
+          {message}
         </div>
       )}
 
@@ -209,8 +210,8 @@ export default function WorkerHome() {
                 <span className="ml-2 text-gray-300">· 퇴근 기준 {myEmployee.workEndTime}</span>
               )}
             </div>
-            <Button size="xl" variant="danger" onClick={handleCheckOut} disabled={!canCheckOut}>
-              퇴근하기
+            <Button size="xl" variant="danger" onClick={handleCheckOut} disabled={gpsLoading}>
+              {gpsLoading ? '위치 확인 중...' : '퇴근하기'}
             </Button>
           </>
         ) : hasCheckedOut ? (
@@ -243,8 +244,8 @@ export default function WorkerHome() {
                 출근 기준 {myEmployee.workStartTime} · 퇴근 기준 {myEmployee.workEndTime || '—'}
               </div>
             )}
-            <Button size="xl" onClick={handleCheckIn} disabled={!canCheckIn}>
-              출근하기
+            <Button size="xl" onClick={handleCheckIn} disabled={gpsLoading || !!todayRecord}>
+              {gpsLoading ? '위치 확인 중...' : '출근하기'}
             </Button>
           </>
         )}
