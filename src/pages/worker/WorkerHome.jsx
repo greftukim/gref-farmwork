@@ -1,12 +1,16 @@
-import { useState, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useState, useMemo, useRef } from 'react';
 import useAuthStore from '../../stores/authStore';
 import useAttendanceStore from '../../stores/attendanceStore';
 import useTaskStore from '../../stores/taskStore';
 import useEmployeeStore from '../../stores/employeeStore';
 import useBranchStore from '../../stores/branchStore';
+import useLeaveStore from '../../stores/leaveStore';
+import useCallStore from '../../stores/callStore';
+import useIssueStore from '../../stores/issueStore';
+import useZoneStore from '../../stores/zoneStore';
 import Card from '../../components/common/Card';
 import Button from '../../components/common/Button';
+import BottomSheet from '../../components/common/BottomSheet';
 
 // 현재 시각을 HH:MM 문자열로 반환
 function nowHHMM() {
@@ -24,14 +28,8 @@ function getDistance(lat1, lon1, lat2, lon2) {
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
-/**
- * 클릭 시점에 GPS를 새로 가져와 지점 범위 검증
- * @returns {Promise<{ ok: boolean, dist?: number, error?: string }>}
- */
 function verifyGpsNow(myBranch) {
-  // 지점 GPS 미설정 → 제한 없음
   if (!myBranch?.latitude) return Promise.resolve({ ok: true });
-
   return new Promise((resolve) => {
     if (!navigator.geolocation) {
       resolve({ ok: false, error: '위치 권한을 허용해주세요' });
@@ -61,8 +59,14 @@ function verifyGpsNow(myBranch) {
   });
 }
 
+const callTypes = ['긴급호출', '질문확인', '장비이상'];
+
+const issueCategories = [
+  { key: '작물이상', label: '작물 이상', desc: '병해충, 생육 불량 등', icon: '🌿' },
+  { key: '설비이상', label: '설비 이상', desc: '장비 고장, 시설 불량 등', icon: '⚙️' },
+];
+
 export default function WorkerHome() {
-  const navigate = useNavigate();
   const currentUser = useAuthStore((s) => s.currentUser);
   const records = useAttendanceStore((s) => s.records);
   const checkIn = useAttendanceStore((s) => s.checkIn);
@@ -70,10 +74,30 @@ export default function WorkerHome() {
   const tasks = useTaskStore((s) => s.tasks);
   const employees = useEmployeeStore((s) => s.employees);
   const branches = useBranchStore((s) => s.branches);
+  const balances = useLeaveStore((s) => s.balances);
+  const addCall = useCallStore((s) => s.addCall);
+  const addIssue = useIssueStore((s) => s.addIssue);
+  const zones = useZoneStore((s) => s.zones);
 
   const [message, setMessage] = useState('');
-  const [msgType, setMsgType] = useState('info'); // 'info' | 'error' | 'warn'
-  const [gpsLoading, setGpsLoading] = useState(false); // GPS 조회 중 버튼 중복 방지
+  const [msgType, setMsgType] = useState('info');
+  const [gpsLoading, setGpsLoading] = useState(false);
+
+  // FAB 바텀시트
+  const [showFab, setShowFab] = useState(false);
+  const [fabTab, setFabTab] = useState('call');
+
+  // 재배팀 호출 폼
+  const [callForm, setCallForm] = useState({ type: '긴급호출', memo: '' });
+  const [callSubmitting, setCallSubmitting] = useState(false);
+
+  // 이상 신고 폼
+  const [issueCategory, setIssueCategory] = useState('');
+  const [issueForm, setIssueForm] = useState({ zoneId: '', comment: '' });
+  const [issuePhoto, setIssuePhoto] = useState(null);
+  const [issueSubmitting, setIssueSubmitting] = useState(false);
+  const cameraInputRef = useRef(null);
+  const galleryInputRef = useRef(null);
 
   const today = new Date().toISOString().split('T')[0];
 
@@ -92,17 +116,19 @@ export default function WorkerHome() {
     [tasks, currentUser, today]
   );
 
+  const myBalance = useMemo(
+    () => balances.find((b) => b.employeeId === currentUser?.id && b.year === new Date().getFullYear()),
+    [balances, currentUser]
+  );
+
   const isWorking = todayRecord && !todayRecord.checkOut;
   const hasCheckedOut = todayRecord && todayRecord.checkOut;
 
-  // 소속 지점 (branches 테이블에서 code로 매칭)
   const myBranch = useMemo(
     () => branches.find((b) => b.code === myEmployee?.branch),
     [branches, myEmployee]
   );
   const branchDisplayName = myBranch?.name || myEmployee?.branch || '';
-
-  // 직원에게 branch 코드가 설정됐지만 branches 테이블에 없는 경우
   const branchNotRegistered = myEmployee?.branch && !myBranch;
 
   const showMsg = (text, type = 'info') => {
@@ -117,27 +143,20 @@ export default function WorkerHome() {
     return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
   };
 
-  // 클릭 시점 GPS 검증 후 처리 공통 로직
   const withGpsVerify = async (action) => {
     if (gpsLoading) return;
-
-    // 지점 미등록: 즉시 차단
     if (branchNotRegistered) {
       showMsg('근무 지점이 등록되지 않았습니다. 관리자에게 지점 설정을 요청하세요.', 'error');
       return;
     }
-
     setGpsLoading(true);
     showMsg('위치 확인 중...', 'info');
-
     const result = await verifyGpsNow(myBranch);
     setGpsLoading(false);
-
     if (!result.ok) {
       showMsg(result.error, 'error');
       return;
     }
-
     await action();
   };
 
@@ -146,7 +165,6 @@ export default function WorkerHome() {
       const hhmm = nowHHMM();
       const startTime = myEmployee?.workStartTime;
       const isLate = startTime ? hhmm > startTime : false;
-
       const ok = await checkIn(currentUser.id, null, isLate ? 'late' : 'working');
       if (ok) {
         showMsg(isLate ? `지각 출근 처리되었습니다 (기준: ${startTime})` : '출근 처리되었습니다', isLate ? 'warn' : 'info');
@@ -167,6 +185,47 @@ export default function WorkerHome() {
       showMsg('퇴근 처리되었습니다');
     });
 
+  const openFab = () => {
+    setFabTab('call');
+    setCallForm({ type: '긴급호출', memo: '' });
+    setIssueCategory('');
+    setIssueForm({ zoneId: '', comment: '' });
+    setIssuePhoto(null);
+    setShowFab(true);
+  };
+
+  const handleCallSubmit = async () => {
+    if (callSubmitting) return;
+    setCallSubmitting(true);
+    await addCall({ workerId: currentUser.id, type: callForm.type, memo: callForm.memo });
+    setCallSubmitting(false);
+    setShowFab(false);
+    showMsg('호출이 전송되었습니다', 'info');
+  };
+
+  const handlePhotoChange = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const url = URL.createObjectURL(file);
+    setIssuePhoto({ file, url });
+  };
+
+  const handleIssueSubmit = async () => {
+    if (!issueCategory || !issueForm.comment.trim()) return;
+    if (issueSubmitting) return;
+    setIssueSubmitting(true);
+    await addIssue({
+      workerId: currentUser.id,
+      zoneId: issueForm.zoneId || null,
+      type: issueCategory,
+      comment: issueForm.comment,
+      photo: null,
+    });
+    setIssueSubmitting(false);
+    setShowFab(false);
+    showMsg('이상 신고가 접수되었습니다', 'info');
+  };
+
   const msgStyle = {
     info:  'bg-blue-50 text-blue-700 border border-blue-100',
     warn:  'bg-amber-50 text-amber-700 border border-amber-100',
@@ -183,7 +242,6 @@ export default function WorkerHome() {
         )}
       </div>
 
-      {/* 지점 미등록 경고 (관리자에게 문의 필요) */}
       {branchNotRegistered && (
         <div className="bg-amber-50 border border-amber-200 text-amber-700 text-sm px-4 py-3 rounded-xl mb-4 text-center">
           근무 지점이 지점 설정에 등록되지 않았습니다. 관리자에게 지점 설정을 요청하세요.
@@ -274,9 +332,30 @@ export default function WorkerHome() {
         )}
       </Card>
 
-      {/* 긴급 호출 FAB */}
+      {/* 잔여 연차 */}
+      {myBalance && (
+        <Card accent="gray" className="p-4 mb-4">
+          <div className="text-sm font-medium text-gray-700 mb-2">잔여 연차</div>
+          <div className="flex gap-6">
+            <div>
+              <span className="text-xs text-gray-400">총 </span>
+              <span className="font-bold text-gray-900">{myBalance.totalDays}일</span>
+            </div>
+            <div>
+              <span className="text-xs text-gray-400">사용 </span>
+              <span className="font-bold text-gray-900">{myBalance.usedDays}일</span>
+            </div>
+            <div>
+              <span className="text-xs text-gray-400">잔여 </span>
+              <span className="font-bold text-blue-600">{myBalance.totalDays - myBalance.usedDays}일</span>
+            </div>
+          </div>
+        </Card>
+      )}
+
+      {/* 긴급 호출 / 이상 신고 FAB */}
       <button
-        onClick={() => navigate('/worker/emergency')}
+        onClick={openFab}
         className="fixed bottom-20 right-4 w-14 h-14 rounded-full bg-red-500 text-white
           flex items-center justify-center shadow-lg shadow-red-500/30
           active:scale-95 transition-all z-30"
@@ -286,6 +365,173 @@ export default function WorkerHome() {
             d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.34 16.5c-.77.833.192 2.5 1.732 2.5z" />
         </svg>
       </button>
+
+      {/* 긴급 호출 / 이상 신고 바텀시트 */}
+      <BottomSheet isOpen={showFab} onClose={() => setShowFab(false)} title="긴급 호출 / 이상 신고">
+        {/* 탭 */}
+        <div className="flex gap-2 mb-4">
+          <button
+            onClick={() => setFabTab('call')}
+            className={`flex-1 py-2.5 rounded-xl text-sm font-semibold transition-colors ${
+              fabTab === 'call' ? 'bg-red-500 text-white' : 'bg-gray-100 text-gray-600'
+            }`}
+          >
+            재배팀 호출
+          </button>
+          <button
+            onClick={() => setFabTab('issue')}
+            className={`flex-1 py-2.5 rounded-xl text-sm font-semibold transition-colors ${
+              fabTab === 'issue' ? 'bg-red-500 text-white' : 'bg-gray-100 text-gray-600'
+            }`}
+          >
+            이상 신고
+          </button>
+        </div>
+
+        {/* 재배팀 호출 */}
+        {fabTab === 'call' && (
+          <div className="space-y-3">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">호출 유형</label>
+              <div className="flex flex-wrap gap-2">
+                {callTypes.map((t) => (
+                  <button
+                    key={t}
+                    onClick={() => setCallForm({ ...callForm, type: t })}
+                    className={`px-3 py-2 rounded-lg text-sm font-medium min-h-[44px] transition-colors ${
+                      callForm.type === t ? 'bg-red-500 text-white' : 'bg-gray-100 text-gray-600'
+                    }`}
+                  >
+                    {t}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">메모 (선택)</label>
+              <textarea
+                value={callForm.memo}
+                onChange={(e) => setCallForm({ ...callForm, memo: e.target.value })}
+                rows={2}
+                className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm"
+                placeholder="상황 설명"
+              />
+            </div>
+            <Button
+              size="lg"
+              variant="danger"
+              className="w-full"
+              onClick={handleCallSubmit}
+              disabled={callSubmitting}
+            >
+              {callSubmitting ? '전송 중...' : '호출 전송'}
+            </Button>
+          </div>
+        )}
+
+        {/* 이상 신고 */}
+        {fabTab === 'issue' && (
+          <div className="space-y-3">
+            {/* 신고 유형 */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">신고 유형</label>
+              <div className="grid grid-cols-2 gap-2">
+                {issueCategories.map((cat) => (
+                  <button
+                    key={cat.key}
+                    onClick={() => setIssueCategory(cat.key)}
+                    className={`p-3 rounded-xl border-2 text-left transition-colors ${
+                      issueCategory === cat.key
+                        ? 'border-red-400 bg-red-50'
+                        : 'border-gray-200 bg-white'
+                    }`}
+                  >
+                    <div className="text-lg mb-1">{cat.icon}</div>
+                    <div className="text-sm font-semibold text-gray-800">{cat.label}</div>
+                    <div className="text-xs text-gray-400">{cat.desc}</div>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* 구역 (선택) */}
+            {zones.length > 0 && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">구역 (선택)</label>
+                <select
+                  value={issueForm.zoneId}
+                  onChange={(e) => setIssueForm({ ...issueForm, zoneId: e.target.value })}
+                  className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm min-h-[44px]"
+                >
+                  <option value="">선택 안 함</option>
+                  {zones.map((z) => <option key={z.id} value={z.id}>{z.name}</option>)}
+                </select>
+              </div>
+            )}
+
+            {/* 사진 */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">사진 (선택)</label>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => cameraInputRef.current?.click()}
+                  className="flex-1 flex items-center justify-center gap-1.5 border border-gray-200 rounded-lg py-2.5 text-sm text-gray-600 bg-white active:bg-gray-50"
+                >
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+                  </svg>
+                  카메라
+                </button>
+                <button
+                  onClick={() => galleryInputRef.current?.click()}
+                  className="flex-1 flex items-center justify-center gap-1.5 border border-gray-200 rounded-lg py-2.5 text-sm text-gray-600 bg-white active:bg-gray-50"
+                >
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                  </svg>
+                  갤러리
+                </button>
+              </div>
+              <input ref={cameraInputRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={handlePhotoChange} />
+              <input ref={galleryInputRef} type="file" accept="image/*" className="hidden" onChange={handlePhotoChange} />
+              {issuePhoto && (
+                <div className="relative mt-2">
+                  <img src={issuePhoto.url} alt="첨부 사진" className="w-full h-36 object-cover rounded-lg" />
+                  <button
+                    onClick={() => setIssuePhoto(null)}
+                    className="absolute top-1 right-1 w-6 h-6 bg-black/50 rounded-full text-white flex items-center justify-center text-xs"
+                  >
+                    ✕
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* 상세 내용 */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">상세 내용</label>
+              <textarea
+                value={issueForm.comment}
+                onChange={(e) => setIssueForm({ ...issueForm, comment: e.target.value })}
+                rows={3}
+                className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm"
+                placeholder="이상 증상을 상세히 기록해주세요"
+              />
+            </div>
+
+            <Button
+              size="lg"
+              variant="danger"
+              className="w-full"
+              onClick={handleIssueSubmit}
+              disabled={issueSubmitting || !issueCategory || !issueForm.comment.trim()}
+            >
+              {issueSubmitting ? '접수 중...' : '신고 접수'}
+            </Button>
+          </div>
+        )}
+      </BottomSheet>
     </div>
   );
 }
