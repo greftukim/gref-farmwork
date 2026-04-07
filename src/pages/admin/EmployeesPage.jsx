@@ -1,16 +1,9 @@
 import { useState, useMemo } from 'react';
 import useEmployeeStore from '../../stores/employeeStore';
+import useBranchStore from '../../stores/branchStore';
 import Button from '../../components/common/Button';
 import Card from '../../components/common/Card';
 import Modal from '../../components/common/Modal';
-
-const BRANCH_OPTIONS = [
-  { value: '', label: '선택 안 함' },
-  { value: 'busan', label: '부산LAB' },
-  { value: 'jinju', label: '진주' },
-  { value: 'hadong', label: '하동' },
-];
-const BRANCH_LABEL = { busan: '부산LAB', jinju: '진주', hadong: '하동' };
 
 const emptyForm = {
   name: '',
@@ -26,7 +19,7 @@ const emptyForm = {
   workEndTime: '',
 };
 
-function EmployeeForm({ form, setForm }) {
+function EmployeeForm({ form, setForm, branchOptions }) {
   const field = (label, name, type = 'text', options = null) => (
     <div className="mb-3">
       <label className="block text-sm font-medium text-gray-700 mb-1">{label}</label>
@@ -69,7 +62,7 @@ function EmployeeForm({ form, setForm }) {
         { value: '관리', label: '관리' },
         { value: '기타', label: '기타' },
       ])}
-      {field('근무 지점', 'branch', 'text', BRANCH_OPTIONS)}
+      {field('근무 지점', 'branch', 'text', branchOptions)}
       <div className="grid grid-cols-2 gap-3 mb-3">
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">출근 시간</label>
@@ -103,6 +96,18 @@ export default function EmployeesPage() {
   const addEmployee = useEmployeeStore((s) => s.addEmployee);
   const updateEmployee = useEmployeeStore((s) => s.updateEmployee);
   const toggleActive = useEmployeeStore((s) => s.toggleActive);
+  const branches = useBranchStore((s) => s.branches);
+
+  // branches 테이블 기반 드롭다운 옵션
+  const branchOptions = useMemo(() => [
+    { value: '', label: '선택 안 함' },
+    ...branches.map((b) => ({ value: b.code, label: b.name })),
+  ], [branches]);
+
+  // 지점 코드 → 이름 매핑
+  const branchNameMap = useMemo(() =>
+    Object.fromEntries(branches.map((b) => [b.code, b.name])),
+  [branches]);
 
   const [showModal, setShowModal] = useState(false);
   const [editTarget, setEditTarget] = useState(null);
@@ -205,7 +210,7 @@ export default function EmployeesPage() {
                   <td className="px-4 py-3">
                     {emp.branch ? (
                       <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-700">
-                        {BRANCH_LABEL[emp.branch] || emp.branch}
+                        {branchNameMap[emp.branch] || emp.branch}
                       </span>
                     ) : (
                       <span className="text-gray-400">—</span>
@@ -247,7 +252,7 @@ export default function EmployeesPage() {
         onClose={() => setShowModal(false)}
         title={editTarget ? '직원 수정' : '직원 등록'}
       >
-        <EmployeeForm form={form} setForm={setForm} />
+        <EmployeeForm form={form} setForm={setForm} branchOptions={branchOptions} />
         <div className="flex gap-2 mt-4">
           <Button className="flex-1" onClick={handleSave}>
             {editTarget ? '수정' : '등록'}

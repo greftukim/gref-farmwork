@@ -8,8 +8,6 @@ import useBranchStore from '../../stores/branchStore';
 import Card from '../../components/common/Card';
 import Button from '../../components/common/Button';
 
-const BRANCH_LABEL = { busan: '부산LAB', jinju: '진주', hadong: '하동' };
-
 // 현재 시각을 HH:MM 문자열로 반환
 function nowHHMM() {
   const d = new Date();
@@ -66,10 +64,18 @@ export default function WorkerHome() {
     () => branches.find((b) => b.code === myEmployee?.branch),
     [branches, myEmployee]
   );
-  const branchDisplayName = myEmployee?.branch ? (BRANCH_LABEL[myEmployee.branch] || myEmployee.branch) : '';
+  const branchDisplayName = myBranch?.name || myEmployee?.branch || '';
+
+  // 직원에게 branch 코드가 설정됐지만 branches 테이블에 없는 경우
+  const branchNotRegistered = myEmployee?.branch && !myBranch;
 
   // GPS 위치 확인: 본인 지점만 허용
   useEffect(() => {
+    // 지점 미등록 → 출퇴근 차단 (관리자에게 문의)
+    if (branchNotRegistered) {
+      setGpsStatus('out_range');
+      return;
+    }
     if (!navigator.geolocation) {
       setGpsStatus('no_gps');
       return;
@@ -87,7 +93,7 @@ export default function WorkerHome() {
       () => setGpsStatus('in_range'), // GPS 오류 시 제한 없이 허용
       { enableHighAccuracy: true }
     );
-  }, [myBranch]);
+  }, [myBranch, branchNotRegistered]);
 
   const showMsg = (text, type = 'info') => {
     setMessage(text);
@@ -102,7 +108,15 @@ export default function WorkerHome() {
   };
 
   const handleCheckIn = async () => {
-    if (gpsStatus === 'out_range') return;
+    if (gpsStatus === 'out_range') {
+      showMsg(
+        branchNotRegistered
+          ? '근무 지점이 등록되지 않았습니다. 관리자에게 지점 설정을 요청하세요.'
+          : '본인 소속 지점에서만 출근 가능합니다',
+        'error'
+      );
+      return;
+    }
 
     // 출근 시간 검증: 기준 시간보다 늦으면 지각
     const hhmm = nowHHMM();
@@ -119,7 +133,12 @@ export default function WorkerHome() {
 
   const handleCheckOut = async () => {
     if (gpsStatus === 'out_range') {
-      showMsg('본인 소속 지점에서만 퇴근 가능합니다', 'error');
+      showMsg(
+        branchNotRegistered
+          ? '근무 지점이 등록되지 않았습니다. 관리자에게 지점 설정을 요청하세요.'
+          : '본인 소속 지점에서만 퇴근 가능합니다',
+        'error'
+      );
       return;
     }
     // 퇴근 시간 검증: 기준 시간 이전이면 차단
@@ -157,10 +176,12 @@ export default function WorkerHome() {
         </div>
       )}
 
-      {/* GPS 지점 범위 밖 경고 */}
+      {/* GPS 지점 범위 밖 / 미등록 경고 */}
       {gpsStatus === 'out_range' && (
         <div className="bg-amber-50 border border-amber-200 text-amber-700 text-sm px-4 py-3 rounded-xl mb-4 text-center">
-          본인 소속 지점({branchDisplayName})에서만 출퇴근 가능합니다
+          {branchNotRegistered
+            ? '근무 지점이 지점 설정에 등록되지 않았습니다. 관리자에게 지점 설정을 요청하세요.'
+            : `본인 소속 지점(${branchDisplayName})에서만 출퇴근 가능합니다`}
         </div>
       )}
 
