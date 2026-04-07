@@ -108,13 +108,14 @@ export default function WorkerHome() {
   };
 
   const handleCheckIn = async () => {
-    if (gpsStatus === 'out_range') {
-      showMsg(
-        branchNotRegistered
-          ? '근무 지점이 등록되지 않았습니다. 관리자에게 지점 설정을 요청하세요.'
-          : '본인 소속 지점에서만 출근 가능합니다',
-        'error'
-      );
+    if (gpsStatus !== 'in_range') {
+      if (gpsStatus === 'checking') {
+        showMsg('GPS 위치 확인 중입니다. 잠시 후 다시 시도하세요.', 'warn');
+      } else if (branchNotRegistered) {
+        showMsg('근무 지점이 등록되지 않았습니다. 관리자에게 지점 설정을 요청하세요.', 'error');
+      } else {
+        showMsg('본인 소속 지점에서만 출근 가능합니다.', 'error');
+      }
       return;
     }
 
@@ -132,13 +133,14 @@ export default function WorkerHome() {
   };
 
   const handleCheckOut = async () => {
-    if (gpsStatus === 'out_range') {
-      showMsg(
-        branchNotRegistered
-          ? '근무 지점이 등록되지 않았습니다. 관리자에게 지점 설정을 요청하세요.'
-          : '본인 소속 지점에서만 퇴근 가능합니다',
-        'error'
-      );
+    if (gpsStatus !== 'in_range') {
+      if (gpsStatus === 'checking') {
+        showMsg('GPS 위치 확인 중입니다. 잠시 후 다시 시도하세요.', 'warn');
+      } else if (branchNotRegistered) {
+        showMsg('근무 지점이 등록되지 않았습니다. 관리자에게 지점 설정을 요청하세요.', 'error');
+      } else {
+        showMsg('본인 소속 지점에서만 퇴근 가능합니다.', 'error');
+      }
       return;
     }
     // 퇴근 시간 검증: 기준 시간 이전이면 차단
@@ -152,7 +154,10 @@ export default function WorkerHome() {
     showMsg('퇴근 처리되었습니다');
   };
 
-  const canCheckIn = gpsStatus !== 'out_range' && !todayRecord;
+  // GPS가 명확히 'in_range'일 때만 허용 ('checking'·'out_range'·'no_gps' 모두 차단)
+  const gpsOk = gpsStatus === 'in_range';
+  const canCheckIn = gpsOk && !todayRecord;
+  const canCheckOut = gpsOk && isWorking;
 
   const msgStyle = {
     info:  'bg-blue-50 text-blue-700 border border-blue-100',
@@ -176,7 +181,12 @@ export default function WorkerHome() {
         </div>
       )}
 
-      {/* GPS 지점 범위 밖 / 미등록 경고 */}
+      {/* GPS 상태 배너 */}
+      {gpsStatus === 'checking' && (
+        <div className="bg-gray-50 border border-gray-200 text-gray-500 text-sm px-4 py-3 rounded-xl mb-4 text-center">
+          GPS 위치 확인 중입니다...
+        </div>
+      )}
       {gpsStatus === 'out_range' && (
         <div className="bg-amber-50 border border-amber-200 text-amber-700 text-sm px-4 py-3 rounded-xl mb-4 text-center">
           {branchNotRegistered
@@ -199,7 +209,7 @@ export default function WorkerHome() {
                 <span className="ml-2 text-gray-300">· 퇴근 기준 {myEmployee.workEndTime}</span>
               )}
             </div>
-            <Button size="xl" variant="danger" onClick={handleCheckOut} disabled={gpsStatus === 'out_range'}>
+            <Button size="xl" variant="danger" onClick={handleCheckOut} disabled={!canCheckOut}>
               퇴근하기
             </Button>
           </>
