@@ -3,6 +3,8 @@ import useAttendanceStore from '../../stores/attendanceStore';
 import useEmployeeStore from '../../stores/employeeStore';
 import useAuthStore from '../../stores/authStore';
 import Card from '../../components/common/Card';
+import Button from '../../components/common/Button';
+import Modal from '../../components/common/Modal';
 
 const BRANCH_LABEL = { busan: '부산LAB', jinju: '진주', hadong: '하동' };
 const BRANCH_ORDER = ['busan', 'jinju', 'hadong', ''];
@@ -25,17 +27,47 @@ const STATUS_COLOR = {
   early_leave: 'bg-orange-100 text-orange-700',
 };
 
+/** 삭제 확인 모달 */
+function ConfirmModal({ isOpen, onClose, onConfirm, message, loading }) {
+  return (
+    <Modal isOpen={isOpen} onClose={onClose} title="삭제 확인">
+      <p className="text-gray-700 mb-6">{message}</p>
+      <div className="flex gap-2">
+        <Button className="flex-1" variant="danger" onClick={onConfirm} disabled={loading}>
+          {loading ? '삭제 중...' : '삭제'}
+        </Button>
+        <Button className="flex-1" variant="secondary" onClick={onClose} disabled={loading}>
+          취소
+        </Button>
+      </div>
+    </Modal>
+  );
+}
+
 export default function AttendancePage() {
   const records = useAttendanceStore((s) => s.records);
+  const deleteRecord = useAttendanceStore((s) => s.deleteRecord);
+  const deleteRecords = useAttendanceStore((s) => s.deleteRecords);
   const employees = useEmployeeStore((s) => s.employees);
   const updateEmployee = useEmployeeStore((s) => s.updateEmployee);
   const currentUser = useAuthStore((s) => s.currentUser);
 
+  const today = new Date().toISOString().split('T')[0];
+
   const [view, setView] = useState('daily');
-  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
+  const [selectedDate, setSelectedDate] = useState(today);
   const [selectedMonth, setSelectedMonth] = useState(new Date().toISOString().slice(0, 7));
 
-  // 관리팀은 작업 시간(근무 시간) 열 숨김
+  // 기록 초기화 탭 상태
+  const [resetStartDate, setResetStartDate] = useState(today);
+  const [resetEndDate, setResetEndDate] = useState(today);
+  const [resetEmployeeId, setResetEmployeeId] = useState('');
+
+  // 확인 모달
+  const [confirm, setConfirm] = useState(null); // { message, onConfirm }
+  const [deleting, setDeleting] = useState(false);
+
+  // 관리팀은 근무 시간 열 숨김
   const isManagement = currentUser?.team === 'management';
 
   const workers = useMemo(
@@ -43,7 +75,6 @@ export default function AttendancePage() {
     [employees]
   );
 
-  // 지점별 그룹
   const workersByBranch = useMemo(() => {
     const groups = {};
     workers.forEach((w) => {
@@ -76,39 +107,75 @@ export default function AttendancePage() {
     });
   }, [records, workers, selectedMonth]);
 
-  // 근무 시간 인라인 편집 상태
-  const [editTimes, setEditTimes] = useState({}); // { [empId]: { workStartTime, workEndTime } }
-
-  const getEditTime = (emp, key) =>
-    editTimes[emp.id]?.[key] ?? emp[key] ?? '';
-
-  const handleTimeChange = (empId, key, value) => {
-    setEditTimes((prev) => ({
-      ...prev,
-      [empId]: { ...(prev[empId] || {}), [key]: value },
-    }));
-  };
-
+  // 근무 시간 인라인 편집
+  const [editTimes, setEditTimes] = useState({});
+  const getEditTime = (emp, key) => editTimes[emp.id]?.[key] ?? emp[key] ?? '';
+  const handleTimeChange = (empId, key, value) =>
+    setEditTimes((prev) => ({ ...prev, [empId]: { ...(prev[empId] || {}), [key]: value } }));
   const handleTimeBlur = (emp, key) => {
     const value = editTimes[emp.id]?.[key];
-    if (value === undefined) return;
-    if (value === (emp[key] ?? '')) return; // unchanged
+    if (value === undefined || value === (emp[key] ?? '')) return;
     updateEmployee(emp.id, { [key]: value });
   };
 
   const orderedBranches = BRANCH_ORDER.filter((b) => workersByBranch[b]?.length > 0);
 
+  // 삭제 실행
+  const runDelete = (message, fn) => {
+    setConfirm({
+      message,
+      onConfirm: async () => {
+        setDeleting(true);
+        await fn();
+        setDeleting(false);
+        setConfirm(null);
+      },
+    });
+  };
+
+  const handleDeleteRecord = (id, label) =>
+    runDelete(`${label}의 출퇴근 기록을 삭제하시겠습니까?`, () => deleteRecord(id));
+
+  const handleDeleteDate = () =>
+    runDelete(`${selectedDate} 날짜의 출퇴근 기록 전체(${dailyRecords.length}건)를 삭제하시겠습니까?`,
+      () => deleteRecords({ startDate: selectedDate, endDate: selectedDate }));
+
+  const handleDeleteToday = () =>
+    runDelete(`오늘(${today}) 출퇴근 기록 전체를 삭제하시겠습니까?`,
+      () => deleteRecords({ startDate: today, endDate: today }));
+
+  const handleDeleteRange = () => {
+    if (!resetStartDate || !resetEndDate) return;
+    const workerName = resetEmployeeId ? workers.find((w) => w.id === resetEmployeeId)?.name : null;
+    const who = workerName ? `${workerName}의 ` : '전체 작업자의 ';
+    runDelete(`${who}${resetStartDate} ~ ${resetEndDate} 기간 출퇴근 기록을 삭제하시겠습니까?`,
+      () => deleteRecords({ startDate: resetStartDate, endDate: resetEndDate, employeeId: resetEmployeeId || undefined }));
+  };
+
+  const handleDeleteWorkerAll = () => {
+    if (!resetEmployeeId) return;
+    const name = workers.find((w) => w.id === resetEmployeeId)?.name || '';
+    runDelete(`${name}의 출퇴근 기록 전체를 삭제하시겠습니까?`,
+      () => deleteRecords({ employeeId: resetEmployeeId }));
+  };
+
   return (
     <div>
       <h2 className="text-xl font-heading font-semibold text-gray-900 mb-6">근무 관리</h2>
 
-      <div className="flex gap-2 mb-4">
-        {[{ key: 'daily', label: '일별 기록' }, { key: 'monthly', label: '월별 집계' }].map((v) => (
+      <div className="flex gap-2 mb-4 flex-wrap">
+        {[
+          { key: 'daily', label: '일별 기록' },
+          { key: 'monthly', label: '월별 집계' },
+          { key: 'reset', label: '기록 초기화' },
+        ].map((v) => (
           <button
             key={v.key}
             onClick={() => setView(v.key)}
             className={`px-3 py-1.5 rounded-lg text-sm font-medium min-h-[36px] transition-colors ${
-              view === v.key ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+              view === v.key
+                ? v.key === 'reset' ? 'bg-red-500 text-white' : 'bg-blue-600 text-white'
+                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
             }`}
           >{v.label}</button>
         ))}
@@ -117,10 +184,18 @@ export default function AttendancePage() {
       {/* ── 일별 기록 ── */}
       {view === 'daily' && (
         <>
-          <div className="mb-4">
+          <div className="flex items-center gap-3 mb-4 flex-wrap">
             <input type="date" value={selectedDate}
               onChange={(e) => setSelectedDate(e.target.value)}
               className="border border-gray-200 rounded-lg px-3 py-2 text-sm min-h-[44px]" />
+            {dailyRecords.length > 0 && (
+              <button
+                onClick={handleDeleteDate}
+                className="px-3 py-2 rounded-lg text-sm font-medium text-red-600 border border-red-200 hover:bg-red-50 min-h-[44px] transition-colors"
+              >
+                이 날짜 기록 전체 삭제 ({dailyRecords.length}건)
+              </button>
+            )}
           </div>
 
           <div className="space-y-6">
@@ -145,6 +220,7 @@ export default function AttendancePage() {
                             <th className="px-4 py-2.5 font-medium">퇴근</th>
                             {!isManagement && <th className="px-4 py-2.5 font-medium">근무시간</th>}
                             <th className="px-4 py-2.5 font-medium">상태</th>
+                            <th className="px-4 py-2.5 font-medium"></th>
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-100">
@@ -153,25 +229,19 @@ export default function AttendancePage() {
                             return (
                               <tr key={w.id}>
                                 <td className="px-4 py-2.5 font-medium text-gray-900">{w.name}</td>
-                                {/* 출근 기준 시간 인라인 편집 */}
                                 <td className="px-4 py-2.5">
-                                  <input
-                                    type="time"
+                                  <input type="time"
                                     value={getEditTime(w, 'workStartTime')}
                                     onChange={(e) => handleTimeChange(w.id, 'workStartTime', e.target.value)}
                                     onBlur={() => handleTimeBlur(w, 'workStartTime')}
-                                    className="border border-gray-200 rounded px-2 py-1 text-xs w-24"
-                                  />
+                                    className="border border-gray-200 rounded px-2 py-1 text-xs w-24" />
                                 </td>
-                                {/* 퇴근 기준 시간 인라인 편집 */}
                                 <td className="px-4 py-2.5">
-                                  <input
-                                    type="time"
+                                  <input type="time"
                                     value={getEditTime(w, 'workEndTime')}
                                     onChange={(e) => handleTimeChange(w.id, 'workEndTime', e.target.value)}
                                     onBlur={() => handleTimeBlur(w, 'workEndTime')}
-                                    className="border border-gray-200 rounded px-2 py-1 text-xs w-24"
-                                  />
+                                    className="border border-gray-200 rounded px-2 py-1 text-xs w-24" />
                                 </td>
                                 <td className="px-4 py-2.5 text-gray-600">{rec ? formatTime(rec.checkIn) : '—'}</td>
                                 <td className="px-4 py-2.5 text-gray-600">{rec ? formatTime(rec.checkOut) : '—'}</td>
@@ -185,6 +255,16 @@ export default function AttendancePage() {
                                     </span>
                                   ) : (
                                     <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-400">미출근</span>
+                                  )}
+                                </td>
+                                <td className="px-4 py-2.5">
+                                  {rec && (
+                                    <button
+                                      onClick={() => handleDeleteRecord(rec.id, w.name)}
+                                      className="px-2 py-1 text-xs text-red-500 hover:text-red-700 hover:bg-red-50 rounded transition-colors"
+                                    >
+                                      삭제
+                                    </button>
                                   )}
                                 </td>
                               </tr>
@@ -272,6 +352,92 @@ export default function AttendancePage() {
           </div>
         </>
       )}
+
+      {/* ── 기록 초기화 ── */}
+      {view === 'reset' && (
+        <div className="space-y-4">
+          <div className="bg-red-50 border border-red-100 rounded-xl px-4 py-3 text-sm text-red-700">
+            삭제된 기록은 복구할 수 없습니다. 테스트 데이터 정리 용도로만 사용하세요.
+          </div>
+
+          {/* 오늘 기록 초기화 */}
+          <Card accent="red" className="p-5">
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="font-medium text-gray-900 mb-0.5">오늘 기록 전체 초기화</div>
+                <div className="text-xs text-gray-400">{today} · {records.filter((r) => r.date === today).length}건</div>
+              </div>
+              <button
+                onClick={handleDeleteToday}
+                className="px-4 py-2 bg-red-500 text-white text-sm font-medium rounded-lg hover:bg-red-600 transition-colors min-h-[44px]"
+              >
+                초기화
+              </button>
+            </div>
+          </Card>
+
+          {/* 날짜 범위 + 작업자별 초기화 */}
+          <Card accent="gray" className="p-5">
+            <div className="font-medium text-gray-900 mb-4">날짜 범위 / 작업자별 초기화</div>
+
+            <div className="grid grid-cols-2 gap-3 mb-3">
+              <div>
+                <label className="block text-xs font-medium text-gray-500 mb-1">시작일</label>
+                <input type="date" value={resetStartDate}
+                  onChange={(e) => setResetStartDate(e.target.value)}
+                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm min-h-[44px]" />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-500 mb-1">종료일</label>
+                <input type="date" value={resetEndDate}
+                  onChange={(e) => setResetEndDate(e.target.value)}
+                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm min-h-[44px]" />
+              </div>
+            </div>
+
+            <div className="mb-4">
+              <label className="block text-xs font-medium text-gray-500 mb-1">작업자 (선택 안 하면 전체)</label>
+              <select
+                value={resetEmployeeId}
+                onChange={(e) => setResetEmployeeId(e.target.value)}
+                className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm min-h-[44px]"
+              >
+                <option value="">전체 작업자</option>
+                {workers.map((w) => (
+                  <option key={w.id} value={w.id}>{w.name}</option>
+                ))}
+              </select>
+            </div>
+
+            <div className="flex gap-2">
+              <button
+                onClick={handleDeleteRange}
+                disabled={!resetStartDate || !resetEndDate}
+                className="flex-1 px-4 py-2.5 bg-red-500 text-white text-sm font-medium rounded-lg hover:bg-red-600 disabled:bg-gray-200 disabled:text-gray-400 transition-colors min-h-[44px]"
+              >
+                기간 기록 삭제
+              </button>
+              {resetEmployeeId && (
+                <button
+                  onClick={handleDeleteWorkerAll}
+                  className="flex-1 px-4 py-2.5 border border-red-300 text-red-600 text-sm font-medium rounded-lg hover:bg-red-50 transition-colors min-h-[44px]"
+                >
+                  이 작업자 전체 삭제
+                </button>
+              )}
+            </div>
+          </Card>
+        </div>
+      )}
+
+      {/* 확인 모달 */}
+      <ConfirmModal
+        isOpen={!!confirm}
+        onClose={() => !deleting && setConfirm(null)}
+        onConfirm={confirm?.onConfirm}
+        message={confirm?.message || ''}
+        loading={deleting}
+      />
     </div>
   );
 }

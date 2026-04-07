@@ -60,6 +60,28 @@ const useAttendanceStore = create((set, get) => ({
       set((s) => ({ records: s.records.map((r) => (r.id === record.id ? snakeToCamel(data) : r)) }));
     }
   },
+
+  /** 개별 기록 삭제 */
+  deleteRecord: async (id) => {
+    const { error } = await supabase.from('attendance').delete().eq('id', id);
+    if (!error) {
+      set((s) => ({ records: s.records.filter((r) => r.id !== id) }));
+    }
+    return { error };
+  },
+
+  /** 조건부 일괄 삭제: startDate/endDate/employeeId 중 하나 이상 필요 */
+  deleteRecords: async ({ startDate, endDate, employeeId } = {}) => {
+    let query = supabase.from('attendance').delete();
+    if (startDate) query = query.gte('date', startDate);
+    if (endDate) query = query.lte('date', endDate);
+    if (employeeId) query = query.eq('employee_id', employeeId);
+    const { error } = await query;
+    if (!error) {
+      await get().fetchRecords();
+    }
+    return { error };
+  },
 }));
 
 export default useAttendanceStore;
