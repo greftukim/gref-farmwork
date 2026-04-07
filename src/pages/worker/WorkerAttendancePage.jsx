@@ -9,6 +9,20 @@ import BottomSheet from '../../components/common/BottomSheet';
 
 const leaveTypes = ['연차', '오전반차', '오후반차', '출장', '대휴'];
 
+const KOREAN_HOLIDAYS = new Set([
+  // 2025
+  '2025-01-01','2025-01-28','2025-01-29','2025-01-30',
+  '2025-03-01','2025-05-05','2025-05-06','2025-06-06',
+  '2025-08-15','2025-10-03','2025-10-05','2025-10-06',
+  '2025-10-07','2025-10-09','2025-12-25',
+  // 2026
+  '2026-01-01','2026-02-16','2026-02-17','2026-02-18',
+  '2026-03-01','2026-03-02','2026-05-05','2026-05-24',
+  '2026-06-06','2026-08-15','2026-08-17',
+  '2026-09-23','2026-09-24','2026-09-25',
+  '2026-10-03','2026-10-05','2026-10-09','2026-12-25',
+]);
+
 const statusMap = {
   pending: { label: '대기', color: 'bg-amber-100 text-amber-700' },
   farm_approved: { label: '1차 승인', color: 'bg-blue-100 text-blue-700' },
@@ -40,7 +54,7 @@ export default function WorkerAttendancePage() {
   });
   const [selectedDate, setSelectedDate] = useState(null);
   const [showLeaveSheet, setShowLeaveSheet] = useState(false);
-  const [leaveForm, setLeaveForm] = useState({ date: '', type: '연차', reason: '' });
+  const [leaveForm, setLeaveForm] = useState({ startDate: '', endDate: '', type: '연차', reason: '' });
 
   const { year, month } = viewDate;
 
@@ -120,19 +134,23 @@ export default function WorkerAttendancePage() {
 
   const openLeaveForm = (date) => {
     setSelectedDate(null);
-    setLeaveForm({ date: date || today, type: '연차', reason: '' });
+    setLeaveForm({ startDate: date || today, endDate: date || today, type: '연차', reason: '' });
     setShowLeaveSheet(true);
   };
 
   const handleLeaveSubmit = () => {
-    if (!leaveForm.date || !leaveForm.reason.trim()) return;
-    addRequest({
-      employeeId: currentUser.id,
-      date: leaveForm.date,
-      type: leaveForm.type,
-      reason: leaveForm.reason,
-    });
-    setLeaveForm({ date: '', type: '연차', reason: '' });
+    if (!leaveForm.startDate || !leaveForm.endDate || !leaveForm.reason.trim()) return;
+    const dates = [];
+    const cur = new Date(leaveForm.startDate + 'T00:00:00');
+    const end = new Date(leaveForm.endDate + 'T00:00:00');
+    while (cur <= end) {
+      dates.push(cur.toISOString().split('T')[0]);
+      cur.setDate(cur.getDate() + 1);
+    }
+    dates.forEach((date) =>
+      addRequest({ employeeId: currentUser.id, date, type: leaveForm.type, reason: leaveForm.reason })
+    );
+    setLeaveForm({ startDate: '', endDate: '', type: '연차', reason: '' });
     setShowLeaveSheet(false);
   };
 
@@ -166,28 +184,25 @@ export default function WorkerAttendancePage() {
         </Card>
       </div>
 
-      {/* 근태 신청 버튼 */}
-      <div className="flex items-center justify-between mb-2">
-        <div className="flex items-center gap-2">
-          <button
-            onClick={prevMonth}
-            className="p-1.5 rounded-lg text-gray-500 hover:bg-gray-100 active:scale-95 transition-transform"
-          >
-            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
-            </svg>
-          </button>
-          <span className="text-base font-semibold text-gray-900">{monthLabel}</span>
-          <button
-            onClick={nextMonth}
-            className="p-1.5 rounded-lg text-gray-500 hover:bg-gray-100 active:scale-95 transition-transform"
-          >
-            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-            </svg>
-          </button>
-        </div>
-        <Button size="sm" onClick={() => openLeaveForm(today)}>근태 신청</Button>
+      {/* 캘린더 월 네비게이션 */}
+      <div className="flex items-center gap-2 mb-2">
+        <button
+          onClick={prevMonth}
+          className="p-1.5 rounded-lg text-gray-500 hover:bg-gray-100 active:scale-95 transition-transform"
+        >
+          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+          </svg>
+        </button>
+        <span className="text-base font-semibold text-gray-900">{monthLabel}</span>
+        <button
+          onClick={nextMonth}
+          className="p-1.5 rounded-lg text-gray-500 hover:bg-gray-100 active:scale-95 transition-transform"
+        >
+          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+          </svg>
+        </button>
       </div>
 
       {/* 캘린더 */}
@@ -217,6 +232,7 @@ export default function WorkerAttendancePage() {
             const isToday = date === today;
             const isSelected = date === selectedDate;
             const dayOfWeek = new Date(date + 'T00:00:00').getDay();
+            const isHoliday = KOREAN_HOLIDAYS.has(date);
 
             return (
               <button
@@ -231,7 +247,7 @@ export default function WorkerAttendancePage() {
                   className={`w-6 h-6 flex items-center justify-center rounded-full text-xs font-medium
                     ${isToday
                       ? 'bg-blue-600 text-white'
-                      : dayOfWeek === 0 ? 'text-red-400'
+                      : isHoliday || dayOfWeek === 0 ? 'text-red-400'
                       : dayOfWeek === 6 ? 'text-blue-400'
                       : 'text-gray-700'
                     }`}
@@ -385,14 +401,26 @@ export default function WorkerAttendancePage() {
       {/* 근태 신청 바텀시트 */}
       <BottomSheet isOpen={showLeaveSheet} onClose={() => setShowLeaveSheet(false)} title="근태 신청">
         <div className="space-y-3">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">날짜</label>
-            <input
-              type="date"
-              value={leaveForm.date}
-              onChange={(e) => setLeaveForm({ ...leaveForm, date: e.target.value })}
-              className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm min-h-[44px]"
-            />
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">시작일</label>
+              <input
+                type="date"
+                value={leaveForm.startDate}
+                onChange={(e) => setLeaveForm({ ...leaveForm, startDate: e.target.value, endDate: leaveForm.endDate < e.target.value ? e.target.value : leaveForm.endDate })}
+                className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm min-h-[44px]"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">종료일</label>
+              <input
+                type="date"
+                value={leaveForm.endDate}
+                min={leaveForm.startDate}
+                onChange={(e) => setLeaveForm({ ...leaveForm, endDate: e.target.value })}
+                className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm min-h-[44px]"
+              />
+            </div>
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">유형</label>
