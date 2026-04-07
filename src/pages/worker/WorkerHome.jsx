@@ -118,6 +118,10 @@ export default function WorkerHome() {
   };
 
   const handleCheckOut = async () => {
+    if (gpsStatus === 'out_range') {
+      showMsg('본인 소속 지점에서만 퇴근 가능합니다', 'error');
+      return;
+    }
     // 퇴근 시간 검증: 기준 시간 이전이면 차단
     const hhmm = nowHHMM();
     const endTime = myEmployee?.workEndTime;
@@ -174,7 +178,7 @@ export default function WorkerHome() {
                 <span className="ml-2 text-gray-300">· 퇴근 기준 {myEmployee.workEndTime}</span>
               )}
             </div>
-            <Button size="xl" variant="danger" onClick={handleCheckOut}>
+            <Button size="xl" variant="danger" onClick={handleCheckOut} disabled={gpsStatus === 'out_range'}>
               퇴근하기
             </Button>
           </>
