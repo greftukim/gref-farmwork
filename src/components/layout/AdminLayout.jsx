@@ -61,22 +61,21 @@ export default function AdminLayout() {
     return unsub;
   }, [addNotification]);
 
-  const isFarm = currentUser?.team === 'farm';
-
   return (
     <div className="flex min-h-screen bg-gray-50">
-      {/* 사이드바: 재배팀은 모바일에서 숨김 */}
-      <div className={isFarm ? 'hidden md:block' : ''}>
+      {/* 사이드바: 모바일에서 숨김 (md 이상에서만 표시) */}
+      <div className="hidden md:block">
         <Sidebar />
       </div>
       <div className="flex-1 flex flex-col min-w-0">
         <TopBar />
-        <main className={`flex-1 p-4 md:p-6 ${isFarm ? 'pb-24 md:pb-6' : ''}`}>
+        {/* 모바일: 하단 네비 여백, 데스크탑: 기본 패딩 */}
+        <main className="flex-1 p-4 md:p-6 pb-24 md:pb-6">
           <Outlet />
         </main>
       </div>
-      {/* 재배팀 모바일 하단 네비 */}
-      {isFarm && <AdminBottomNav />}
+      {/* 모바일 하단 네비 (md 미만에서만 표시) */}
+      <AdminBottomNav />
       <ToastContainer />
     </div>
   );
