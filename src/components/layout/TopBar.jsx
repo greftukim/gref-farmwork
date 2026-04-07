@@ -30,12 +30,14 @@ export default function TopBar({ title }) {
               <span className="text-sm font-medium text-blue-600">{currentUser.name?.[0]}</span>
             </div>
             <span className="text-sm text-gray-700 font-medium">{currentUser.name}</span>
-            <button
-              onClick={logout}
-              className="text-sm text-gray-400 hover:text-gray-600 min-w-[44px] min-h-[44px] flex items-center justify-center"
-            >
-              로그아웃
-            </button>
+            {isAdmin && (
+              <button
+                onClick={logout}
+                className="text-sm text-gray-400 hover:text-gray-600 min-w-[44px] min-h-[44px] flex items-center justify-center"
+              >
+                로그아웃
+              </button>
+            )}
           </div>
         )}
       </div>
