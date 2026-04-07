@@ -33,8 +33,8 @@ export default defineConfig({
         name: 'GREF FarmWork',
         short_name: 'FarmWork',
         description: '온실 인력관리 프로그램',
-        theme_color: '#2563eb',
-        background_color: '#f9fafb',
+        theme_color: '#003D2A',
+        background_color: '#003D2A',
         display: 'standalone',
         start_url: '/',
         icons: [

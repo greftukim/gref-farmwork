@@ -29,9 +29,7 @@ export default function LoginPage() {
       <div className="w-full max-w-md">
         {/* 로고 */}
         <div className="flex items-center justify-center gap-3 mb-10">
-          <div className="w-10 h-10 rounded-xl bg-blue-600 flex items-center justify-center">
-            <span className="text-white text-lg font-bold">G</span>
-          </div>
+          <img src="/icons/icon-192.png" alt="GREF" className="w-10 h-10 rounded-xl" />
           <span className="text-xl font-heading font-bold text-gray-900">GREF FarmWork</span>
         </div>
 
