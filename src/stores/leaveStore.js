@@ -41,7 +41,7 @@ const useLeaveStore = create((set, get) => ({
 
       if (status === 'approved') {
         const req = get().requests.find((r) => r.id === requestId) || snakeToCamel(data);
-        const days = req.type === '연차' ? 1 : 0.5;
+        const days = req.type === '연차' ? 1 : (req.type === '오전반차' || req.type === '오후반차') ? 0.5 : 0;
         const balance = get().balances.find((b) => b.employeeId === req.employeeId && b.year === new Date().getFullYear());
         if (balance) {
           const { data: bData } = await supabase.from('leave_balances').update({

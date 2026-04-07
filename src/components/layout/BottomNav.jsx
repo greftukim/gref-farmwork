@@ -5,7 +5,7 @@ const tabs = [
   { to: '/worker/tasks', label: '작업', icon: '📋' },
   { to: '/worker/survey', label: '생육조사', icon: '🌱' },
   { to: '/worker/attendance', label: '근태', icon: '🕐' },
-  { to: '/worker/more', label: '더보기', icon: '⋯' },
+  { to: '/worker/notices', label: '공지사항', icon: '🔔' },
 ];
 
 export default function BottomNav() {
