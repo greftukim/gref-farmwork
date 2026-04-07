@@ -21,6 +21,7 @@ class ErrorBoundary extends Component {
   }
 }
 import LoginPage from './pages/LoginPage';
+import AuthCallbackPage from './pages/AuthCallbackPage';
 import AdminLayout from './components/layout/AdminLayout';
 import WorkerLayout from './components/layout/WorkerLayout';
 import AdminDashboard from './pages/admin/AdminDashboard';
@@ -57,15 +58,17 @@ function HydrationGate({ children }) {
   const [hydrated, setHydrated] = useState(useAuthStore.persist.hasHydrated());
 
   useEffect(() => {
-    // 이미 hydration 완료된 경우
-    if (useAuthStore.persist.hasHydrated()) {
+    const afterHydration = () => {
       setHydrated(true);
+      // 작업자 토큰 유효성 백그라운드 재검증 (QR 재발급/해제 감지)
+      useAuthStore.getState().revalidateWorkerToken();
+    };
+
+    if (useAuthStore.persist.hasHydrated()) {
+      afterHydration();
       return;
     }
-    // 아직 안 된 경우: 완료 시 콜백
-    const unsub = useAuthStore.persist.onFinishHydration(() => {
-      setHydrated(true);
-    });
+    const unsub = useAuthStore.persist.onFinishHydration(afterHydration);
     return unsub;
   }, []);
 
@@ -112,6 +115,7 @@ export default function App() {
       <BrowserRouter>
         <Routes>
           <Route path="/login" element={<LoginPage />} />
+          <Route path="/auth" element={<AuthCallbackPage />} />
 
           <Route path="/admin" element={
             <ProtectedRoute role="admin"><AdminLayout /></ProtectedRoute>

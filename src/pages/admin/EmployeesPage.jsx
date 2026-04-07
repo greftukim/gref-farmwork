@@ -1,9 +1,16 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef } from 'react';
+import { QRCodeCanvas } from 'qrcode.react';
 import useEmployeeStore from '../../stores/employeeStore';
 import useBranchStore from '../../stores/branchStore';
 import Button from '../../components/common/Button';
 import Card from '../../components/common/Card';
 import Modal from '../../components/common/Modal';
+
+// 본 앱의 기본 URL (배포 환경 우선, 로컬에서는 현재 origin)
+const APP_BASE_URL =
+  window.location.hostname === 'localhost'
+    ? window.location.origin
+    : 'https://gref-farmwork.vercel.app';
 
 const emptyForm = {
   name: '',
@@ -13,7 +20,6 @@ const emptyForm = {
   hireDate: '',
   workHoursPerWeek: 40,
   annualLeaveDays: 15,
-  pinCode: '',
   branch: '',
   workStartTime: '',
   workEndTime: '',
@@ -86,8 +92,77 @@ function EmployeeForm({ form, setForm, branchOptions }) {
       {field('입사일', 'hireDate', 'date')}
       {field('주당 근무시간', 'workHoursPerWeek', 'number')}
       {field('연차 일수', 'annualLeaveDays', 'number')}
-      {field('PIN 코드 (6자리)', 'pinCode')}
     </div>
+  );
+}
+
+/** QR 코드 모달 */
+function QrModal({ employee, onClose, onReissue, onRevoke }) {
+  const canvasRef = useRef(null);
+  const qrUrl = `${APP_BASE_URL}/auth?token=${employee.deviceToken}`;
+
+  const handleDownload = () => {
+    if (!canvasRef.current) return;
+    const link = document.createElement('a');
+    link.download = `qr-${employee.name}.png`;
+    link.href = canvasRef.current.toDataURL('image/png');
+    link.click();
+  };
+
+  const handlePrint = () => {
+    if (!canvasRef.current) return;
+    const dataUrl = canvasRef.current.toDataURL('image/png');
+    const win = window.open('', '_blank');
+    win.document.write(`
+      <html>
+        <head><title>QR - ${employee.name}</title></head>
+        <body style="text-align:center;padding:40px;font-family:sans-serif;">
+          <h2 style="font-size:24px;margin-bottom:8px;">${employee.name}</h2>
+          <p style="color:#888;font-size:14px;margin-bottom:24px;">GREF FarmWork 출퇴근 QR</p>
+          <img src="${dataUrl}" style="width:220px;height:220px;" />
+          <p style="color:#aaa;font-size:11px;margin-top:24px;">스캔하여 출퇴근 등록</p>
+          <script>window.onload=function(){ window.print(); setTimeout(function(){ window.close(); }, 500); }</script>
+        </body>
+      </html>
+    `);
+    win.document.close();
+  };
+
+  return (
+    <Modal isOpen onClose={onClose} title={`QR 코드 — ${employee.name}`}>
+      <div className="flex flex-col items-center gap-4">
+        <div className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm">
+          <QRCodeCanvas
+            ref={canvasRef}
+            value={qrUrl}
+            size={200}
+            level="M"
+            includeMargin
+          />
+        </div>
+        <p className="text-xs text-gray-400 text-center break-all px-2">{qrUrl}</p>
+
+        <div className="flex gap-2 w-full">
+          <Button className="flex-1" onClick={handleDownload}>다운로드</Button>
+          <Button className="flex-1" variant="secondary" onClick={handlePrint}>인쇄</Button>
+        </div>
+
+        <div className="w-full border-t border-gray-100 pt-3 flex gap-2">
+          <Button className="flex-1" variant="secondary" onClick={onReissue}>
+            QR 재발급
+          </Button>
+          <button
+            onClick={onRevoke}
+            className="flex-1 px-4 py-2.5 text-sm font-medium text-red-500 border border-red-200 rounded-xl hover:bg-red-50 transition-colors min-h-[44px]"
+          >
+            디바이스 해제
+          </button>
+        </div>
+        <p className="text-xs text-gray-400 text-center">
+          재발급 시 기존 QR은 무효화됩니다. 해제 시 다음 로그인 불가.
+        </p>
+      </div>
+    </Modal>
   );
 }
 
@@ -98,13 +173,11 @@ export default function EmployeesPage() {
   const toggleActive = useEmployeeStore((s) => s.toggleActive);
   const branches = useBranchStore((s) => s.branches);
 
-  // branches 테이블 기반 드롭다운 옵션
   const branchOptions = useMemo(() => [
     { value: '', label: '선택 안 함' },
     ...branches.map((b) => ({ value: b.code, label: b.name })),
   ], [branches]);
 
-  // 지점 코드 → 이름 매핑
   const branchNameMap = useMemo(() =>
     Object.fromEntries(branches.map((b) => [b.code, b.name])),
   [branches]);
@@ -113,6 +186,9 @@ export default function EmployeesPage() {
   const [editTarget, setEditTarget] = useState(null);
   const [form, setForm] = useState(emptyForm);
   const [filter, setFilter] = useState('all');
+
+  // QR 모달
+  const [qrEmployee, setQrEmployee] = useState(null); // 현재 QR 보고 있는 직원
 
   const filtered = useMemo(() => {
     if (filter === 'active') return employees.filter((e) => e.isActive);
@@ -136,7 +212,6 @@ export default function EmployeesPage() {
       hireDate: emp.hireDate || '',
       workHoursPerWeek: emp.workHoursPerWeek || 40,
       annualLeaveDays: emp.annualLeaveDays || 15,
-      pinCode: emp.pinCode || '',
       branch: emp.branch || '',
       workStartTime: emp.workStartTime || '',
       workEndTime: emp.workEndTime || '',
@@ -152,6 +227,34 @@ export default function EmployeesPage() {
       addEmployee(form);
     }
     setShowModal(false);
+  };
+
+  // QR 토큰 발급 (신규 또는 재발급)
+  const issueToken = async (emp) => {
+    const token = crypto.randomUUID();
+    await updateEmployee(emp.id, { deviceToken: token });
+    // 스토어에서 업데이트된 직원 데이터로 모달 갱신
+    setQrEmployee({ ...emp, deviceToken: token });
+  };
+
+  const handleQrOpen = async (emp) => {
+    if (!emp.deviceToken) {
+      // 토큰 없으면 즉시 발급 후 모달 오픈
+      await issueToken(emp);
+    } else {
+      setQrEmployee(emp);
+    }
+  };
+
+  const handleReissue = async () => {
+    if (!qrEmployee) return;
+    await issueToken(qrEmployee);
+  };
+
+  const handleRevoke = async () => {
+    if (!qrEmployee) return;
+    await updateEmployee(qrEmployee.id, { deviceToken: null });
+    setQrEmployee(null);
   };
 
   return (
@@ -194,6 +297,7 @@ export default function EmployeesPage() {
                 <th className="px-4 py-3 font-medium">연락처</th>
                 <th className="px-4 py-3 font-medium">입사일</th>
                 <th className="px-4 py-3 font-medium">상태</th>
+                <th className="px-4 py-3 font-medium">QR</th>
                 <th className="px-4 py-3 font-medium">관리</th>
               </tr>
             </thead>
@@ -233,6 +337,20 @@ export default function EmployeesPage() {
                     </span>
                   </td>
                   <td className="px-4 py-3">
+                    {emp.role === 'worker' && (
+                      <button
+                        onClick={() => handleQrOpen(emp)}
+                        className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-colors min-h-[32px] ${
+                          emp.deviceToken
+                            ? 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200'
+                            : 'bg-blue-100 text-blue-700 hover:bg-blue-200'
+                        }`}
+                      >
+                        {emp.deviceToken ? 'QR확인' : 'QR발급'}
+                      </button>
+                    )}
+                  </td>
+                  <td className="px-4 py-3">
                     <div className="flex gap-1">
                       <Button size="sm" variant="ghost" onClick={() => openEdit(emp)}>수정</Button>
                       <Button size="sm" variant="ghost" onClick={() => toggleActive(emp.id)}>
@@ -247,6 +365,7 @@ export default function EmployeesPage() {
         </div>
       </Card>
 
+      {/* 직원 등록/수정 모달 */}
       <Modal
         isOpen={showModal}
         onClose={() => setShowModal(false)}
@@ -262,6 +381,16 @@ export default function EmployeesPage() {
           </Button>
         </div>
       </Modal>
+
+      {/* QR 코드 모달 */}
+      {qrEmployee?.deviceToken && (
+        <QrModal
+          employee={qrEmployee}
+          onClose={() => setQrEmployee(null)}
+          onReissue={handleReissue}
+          onRevoke={handleRevoke}
+        />
+      )}
     </div>
   );
 }
