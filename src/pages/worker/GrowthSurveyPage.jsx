@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react';
 import useAuthStore from '../../stores/authStore';
 import useGrowthSurveyStore from '../../stores/growthSurveyStore';
+import useCropStore from '../../stores/cropStore';
 import useZoneStore from '../../stores/zoneStore';
 import Card from '../../components/common/Card';
 import Button from '../../components/common/Button';
@@ -16,6 +17,7 @@ const fields = [
 ];
 
 const emptyForm = {
+  cropId: '',
   zoneId: '',
   rowNumber: '',
   plantNumber: '',
@@ -32,10 +34,12 @@ export default function GrowthSurveyPage() {
   const currentUser = useAuthStore((s) => s.currentUser);
   const surveys = useGrowthSurveyStore((s) => s.surveys);
   const addSurvey = useGrowthSurveyStore((s) => s.addSurvey);
+  const crops = useCropStore((s) => s.crops);
   const zones = useZoneStore((s) => s.zones);
   const [showSheet, setShowSheet] = useState(false);
   const [form, setForm] = useState(emptyForm);
 
+  const cropMap = useMemo(() => Object.fromEntries(crops.map((c) => [c.id, c])), [crops]);
   const zoneMap = useMemo(() => Object.fromEntries(zones.map((z) => [z.id, z])), [zones]);
 
   const previousSurvey = useMemo(() => {
@@ -58,11 +62,14 @@ export default function GrowthSurveyPage() {
     [surveys, currentUser]
   );
 
+  const activeCrops = useMemo(() => crops.filter((c) => c.isActive), [crops]);
+
   const handleSubmit = () => {
     if (!form.zoneId || !form.rowNumber || !form.plantNumber) return;
     addSurvey({
       workerId: currentUser.id,
       surveyDate: new Date().toISOString().split('T')[0],
+      cropId: form.cropId || null,
       zoneId: form.zoneId,
       rowNumber: Number(form.rowNumber),
       plantNumber: Number(form.plantNumber),
@@ -100,11 +107,16 @@ export default function GrowthSurveyPage() {
       <div className="space-y-3">
         {recentSurveys.map((s) => (
           <Card key={s.id} accent="blue" className="p-4">
-            <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center justify-between mb-2 flex-wrap gap-1">
               <span className="font-medium text-gray-900">{s.surveyDate}</span>
-              <span className="text-xs text-gray-400">
-                {zoneMap[s.zoneId]?.name} {s.rowNumber}열 {s.plantNumber}번주
-              </span>
+              <div className="flex items-center gap-2 text-xs text-gray-400">
+                {s.cropId && (
+                  <span className="bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded-full font-medium">
+                    {cropMap[s.cropId]?.name || '작물'}
+                  </span>
+                )}
+                <span>{zoneMap[s.zoneId]?.name} {s.rowNumber}열 {s.plantNumber}번주</span>
+              </div>
             </div>
             <div className="grid grid-cols-3 gap-2 text-sm">
               {fields.map((f) => (
@@ -123,6 +135,22 @@ export default function GrowthSurveyPage() {
 
       <BottomSheet isOpen={showSheet} onClose={() => setShowSheet(false)} title="생육 조사 입력">
         <div className="space-y-3">
+          {/* 작물 선택 */}
+          <div>
+            <label className="block text-xs font-medium text-gray-700 mb-1">작물</label>
+            <select
+              value={form.cropId}
+              onChange={(e) => setForm({ ...form, cropId: e.target.value })}
+              className="w-full border border-gray-200 rounded-lg px-2 py-2 text-sm min-h-[44px]"
+            >
+              <option value="">선택 안 함</option>
+              {activeCrops.map((c) => (
+                <option key={c.id} value={c.id}>{c.name}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* 구역 / 열 / 주 */}
           <div className="grid grid-cols-3 gap-2">
             <div>
               <label className="block text-xs font-medium text-gray-700 mb-1">구역</label>

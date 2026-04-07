@@ -34,7 +34,6 @@ export default function AdminDashboard() {
   const issues = useIssueStore((s) => s.issues);
   const calls = useCallStore((s) => s.calls);
   const leaveRequests = useLeaveStore((s) => s.requests);
-  const leaveBalances = useLeaveStore((s) => s.balances);
   const notices = useNoticeStore((s) => s.notices);
   const selectedBranch = useBranchStore((s) => s.selectedBranch);
 
@@ -88,19 +87,6 @@ export default function AdminDashboard() {
   const recentNotices = useMemo(
     () => [...notices].sort((a, b) => b.createdAt.localeCompare(a.createdAt)).slice(0, 4),
     [notices]
-  );
-
-  // ─── 휴가 현황 ───
-  const balanceList = useMemo(
-    () => leaveBalances
-      .filter((b) => workerIds.has(b.employeeId) && b.year === new Date().getFullYear())
-      .map((b) => ({
-        ...b,
-        name: empMap[b.employeeId]?.name || '—',
-        remaining: b.totalDays - b.usedDays,
-        pct: b.totalDays > 0 ? Math.round((b.usedDays / b.totalDays) * 100) : 0,
-      })),
-    [leaveBalances, workerIds, empMap]
   );
 
   // ─── 작업 진행 (재배팀) ───
@@ -260,35 +246,6 @@ export default function AdminDashboard() {
         </Card>
       </div>
 
-      {/* 4행: 휴가 현황 */}
-      <Card accent="blue" className="p-6">
-        <div className="text-sm font-medium text-gray-500 mb-4">휴가 현황</div>
-        {balanceList.length === 0 ? (
-          <p className="text-gray-400 text-sm text-center py-4">데이터 없음</p>
-        ) : (
-          <div className="space-y-3 max-h-[200px] overflow-y-auto">
-            {balanceList.map((b) => (
-              <div key={b.id}>
-                <div className="flex items-center justify-between text-sm mb-1">
-                  <span className="font-medium text-gray-900">{b.name}</span>
-                  <span className="text-xs text-gray-500">
-                    {b.usedDays}/{b.totalDays}일 · 잔여{' '}
-                    <span className={b.remaining <= 3 ? 'text-red-500 font-bold' : 'text-blue-600 font-bold'}>
-                      {b.remaining}일
-                    </span>
-                  </span>
-                </div>
-                <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
-                  <div
-                    className={`h-full rounded-full transition-all ${b.pct >= 80 ? 'bg-red-400' : 'bg-blue-500'}`}
-                    style={{ width: `${b.pct}%` }}
-                  />
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </Card>
     </div>
   );
 }

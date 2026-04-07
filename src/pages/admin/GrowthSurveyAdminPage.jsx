@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react';
 import useGrowthSurveyStore from '../../stores/growthSurveyStore';
 import useEmployeeStore from '../../stores/employeeStore';
+import useCropStore from '../../stores/cropStore';
 import useZoneStore from '../../stores/zoneStore';
 import Card from '../../components/common/Card';
 
@@ -16,29 +17,34 @@ const fields = [
 export default function GrowthSurveyAdminPage() {
   const surveys = useGrowthSurveyStore((s) => s.surveys);
   const employees = useEmployeeStore((s) => s.employees);
+  const crops = useCropStore((s) => s.crops);
   const zones = useZoneStore((s) => s.zones);
 
   const [filterZone, setFilterZone] = useState('');
+  const [filterCrop, setFilterCrop] = useState('');
   const [filterWorker, setFilterWorker] = useState('');
   const [filterDate, setFilterDate] = useState('');
 
   const empMap = useMemo(() => Object.fromEntries(employees.map((e) => [e.id, e])), [employees]);
+  const cropMap = useMemo(() => Object.fromEntries(crops.map((c) => [c.id, c])), [crops]);
   const zoneMap = useMemo(() => Object.fromEntries(zones.map((z) => [z.id, z])), [zones]);
 
-  const filtered = useMemo(() => {
-    return surveys
-      .filter((s) => !filterZone   || s.zoneId    === filterZone)
-      .filter((s) => !filterWorker || s.workerId  === filterWorker)
-      .filter((s) => !filterDate   || s.surveyDate === filterDate)
-      .sort((a, b) => b.surveyDate.localeCompare(a.surveyDate))
-      .slice(0, 100);
-  }, [surveys, filterZone, filterWorker, filterDate]);
-
-  // 조사 날짜 목록 (중복 제거)
   const surveyDates = useMemo(() => {
     const dates = [...new Set(surveys.map((s) => s.surveyDate))].sort((a, b) => b.localeCompare(a));
     return dates;
   }, [surveys]);
+
+  const filtered = useMemo(() => {
+    return surveys
+      .filter((s) => !filterZone   || s.zoneId    === filterZone)
+      .filter((s) => !filterCrop   || s.cropId    === filterCrop)
+      .filter((s) => !filterWorker || s.workerId  === filterWorker)
+      .filter((s) => !filterDate   || s.surveyDate === filterDate)
+      .sort((a, b) => b.surveyDate.localeCompare(a.surveyDate))
+      .slice(0, 100);
+  }, [surveys, filterZone, filterCrop, filterWorker, filterDate]);
+
+  const hasFilter = filterDate || filterZone || filterCrop || filterWorker;
 
   return (
     <div>
@@ -54,6 +60,17 @@ export default function GrowthSurveyAdminPage() {
           <option value="">전체 날짜</option>
           {surveyDates.map((d) => (
             <option key={d} value={d}>{d}</option>
+          ))}
+        </select>
+
+        <select
+          value={filterCrop}
+          onChange={(e) => setFilterCrop(e.target.value)}
+          className="border border-gray-200 rounded-lg px-3 py-2 text-sm min-h-[40px] bg-white"
+        >
+          <option value="">전체 작물</option>
+          {crops.map((c) => (
+            <option key={c.id} value={c.id}>{c.name}</option>
           ))}
         </select>
 
@@ -79,9 +96,9 @@ export default function GrowthSurveyAdminPage() {
           ))}
         </select>
 
-        {(filterDate || filterZone || filterWorker) && (
+        {hasFilter && (
           <button
-            onClick={() => { setFilterDate(''); setFilterZone(''); setFilterWorker(''); }}
+            onClick={() => { setFilterDate(''); setFilterZone(''); setFilterCrop(''); setFilterWorker(''); }}
             className="px-3 py-2 text-sm text-gray-500 hover:text-gray-700 underline"
           >
             초기화
@@ -98,8 +115,13 @@ export default function GrowthSurveyAdminPage() {
           {filtered.map((s) => (
             <Card key={s.id} accent="emerald" className="p-4">
               <div className="flex items-center justify-between mb-2 flex-wrap gap-1">
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 flex-wrap">
                   <span className="font-medium text-gray-900 text-sm">{s.surveyDate}</span>
+                  {s.cropId && (
+                    <span className="text-xs bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded-full font-medium">
+                      {cropMap[s.cropId]?.name || '작물'}
+                    </span>
+                  )}
                   <span className="text-xs text-gray-500 bg-gray-100 rounded px-2 py-0.5">
                     {zoneMap[s.zoneId]?.name || '구역 미상'} {s.rowNumber}열 {s.plantNumber}번주
                   </span>

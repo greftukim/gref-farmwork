@@ -17,6 +17,7 @@ const useGrowthSurveyStore = create((set) => ({
     const { data, error } = await supabase.from('growth_surveys').insert({
       worker_id: survey.workerId,
       survey_date: survey.surveyDate,
+      crop_id: survey.cropId || null,
       zone_id: survey.zoneId,
       row_number: survey.rowNumber,
       plant_number: survey.plantNumber,
