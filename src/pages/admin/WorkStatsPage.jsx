@@ -1,16 +1,36 @@
-import { useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import useAttendanceStore from '../../stores/attendanceStore';
 import useEmployeeStore from '../../stores/employeeStore';
+import useAuthStore from '../../stores/authStore';
+import useBranchStore from '../../stores/branchStore';
 import Card from '../../components/common/Card';
+import Button from '../../components/common/Button';
+import { downloadAttendanceExcel } from '../../lib/excelExport';
 
 const COLORS = ['#059669', '#3b82f6', '#f59e0b', '#ef4444', '#8b5cf6'];
 
 export default function WorkStatsPage() {
   const attendance = useAttendanceStore((s) => s.records);
   const employees = useEmployeeStore((s) => s.employees);
+  const currentUser = useAuthStore((s) => s.currentUser);
+  const branches = useBranchStore((s) => s.branches);
+
+  const [downloading, setDownloading] = useState(false);
+
+  // 엑셀 다운로드 월 선택 (기본: 이번 달)
+  const now = new Date();
+  const [excelYear, setExcelYear] = useState(now.getFullYear());
+  const [excelMonth, setExcelMonth] = useState(now.getMonth() + 1);
+  const [excelBranch, setExcelBranch] = useState('all');
 
   const workers = useMemo(() => employees.filter((e) => e.role === 'worker' && e.isActive), [employees]);
+
+  const isFarmTeam = currentUser?.team === 'farm';
+  const branchNameMap = useMemo(
+    () => Object.fromEntries(branches.map((b) => [b.code, b.name])),
+    [branches]
+  );
 
   // 작업자별 일별 근무시간
   const hoursByWorker = useMemo(() => {
@@ -40,9 +60,86 @@ export default function WorkStatsPage() {
     });
   }, [attendance, workers]);
 
+  const handleExcelDownload = async () => {
+    if (downloading) return;
+    setDownloading(true);
+    try {
+      let branchCodes = [];
+      if (isFarmTeam) {
+        branchCodes = [currentUser.branch];
+      } else if (excelBranch === 'all') {
+        branchCodes = branches.map((b) => b.code);
+      } else {
+        branchCodes = [excelBranch];
+      }
+
+      await downloadAttendanceExcel({
+        year: excelYear,
+        month: excelMonth,
+        branches: branchCodes,
+        branchNameMap,
+        currentUser,
+      });
+    } catch (e) {
+      console.error('엑셀 다운로드 실패:', e);
+      alert('엑셀 다운로드에 실패했습니다.');
+    } finally {
+      setDownloading(false);
+    }
+  };
+
   return (
     <div>
       <h2 className="text-xl font-heading font-semibold text-gray-900 mb-6">근무 시간 통계</h2>
+
+      {/* 엑셀 다운로드 영역 */}
+      <Card accent="gray" className="p-4 mb-6">
+        <div className="text-sm font-semibold text-gray-700 mb-3">월별 근태기록부 다운로드</div>
+        <div className="flex flex-wrap items-end gap-3">
+          <div>
+            <label className="block text-xs text-gray-500 mb-1">연도</label>
+            <select
+              value={excelYear}
+              onChange={(e) => setExcelYear(Number(e.target.value))}
+              className="border border-gray-200 rounded-lg px-3 py-2 text-sm min-h-[40px]"
+            >
+              {[now.getFullYear() - 1, now.getFullYear(), now.getFullYear() + 1].map((y) => (
+                <option key={y} value={y}>{y}년</option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="block text-xs text-gray-500 mb-1">월</label>
+            <select
+              value={excelMonth}
+              onChange={(e) => setExcelMonth(Number(e.target.value))}
+              className="border border-gray-200 rounded-lg px-3 py-2 text-sm min-h-[40px]"
+            >
+              {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => (
+                <option key={m} value={m}>{m}월</option>
+              ))}
+            </select>
+          </div>
+          {!isFarmTeam && (
+            <div>
+              <label className="block text-xs text-gray-500 mb-1">지점</label>
+              <select
+                value={excelBranch}
+                onChange={(e) => setExcelBranch(e.target.value)}
+                className="border border-gray-200 rounded-lg px-3 py-2 text-sm min-h-[40px]"
+              >
+                <option value="all">전체 지점</option>
+                {branches.map((b) => (
+                  <option key={b.code} value={b.code}>{b.name}</option>
+                ))}
+              </select>
+            </div>
+          )}
+          <Button onClick={handleExcelDownload} disabled={downloading}>
+            {downloading ? '생성 중...' : '엑셀 다운로드'}
+          </Button>
+        </div>
+      </Card>
 
       <div className="space-y-6">
         <Card accent="blue" className="p-5">
