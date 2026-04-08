@@ -12,6 +12,7 @@ import useIssueStore from '../stores/issueStore';
 import useCallStore from '../stores/callStore';
 import useNoticeStore from '../stores/noticeStore';
 import useBranchStore from '../stores/branchStore';
+import useOvertimeStore from '../stores/overtimeStore';
 
 export default function useDataLoader() {
   const fetchEmployees = useEmployeeStore((s) => s.fetchEmployees);
@@ -28,6 +29,7 @@ export default function useDataLoader() {
   const fetchCalls = useCallStore((s) => s.fetchCalls);
   const fetchNotices = useNoticeStore((s) => s.fetchNotices);
   const fetchBranches = useBranchStore((s) => s.fetchBranches);
+  const fetchOvertimeRequests = useOvertimeStore((s) => s.fetchRequests);
 
   useEffect(() => {
     fetchBranches();
@@ -44,5 +46,6 @@ export default function useDataLoader() {
     fetchIssues();
     fetchCalls();
     fetchNotices();
+    fetchOvertimeRequests();
   }, []);
 }

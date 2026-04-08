@@ -28,6 +28,11 @@ const farmCoreTabs = [
 
 const farmMoreItems = [
   {
+    to: '/admin/overtime-approval',
+    label: '연장근무 승인',
+    icon: 'M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z',
+  },
+  {
     to: '/admin/board',
     label: '작업 현황',
     icon: 'M4 6h16M4 10h16M4 14h16M4 18h16',

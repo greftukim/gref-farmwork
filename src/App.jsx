@@ -44,6 +44,7 @@ import BranchSettingsPage from './pages/admin/BranchSettingsPage';
 import AttendanceRecordsPage from './pages/admin/AttendanceRecordsPage';
 import GrowthSurveyAdminPage from './pages/admin/GrowthSurveyAdminPage';
 import LocationSettingsPage from './pages/admin/LocationSettingsPage';
+import OvertimeApprovalPage from './pages/admin/OvertimeApprovalPage';
 import WorkerHome from './pages/worker/WorkerHome';
 import WorkerTasksPage from './pages/worker/WorkerTasksPage';
 import GrowthSurveyPage from './pages/worker/GrowthSurveyPage';
@@ -144,6 +145,7 @@ export default function App() {
             <Route path="attendance-records" element={<AttendanceRecordsPage />} />
             <Route path="survey" element={<GrowthSurveyAdminPage />} />
             <Route path="location" element={<LocationSettingsPage />} />
+            <Route path="overtime-approval" element={<OvertimeApprovalPage />} />
           </Route>
 
           <Route path="/worker" element={

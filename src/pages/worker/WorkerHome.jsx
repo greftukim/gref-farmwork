@@ -7,9 +7,11 @@ import useBranchStore from '../../stores/branchStore';
 import useCallStore from '../../stores/callStore';
 import useIssueStore from '../../stores/issueStore';
 import useZoneStore from '../../stores/zoneStore';
+import useOvertimeStore from '../../stores/overtimeStore';
 import Card from '../../components/common/Card';
 import Button from '../../components/common/Button';
 import BottomSheet from '../../components/common/BottomSheet';
+import { sendPushToAdmins } from '../../lib/pushNotify';
 
 // 현재 시각을 HH:MM 문자열로 반환
 function nowHHMM() {
@@ -76,6 +78,8 @@ export default function WorkerHome() {
   const addCall = useCallStore((s) => s.addCall);
   const addIssue = useIssueStore((s) => s.addIssue);
   const zones = useZoneStore((s) => s.zones);
+  const overtimeRequests = useOvertimeStore((s) => s.requests);
+  const submitOvertime = useOvertimeStore((s) => s.submitRequest);
 
   const [message, setMessage] = useState('');
   const [msgType, setMsgType] = useState('info');
@@ -85,6 +89,11 @@ export default function WorkerHome() {
   const [showFab, setShowFab] = useState(false);
   const [fabTab, setFabTab] = useState('call'); // 미사용 - 이상 신고 항상 펼침
   const [callSubmitting, setCallSubmitting] = useState(false);
+
+  // 연장근무 신청
+  const [showOvertimeSheet, setShowOvertimeSheet] = useState(false);
+  const [overtimeForm, setOvertimeForm] = useState({ hours: 0, minutes: 0, reason: '' });
+  const [overtimeSubmitting, setOvertimeSubmitting] = useState(false);
 
   // 이상 신고 폼
   const [issueCategory, setIssueCategory] = useState('');
@@ -113,6 +122,11 @@ export default function WorkerHome() {
 
   const isWorking = todayRecord && !todayRecord.checkOut;
   const hasCheckedOut = todayRecord && todayRecord.checkOut;
+
+  const todayOvertime = useMemo(
+    () => overtimeRequests.find((r) => r.employeeId === currentUser?.id && r.date === today),
+    [overtimeRequests, currentUser, today]
+  );
 
   const myBranch = useMemo(
     () => branches.find((b) => b.code === myEmployee?.branch),
@@ -171,9 +185,59 @@ export default function WorkerHome() {
         showMsg(`아직 퇴근 시간 전입니다 (${endTime} 이후 퇴근 가능)`, 'error');
         return;
       }
+      // 연장근무 승인 상태인 경우, 예상 퇴근시간보다 일찍 퇴근하면 확인
+      if (todayOvertime?.status === 'approved' && endTime) {
+        const [eh, em] = endTime.split(':').map(Number);
+        const workEndMin = eh * 60 + em;
+        const expectedEnd = workEndMin + (todayOvertime.hours * 60) + todayOvertime.minutes;
+        const now = new Date();
+        const nowMin = now.getHours() * 60 + now.getMinutes();
+        if (nowMin < expectedEnd) {
+          const fmtTime = (m) => `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`;
+          const confirmed = window.confirm(
+            `신청한 연장근무 시간보다 일찍 퇴근하시겠습니까?\n\n` +
+            `예상 퇴근: ${fmtTime(expectedEnd)}\n` +
+            `현재 시각: ${fmtTime(nowMin)}`
+          );
+          if (!confirmed) return;
+        }
+      }
       await checkOut(currentUser.id);
       showMsg('퇴근 처리되었습니다');
     });
+
+  const handleOvertimeSubmit = async () => {
+    if (overtimeForm.hours === 0 && overtimeForm.minutes === 0) return;
+    if (overtimeSubmitting) return;
+    setOvertimeSubmitting(true);
+    const { error } = await submitOvertime({
+      employeeId: currentUser.id,
+      date: today,
+      hours: overtimeForm.hours,
+      minutes: overtimeForm.minutes,
+      reason: overtimeForm.reason,
+    });
+    setOvertimeSubmitting(false);
+    if (error) {
+      showMsg('연장근무 신청에 실패했습니다', 'error');
+      return;
+    }
+    setShowOvertimeSheet(false);
+    setOvertimeForm({ hours: 0, minutes: 0, reason: '' });
+    showMsg('연장근무 신청이 완료되었습니다');
+    // 푸시 알림: 재배팀 관리자에게
+    try {
+      const branchName = branchDisplayName || '미지정';
+      const timeLabel = `${overtimeForm.hours}시간${overtimeForm.minutes > 0 ? ` ${overtimeForm.minutes}분` : ''}`;
+      await sendPushToAdmins({
+        title: `[${branchName}] 연장근무 신청`,
+        body: `${currentUser.name}님이 연장근무 ${timeLabel}을 신청했습니다`,
+        type: 'overtime_request',
+      });
+    } catch (e) {
+      console.error('연장근무 푸시 알림 실패:', e);
+    }
+  };
 
   const openFab = () => {
     setIssueCategory('');
@@ -260,6 +324,47 @@ export default function WorkerHome() {
             <Button size="xl" variant="danger" onClick={handleCheckOut} disabled={gpsLoading}>
               {gpsLoading ? '위치 확인 중...' : '퇴근하기'}
             </Button>
+            {/* 연장근무 신청 영역 */}
+            <div className="mt-4 pt-4 border-t border-blue-100">
+              {!todayOvertime && (
+                <button
+                  onClick={() => { setOvertimeForm({ hours: 1, minutes: 0, reason: '' }); setShowOvertimeSheet(true); }}
+                  className="w-full py-3 rounded-2xl text-sm font-medium bg-blue-50 text-blue-600 active:scale-[0.98] transition-transform"
+                >
+                  연장근무 신청
+                </button>
+              )}
+              {todayOvertime?.status === 'pending' && (
+                <div className="bg-gray-50 rounded-2xl px-4 py-3 text-center">
+                  <span className="text-sm text-gray-500">연장근무 신청 중</span>
+                  <span className="ml-1 text-sm font-semibold text-gray-700">
+                    ({todayOvertime.hours}시간{todayOvertime.minutes > 0 ? ` ${todayOvertime.minutes}분` : ''})
+                  </span>
+                </div>
+              )}
+              {todayOvertime?.status === 'approved' && (
+                <div className="bg-green-50 rounded-2xl px-4 py-3 text-center">
+                  <span className="text-sm text-green-600">연장근무 승인</span>
+                  <span className="ml-1 text-sm font-semibold text-green-700">
+                    ({todayOvertime.hours}시간{todayOvertime.minutes > 0 ? ` ${todayOvertime.minutes}분` : ''})
+                  </span>
+                  {todayOvertime.adjustedByReviewer && (
+                    <span className="ml-1.5 px-1.5 py-0.5 rounded text-[10px] font-medium bg-green-100 text-green-700">재배팀 조정</span>
+                  )}
+                </div>
+              )}
+              {todayOvertime?.status === 'rejected' && (
+                <div className="bg-red-50 rounded-2xl px-4 py-3 text-center">
+                  <span className="text-sm text-red-500">연장근무 반려됨</span>
+                  <button
+                    onClick={() => { setOvertimeForm({ hours: 1, minutes: 0, reason: '' }); setShowOvertimeSheet(true); }}
+                    className="ml-3 px-3 py-1 rounded-lg text-xs font-medium bg-red-100 text-red-600 active:scale-[0.98]"
+                  >
+                    다시 신청
+                  </button>
+                </div>
+              )}
+            </div>
           </>
         ) : hasCheckedOut ? (
           <>
@@ -455,6 +560,57 @@ export default function WorkerHome() {
             </Button>
           </div>
         )}
+        </div>
+      </BottomSheet>
+
+      {/* 연장근무 신청 바텀시트 */}
+      <BottomSheet isOpen={showOvertimeSheet} onClose={() => setShowOvertimeSheet(false)} title="연장근무 신청">
+        <div className="space-y-4">
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">시간</label>
+              <select
+                value={overtimeForm.hours}
+                onChange={(e) => setOvertimeForm({ ...overtimeForm, hours: Number(e.target.value) })}
+                className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm min-h-[44px]"
+              >
+                {Array.from({ length: 13 }, (_, i) => (
+                  <option key={i} value={i}>{i}시간</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">분</label>
+              <select
+                value={overtimeForm.minutes}
+                onChange={(e) => setOvertimeForm({ ...overtimeForm, minutes: Number(e.target.value) })}
+                className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm min-h-[44px]"
+              >
+                {[0, 15, 30, 45].map((m) => (
+                  <option key={m} value={m}>{m}분</option>
+                ))}
+              </select>
+            </div>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">사유 (선택)</label>
+            <textarea
+              value={overtimeForm.reason}
+              onChange={(e) => setOvertimeForm({ ...overtimeForm, reason: e.target.value })}
+              maxLength={100}
+              rows={2}
+              className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm"
+              placeholder="연장근무 사유를 입력하세요"
+            />
+          </div>
+          <Button
+            size="lg"
+            className="w-full"
+            onClick={handleOvertimeSubmit}
+            disabled={overtimeSubmitting || (overtimeForm.hours === 0 && overtimeForm.minutes === 0)}
+          >
+            {overtimeSubmitting ? '신청 중...' : '연장근무 신청'}
+          </Button>
         </div>
       </BottomSheet>
     </div>
