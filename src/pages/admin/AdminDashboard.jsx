@@ -65,7 +65,7 @@ export default function AdminDashboard() {
   const lateCount = todayAttendance.filter((a) => a.status === 'late').length;
   const notCheckedIn = workers.length - todayAttendance.length;
   const todayLeaves = useMemo(
-    () => leaveRequests.filter((r) => r.date === todayStr && r.status === 'hr_approved' && workerIds.has(r.employeeId)),
+    () => leaveRequests.filter((r) => r.date === todayStr && r.status === 'approved' && workerIds.has(r.employeeId)),
     [leaveRequests, todayStr, workerIds]
   );
 
@@ -82,7 +82,7 @@ export default function AdminDashboard() {
   // ─── 처리 필요 ───
   const pendingLeaves = useMemo(() => {
     if (isFarmTeam) return leaveRequests.filter((r) => r.status === 'pending');
-    return leaveRequests.filter((r) => r.status === 'farm_approved');
+    return leaveRequests.filter((r) => r.status === 'pending');
   }, [leaveRequests, isFarmTeam]);
   const unresolvedIssues = useMemo(() => issues.filter((i) => !i.isResolved), [issues]);
   const unconfirmedCalls = useMemo(() => calls.filter((c) => !c.isConfirmed), [calls]);

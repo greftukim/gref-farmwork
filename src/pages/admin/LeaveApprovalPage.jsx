@@ -11,9 +11,6 @@ const statusConfig = {
   pending:  { label: '대기',   dot: 'bg-amber-400',  color: 'text-amber-600' },
   approved: { label: '승인',   dot: 'bg-green-500',  color: 'text-green-600' },
   rejected: { label: '반려',   dot: 'bg-red-500',    color: 'text-red-600'   },
-  // 하위 호환 (마이그레이션 전 데이터)
-  farm_approved: { label: '승인', dot: 'bg-green-500', color: 'text-green-600' },
-  hr_approved:   { label: '승인', dot: 'bg-green-500', color: 'text-green-600' },
 };
 
 export default function LeaveApprovalPage() {
@@ -39,7 +36,7 @@ export default function LeaveApprovalPage() {
 
   const processedRequests = useMemo(
     () => requests
-      .filter((r) => ['approved', 'rejected', 'farm_approved', 'hr_approved'].includes(r.status))
+      .filter((r) => ['approved', 'rejected'].includes(r.status))
       .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
       .slice(0, 30),
     [requests]

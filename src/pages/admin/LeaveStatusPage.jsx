@@ -8,9 +8,6 @@ const statusConfig = {
   pending:       { label: '재배팀 승인 대기', badge: 'bg-amber-100 text-amber-700' },
   approved:      { label: '승인',             badge: 'bg-green-100 text-green-700'  },
   rejected:      { label: '반려',             badge: 'bg-red-100 text-red-700'      },
-  // 하위 호환
-  farm_approved: { label: '승인',             badge: 'bg-green-100 text-green-700'  },
-  hr_approved:   { label: '승인',             badge: 'bg-green-100 text-green-700'  },
 };
 
 export default function LeaveStatusPage() {
@@ -40,8 +37,7 @@ export default function LeaveStatusPage() {
         if (!emp) return false;
         if (filterBranch !== 'all' && emp.branch !== filterBranch) return false;
         if (filterStatus !== 'all') {
-          const normalized = ['farm_approved', 'hr_approved'].includes(r.status) ? 'approved' : r.status;
-          if (normalized !== filterStatus) return false;
+          if (r.status !== filterStatus) return false;
         }
         if (filterStart && r.date < filterStart) return false;
         if (filterEnd && r.date > filterEnd) return false;

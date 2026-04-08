@@ -5,8 +5,7 @@ import Card from '../../components/common/Card';
 
 const statusMap = {
   pending: { label: '대기', color: 'bg-amber-100 text-amber-700' },
-  farm_approved: { label: '1차 승인', color: 'bg-blue-100 text-blue-700' },
-  hr_approved: { label: '최종 승인', color: 'bg-green-100 text-green-700' },
+  approved: { label: '승인', color: 'bg-green-100 text-green-700' },
   rejected: { label: '반려', color: 'bg-red-100 text-red-700' },
 };
 
@@ -70,7 +69,7 @@ export default function LeavePage() {
             return (
               <Card
                 key={req.id}
-                accent={req.status === 'pending' ? 'amber' : req.status === 'hr_approved' ? 'green' : req.status === 'farm_approved' ? 'blue' : 'red'}
+                accent={req.status === 'pending' ? 'amber' : req.status === 'approved' ? 'green' : 'red'}
                 className="p-4"
               >
                 <div className="flex items-center justify-between mb-2">

@@ -27,9 +27,6 @@ const statusMap = {
   pending:       { label: '대기',   color: 'bg-amber-100 text-amber-700' },
   approved:      { label: '승인',   color: 'bg-green-100 text-green-700' },
   rejected:      { label: '반려',   color: 'bg-red-100 text-red-700'    },
-  // 하위 호환
-  farm_approved: { label: '승인',   color: 'bg-green-100 text-green-700' },
-  hr_approved:   { label: '승인',   color: 'bg-green-100 text-green-700' },
 };
 
 const DAYS = ['일', '월', '화', '수', '목', '금', '토'];
