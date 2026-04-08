@@ -182,7 +182,7 @@ export default function NoticePage() {
                   <select value={pushJobType} onChange={(e) => setPushJobType(e.target.value)}
                     className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm min-h-[40px]">
                     <option value="">직무 선택</option>
-                    {['재배', '관리', '기타'].map((j) => (
+                    {['재배', '포장', '관리', '기타'].map((j) => (
                       <option key={j} value={j}>{j}</option>
                     ))}
                   </select>

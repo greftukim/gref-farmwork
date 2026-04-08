@@ -20,7 +20,7 @@ export async function sendPushToAdmins({ title, body, type, urgent = false }) {
 /**
  * 작업자에게 푸시 (전체 또는 필터)
  * @param {string} [targetBranch] - 지점 코드 (busan/jinju/hadong) - 없으면 전체
- * @param {string} [targetJobType] - 직무 ('재배'/'관리'/'기타') - 없으면 전체
+ * @param {string} [targetJobType] - 직무 ('재배'/'포장'/'관리'/'기타') - 없으면 전체
  */
 export async function sendPushToWorkers({ title, body, type = 'notice', urgent = false, targetBranch, targetJobType } = {}) {
   return invoke({ title, body, type, urgent, targetRole: 'worker', targetBranch, targetJobType });

@@ -66,6 +66,7 @@ function EmployeeForm({ form, setForm, branchOptions }) {
       ])}
       {field('직무', 'jobType', 'text', [
         { value: '재배', label: '재배' },
+        { value: '포장', label: '포장' },
         { value: '관리', label: '관리' },
         { value: '기타', label: '기타' },
       ])}
