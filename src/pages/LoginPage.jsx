@@ -4,25 +4,33 @@ import useAuthStore from '../stores/authStore';
 
 export default function LoginPage() {
   const navigate = useNavigate();
-  const loginWithPassword = useAuthStore((s) => s.loginWithPassword);
-  const [team, setTeam] = useState('farm');
+  const login = useAuthStore((s) => s.login);
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!username || !password) return;
     setError('');
-    const result = await loginWithPassword(username, password, team);
+    setLoading(true);
+    const result = await login(username, password);
+    setLoading(false);
     if (result.success) {
-      navigate('/admin', { replace: true });
+      const role = result.role;
+      if (role === 'worker') {
+        navigate('/worker', { replace: true });
+      } else {
+        // farm_admin, hr_admin, supervisor, master → 모두 /admin (라우팅 세분화는 0-4-2에서)
+        navigate('/admin', { replace: true });
+      }
     } else {
-      setError('아이디 또는 비밀번호가 올바르지 않습니다');
+      setError(result.error || '아이디 또는 비밀번호가 올바르지 않습니다');
     }
   };
 
-  const canSubmit = username.length > 0 && password.length > 0;
+  const canSubmit = username.length > 0 && password.length > 0 && !loading;
 
   return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center p-6">
@@ -36,27 +44,6 @@ export default function LoginPage() {
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
           <h2 className="text-2xl font-bold text-gray-900 mb-1">관리자 로그인</h2>
           <p className="text-gray-400 mb-8">온실 인력관리 시스템에 로그인하세요</p>
-
-          {/* 팀 선택 */}
-          <div className="flex gap-2 mb-6">
-            {[
-              { key: 'farm', label: '재배팀' },
-              { key: 'management', label: '관리팀' },
-            ].map((t) => (
-              <button
-                key={t.key}
-                type="button"
-                onClick={() => setTeam(t.key)}
-                className={`flex-1 py-2.5 rounded-xl text-sm font-medium transition-all min-h-[44px] ${
-                  team === t.key
-                    ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/20'
-                    : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
-                }`}
-              >
-                {t.label}
-              </button>
-            ))}
-          </div>
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
@@ -96,7 +83,7 @@ export default function LoginPage() {
                     : 'bg-gray-200 text-gray-400 cursor-not-allowed shadow-none'
                 }`}
             >
-              로그인
+              {loading ? '로그인 중...' : '로그인'}
             </button>
           </form>
         </div>

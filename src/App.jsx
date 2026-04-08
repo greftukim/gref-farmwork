@@ -115,6 +115,10 @@ function PlaceholderPage({ title }) {
 }
 
 export default function App() {
+  useEffect(() => {
+    useAuthStore.getState().initialize();
+  }, []);
+
   return (
     <ErrorBoundary>
     <HydrationGate>
