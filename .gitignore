@@ -30,3 +30,12 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Claude Code
+.claude/
+
+# Supabase local
+supabase/.temp/
+
+# Local backups
+backup/
