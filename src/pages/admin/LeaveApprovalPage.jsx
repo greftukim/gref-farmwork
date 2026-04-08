@@ -8,63 +8,60 @@ import Button from '../../components/common/Button';
 import { sendPushToEmployee } from '../../lib/pushNotify';
 
 const statusConfig = {
-  pending: { label: '1차 대기', dot: 'bg-amber-400', color: 'text-amber-600' },
-  farm_approved: { label: '1차 완료', dot: 'bg-blue-500', color: 'text-blue-600' },
-  hr_approved: { label: '최종 완료', dot: 'bg-green-500', color: 'text-green-600' },
-  rejected: { label: '반려', dot: 'bg-red-500', color: 'text-red-600' },
+  pending:  { label: '대기',   dot: 'bg-amber-400',  color: 'text-amber-600' },
+  approved: { label: '승인',   dot: 'bg-green-500',  color: 'text-green-600' },
+  rejected: { label: '반려',   dot: 'bg-red-500',    color: 'text-red-600'   },
+  // 하위 호환 (마이그레이션 전 데이터)
+  farm_approved: { label: '승인', dot: 'bg-green-500', color: 'text-green-600' },
+  hr_approved:   { label: '승인', dot: 'bg-green-500', color: 'text-green-600' },
 };
 
 export default function LeaveApprovalPage() {
   const currentUser = useAuthStore((s) => s.currentUser);
   const requests = useLeaveStore((s) => s.requests);
   const farmReview = useLeaveStore((s) => s.farmReview);
-  const hrReview = useLeaveStore((s) => s.hrReview);
   const employees = useEmployeeStore((s) => s.employees);
   const addNotification = useNotificationStore((s) => s.addNotification);
 
-  const isFarmTeam = currentUser?.team === 'farm';
-  const title = isFarmTeam ? '근태 승인 (1차)' : '근태 승인 (최종)';
-
-  const [processing, setProcessing] = useState(null); // 처리 중인 requestId
+  const [processing, setProcessing] = useState(null);
 
   const empMap = useMemo(
     () => Object.fromEntries(employees.map((e) => [e.id, e])),
     [employees]
   );
 
-  const pendingRequests = useMemo(() => {
-    const targetStatus = isFarmTeam ? 'pending' : 'farm_approved';
-    return requests
-      .filter((r) => r.status === targetStatus)
-      .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
-  }, [requests, isFarmTeam]);
+  const pendingRequests = useMemo(
+    () => requests
+      .filter((r) => r.status === 'pending')
+      .sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
+    [requests]
+  );
 
-  const processedRequests = useMemo(() => {
-    const statuses = isFarmTeam
-      ? ['farm_approved', 'rejected']
-      : ['hr_approved', 'rejected'];
-    return requests
-      .filter((r) => statuses.includes(r.status))
+  const processedRequests = useMemo(
+    () => requests
+      .filter((r) => ['approved', 'rejected', 'farm_approved', 'hr_approved'].includes(r.status))
       .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
-      .slice(0, 20);
-  }, [requests, isFarmTeam]);
+      .slice(0, 30),
+    [requests]
+  );
+
+  const allRequests = [...pendingRequests, ...processedRequests];
 
   const handleApprove = async (id) => {
     if (processing) return;
     setProcessing(id);
     const req = requests.find((r) => r.id === id);
-    const ok = await (isFarmTeam ? farmReview(id, true, currentUser.id) : hrReview(id, true, currentUser.id));
+    const ok = await farmReview(id, true, currentUser.id);
     setProcessing(null);
     if (!ok) {
-      addNotification({ type: 'info', title: '승인 실패', message: '처리 중 오류가 발생했습니다. 콘솔을 확인하세요.', urgent: false });
+      addNotification({ type: 'info', title: '승인 실패', message: '처리 중 오류가 발생했습니다.', urgent: false });
       return;
     }
     if (req) {
-      const label = isFarmTeam ? '1차 승인' : '최종 승인';
       sendPushToEmployee({
         employeeId: req.employeeId,
-        title: `근태 신청이 ${label}되었습니다`,
-        body: `${req.date} ${req.type}${req.reason ? ` · ${req.reason}` : ''} 신청이 ${label} 처리되었습니다`,
+        title: '근태 신청이 승인되었습니다',
+        body: `${req.date} ${req.type}${req.reason ? ` · ${req.reason}` : ''} 신청이 승인 처리되었습니다`,
         type: 'leave',
       }).catch(() => {});
     }
@@ -74,10 +71,10 @@ export default function LeaveApprovalPage() {
     if (processing) return;
     setProcessing(id);
     const req = requests.find((r) => r.id === id);
-    const ok = await (isFarmTeam ? farmReview(id, false, currentUser.id) : hrReview(id, false, currentUser.id));
+    const ok = await farmReview(id, false, currentUser.id);
     setProcessing(null);
     if (!ok) {
-      addNotification({ type: 'info', title: '반려 실패', message: '처리 중 오류가 발생했습니다. 콘솔을 확인하세요.', urgent: false });
+      addNotification({ type: 'info', title: '반려 실패', message: '처리 중 오류가 발생했습니다.', urgent: false });
       return;
     }
     if (req) {
@@ -90,12 +87,10 @@ export default function LeaveApprovalPage() {
     }
   };
 
-  const allRequests = [...pendingRequests, ...processedRequests];
-
   return (
     <div>
       <div className="flex items-center justify-between mb-6">
-        <h2 className="text-2xl font-heading font-bold text-gray-900">{title}</h2>
+        <h2 className="text-2xl font-heading font-bold text-gray-900">근태 승인</h2>
         <span className="text-sm text-gray-400">대기 {pendingRequests.length}건</span>
       </div>
 
@@ -106,8 +101,8 @@ export default function LeaveApprovalPage() {
         )}
         {allRequests.map((req) => {
           const emp = empMap[req.employeeId];
-          const st = statusConfig[req.status];
-          const isPending = pendingRequests.some((p) => p.id === req.id);
+          const st = statusConfig[req.status] || statusConfig.pending;
+          const isPending = req.status === 'pending';
           return (
             <Card key={req.id} accent="gray" className={`p-4 ${isPending ? 'border-l-amber-400' : ''}`}>
               <div className="flex items-start justify-between mb-2">
@@ -121,17 +116,13 @@ export default function LeaveApprovalPage() {
                 </div>
               </div>
               <div className="text-sm text-gray-600 mb-1">{req.date}</div>
-              {req.reason && (
-                <div className="text-sm text-gray-500 mb-3">{req.reason}</div>
-              )}
+              {req.reason && <div className="text-sm text-gray-500 mb-3">{req.reason}</div>}
               {isPending ? (
                 <div className="flex gap-2 justify-end mt-2">
                   <Button size="sm" onClick={() => handleApprove(req.id)} disabled={processing === req.id}>
                     {processing === req.id ? '처리 중...' : '승인'}
                   </Button>
-                  <Button size="sm" variant="danger" onClick={() => handleReject(req.id)} disabled={processing === req.id}>
-                    반려
-                  </Button>
+                  <Button size="sm" variant="danger" onClick={() => handleReject(req.id)} disabled={processing === req.id}>반려</Button>
                 </div>
               ) : (
                 <div className="text-right text-xs text-gray-400">처리 완료</div>
@@ -158,16 +149,13 @@ export default function LeaveApprovalPage() {
             <tbody className="divide-y divide-gray-50">
               {allRequests.length === 0 && (
                 <tr>
-                  <td colSpan={6} className="text-center text-gray-400 py-12">
-                    근태 신청 내역이 없습니다
-                  </td>
+                  <td colSpan={6} className="text-center text-gray-400 py-12">근태 신청 내역이 없습니다</td>
                 </tr>
               )}
               {allRequests.map((req) => {
                 const emp = empMap[req.employeeId];
-                const st = statusConfig[req.status];
-                const isPending = pendingRequests.some((p) => p.id === req.id);
-
+                const st = statusConfig[req.status] || statusConfig.pending;
+                const isPending = req.status === 'pending';
                 return (
                   <tr key={req.id} className={isPending ? 'bg-amber-50/50' : ''}>
                     <td className="px-5 py-3">

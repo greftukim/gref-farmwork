@@ -29,6 +29,7 @@ import EmployeesPage from './pages/admin/EmployeesPage';
 import AttendancePage from './pages/admin/AttendancePage';
 import LeavePage from './pages/admin/LeavePage';
 import LeaveApprovalPage from './pages/admin/LeaveApprovalPage';
+import LeaveStatusPage from './pages/admin/LeaveStatusPage';
 import SchedulePage from './pages/admin/SchedulePage';
 import CropZonePage from './pages/admin/CropZonePage';
 import TaskPlanPage from './pages/admin/TaskPlanPage';
@@ -91,6 +92,11 @@ function ProtectedRoute({ children, role }) {
   return children;
 }
 
+function LeaveApprovalRoute() {
+  const currentUser = useAuthStore((s) => s.currentUser);
+  return currentUser?.team === 'farm' ? <LeaveApprovalPage /> : <LeaveStatusPage />;
+}
+
 function AppRedirect() {
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
   const currentUser = useAuthStore((s) => s.currentUser);
@@ -123,7 +129,7 @@ export default function App() {
             <Route path="employees" element={<EmployeesPage />} />
             <Route path="attendance" element={<AttendancePage />} />
             <Route path="leave" element={<LeavePage />} />
-            <Route path="leave-approval" element={<LeaveApprovalPage />} />
+            <Route path="leave-approval" element={<LeaveApprovalRoute />} />
             <Route path="schedule" element={<SchedulePage />} />
             <Route path="crops" element={<CropZonePage />} />
             <Route path="tasks" element={<TaskPlanPage />} />
