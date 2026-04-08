@@ -1,12 +1,13 @@
 import useAuthStore from '../../stores/authStore';
 import useBranchStore from '../../stores/branchStore';
+import { isAdminLevel } from '../../lib/permissions';
 
 export default function TopBar({ title }) {
   const { currentUser, logout } = useAuthStore();
   const branches = useBranchStore((s) => s.branches);
   const selectedBranch = useBranchStore((s) => s.selectedBranch);
   const setSelectedBranch = useBranchStore((s) => s.setSelectedBranch);
-  const isAdmin = currentUser?.role === 'admin';
+  const isAdmin = isAdminLevel(currentUser);
 
   return (
     <header className="bg-white border-b border-gray-100 px-4 md:px-6 py-3 flex items-center justify-between min-h-[56px]">

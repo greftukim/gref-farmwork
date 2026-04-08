@@ -5,6 +5,7 @@ import useEmployeeStore from '../../stores/employeeStore';
 import useAuthStore from '../../stores/authStore';
 import useBranchStore from '../../stores/branchStore';
 import Card from '../../components/common/Card';
+import { isFarmAdmin } from '../../lib/permissions';
 import Button from '../../components/common/Button';
 import { downloadAttendanceExcel } from '../../lib/excelExport';
 
@@ -26,7 +27,7 @@ export default function WorkStatsPage() {
 
   const workers = useMemo(() => employees.filter((e) => e.role === 'worker' && e.isActive), [employees]);
 
-  const isFarmTeam = currentUser?.team === 'farm';
+  const isFarmTeam = isFarmAdmin(currentUser);
   const branchNameMap = useMemo(
     () => Object.fromEntries(branches.map((b) => [b.code, b.name])),
     [branches]

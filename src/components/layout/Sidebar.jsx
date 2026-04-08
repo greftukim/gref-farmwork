@@ -1,5 +1,6 @@
 import { NavLink } from 'react-router-dom';
 import useAuthStore from '../../stores/authStore';
+import { isFarmAdmin, ROLE_LABELS } from '../../lib/permissions';
 
 const farmMenuItems = [
   { to: '/admin', label: '대시보드', icon: 'M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6' },
@@ -41,16 +42,16 @@ function MenuIcon({ path }) {
 
 export default function Sidebar() {
   const currentUser = useAuthStore((s) => s.currentUser);
-  const team = currentUser?.team;
-  const menuItems = team === 'management' ? mgmtMenuItems : farmMenuItems;
+  const menuItems = isFarmAdmin(currentUser) ? farmMenuItems : mgmtMenuItems;
+  const roleBadge = ROLE_LABELS[currentUser?.role];
 
   return (
     <nav className="w-60 bg-slate-900 min-h-screen py-5 flex-shrink-0 flex flex-col">
       <div className="px-5 pb-5 mb-3 border-b border-slate-700/50">
         <div className="text-xl font-heading font-bold text-white tracking-tight">GREF FarmWork</div>
-        {team && (
+        {roleBadge && (
           <span className="inline-block mt-2 px-2 py-0.5 rounded text-xs font-medium bg-blue-600/20 text-blue-300">
-            {team === 'farm' ? '재배팀' : '관리팀'}
+            {roleBadge}
           </span>
         )}
       </div>

@@ -4,6 +4,7 @@ import useEmployeeStore from '../../stores/employeeStore';
 import useBranchStore from '../../stores/branchStore';
 import useAuthStore from '../../stores/authStore';
 import Button from '../../components/common/Button';
+import { isFarmAdmin, canHrCrud, roleLabel } from '../../lib/permissions';
 import Card from '../../components/common/Card';
 import Modal from '../../components/common/Modal';
 
@@ -170,7 +171,7 @@ function QrModal({ employee, onClose, onReissue, onRevoke }) {
 
 export default function EmployeesPage() {
   const currentUser = useAuthStore((s) => s.currentUser);
-  const isManagement = currentUser?.team === 'management';
+  const isManagement = canHrCrud(currentUser);
 
   const employees = useEmployeeStore((s) => s.employees);
   const addEmployee = useEmployeeStore((s) => s.addEmployee);
@@ -198,7 +199,7 @@ export default function EmployeesPage() {
   const filtered = useMemo(() => {
     let list = employees;
     // 재배팀: 본인 지점 직원만 표시
-    if (!isManagement && currentUser?.branch) {
+    if (isFarmAdmin(currentUser) && currentUser?.branch) {
       list = list.filter((e) => e.branch === currentUser.branch);
     }
     if (filter === 'active') return list.filter((e) => e.isActive);
@@ -310,7 +311,7 @@ export default function EmployeesPage() {
                   {emp.isActive ? '재직' : '비활성'}
                 </span>
                 <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-700">
-                  {emp.role === 'admin' ? '관리자' : '작업자'}
+                  {roleLabel(emp.role)}
                 </span>
               </div>
             </div>
@@ -330,7 +331,7 @@ export default function EmployeesPage() {
               {emp.hireDate && <div>입사 {emp.hireDate}</div>}
             </div>
             <div className="flex gap-2 justify-end">
-              {(emp.role === 'worker' || emp.role === 'admin') && (
+              {emp.role === 'worker' && (
                 <button
                   onClick={() => handleQrOpen(emp)}
                   className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors min-h-[36px] ${
@@ -379,7 +380,7 @@ export default function EmployeesPage() {
                   <td className="px-4 py-3 font-medium text-gray-900">{emp.name}</td>
                   <td className="px-4 py-3">
                     <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-700">
-                      {emp.role === 'admin' ? '관리자' : '작업자'}
+                      {roleLabel(emp.role)}
                     </span>
                   </td>
                   <td className="px-4 py-3 text-gray-600">{emp.jobType}</td>
@@ -409,7 +410,7 @@ export default function EmployeesPage() {
                     </span>
                   </td>
                   <td className="px-4 py-3">
-                    {(emp.role === 'worker' || emp.role === 'admin') && (
+                    {emp.role === 'worker' && (
                       <button
                         onClick={() => handleQrOpen(emp)}
                         className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-colors min-h-[32px] ${

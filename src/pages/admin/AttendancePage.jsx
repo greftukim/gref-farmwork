@@ -3,6 +3,7 @@ import useAttendanceStore from '../../stores/attendanceStore';
 import useEmployeeStore from '../../stores/employeeStore';
 import useAuthStore from '../../stores/authStore';
 import Card from '../../components/common/Card';
+import { isFarmAdmin } from '../../lib/permissions';
 import Button from '../../components/common/Button';
 import Modal from '../../components/common/Modal';
 
@@ -68,7 +69,7 @@ export default function AttendancePage() {
   const [deleting, setDeleting] = useState(false);
 
   // 관리팀은 근무 시간 열 숨김
-  const isManagement = currentUser?.team === 'management';
+  const isManagement = !isFarmAdmin(currentUser); // 재배팀만 근무시간 상세 표시
 
   const workers = useMemo(
     () => employees.filter((e) => e.role === 'worker' && e.isActive),

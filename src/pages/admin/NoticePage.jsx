@@ -44,7 +44,7 @@ export default function NoticePage() {
 
   const handleAdd = async () => {
     if (!form.title.trim() || !form.body.trim()) return;
-    await addNotice({ ...form, createdBy: currentUser.id, authorTeam: currentUser.team || null });
+    await addNotice({ ...form, createdBy: currentUser.id, authorTeam: currentUser.role || null });
 
     if (sendPush) {
       setPushing(true);

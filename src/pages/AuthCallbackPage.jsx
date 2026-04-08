@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import useAuthStore from '../stores/authStore';
+import { isAdminLevel } from '../lib/permissions';
 
 export default function AuthCallbackPage() {
   const [searchParams] = useSearchParams();
@@ -20,7 +21,7 @@ export default function AuthCallbackPage() {
     loginWithToken(token).then((result) => {
       if (result.success) {
         const user = useAuthStore.getState().currentUser;
-        const dest = user?.role === 'admin' ? '/admin' : '/worker';
+        const dest = isAdminLevel(user) ? '/admin' : '/worker';
         navigate(dest, { replace: true });
       } else {
         setStatus('error');

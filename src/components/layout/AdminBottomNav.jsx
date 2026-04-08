@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import useAuthStore from '../../stores/authStore';
+import { isFarmAdmin } from '../../lib/permissions';
 
 // ─── 재배팀 ──────────────────────────────────────────────────────────────────
 const farmCoreTabs = [
@@ -148,7 +149,7 @@ export default function AdminBottomNav() {
   const [showMore, setShowMore] = useState(false);
   const navigate = useNavigate();
   const currentUser = useAuthStore((s) => s.currentUser);
-  const isFarm = currentUser?.team === 'farm';
+  const isFarm = isFarmAdmin(currentUser);
 
   const coreTabs = isFarm ? farmCoreTabs : mgmtCoreTabs;
   const moreItems = isFarm ? farmMoreItems : mgmtMoreItems;

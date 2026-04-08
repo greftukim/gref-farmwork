@@ -1,5 +1,6 @@
 import ExcelJS from 'exceljs';
 import { supabase } from './supabase';
+import { isFarmAdmin } from './permissions';
 
 // ─── 유틸 함수 ──────────────────────────────────────────
 
@@ -42,7 +43,7 @@ function getMonthDays(year, month) {
 
 function roleLabel(role) {
   if (role === 'worker') return '작업자';
-  if (role === 'admin') return '관리자';
+  if (role !== 'worker') return '관리자';
   return role || '';
 }
 
@@ -313,7 +314,7 @@ function buildSheet(workbook, sheetName, employees, monthDays, attendance, leave
 export async function downloadAttendanceExcel({ year, month, branches, branchNameMap, currentUser }) {
   // 권한별 지점 결정
   let branchCodes = [];
-  if (currentUser.team === 'farm') {
+  if (isFarmAdmin(currentUser)) {
     branchCodes = [currentUser.branch];
   } else if (branches && branches.length > 0) {
     branchCodes = branches;

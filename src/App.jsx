@@ -1,6 +1,7 @@
 import { useState, useEffect, Component } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import useAuthStore from './stores/authStore';
+import { ADMIN_ROLES, isFarmAdmin, isAdminLevel } from './lib/permissions';
 
 class ErrorBoundary extends Component {
   constructor(props) { super(props); this.state = { error: null }; }
@@ -83,26 +84,26 @@ function HydrationGate({ children }) {
   return children;
 }
 
-function ProtectedRoute({ children, role }) {
+function ProtectedRoute({ children, allowedRoles }) {
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
   const currentUser = useAuthStore((s) => s.currentUser);
   if (!isAuthenticated || !currentUser) return <Navigate to="/login" replace />;
-  if (role && currentUser.role !== role) {
-    return <Navigate to={currentUser.role === 'admin' ? '/admin' : '/worker'} replace />;
+  if (allowedRoles && !allowedRoles.includes(currentUser.role)) {
+    return <Navigate to="/login" replace />;
   }
   return children;
 }
 
 function LeaveApprovalRoute() {
   const currentUser = useAuthStore((s) => s.currentUser);
-  return currentUser?.team === 'farm' ? <LeaveApprovalPage /> : <LeaveStatusPage />;
+  return isFarmAdmin(currentUser) ? <LeaveApprovalPage /> : <LeaveStatusPage />;
 }
 
 function AppRedirect() {
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
   const currentUser = useAuthStore((s) => s.currentUser);
   if (!isAuthenticated) return <Navigate to="/login" replace />;
-  return <Navigate to={currentUser?.role === 'admin' ? '/admin' : '/worker'} replace />;
+  return <Navigate to={currentUser?.role === 'worker' ? '/worker' : '/admin'} replace />;
 }
 
 function PlaceholderPage({ title }) {
@@ -128,7 +129,7 @@ export default function App() {
           <Route path="/auth" element={<AuthCallbackPage />} />
 
           <Route path="/admin" element={
-            <ProtectedRoute role="admin"><AdminLayout /></ProtectedRoute>
+            <ProtectedRoute allowedRoles={ADMIN_ROLES}><AdminLayout /></ProtectedRoute>
           }>
             <Route index element={<AdminDashboard />} />
             <Route path="employees" element={<EmployeesPage />} />
@@ -153,7 +154,7 @@ export default function App() {
           </Route>
 
           <Route path="/worker" element={
-            <ProtectedRoute role="worker"><WorkerLayout /></ProtectedRoute>
+            <ProtectedRoute allowedRoles={['worker']}><WorkerLayout /></ProtectedRoute>
           }>
             <Route index element={<WorkerHome />} />
             <Route path="tasks" element={<WorkerTasksPage />} />

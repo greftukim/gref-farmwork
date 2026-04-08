@@ -12,6 +12,7 @@ import useAuthStore from '../../stores/authStore';
 import useBranchStore from '../../stores/branchStore';
 import useCropStore from '../../stores/cropStore';
 import Card from '../../components/common/Card';
+import { isFarmAdmin } from '../../lib/permissions';
 
 const today = () => new Date().toISOString().split('T')[0];
 
@@ -27,7 +28,7 @@ function StatCard({ label, value, color, sub }) {
 
 export default function AdminDashboard() {
   const currentUser = useAuthStore((s) => s.currentUser);
-  const isFarmTeam = currentUser?.team === 'farm';
+  const isFarmTeam = isFarmAdmin(currentUser);
 
   const employees = useEmployeeStore((s) => s.employees);
   const attendance = useAttendanceStore((s) => s.records);
