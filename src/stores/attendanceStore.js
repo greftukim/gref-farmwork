@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { supabase } from '../lib/supabase';
 import { snakeToCamel } from '../lib/dbHelpers';
+import { judgeAttendanceStatus } from '../utils/attendanceStatus';
 
 const useAttendanceStore = create((set, get) => ({
   records: [],
@@ -101,6 +102,50 @@ const useAttendanceStore = create((set, get) => ({
       set((s) => ({ records: [snakeToCamel(data), ...s.records] }));
     }
     return { error };
+  },
+
+  /** 기존 기록 수정 (관리자용: check_in, check_out 변경 + status 자동 재판정) */
+  updateRecord: async (recordId, { checkIn, checkOut }) => {
+    const existing = get().records.find((r) => r.id === recordId);
+    if (!existing) throw new Error('Record not found');
+
+    const { data: emp, error: empErr } = await supabase
+      .from('employees')
+      .select('work_start_time')
+      .eq('id', existing.employeeId)
+      .single();
+    if (empErr) throw empErr;
+
+    let newStatus = existing.status;
+    if (existing.status !== 'working') {
+      newStatus = judgeAttendanceStatus(checkIn, emp.work_start_time);
+    }
+
+    let workMinutes = null;
+    if (checkOut) {
+      workMinutes = Math.round((new Date(checkOut) - new Date(checkIn)) / 60000);
+    }
+
+    const { data, error } = await supabase
+      .from('attendance')
+      .update({
+        check_in: checkIn,
+        check_out: checkOut,
+        status: newStatus,
+        work_minutes: workMinutes,
+      })
+      .eq('id', recordId)
+      .select()
+      .single();
+    if (error) throw error;
+
+    set((state) => ({
+      records: state.records.map((r) =>
+        r.id === recordId ? snakeToCamel(data) : r
+      ),
+    }));
+
+    return data;
   },
 
   /** 개별 기록 삭제 */

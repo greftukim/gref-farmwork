@@ -55,25 +55,37 @@ function ConfirmModal({ isOpen, onClose, onConfirm, message, loading }) {
 }
 
 /** 대리 입력 모달 */
-function ProxyCheckInModal({ isOpen, onClose, onConfirm, worker, date, loading }) {
+function ProxyCheckInModal({ isOpen, onClose, onConfirm, worker, date, loading, mode = 'create', existingRecord = null }) {
   const [checkInTime, setCheckInTime] = useState('09:00');
   const [checkOutTime, setCheckOutTime] = useState('18:00');
   const [status, setStatus] = useState('normal');
 
   useEffect(() => {
     if (isOpen && worker) {
-      // HH:MM:SS → HH:MM (Supabase TIME 타입이 초 포함 형식으로 오는 케이스 방어)
       const toHHMM = (t) => (t ? String(t).slice(0, 5) : '');
-      setCheckInTime(toHHMM(worker.workStartTime) || '09:00');
-      setCheckOutTime(toHHMM(worker.workEndTime) || '18:00');
-      setStatus('normal');
+
+      if (mode === 'edit' && existingRecord) {
+        const isoToHHMM = (iso) => {
+          if (!iso) return '';
+          const d = new Date(iso);
+          if (isNaN(d.getTime())) return '';
+          return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+        };
+        setCheckInTime(isoToHHMM(existingRecord.checkIn));
+        setCheckOutTime(isoToHHMM(existingRecord.checkOut));
+        setStatus(existingRecord.status || 'normal');
+      } else {
+        setCheckInTime(toHHMM(worker.workStartTime) || '09:00');
+        setCheckOutTime(toHHMM(worker.workEndTime) || '18:00');
+        setStatus('normal');
+      }
     }
-  }, [isOpen, worker]);
+  }, [isOpen, worker, mode, existingRecord]);
 
   if (!isOpen || !worker) return null;
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="대리 입력">
+    <Modal isOpen={isOpen} onClose={onClose} title={mode === 'edit' ? '근무 기록 수정' : '대리 입력'}>
       <div className="space-y-4">
         <div className="text-sm text-gray-600">
           <span className="font-semibold text-gray-900">{worker.name}</span>
@@ -99,22 +111,24 @@ function ProxyCheckInModal({ isOpen, onClose, onConfirm, worker, date, loading }
             />
           </div>
         </div>
-        <div>
-          <label className="block text-xs font-medium text-gray-500 mb-1">상태</label>
-          <select
-            value={status}
-            onChange={(e) => setStatus(e.target.value)}
-            className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm min-h-[44px]"
-          >
-            <option value="normal">정상</option>
-            <option value="late">지각</option>
-          </select>
-        </div>
+        {mode !== 'edit' && (
+          <div>
+            <label className="block text-xs font-medium text-gray-500 mb-1">상태</label>
+            <select
+              value={status}
+              onChange={(e) => setStatus(e.target.value)}
+              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm min-h-[44px]"
+            >
+              <option value="normal">정상</option>
+              <option value="late">지각</option>
+            </select>
+          </div>
+        )}
         <p className="text-xs text-gray-400">* 연장근무는 작업자 앱에서 별도 신청</p>
         <div className="flex gap-2">
           <Button
             className="flex-1"
-            onClick={() => onConfirm({ checkInTime, checkOutTime, status })}
+            onClick={() => onConfirm({ checkInTime, checkOutTime, status, mode })}
             disabled={loading}
           >
             {loading ? '저장 중...' : '저장'}
@@ -133,6 +147,7 @@ export default function AttendancePage() {
   const deleteRecord = useAttendanceStore((s) => s.deleteRecord);
   const deleteRecords = useAttendanceStore((s) => s.deleteRecords);
   const proxyCheckIn = useAttendanceStore((s) => s.proxyCheckIn);
+  const updateRecord = useAttendanceStore((s) => s.updateRecord);
   const employees = useEmployeeStore((s) => s.employees);
   const updateEmployee = useEmployeeStore((s) => s.updateEmployee);
   const currentUser = useAuthStore((s) => s.currentUser);
@@ -156,52 +171,83 @@ export default function AttendancePage() {
   const [confirm, setConfirm] = useState(null); // { message, onConfirm }
   const [deleting, setDeleting] = useState(false);
 
-  // 대리 입력 모달
+  // 대리 입력 / 수정 모달
   const [proxyTarget, setProxyTarget] = useState(null); // { worker, date } | null
   const [proxyLoading, setProxyLoading] = useState(false);
+  const [proxyMode, setProxyMode] = useState('create');
+  const [proxyExistingRecord, setProxyExistingRecord] = useState(null);
 
-  const openProxyModal = (worker, date) => setProxyTarget({ worker, date });
-  const closeProxyModal = () => { if (!proxyLoading) setProxyTarget(null); };
+  const openProxyModal = (worker, date) => {
+    setProxyTarget({ worker, date });
+    setProxyMode('create');
+    setProxyExistingRecord(null);
+  };
+  const openEditModal = (worker, date, record) => {
+    setProxyTarget({ worker, date });
+    setProxyMode('edit');
+    setProxyExistingRecord(record);
+  };
+  const closeProxyModal = () => {
+    if (!proxyLoading) {
+      setProxyTarget(null);
+      setProxyMode('create');
+      setProxyExistingRecord(null);
+    }
+  };
 
-  const handleProxyConfirm = async ({ checkInTime, checkOutTime, status }) => {
+  const handleProxyConfirm = async ({ checkInTime, checkOutTime, status, mode }) => {
     if (!proxyTarget || !currentUser) return;
     setProxyLoading(true);
 
-    // date + HH:MM → ISO timestamp (로컬 시간대 기준)
-    // checkInTime이 혹시 HH:MM:SS 형식이어도 안전하도록 5자로 정규화
-    const checkInIso = new Date(`${proxyTarget.date}T${checkInTime.slice(0, 5)}:00`).toISOString();
-    const checkOutIso = checkOutTime
-      ? new Date(`${proxyTarget.date}T${checkOutTime.slice(0, 5)}:00`).toISOString()
-      : null;
+    try {
+      // date + HH:MM → ISO timestamp (로컬 시간대 기준)
+      const checkInIso = new Date(`${proxyTarget.date}T${checkInTime.slice(0, 5)}:00`).toISOString();
+      const checkOutIso = checkOutTime
+        ? new Date(`${proxyTarget.date}T${checkOutTime.slice(0, 5)}:00`).toISOString()
+        : null;
 
-    // 퇴근 시각이 출근 시각보다 이른 경우 거부
-    if (checkOutIso && new Date(checkOutIso) <= new Date(checkInIso)) {
-      setProxyLoading(false);
-      alert('퇴근 시각은 출근 시각 이후여야 합니다.');
-      return;
-    }
-
-    const { error } = await proxyCheckIn({
-      employeeId: proxyTarget.worker.id,
-      date: proxyTarget.date,
-      checkIn: checkInIso,
-      checkOut: checkOutIso,
-      status,
-      inputBy: currentUser.id,
-    });
-
-    setProxyLoading(false);
-    if (error) {
-      if (error === 'ALREADY_EXISTS') {
-        alert('이미 해당 날짜의 출퇴근 기록이 존재합니다.');
-      } else if (error === 'MISSING_REQUIRED') {
-        alert('필수 정보가 누락되었습니다.');
-      } else {
-        alert('대리 입력 중 오류가 발생했습니다.');
-        console.error(error);
+      // 퇴근 시각이 출근 시각보다 이른 경우 거부
+      if (checkOutIso && new Date(checkOutIso) <= new Date(checkInIso)) {
+        alert('퇴근 시각은 출근 시각 이후여야 합니다.');
+        return;
       }
-    } else {
+
+      if (mode === 'edit' && proxyExistingRecord) {
+        await updateRecord(proxyExistingRecord.id, {
+          checkIn: checkInIso,
+          checkOut: checkOutIso,
+        });
+      } else {
+        const { error } = await proxyCheckIn({
+          employeeId: proxyTarget.worker.id,
+          date: proxyTarget.date,
+          checkIn: checkInIso,
+          checkOut: checkOutIso,
+          status,
+          inputBy: currentUser.id,
+        });
+
+        if (error) {
+          if (error === 'ALREADY_EXISTS') {
+            alert('이미 해당 날짜의 출퇴근 기록이 존재합니다.');
+          } else if (error === 'MISSING_REQUIRED') {
+            alert('필수 정보가 누락되었습니다.');
+          } else {
+            alert('대리 입력 중 오류가 발생했습니다.');
+            console.error(error);
+          }
+          return;
+        }
+      }
+
       setProxyTarget(null);
+      setProxyMode('create');
+      setProxyExistingRecord(null);
+    } catch (err) {
+      console.error(err);
+      alert('저장 실패: ' + (err.message || '알 수 없는 오류'));
+    } finally {
+      setProxyLoading(false);
     }
   };
 
@@ -401,10 +447,18 @@ export default function AttendancePage() {
                                 {otMin > 0 && <span className="ml-1 px-1.5 py-0.5 rounded text-[10px] font-medium bg-blue-100 text-blue-700">+{formatOvertimeBadge(otMin)}</span>}
                                 {!isManagement && (rec.workMinutes || otMin) ? ` · ${formatMinutes((rec.workMinutes || 0) + otMin)}` : ''}
                               </span>
-                              <button
-                                onClick={() => handleDeleteRecord(rec.id, w.name)}
-                                className="text-xs text-red-500 hover:text-red-700 px-2 py-1"
-                              >삭제</button>
+                              <div className="flex items-center gap-1">
+                                {rec.status !== 'working' && (
+                                  <button
+                                    onClick={() => openEditModal(w, selectedDate, rec)}
+                                    className="text-xs text-blue-500 hover:text-blue-700 px-2 py-1"
+                                  >수정</button>
+                                )}
+                                <button
+                                  onClick={() => handleDeleteRecord(rec.id, w.name)}
+                                  className="text-xs text-red-500 hover:text-red-700 px-2 py-1"
+                                >삭제</button>
+                              </div>
                             </div>
                           ) : (
                             <button
@@ -475,12 +529,22 @@ export default function AttendancePage() {
                                 </td>
                                 <td className="px-4 py-2.5">
                                   {rec ? (
-                                    <button
-                                      onClick={() => handleDeleteRecord(rec.id, w.name)}
-                                      className="px-2 py-1 text-xs text-red-500 hover:text-red-700 hover:bg-red-50 rounded transition-colors"
-                                    >
-                                      삭제
-                                    </button>
+                                    <div className="flex items-center gap-1">
+                                      {rec.status !== 'working' && (
+                                        <button
+                                          onClick={() => openEditModal(w, selectedDate, rec)}
+                                          className="px-2 py-1 text-xs text-blue-500 hover:text-blue-700 hover:bg-blue-50 rounded transition-colors"
+                                        >
+                                          수정
+                                        </button>
+                                      )}
+                                      <button
+                                        onClick={() => handleDeleteRecord(rec.id, w.name)}
+                                        className="px-2 py-1 text-xs text-red-500 hover:text-red-700 hover:bg-red-50 rounded transition-colors"
+                                      >
+                                        삭제
+                                      </button>
+                                    </div>
                                   ) : (
                                     <button
                                       onClick={() => openProxyModal(w, selectedDate)}
@@ -710,6 +774,8 @@ export default function AttendancePage() {
         worker={proxyTarget?.worker}
         date={proxyTarget?.date}
         loading={proxyLoading}
+        mode={proxyMode}
+        existingRecord={proxyExistingRecord}
       />
     </div>
   );
