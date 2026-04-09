@@ -746,8 +746,9 @@ SELECT email, role, branch FROM employees WHERE role = 'farm_admin';
 - `issues_anon_insert`: `worker_id IS NOT NULL AND EXISTS(활성 worker) AND is_resolved=false`
 - **RLS-DEBT-010 신설:** anon INSERT 시 worker_id 본인 검증 부재 → Edge Function 이관 시 해소.
 - **RLS-DEBT-011 신설:** 작업자 간 task 교차 수정 가능 (tasks_anon_update_status USING이 worker_id 귀속 확인만 하고 본인 여부를 확인하지 않음). status IN 화이트리스트 추가로 부분 완화. Edge Function 이관 시 해소.
-- **RLS-DEBT-012 신설:** 작업자가 다른 작업자의 미완료 출근 기록에 퇴근 대신 찍기 가능 (attendance_anon_update USING이 employee_id 귀속 확인만 하고 본인 여부를 확인하지 않음). date=오늘+check_out IS NULL 제약 추가로 부분 완화. Edge Function 이관 시 해소.
+- **RLS-DEBT-012 신설:** 작업자가 다른 작업자의 미완료 출근 기록에 퇴근 대신 찍기 가능 (attendance_anon_update USING이 employee_id 귀속 확인만 하고 본인 여부를 확인하지 않음). date=±1일+check_out IS NULL 제약 추가로 부분 완화. Edge Function 이관 시 해소.
 - **RLS-DEBT-013 신설:** 작업자가 다른 worker_id로 휴가/연장근무 요청 제출 가능 (leave_requests/overtime_requests anon INSERT가 EXISTS 검증만 하고 본인 여부를 확인하지 않음). 관리자 승인 단계에서 발각 가능하므로 심각도 낮음. Edge Function 이관 시 해소.
+- **RLS-DEBT-014 신설:** attendance.date 컬럼이 UTC 기준으로 저장되는 상태에서 정책의 타임존 변환 제약은 KST 아침 시간대 출근에서 불일치가 발생한다. ±1일 범위로 완화하여 모든 경계 시간을 수용한다. 근본 해결은 date 컬럼을 KST 기준으로 마이그레이션하거나, 날짜 판단 자체를 SECURITY DEFINER 서버 함수로 이관하는 것.
 
 **Q4 (fcm_tokens) 결론:**
 - `pushNotify.js`: `supabase.functions.invoke('send-push')` → Edge Function → service_role → 클라이언트 SELECT 불필요.
@@ -864,6 +865,7 @@ supabase/migrations/
 | RLS-DEBT-011 | 작업자 간 task 교차 수정 가능 (tasks_anon_update_status 본인 확인 불가) | 부분 완화 (status IN 화이트리스트) | Edge Function 이관 |
 | RLS-DEBT-012 | 작업자가 다른 작업자 미완료 출근 기록에 퇴근 대신 찍기 가능 (attendance_anon_update 본인 확인 불가) | 부분 완화 (date=오늘+check_out IS NULL 제약) | Edge Function 이관 |
 | RLS-DEBT-013 | 작업자가 다른 worker_id로 휴가/연장근무 요청 제출 가능 | 완화됨 (관리자 승인 단계 발각, 심각도 낮음) | Edge Function 이관 |
+| RLS-DEBT-014 | attendance.date가 UTC 기준이라 정확한 "오늘" 판정 불가 | 완화됨 (±1일 범위) | date 컬럼 KST 마이그레이션 또는 서버 함수 이관 |
 
 ---
 
