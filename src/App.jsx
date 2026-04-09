@@ -46,6 +46,11 @@ import AttendanceRecordsPage from './pages/admin/AttendanceRecordsPage';
 import GrowthSurveyAdminPage from './pages/admin/GrowthSurveyAdminPage';
 import LocationSettingsPage from './pages/admin/LocationSettingsPage';
 import OvertimeApprovalPage from './pages/admin/OvertimeApprovalPage';
+import TemporaryWorkersPage from './pages/admin/TemporaryWorkersPage';
+import PackagingTasksPage from './pages/admin/PackagingTasksPage';
+import PackagingRecordsPage from './pages/admin/PackagingRecordsPage';
+import PackagingCustomersPage from './pages/admin/PackagingCustomersPage';
+import BranchStatsPage from './pages/admin/BranchStatsPage';
 import WorkerHome from './pages/worker/WorkerHome';
 import WorkerTasksPage from './pages/worker/WorkerTasksPage';
 import GrowthSurveyPage from './pages/worker/GrowthSurveyPage';
@@ -151,6 +156,11 @@ export default function App() {
             <Route path="survey" element={<GrowthSurveyAdminPage />} />
             <Route path="location" element={<LocationSettingsPage />} />
             <Route path="overtime-approval" element={<OvertimeApprovalPage />} />
+            <Route path="temporary-workers" element={<TemporaryWorkersPage />} />
+            <Route path="packaging-tasks" element={<PackagingTasksPage />} />
+            <Route path="packaging-records" element={<PackagingRecordsPage />} />
+            <Route path="packaging-customers" element={<PackagingCustomersPage />} />
+            <Route path="branch-stats" element={<BranchStatsPage />} />
           </Route>
 
           <Route path="/worker" element={
