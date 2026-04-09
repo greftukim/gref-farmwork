@@ -1,7 +1,8 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import useAttendanceStore from '../../stores/attendanceStore';
 import useEmployeeStore from '../../stores/employeeStore';
 import useAuthStore from '../../stores/authStore';
+import useOvertimeStore from '../../stores/overtimeStore';
 import Card from '../../components/common/Card';
 import { isFarmAdmin } from '../../lib/permissions';
 import Button from '../../components/common/Button';
@@ -20,6 +21,14 @@ function formatMinutes(min) {
   return `${Math.floor(min / 60)}시간 ${min % 60}분`;
 }
 const STATUS_LABEL = { normal: '정상', late: '지각', working: '근무중', absent: '결근', early_leave: '조기퇴근' };
+
+function formatOvertimeBadge(minutes) {
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
+  if (h > 0 && m > 0) return `${h}h ${m}m`;
+  if (h > 0) return `${h}h`;
+  return `${m}m`;
+}
 const STATUS_COLOR = {
   normal: 'bg-green-100 text-green-700',
   late: 'bg-amber-100 text-amber-700',
@@ -52,6 +61,10 @@ export default function AttendancePage() {
   const employees = useEmployeeStore((s) => s.employees);
   const updateEmployee = useEmployeeStore((s) => s.updateEmployee);
   const currentUser = useAuthStore((s) => s.currentUser);
+  const overtimeRequests = useOvertimeStore((s) => s.requests);
+  const fetchOvertimeRequests = useOvertimeStore((s) => s.fetchRequests);
+
+  useEffect(() => { fetchOvertimeRequests(); }, []);
 
   const today = new Date().toISOString().split('T')[0];
 
@@ -91,11 +104,24 @@ export default function AttendancePage() {
     [records, selectedDate]
   );
 
+  // 승인된 연장근무를 employee_date 키로 매핑 (분 단위)
+  const overtimeMap = useMemo(() => {
+    const m = new Map();
+    for (const ot of overtimeRequests) {
+      if (ot.status !== 'approved') continue;
+      m.set(`${ot.employeeId}_${ot.date}`, (ot.hours || 0) * 60 + (ot.minutes || 0));
+    }
+    return m;
+  }, [overtimeRequests]);
+
   const monthlyStats = useMemo(() => {
     const monthRecords = records.filter((r) => r.date.startsWith(selectedMonth));
     return workers.map((w) => {
       const workerRecords = monthRecords.filter((r) => r.employeeId === w.id);
-      const totalMinutes = workerRecords.reduce((sum, r) => sum + (r.workMinutes || 0), 0);
+      const totalMinutes = workerRecords.reduce((sum, r) => {
+        const ot = overtimeMap.get(`${r.employeeId}_${r.date}`) || 0;
+        return sum + (r.workMinutes || 0) + ot;
+      }, 0);
       const workDays = workerRecords.filter((r) => r.workMinutes).length;
       const lateDays = workerRecords.filter((r) => r.status === 'late').length;
       return {
@@ -106,7 +132,7 @@ export default function AttendancePage() {
         avgMinutes: workDays > 0 ? Math.round(totalMinutes / workDays) : 0,
       };
     });
-  }, [records, workers, selectedMonth]);
+  }, [records, workers, selectedMonth, overtimeMap]);
 
   // 근무 시간 인라인 편집
   const [editTimes, setEditTimes] = useState({});
@@ -213,6 +239,7 @@ export default function AttendancePage() {
                   <div className="md:hidden space-y-2 mb-2">
                     {groupWorkers.map((w) => {
                       const rec = dailyRecords.find((r) => r.employeeId === w.id);
+                      const otMin = rec ? (overtimeMap.get(`${rec.employeeId}_${rec.date}`) || 0) : 0;
                       return (
                         <Card key={w.id} accent="gray" className="p-4">
                           <div className="flex items-start justify-between mb-2">
@@ -247,7 +274,8 @@ export default function AttendancePage() {
                             <div className="flex items-center justify-between text-sm">
                               <span className="text-gray-600">
                                 출근 {formatTime(rec.checkIn)} / 퇴근 {formatTime(rec.checkOut)}
-                                {!isManagement && rec.workMinutes ? ` · ${formatMinutes(rec.workMinutes)}` : ''}
+                                {otMin > 0 && <span className="ml-1 px-1.5 py-0.5 rounded text-[10px] font-medium bg-blue-100 text-blue-700">+{formatOvertimeBadge(otMin)}</span>}
+                                {!isManagement && (rec.workMinutes || otMin) ? ` · ${formatMinutes((rec.workMinutes || 0) + otMin)}` : ''}
                               </span>
                               <button
                                 onClick={() => handleDeleteRecord(rec.id, w.name)}
@@ -279,6 +307,7 @@ export default function AttendancePage() {
                         <tbody className="divide-y divide-gray-100">
                           {groupWorkers.map((w) => {
                             const rec = dailyRecords.find((r) => r.employeeId === w.id);
+                            const otMin = rec ? (overtimeMap.get(`${rec.employeeId}_${rec.date}`) || 0) : 0;
                             return (
                               <tr key={w.id}>
                                 <td className="px-4 py-2.5 font-medium text-gray-900">{w.name}</td>
@@ -297,9 +326,12 @@ export default function AttendancePage() {
                                     className="border border-gray-200 rounded px-2 py-1 text-xs w-24" />
                                 </td>
                                 <td className="px-4 py-2.5 text-gray-600">{rec ? formatTime(rec.checkIn) : '—'}</td>
-                                <td className="px-4 py-2.5 text-gray-600">{rec ? formatTime(rec.checkOut) : '—'}</td>
+                                <td className="px-4 py-2.5 text-gray-600">
+                                  {rec ? formatTime(rec.checkOut) : '—'}
+                                  {otMin > 0 && <span className="ml-1 px-1.5 py-0.5 rounded text-[10px] font-medium bg-blue-100 text-blue-700">+{formatOvertimeBadge(otMin)}</span>}
+                                </td>
                                 {!isManagement && (
-                                  <td className="px-4 py-2.5 text-gray-600">{rec ? formatMinutes(rec.workMinutes) : '—'}</td>
+                                  <td className="px-4 py-2.5 text-gray-600">{rec ? formatMinutes((rec.workMinutes || 0) + otMin) : '—'}</td>
                                 )}
                                 <td className="px-4 py-2.5">
                                   {rec ? (
