@@ -63,11 +63,13 @@ WITH CHECK (
       AND role = 'worker'
       AND is_active = true
   )
-  AND check_out IS NULL  -- INSERT 시점에 check_out은 NULL이어야 함
+  AND check_in IS NOT NULL                                                    -- 출근 시각 필수
+  AND check_out IS NULL                                                       -- INSERT 시점에 check_out은 NULL
+  AND date = (CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Seoul')::date              -- 오늘 날짜만 허용
 );
 
 COMMENT ON POLICY "attendance_anon_insert" ON public.attendance IS
-'anon INSERT: 출근 기록. check_out=NULL 강제. RLS-DEBT-010 참조.';
+'anon INSERT: 출근 기록. check_in 필수, check_out=NULL 강제, 오늘 날짜만 허용. RLS-DEBT-010 참조.';
 
 -- anon UPDATE: 작업자 퇴근 기록 추가 (check_out, work_minutes, status 갱신)
 -- attendanceStore.js의 checkOut 흐름
@@ -83,6 +85,8 @@ USING (
       AND role = 'worker'
       AND is_active = true
   )
+  AND check_out IS NULL                                                       -- 이미 퇴근한 행 재수정 방지
+  AND date = (CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Seoul')::date              -- 오늘 기록만 수정 가능
 )
 WITH CHECK (
   employee_id IS NOT NULL
@@ -92,10 +96,12 @@ WITH CHECK (
       AND role = 'worker'
       AND is_active = true
   )
+  AND check_out IS NOT NULL                                                   -- 퇴근 시각 필수
+  AND date = (CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Seoul')::date              -- 오늘 날짜만 허용
 );
 
 COMMENT ON POLICY "attendance_anon_update" ON public.attendance IS
-'anon UPDATE: 작업자 퇴근 등록(check_out/work_minutes/status). employee_id 변경 방지.';
+'anon UPDATE: 작업자 퇴근 등록. USING=오늘+미퇴근 행만, WITH CHECK=check_out 필수+오늘 날짜. employee_id 변경 방지.';
 
 -- ────────────────────────────────────────────────────────────────────────────
 -- authenticated 정책 (관리자)

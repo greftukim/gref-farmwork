@@ -59,6 +59,7 @@ GREF FarmWork는 프로토타입 단계를 거치면서 모든 테이블에 `ano
 **RLS-DEBT-004: `attendance` 범위 DELETE 애플리케이션 가드 부재**
 
 - `attendanceStore.deleteRecords()`가 빈 파라미터로 호출되면 WHERE 없이 전체 삭제가 돼버린다. RLS가 farm_admin/hr_admin에는 자동 필터를 걸어주지만 master에서는 막지 않는다.
+- **부분 완화 (F2 마이그레이션 적용):** `attendance_authenticated_delete` 정책으로 farm_admin=본인지점, hr_admin=전체 자동 필터. master만 앱 레벨 가드가 남아있다.
 - 해결: `deleteRecords`에서 세 파라미터가 모두 없으면 throw 하도록 가드 추가. RLS 작업과 별개의 작은 코드 수정.
 
 **RLS-DEBT-006: `zones` 테이블에 branch 컬럼 추가**
@@ -744,6 +745,9 @@ SELECT email, role, branch FROM employees WHERE role = 'farm_admin';
 - `calls_anon_insert`: `worker_id IS NOT NULL AND EXISTS(활성 worker) AND is_confirmed=false`
 - `issues_anon_insert`: `worker_id IS NOT NULL AND EXISTS(활성 worker) AND is_resolved=false`
 - **RLS-DEBT-010 신설:** anon INSERT 시 worker_id 본인 검증 부재 → Edge Function 이관 시 해소.
+- **RLS-DEBT-011 신설:** 작업자 간 task 교차 수정 가능 (tasks_anon_update_status USING이 worker_id 귀속 확인만 하고 본인 여부를 확인하지 않음). status IN 화이트리스트 추가로 부분 완화. Edge Function 이관 시 해소.
+- **RLS-DEBT-012 신설:** 작업자가 다른 작업자의 미완료 출근 기록에 퇴근 대신 찍기 가능 (attendance_anon_update USING이 employee_id 귀속 확인만 하고 본인 여부를 확인하지 않음). date=오늘+check_out IS NULL 제약 추가로 부분 완화. Edge Function 이관 시 해소.
+- **RLS-DEBT-013 신설:** 작업자가 다른 worker_id로 휴가/연장근무 요청 제출 가능 (leave_requests/overtime_requests anon INSERT가 EXISTS 검증만 하고 본인 여부를 확인하지 않음). 관리자 승인 단계에서 발각 가능하므로 심각도 낮음. Edge Function 이관 시 해소.
 
 **Q4 (fcm_tokens) 결론:**
 - `pushNotify.js`: `supabase.functions.invoke('send-push')` → Edge Function → service_role → 클라이언트 SELECT 불필요.
@@ -850,13 +854,16 @@ supabase/migrations/
 | RLS-DEBT-001 | 작업자 device_token anon 노출 | 완화됨 (축소) | Edge Function 이관 |
 | RLS-DEBT-002 | 관리자 비밀번호 공통 | 미해결 | 실사용 전 변경 |
 | RLS-DEBT-003 | 감사 로그 없음 | 미해결 | 작업 L (audit_log) |
-| RLS-DEBT-004 | attendance 범위 DELETE 가드 부재 | 미해결 | `deleteRecords` 가드 추가 |
+| RLS-DEBT-004 | attendance 범위 DELETE 가드 부재 | 부분 완화 (farm_admin/hr_admin 해소, master 앱 레벨 가드 필요) | `deleteRecords` master 가드 추가 |
 | RLS-DEBT-005 | (결번) | — | 이번 작업에 통합됨 |
 | RLS-DEBT-006 | zones에 branch 컬럼 없음 | 미해결 | 스키마 변경 + 마이그레이션 |
 | RLS-DEBT-007 | master 자기 비활성화 가드 없음 | 미해결 | 앱/트리거 가드 |
 | RLS-DEBT-008 | master 자기 role 변경 가드 없음 | 미해결 | 앱/트리거 가드 |
 | RLS-DEBT-009 | employees UPDATE 시 auth_user_id 변경 가드 없음 | 미해결 | WITH CHECK 강화 |
 | RLS-DEBT-010 | anon INSERT 시 worker_id 본인 검증 부재 (calls/issues/attendance/leave_requests/overtime_requests/fcm_tokens) | 완화됨 (EXISTS 검증) | Edge Function 이관 |
+| RLS-DEBT-011 | 작업자 간 task 교차 수정 가능 (tasks_anon_update_status 본인 확인 불가) | 부분 완화 (status IN 화이트리스트) | Edge Function 이관 |
+| RLS-DEBT-012 | 작업자가 다른 작업자 미완료 출근 기록에 퇴근 대신 찍기 가능 (attendance_anon_update 본인 확인 불가) | 부분 완화 (date=오늘+check_out IS NULL 제약) | Edge Function 이관 |
+| RLS-DEBT-013 | 작업자가 다른 worker_id로 휴가/연장근무 요청 제출 가능 | 완화됨 (관리자 승인 단계 발각, 심각도 낮음) | Edge Function 이관 |
 
 ---
 

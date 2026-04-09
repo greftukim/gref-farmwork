@@ -185,10 +185,11 @@ WITH CHECK (
       AND role = 'worker'
       AND is_active = true
   )
+  AND status IN ('pending', 'in_progress', 'completed')
 );
 
 COMMENT ON POLICY "tasks_anon_update_status" ON public.tasks IS
-'anon UPDATE: 작업자 상태 변경(started_at/completed_at/status/duration_minutes). worker_id 변경 방지.';
+'anon UPDATE: 작업자 상태 변경(started_at/completed_at/status/duration_minutes). worker_id 변경 방지. status 화이트리스트 enforced.';
 
 -- authenticated SELECT
 CREATE POLICY "tasks_authenticated_select"
