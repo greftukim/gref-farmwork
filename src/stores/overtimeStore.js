@@ -93,6 +93,29 @@ const useOvertimeStore = create((set, get) => ({
     return { error };
   },
 
+  bulkApprove: async (ids, reviewerId) => {
+    if (!ids?.length) return { error: 'NO_IDS' };
+    const reviewedAt = new Date().toISOString();
+    const { error } = await supabase
+      .from('overtime_requests')
+      .update({
+        status: 'approved',
+        reviewed_by: reviewerId,
+        reviewed_at: reviewedAt,
+      })
+      .in('id', ids);
+    if (!error) {
+      set((s) => ({
+        requests: s.requests.map((r) =>
+          ids.includes(r.id)
+            ? { ...r, status: 'approved', reviewedBy: reviewerId, reviewedAt: reviewedAt }
+            : r
+        ),
+      }));
+    }
+    return { error };
+  },
+
   subscribeRealtime: () => {
     const channel = supabase
       .channel('overtime_requests_changes')

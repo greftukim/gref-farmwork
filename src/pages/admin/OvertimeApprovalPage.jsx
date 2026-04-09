@@ -24,6 +24,7 @@ export default function OvertimeApprovalPage() {
   const requests = useOvertimeStore((s) => s.requests);
   const fetchRequests = useOvertimeStore((s) => s.fetchRequests);
   const approveRequest = useOvertimeStore((s) => s.approveRequest);
+  const bulkApprove = useOvertimeStore((s) => s.bulkApprove);
   const rejectRequest = useOvertimeStore((s) => s.rejectRequest);
   const adjustAndApprove = useOvertimeStore((s) => s.adjustAndApprove);
   const subscribeRealtime = useOvertimeStore((s) => s.subscribeRealtime);
@@ -32,6 +33,10 @@ export default function OvertimeApprovalPage() {
   const [processing, setProcessing] = useState(null);
   const [filterStatus, setFilterStatus] = useState('all');
   const [filterName, setFilterName] = useState('');
+  const [selectedIds, setSelectedIds] = useState(new Set());
+
+  const changeFilterStatus = (v) => { setFilterStatus(v); setSelectedIds(new Set()); };
+  const changeFilterName = (v) => { setFilterName(v); setSelectedIds(new Set()); };
 
   // 시간 조정 모달
   const [adjustTarget, setAdjustTarget] = useState(null);
@@ -68,6 +73,40 @@ export default function OvertimeApprovalPage() {
   }, [requests, empMap, currentUser, filterStatus, filterName]);
 
   const pendingCount = filtered.filter((r) => r.status === 'pending').length;
+  const pendingIds = useMemo(() => filtered.filter((r) => r.status === 'pending').map((r) => r.id), [filtered]);
+  const allPendingSelected = pendingIds.length > 0 && pendingIds.every((id) => selectedIds.has(id));
+
+  const toggleSelect = (id) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
+
+  const toggleSelectAll = () => {
+    if (allPendingSelected) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(pendingIds));
+    }
+  };
+
+  const handleBulkApprove = async () => {
+    const count = selectedIds.size;
+    if (count === 0) return;
+    if (!window.confirm(`선택한 ${count}건을 일괄 승인하시겠습니까?`)) return;
+    setProcessing('bulk');
+    // 일괄 승인 시 개별 푸시 미전송 (대량 푸시 방지)
+    const { error } = await bulkApprove([...selectedIds], currentUser.id);
+    setProcessing(null);
+    if (error) {
+      alert('일괄 승인 처리 중 오류가 발생했습니다.');
+    } else {
+      setSelectedIds(new Set());
+      alert(`${count}건 승인 완료`);
+    }
+  };
 
   const handleApprove = async (id) => {
     if (processing) return;
@@ -142,7 +181,7 @@ export default function OvertimeApprovalPage() {
         ].map((opt) => (
           <button
             key={opt.value}
-            onClick={() => setFilterStatus(opt.value)}
+            onClick={() => changeFilterStatus(opt.value)}
             className={`px-3 py-1.5 rounded-lg text-sm font-medium min-h-[36px] transition-colors ${
               filterStatus === opt.value ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
             }`}
@@ -153,14 +192,45 @@ export default function OvertimeApprovalPage() {
         <input
           type="text"
           value={filterName}
-          onChange={(e) => setFilterName(e.target.value)}
+          onChange={(e) => changeFilterName(e.target.value)}
           placeholder="작업자명 검색"
           className="border border-gray-200 rounded-lg px-3 py-1.5 text-sm min-h-[36px] w-32"
         />
       </div>
 
+      {/* 일괄 승인 액션 바 */}
+      {selectedIds.size > 0 && (
+        <div className="flex items-center gap-3 mb-4 p-3 bg-blue-50 rounded-xl">
+          <span className="text-sm font-medium text-blue-700">선택된 {selectedIds.size}건</span>
+          <button
+            onClick={handleBulkApprove}
+            disabled={processing === 'bulk'}
+            className="px-4 py-1.5 rounded-lg text-sm font-medium bg-blue-600 text-white hover:bg-blue-700 disabled:bg-blue-300 transition-colors min-h-[36px]"
+          >
+            {processing === 'bulk' ? '처리 중...' : '일괄 승인'}
+          </button>
+          <button
+            onClick={() => setSelectedIds(new Set())}
+            className="px-3 py-1.5 rounded-lg text-sm font-medium bg-white text-gray-600 border border-gray-200 hover:bg-gray-50 transition-colors min-h-[36px]"
+          >
+            선택 해제
+          </button>
+        </div>
+      )}
+
       {/* 모바일 카드 뷰 */}
       <div className="md:hidden space-y-3">
+        {pendingCount > 0 && (
+          <label className="flex items-center gap-2 px-1 py-1">
+            <input
+              type="checkbox"
+              checked={allPendingSelected}
+              onChange={toggleSelectAll}
+              className="w-4 h-4 rounded border-gray-300 text-blue-600"
+            />
+            <span className="text-sm text-gray-600">대기 항목 전체 선택</span>
+          </label>
+        )}
         {filtered.length === 0 && (
           <p className="text-center text-gray-400 py-12">연장근무 신청 내역이 없습니다</p>
         )}
@@ -171,7 +241,15 @@ export default function OvertimeApprovalPage() {
           return (
             <Card key={req.id} accent="gray" className={`p-4 ${isPending ? 'border-l-amber-400' : ''}`}>
               <div className="flex items-start justify-between mb-2">
-                <div>
+                <div className="flex items-center gap-2">
+                  {isPending && (
+                    <input
+                      type="checkbox"
+                      checked={selectedIds.has(req.id)}
+                      onChange={() => toggleSelect(req.id)}
+                      className="w-4 h-4 rounded border-gray-300 text-blue-600"
+                    />
+                  )}
                   <span className="font-semibold text-gray-900">{emp?.name || '—'}</span>
                   <span className="text-gray-500 text-sm ml-2">{formatOvertimeTime(req.hours, req.minutes)}</span>
                 </div>
@@ -212,6 +290,15 @@ export default function OvertimeApprovalPage() {
           <table className="w-full text-sm">
             <thead>
               <tr className="bg-gray-50 text-left text-gray-500 border-b border-gray-100">
+                <th className="px-3 py-3 w-10">
+                  <input
+                    type="checkbox"
+                    checked={allPendingSelected}
+                    onChange={toggleSelectAll}
+                    disabled={pendingCount === 0}
+                    className="w-4 h-4 rounded border-gray-300 text-blue-600"
+                  />
+                </th>
                 <th className="px-5 py-3 font-medium">상태</th>
                 <th className="px-5 py-3 font-medium">이름</th>
                 <th className="px-5 py-3 font-medium">날짜</th>
@@ -224,7 +311,7 @@ export default function OvertimeApprovalPage() {
             <tbody className="divide-y divide-gray-50">
               {filtered.length === 0 && (
                 <tr>
-                  <td colSpan={7} className="text-center text-gray-400 py-12">연장근무 신청 내역이 없습니다</td>
+                  <td colSpan={8} className="text-center text-gray-400 py-12">연장근무 신청 내역이 없습니다</td>
                 </tr>
               )}
               {filtered.map((req) => {
@@ -233,6 +320,16 @@ export default function OvertimeApprovalPage() {
                 const isPending = req.status === 'pending';
                 return (
                   <tr key={req.id} className={isPending ? 'bg-amber-50/50' : ''}>
+                    <td className="px-3 py-3">
+                      {isPending ? (
+                        <input
+                          type="checkbox"
+                          checked={selectedIds.has(req.id)}
+                          onChange={() => toggleSelect(req.id)}
+                          className="w-4 h-4 rounded border-gray-300 text-blue-600"
+                        />
+                      ) : null}
+                    </td>
                     <td className="px-5 py-3">
                       <div className="flex items-center gap-2">
                         <span className={`w-2.5 h-2.5 rounded-full ${st.dot}`} />
