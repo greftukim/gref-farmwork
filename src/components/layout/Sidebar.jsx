@@ -57,6 +57,7 @@ const farmCategorizedMenu = [
     type: 'category',
     label: '근태 관리',
     items: [
+      { label: '근무 관리', to: '/admin/attendance', icon: ICONS.attendance },
       { label: '출근 현황', to: '/admin/attendance-status', icon: ICONS.clock },
       { label: '근무 시간', to: '/admin/work-stats', icon: ICONS.workStats },
       { label: '근태 승인', to: '/admin/leave-approval', icon: ICONS.leaveApproval },
