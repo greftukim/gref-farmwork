@@ -883,3 +883,38 @@ supabase/migrations/
 - 헬퍼 함수 8개 (SECURITY DEFINER + STABLE + search_path 고정)
 - 9개 마이그레이션 + 9개 롤백 파일
 - 점진 적용 (그룹 A → F3) + 각 단계 수동 검증 게이트
+---
+
+## 적용 완료 (2026-04-09)
+
+9개 마이그레이션 전부 Supabase 프로덕션 DB에 적용 완료.
+
+### 적용 순서 및 결과
+1. 20260408120000_rls_helper_functions.sql - 헬퍼 함수 8개 설치
+2. 20260408121000_rls_group_a_reference.sql - branches/crops/zones/growth_survey_items
+   - 특이사항: branches에 남아있던 기존 catch-all 'branches_all', growth_survey_items의 'all_access' 수동 제거 필요
+3. 20260408122000_rls_group_b_notices.sql - notices
+4. 20260408123000_rls_group_c_work_data.sql - schedules/tasks/growth_surveys
+5. 20260408124000_rls_group_d_events.sql - calls/issues (Realtime 회귀 확인)
+6. 20260408125000_rls_group_e_system.sql - fcm_tokens
+7. 20260408126000_rls_group_f1_leave_overtime.sql - leave_requests/overtime_requests
+   - 특이사항: overtime_requests가 supabase_realtime publication에 등록돼 있지 않아 수동 추가
+8. 20260408127000_rls_group_f2_attendance.sql - attendance
+9. 20260408128000_rls_group_f3_employees.sql - employees (사전 작업: loginWithDeviceToken select 축소)
+
+### 검증 체크리스트 17개 결과
+- 완전 통과: 5, 7, 8, 9, 12, 14, 15, 16, 17 (9개)
+- 부분 통과 (UI 부재로 정책만 확인): 1, 2, 3, 4, 6, 13 (6개)
+- 건너뜀 (UI 부재): 10, 11 (2개)
+- 정책 자체 결함: 0개
+
+### 오늘 새로 발견된 UX 백로그 (RLS와 무관)
+- UX-001: LoginPage 아이디 입력 시 @gref.local 자동 덧붙임으로 인한 혼란
+- UX-002: farm_admin 직원 등록 UI 부재
+- UX-003: farm_admin 직원 수정 UI 부재
+- UX-004: master 계정 엑셀 다운로드 기능 부재
+- 기존 이슈 재확인: farm_admin 연장근무 승인 UI 부재
+
+### 롤백 지점
+- pre-rls-redesign (e959ad9): 작업 전 상태
+- post-rls-redesign (6640cb9): 작업 완료 상태
