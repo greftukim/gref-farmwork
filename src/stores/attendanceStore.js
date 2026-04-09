@@ -61,6 +61,48 @@ const useAttendanceStore = create((set, get) => ({
     }
   },
 
+  /** 관리자 대리 입력 */
+  proxyCheckIn: async ({ employeeId, date, checkIn, checkOut, status, inputBy, gps }) => {
+    if (!employeeId || !date || !checkIn || !inputBy) {
+      return { error: 'MISSING_REQUIRED' };
+    }
+
+    // 중복 체크 (UNIQUE 제약으로 어차피 실패하지만 명시적으로)
+    const existing = get().records.find(
+      (r) => r.employeeId === employeeId && r.date === date
+    );
+    if (existing) {
+      return { error: 'ALREADY_EXISTS' };
+    }
+
+    // workMinutes 계산 (checkOut 있을 때만)
+    let workMinutes = null;
+    if (checkOut) {
+      workMinutes = Math.round((new Date(checkOut) - new Date(checkIn)) / 60000);
+    }
+
+    const { data, error } = await supabase
+      .from('attendance')
+      .insert({
+        employee_id: employeeId,
+        date,
+        check_in: checkIn,
+        check_out: checkOut || null,
+        work_minutes: workMinutes,
+        status: status || 'normal',
+        is_proxy: true,
+        input_by: inputBy,
+        ...(gps ? { check_in_lat: gps.lat, check_in_lng: gps.lng } : {}),
+      })
+      .select()
+      .single();
+
+    if (!error && data) {
+      set((s) => ({ records: [snakeToCamel(data), ...s.records] }));
+    }
+    return { error };
+  },
+
   /** 개별 기록 삭제 */
   deleteRecord: async (id) => {
     const { error } = await supabase.from('attendance').delete().eq('id', id);
@@ -72,6 +114,12 @@ const useAttendanceStore = create((set, get) => ({
 
   /** 조건부 일괄 삭제: startDate/endDate/employeeId 중 하나 이상 필요 */
   deleteRecords: async ({ startDate, endDate, employeeId } = {}) => {
+    // RLS-DEBT-004: 세 조건 모두 없으면 전체 삭제 방지
+    if (!startDate && !endDate && !employeeId) {
+      console.error('[attendanceStore.deleteRecords] 파라미터 필수 (전체 삭제 방지)');
+      return { error: 'NO_CONDITIONS' };
+    }
+
     let query = supabase.from('attendance').delete();
     if (startDate) query = query.gte('date', startDate);
     if (endDate) query = query.lte('date', endDate);

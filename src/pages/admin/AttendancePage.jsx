@@ -54,10 +54,83 @@ function ConfirmModal({ isOpen, onClose, onConfirm, message, loading }) {
   );
 }
 
+/** 대리 입력 모달 */
+function ProxyCheckInModal({ isOpen, onClose, onConfirm, worker, date, loading }) {
+  const [checkInTime, setCheckInTime] = useState('09:00');
+  const [checkOutTime, setCheckOutTime] = useState('18:00');
+  const [status, setStatus] = useState('normal');
+
+  useEffect(() => {
+    if (isOpen && worker) {
+      setCheckInTime(worker.workStartTime || '09:00');
+      setCheckOutTime(worker.workEndTime || '18:00');
+      setStatus('normal');
+    }
+  }, [isOpen, worker]);
+
+  if (!isOpen || !worker) return null;
+
+  return (
+    <Modal isOpen={isOpen} onClose={onClose} title="대리 입력">
+      <div className="space-y-4">
+        <div className="text-sm text-gray-600">
+          <span className="font-semibold text-gray-900">{worker.name}</span>
+          <span className="ml-2 text-gray-400">{date}</span>
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className="block text-xs font-medium text-gray-500 mb-1">출근 시각</label>
+            <input
+              type="time"
+              value={checkInTime}
+              onChange={(e) => setCheckInTime(e.target.value)}
+              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm min-h-[44px]"
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-gray-500 mb-1">퇴근 시각 (선택)</label>
+            <input
+              type="time"
+              value={checkOutTime}
+              onChange={(e) => setCheckOutTime(e.target.value)}
+              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm min-h-[44px]"
+            />
+          </div>
+        </div>
+        <div>
+          <label className="block text-xs font-medium text-gray-500 mb-1">상태</label>
+          <select
+            value={status}
+            onChange={(e) => setStatus(e.target.value)}
+            className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm min-h-[44px]"
+          >
+            <option value="normal">정상</option>
+            <option value="late">지각</option>
+          </select>
+        </div>
+        <p className="text-xs text-gray-400">* 연장근무는 작업자 앱에서 별도 신청</p>
+        <div className="flex gap-2">
+          <Button
+            className="flex-1"
+            onClick={() => onConfirm({ checkInTime, checkOutTime, status })}
+            disabled={loading}
+          >
+            {loading ? '저장 중...' : '저장'}
+          </Button>
+          <Button className="flex-1" variant="secondary" onClick={onClose} disabled={loading}>
+            취소
+          </Button>
+        </div>
+      </div>
+    </Modal>
+  );
+}
+
 export default function AttendancePage() {
   const records = useAttendanceStore((s) => s.records);
   const deleteRecord = useAttendanceStore((s) => s.deleteRecord);
   const deleteRecords = useAttendanceStore((s) => s.deleteRecords);
+  const proxyCheckIn = useAttendanceStore((s) => s.proxyCheckIn);
   const employees = useEmployeeStore((s) => s.employees);
   const updateEmployee = useEmployeeStore((s) => s.updateEmployee);
   const currentUser = useAuthStore((s) => s.currentUser);
@@ -80,6 +153,54 @@ export default function AttendancePage() {
   // 확인 모달
   const [confirm, setConfirm] = useState(null); // { message, onConfirm }
   const [deleting, setDeleting] = useState(false);
+
+  // 대리 입력 모달
+  const [proxyTarget, setProxyTarget] = useState(null); // { worker, date } | null
+  const [proxyLoading, setProxyLoading] = useState(false);
+
+  const openProxyModal = (worker, date) => setProxyTarget({ worker, date });
+  const closeProxyModal = () => { if (!proxyLoading) setProxyTarget(null); };
+
+  const handleProxyConfirm = async ({ checkInTime, checkOutTime, status }) => {
+    if (!proxyTarget || !currentUser) return;
+    setProxyLoading(true);
+
+    // date + HH:MM → ISO timestamp (로컬 시간대 기준)
+    const checkInIso = new Date(`${proxyTarget.date}T${checkInTime}:00`).toISOString();
+    const checkOutIso = checkOutTime
+      ? new Date(`${proxyTarget.date}T${checkOutTime}:00`).toISOString()
+      : null;
+
+    // 퇴근 시각이 출근 시각보다 이른 경우 거부
+    if (checkOutIso && new Date(checkOutIso) <= new Date(checkInIso)) {
+      setProxyLoading(false);
+      alert('퇴근 시각은 출근 시각 이후여야 합니다.');
+      return;
+    }
+
+    const { error } = await proxyCheckIn({
+      employeeId: proxyTarget.worker.id,
+      date: proxyTarget.date,
+      checkIn: checkInIso,
+      checkOut: checkOutIso,
+      status,
+      inputBy: currentUser.id,
+    });
+
+    setProxyLoading(false);
+    if (error) {
+      if (error === 'ALREADY_EXISTS') {
+        alert('이미 해당 날짜의 출퇴근 기록이 존재합니다.');
+      } else if (error === 'MISSING_REQUIRED') {
+        alert('필수 정보가 누락되었습니다.');
+      } else {
+        alert('대리 입력 중 오류가 발생했습니다.');
+        console.error(error);
+      }
+    } else {
+      setProxyTarget(null);
+    }
+  };
 
   // 관리팀은 근무 시간 열 숨김
   const isManagement = !isFarmAdmin(currentUser); // 재배팀만 근무시간 상세 표시
@@ -270,7 +391,7 @@ export default function AttendancePage() {
                                 className="w-full border border-gray-200 rounded px-2 py-1.5 text-sm min-h-[36px]" />
                             </div>
                           </div>
-                          {rec && (
+                          {rec ? (
                             <div className="flex items-center justify-between text-sm">
                               <span className="text-gray-600">
                                 출근 {formatTime(rec.checkIn)} / 퇴근 {formatTime(rec.checkOut)}
@@ -282,6 +403,13 @@ export default function AttendancePage() {
                                 className="text-xs text-red-500 hover:text-red-700 px-2 py-1"
                               >삭제</button>
                             </div>
+                          ) : (
+                            <button
+                              onClick={() => openProxyModal(w, selectedDate)}
+                              className="w-full py-2 rounded-lg text-sm font-medium bg-blue-50 text-blue-600 hover:bg-blue-100 active:scale-[0.98] transition-all"
+                            >
+                              대리 입력
+                            </button>
                           )}
                         </Card>
                       );
@@ -343,12 +471,19 @@ export default function AttendancePage() {
                                   )}
                                 </td>
                                 <td className="px-4 py-2.5">
-                                  {rec && (
+                                  {rec ? (
                                     <button
                                       onClick={() => handleDeleteRecord(rec.id, w.name)}
                                       className="px-2 py-1 text-xs text-red-500 hover:text-red-700 hover:bg-red-50 rounded transition-colors"
                                     >
                                       삭제
+                                    </button>
+                                  ) : (
+                                    <button
+                                      onClick={() => openProxyModal(w, selectedDate)}
+                                      className="px-2 py-1 text-xs text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded transition-colors"
+                                    >
+                                      대리 입력
                                     </button>
                                   )}
                                 </td>
@@ -562,6 +697,16 @@ export default function AttendancePage() {
         onConfirm={confirm?.onConfirm}
         message={confirm?.message || ''}
         loading={deleting}
+      />
+
+      {/* 대리 입력 모달 */}
+      <ProxyCheckInModal
+        isOpen={!!proxyTarget}
+        onClose={closeProxyModal}
+        onConfirm={handleProxyConfirm}
+        worker={proxyTarget?.worker}
+        date={proxyTarget?.date}
+        loading={proxyLoading}
       />
     </div>
   );
