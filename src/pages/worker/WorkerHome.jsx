@@ -8,9 +8,11 @@ import useCallStore from '../../stores/callStore';
 import useIssueStore from '../../stores/issueStore';
 import useZoneStore from '../../stores/zoneStore';
 import useOvertimeStore from '../../stores/overtimeStore';
+import useSafetyCheckStore from '../../stores/safetyCheckStore';
 import Card from '../../components/common/Card';
 import Button from '../../components/common/Button';
 import BottomSheet from '../../components/common/BottomSheet';
+import SafetyCheckBottomSheet from '../../components/worker/SafetyCheckBottomSheet';
 import { sendPushToAdmins } from '../../lib/pushNotify';
 
 // 현재 시각을 HH:MM 문자열로 반환
@@ -80,10 +82,12 @@ export default function WorkerHome() {
   const zones = useZoneStore((s) => s.zones);
   const overtimeRequests = useOvertimeStore((s) => s.requests);
   const submitOvertime = useOvertimeStore((s) => s.submitRequest);
+  const getTodayCheck = useSafetyCheckStore((s) => s.getTodayCheck);
 
   const [message, setMessage] = useState('');
   const [msgType, setMsgType] = useState('info');
   const [gpsLoading, setGpsLoading] = useState(false);
+  const [safetyModal, setSafetyModal] = useState({ open: false, type: null });
 
   // FAB 바텀시트
   const [showFab, setShowFab] = useState(false);
@@ -164,18 +168,36 @@ export default function WorkerHome() {
     await action();
   };
 
+  const doCheckIn = async () => {
+    const hhmm = nowHHMM();
+    const startTime = myEmployee?.workStartTime;
+    const isLate = startTime ? hhmm > startTime : false;
+    const ok = await checkIn(currentUser.id, null, isLate ? 'late' : 'working');
+    if (ok) {
+      showMsg(isLate ? `지각 출근 처리되었습니다 (기준: ${startTime})` : '출근 처리되었습니다', isLate ? 'warn' : 'info');
+    } else {
+      showMsg('이미 출근 처리되었습니다', 'error');
+    }
+  };
+
   const handleCheckIn = () =>
     withGpsVerify(async () => {
-      const hhmm = nowHHMM();
-      const startTime = myEmployee?.workStartTime;
-      const isLate = startTime ? hhmm > startTime : false;
-      const ok = await checkIn(currentUser.id, null, isLate ? 'late' : 'working');
-      if (ok) {
-        showMsg(isLate ? `지각 출근 처리되었습니다 (기준: ${startTime})` : '출근 처리되었습니다', isLate ? 'warn' : 'info');
-      } else {
-        showMsg('이미 출근 처리되었습니다', 'error');
+      try {
+        const existing = await getTodayCheck(currentUser.id, 'pre_work');
+        if (existing) {
+          await doCheckIn();
+          return;
+        }
+      } catch (e) {
+        console.error('TBM 조회 실패:', e);
       }
+      setSafetyModal({ open: true, type: 'pre_work' });
     });
+
+  const doCheckOut = async () => {
+    await checkOut(currentUser.id);
+    showMsg('퇴근 처리되었습니다');
+  };
 
   const handleCheckOut = () =>
     withGpsVerify(async () => {
@@ -202,9 +224,31 @@ export default function WorkerHome() {
           if (!confirmed) return;
         }
       }
-      await checkOut(currentUser.id);
-      showMsg('퇴근 처리되었습니다');
+      // pre_work 기록이 있을 때만 post_work 요구
+      try {
+        const preExisting = await getTodayCheck(currentUser.id, 'pre_work');
+        if (preExisting) {
+          const postExisting = await getTodayCheck(currentUser.id, 'post_work');
+          if (!postExisting) {
+            setSafetyModal({ open: true, type: 'post_work' });
+            return;
+          }
+        }
+      } catch (e) {
+        console.error('TBM 조회 실패, 퇴근 진행:', e);
+      }
+      await doCheckOut();
     });
+
+  const handleSafetyComplete = async () => {
+    const type = safetyModal.type;
+    setSafetyModal({ open: false, type: null });
+    if (type === 'pre_work') {
+      await doCheckIn();
+    } else if (type === 'post_work') {
+      await doCheckOut();
+    }
+  };
 
   const handleOvertimeSubmit = async () => {
     if (overtimeForm.hours === 0 && overtimeForm.minutes === 0) return;
@@ -613,6 +657,15 @@ export default function WorkerHome() {
           </Button>
         </div>
       </BottomSheet>
+
+      {/* TBM 안전점검 바텀시트 */}
+      <SafetyCheckBottomSheet
+        isOpen={safetyModal.open}
+        onClose={() => setSafetyModal({ open: false, type: null })}
+        onComplete={handleSafetyComplete}
+        workerId={currentUser?.id}
+        checkType={safetyModal.type || 'pre_work'}
+      />
     </div>
   );
 }

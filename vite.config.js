@@ -8,6 +8,8 @@ export default defineConfig({
     VitePWA({
       registerType: 'autoUpdate',
       workbox: {
+        // JS 번들이 2MB를 초과할 수 있으므로 precache 제한 상향
+        maximumFileSizeToCacheInBytes: 3 * 1024 * 1024,
         // 구버전 캐시 자동 정리 → 구 CSS/JS가 잔류해 스타일 깨지는 문제 방지
         cleanupOutdatedCaches: true,
         // SPA 네비게이션 폴백: 모든 navigate 요청을 index.html로

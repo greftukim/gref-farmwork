@@ -26,6 +26,8 @@ const ICONS = {
   branchSettings: 'M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z M15 11a3 3 0 11-6 0 3 3 0 016 0z',
   packaging: 'M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4',
   building: 'M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4',
+  shield: 'M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z',
+  safetyAlert: 'M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.34 16.5c-.77.833.192 2.5 1.732 2.5z',
 };
 
 // ─── 생산 관리 카테고리 (farm / master 공용) ─────────────────────────────────
@@ -65,6 +67,14 @@ const farmCategorizedMenu = [
     ],
   },
   productionCategory,
+  {
+    type: 'category',
+    label: '안전 관리',
+    items: [
+      { label: 'TBM 현황', to: '/admin/safety-checks', icon: ICONS.shield },
+      { label: '안전 이슈', to: '/admin/safety-issues', icon: ICONS.safetyAlert },
+    ],
+  },
   { type: 'item', label: '공지사항', to: '/admin/notices', icon: ICONS.notices },
 ];
 
@@ -106,6 +116,14 @@ const mgmtCategorizedMenu = [
     label: '성과',
     items: [
       { label: '지점별 성과', to: '/admin/branch-stats', icon: ICONS.stats },
+    ],
+  },
+  {
+    type: 'category',
+    label: '안전 관리',
+    items: [
+      { label: 'TBM 현황', to: '/admin/safety-checks', icon: ICONS.shield },
+      { label: '안전 이슈', to: '/admin/safety-issues', icon: ICONS.safetyAlert },
     ],
   },
   { type: 'item', label: '공지사항', to: '/admin/notices', icon: ICONS.notices },
@@ -157,6 +175,14 @@ const masterCategorizedMenu = [
     label: '성과',
     items: [
       { label: '지점별 성과', to: '/admin/branch-stats', icon: ICONS.stats },
+    ],
+  },
+  {
+    type: 'category',
+    label: '안전 관리',
+    items: [
+      { label: 'TBM 현황', to: '/admin/safety-checks', icon: ICONS.shield },
+      { label: '안전 이슈', to: '/admin/safety-issues', icon: ICONS.safetyAlert },
     ],
   },
   { type: 'item', label: '공지사항', to: '/admin/notices', icon: ICONS.notices },

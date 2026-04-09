@@ -51,6 +51,8 @@ import PackagingTasksPage from './pages/admin/PackagingTasksPage';
 import PackagingRecordsPage from './pages/admin/PackagingRecordsPage';
 import PackagingCustomersPage from './pages/admin/PackagingCustomersPage';
 import BranchStatsPage from './pages/admin/BranchStatsPage';
+import SafetyChecksPage from './pages/admin/SafetyChecksPage';
+import SafetyIssuesPage from './pages/admin/SafetyIssuesPage';
 import WorkerHome from './pages/worker/WorkerHome';
 import WorkerTasksPage from './pages/worker/WorkerTasksPage';
 import GrowthSurveyPage from './pages/worker/GrowthSurveyPage';
@@ -161,6 +163,8 @@ export default function App() {
             <Route path="packaging-records" element={<PackagingRecordsPage />} />
             <Route path="packaging-customers" element={<PackagingCustomersPage />} />
             <Route path="branch-stats" element={<BranchStatsPage />} />
+            <Route path="safety-checks" element={<SafetyChecksPage />} />
+            <Route path="safety-issues" element={<SafetyIssuesPage />} />
           </Route>
 
           <Route path="/worker" element={
