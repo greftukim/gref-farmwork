@@ -22,6 +22,9 @@ const useGrowthSurveyStore = create((set) => ({
       row_number: survey.rowNumber,
       plant_number: survey.plantNumber,
       measurements: survey.measurements || null,
+      compartment: survey.compartment ?? null,
+      gutter_number: survey.gutterNumber ?? null,
+      position_number: survey.positionNumber ?? null,
       // 기존 컬럼 유지 (호환성)
       plant_height: survey.plantHeight || null,
       stem_diameter: survey.stemDiameter || null,

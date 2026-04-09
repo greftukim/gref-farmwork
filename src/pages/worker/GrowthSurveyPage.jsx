@@ -5,8 +5,16 @@ import useGrowthSurveyStore from '../../stores/growthSurveyStore';
 import useGrowthSurveyItemStore from '../../stores/growthSurveyItemStore';
 import useTaskStore from '../../stores/taskStore';
 import useZoneStore from '../../stores/zoneStore';
+import useCropStore from '../../stores/cropStore';
 import Card from '../../components/common/Card';
 import Button from '../../components/common/Button';
+
+const BUSAN_COMPARTMENTS = [
+  { cmp: 1, label: '1cmp (토마토)', cropName: '토마토', maxGutter: 10 },
+  { cmp: 2, label: '2cmp (미니파프리카)', cropName: '미니파프리카', maxGutter: 10 },
+  { cmp: 3, label: '3cmp (오이)', cropName: '오이', maxGutter: 8 },
+  { cmp: 4, label: '4cmp (딸기)', cropName: '딸기', maxGutter: 10 },
+];
 
 // 숫자 스테퍼 컴포넌트 (장갑 착용 고려, 큰 터치 타겟)
 function Stepper({ value, onChange, step = 1, min = 0 }) {
@@ -53,7 +61,7 @@ function draftKey(taskId) {
 }
 
 function makeEmptyEntry(cropItems) {
-  const entry = { zoneId: '', rowNumber: '', plantNumber: '' };
+  const entry = { zoneId: '', rowNumber: '', plantNumber: '', compartment: '', gutterNumber: '', positionNumber: '' };
   cropItems.forEach((item) => { entry[item.id] = ''; });
   return entry;
 }
@@ -70,14 +78,11 @@ export default function GrowthSurveyPage() {
   const tasks = useTaskStore((s) => s.tasks);
   const completeTask = useTaskStore((s) => s.completeTask);
   const zones = useZoneStore((s) => s.zones);
+  const crops = useCropStore((s) => s.crops);
+
+  const isBusan = currentUser?.branch === 'busan';
 
   const task = useMemo(() => tasks.find((t) => t.id === taskId), [tasks, taskId]);
-
-  // 작업에 연결된 작물의 조사 항목
-  const cropItems = useMemo(
-    () => allItems.filter((i) => i.cropId === task?.cropId),
-    [allItems, task]
-  );
 
   // 항목이 없는 경우 로딩 후 재시도
   useEffect(() => {
@@ -98,6 +103,24 @@ export default function GrowthSurveyPage() {
   const [submitting, setSubmitting] = useState(false);
   const [editIndex, setEditIndex] = useState(null);
 
+  // 부산: 컴파트먼트 선택 → 작물 자동 결정 / 그 외: task에서 결정
+  const activeCropId = useMemo(() => {
+    if (task?.cropId) return task.cropId;
+    if (isBusan && currentForm.compartment) {
+      const cfg = BUSAN_COMPARTMENTS.find((c) => c.cmp === Number(currentForm.compartment));
+      if (cfg) {
+        const crop = crops.find((c) => c.name === cfg.cropName);
+        return crop?.id || null;
+      }
+    }
+    return null;
+  }, [task, isBusan, currentForm.compartment, crops]);
+
+  const cropItems = useMemo(
+    () => allItems.filter((i) => i.cropId === activeCropId),
+    [allItems, activeCropId]
+  );
+
   // cropItems 로드 완료 시 currentForm 초기화 (항목 키 반영)
   useEffect(() => {
     setCurrentForm((prev) => {
@@ -106,6 +129,9 @@ export default function GrowthSurveyPage() {
       next.zoneId = prev.zoneId || '';
       next.rowNumber = prev.rowNumber || '';
       next.plantNumber = prev.plantNumber || '';
+      next.compartment = prev.compartment || '';
+      next.gutterNumber = prev.gutterNumber || '';
+      next.positionNumber = prev.positionNumber || '';
       return next;
     });
   }, [cropItems]);
@@ -121,7 +147,9 @@ export default function GrowthSurveyPage() {
     setCurrentForm((f) => ({ ...f, [key]: value }));
   }, []);
 
-  const canAddEntry = currentForm.rowNumber && currentForm.plantNumber;
+  const canAddEntry = isBusan
+    ? currentForm.compartment && currentForm.gutterNumber && currentForm.positionNumber
+    : currentForm.rowNumber && currentForm.plantNumber;
 
   const handleAddEntry = () => {
     if (!canAddEntry) return;
@@ -131,13 +159,23 @@ export default function GrowthSurveyPage() {
     } else {
       setEntries((prev) => [...prev, { ...currentForm }]);
     }
-    const nextPlant = currentForm.plantNumber ? String(Number(currentForm.plantNumber) + 1) : '';
-    setCurrentForm({
-      ...makeEmptyEntry(cropItems),
-      zoneId: currentForm.zoneId,
-      rowNumber: currentForm.rowNumber,
-      plantNumber: nextPlant,
-    });
+    if (isBusan) {
+      const nextPos = currentForm.positionNumber ? String(Number(currentForm.positionNumber) + 1) : '';
+      setCurrentForm({
+        ...makeEmptyEntry(cropItems),
+        compartment: currentForm.compartment,
+        gutterNumber: currentForm.gutterNumber,
+        positionNumber: nextPos,
+      });
+    } else {
+      const nextPlant = currentForm.plantNumber ? String(Number(currentForm.plantNumber) + 1) : '';
+      setCurrentForm({
+        ...makeEmptyEntry(cropItems),
+        zoneId: currentForm.zoneId,
+        rowNumber: currentForm.rowNumber,
+        plantNumber: nextPlant,
+      });
+    }
   };
 
   const handleEditEntry = (idx) => {
@@ -173,10 +211,13 @@ export default function GrowthSurveyPage() {
       await addSurvey({
         workerId: currentUser.id,
         surveyDate: today,
-        cropId: task?.cropId || null,
-        zoneId: e.zoneId || null,
-        rowNumber: e.rowNumber ? Number(e.rowNumber) : null,
-        plantNumber: e.plantNumber ? Number(e.plantNumber) : null,
+        cropId: activeCropId,
+        zoneId: isBusan ? null : (e.zoneId || null),
+        rowNumber: isBusan ? null : (e.rowNumber ? Number(e.rowNumber) : null),
+        plantNumber: isBusan ? null : (e.plantNumber ? Number(e.plantNumber) : null),
+        compartment: isBusan ? (e.compartment ? Number(e.compartment) : null) : null,
+        gutterNumber: isBusan ? (e.gutterNumber ? Number(e.gutterNumber) : null) : null,
+        positionNumber: isBusan ? (e.positionNumber ? Number(e.positionNumber) : null) : null,
         measurements,
       });
     }
@@ -219,32 +260,70 @@ export default function GrowthSurveyPage() {
           {editIndex !== null ? `${editIndex + 1}번 항목 수정` : '측정값 입력'}
         </div>
 
-        {/* 구역 선택 */}
-        {zones.length > 0 && (
-          <div className="mb-3">
-            <label className="block text-xs font-medium text-gray-500 mb-1">구역</label>
-            <select
-              value={currentForm.zoneId}
-              onChange={(e) => setField('zoneId', e.target.value)}
-              className="w-full border border-gray-200 rounded-lg px-3 py-3 text-sm min-h-[48px]"
-            >
-              <option value="">선택 안 함</option>
-              {zones.map((z) => <option key={z.id} value={z.id}>{z.name}</option>)}
-            </select>
-          </div>
+        {/* 위치 입력: 부산 vs 기타 */}
+        {isBusan ? (
+          <>
+            <div className="mb-3">
+              <label className="block text-xs font-medium text-gray-500 mb-1">컴파트먼트</label>
+              <select
+                value={currentForm.compartment}
+                onChange={(e) => setField('compartment', e.target.value)}
+                className="w-full border border-gray-200 rounded-lg px-3 py-3 text-sm min-h-[48px]"
+              >
+                <option value="">선택</option>
+                {BUSAN_COMPARTMENTS.map((c) => (
+                  <option key={c.cmp} value={c.cmp}>{c.label}</option>
+                ))}
+              </select>
+            </div>
+            <div className="grid grid-cols-2 gap-3 mb-4">
+              <div>
+                <label className="block text-xs font-medium text-gray-500 mb-1">거터 번호</label>
+                <Stepper
+                  value={currentForm.gutterNumber}
+                  onChange={(v) => setField('gutterNumber', v)}
+                  step={1}
+                  min={1}
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-500 mb-1">구역 번호</label>
+                <Stepper
+                  value={currentForm.positionNumber}
+                  onChange={(v) => setField('positionNumber', v)}
+                  step={1}
+                  min={1}
+                />
+              </div>
+            </div>
+          </>
+        ) : (
+          <>
+            {zones.length > 0 && (
+              <div className="mb-3">
+                <label className="block text-xs font-medium text-gray-500 mb-1">구역</label>
+                <select
+                  value={currentForm.zoneId}
+                  onChange={(e) => setField('zoneId', e.target.value)}
+                  className="w-full border border-gray-200 rounded-lg px-3 py-3 text-sm min-h-[48px]"
+                >
+                  <option value="">선택 안 함</option>
+                  {zones.map((z) => <option key={z.id} value={z.id}>{z.name}</option>)}
+                </select>
+              </div>
+            )}
+            <div className="grid grid-cols-2 gap-3 mb-4">
+              <div>
+                <label className="block text-xs font-medium text-gray-500 mb-1">열 번호</label>
+                <Stepper value={currentForm.rowNumber} onChange={(v) => setField('rowNumber', v)} step={1} min={1} />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-500 mb-1">주 번호</label>
+                <Stepper value={currentForm.plantNumber} onChange={(v) => setField('plantNumber', v)} step={1} min={1} />
+              </div>
+            </div>
+          </>
         )}
-
-        {/* 열 번호 / 주 번호 */}
-        <div className="grid grid-cols-2 gap-3 mb-4">
-          <div>
-            <label className="block text-xs font-medium text-gray-500 mb-1">열 번호</label>
-            <Stepper value={currentForm.rowNumber} onChange={(v) => setField('rowNumber', v)} step={1} min={1} />
-          </div>
-          <div>
-            <label className="block text-xs font-medium text-gray-500 mb-1">주 번호</label>
-            <Stepper value={currentForm.plantNumber} onChange={(v) => setField('plantNumber', v)} step={1} min={1} />
-          </div>
-        </div>
 
         {/* 동적 조사 항목 */}
         {cropItems.length > 0 && (
@@ -287,7 +366,9 @@ export default function GrowthSurveyPage() {
           {editIndex !== null ? '수정 완료' : '+ 조사 추가'}
         </button>
         {!canAddEntry && (
-          <p className="text-xs text-gray-400 text-center mt-1">열 번호와 주 번호를 입력하세요</p>
+          <p className="text-xs text-gray-400 text-center mt-1">
+            {isBusan ? '컴파트먼트, 거터, 구역 번호를 입력하세요' : '열 번호와 주 번호를 입력하세요'}
+          </p>
         )}
       </Card>
 
@@ -308,14 +389,27 @@ export default function GrowthSurveyPage() {
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-1 flex-wrap">
                         <span className="text-xs font-semibold text-gray-500">#{idx + 1}</span>
-                        {e.zoneId && (
-                          <span className="text-xs bg-blue-50 text-blue-600 px-1.5 py-0.5 rounded">
-                            {zoneMap[e.zoneId]?.name || '구역'}
-                          </span>
+                        {isBusan ? (
+                          <>
+                            <span className="text-xs bg-emerald-50 text-emerald-600 px-1.5 py-0.5 rounded">
+                              {BUSAN_COMPARTMENTS.find((c) => c.cmp === Number(e.compartment))?.label || `${e.compartment}cmp`}
+                            </span>
+                            <span className="text-sm font-medium text-gray-800">
+                              G{e.gutterNumber} #{e.positionNumber}
+                            </span>
+                          </>
+                        ) : (
+                          <>
+                            {e.zoneId && (
+                              <span className="text-xs bg-blue-50 text-blue-600 px-1.5 py-0.5 rounded">
+                                {zoneMap[e.zoneId]?.name || '구역'}
+                              </span>
+                            )}
+                            <span className="text-sm font-medium text-gray-800">
+                              {e.rowNumber}열 {e.plantNumber}번주
+                            </span>
+                          </>
                         )}
-                        <span className="text-sm font-medium text-gray-800">
-                          {e.rowNumber}열 {e.plantNumber}번주
-                        </span>
                       </div>
                       <div className="grid grid-cols-3 gap-x-3 gap-y-0.5">
                         {filledItems.map((item) => (
