@@ -93,6 +93,19 @@ const useOvertimeStore = create((set, get) => ({
     return { error };
   },
 
+  updateOvertimeHours: async (id, hours, minutes) => {
+    const { data, error } = await supabase
+      .from('overtime_requests')
+      .update({ hours, minutes })
+      .eq('id', id)
+      .select()
+      .single();
+    if (!error && data) {
+      set((s) => ({ requests: s.requests.map((r) => (r.id === id ? snakeToCamel(data) : r)) }));
+    }
+    return { error };
+  },
+
   bulkApprove: async (ids, reviewerId) => {
     if (!ids?.length) return { error: 'NO_IDS' };
     const reviewedAt = new Date().toISOString();

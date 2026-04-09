@@ -6,6 +6,7 @@ import Card from '../../components/common/Card';
 import Button from '../../components/common/Button';
 import BottomSheet from '../../components/common/BottomSheet';
 import { sendPushToEmployee } from '../../lib/pushNotify';
+import { isFarmAdmin, isMaster } from '../../lib/permissions';
 
 const statusConfig = {
   pending:  { label: '대기', dot: 'bg-amber-400', color: 'text-amber-600' },
@@ -27,7 +28,11 @@ export default function OvertimeApprovalPage() {
   const bulkApprove = useOvertimeStore((s) => s.bulkApprove);
   const rejectRequest = useOvertimeStore((s) => s.rejectRequest);
   const adjustAndApprove = useOvertimeStore((s) => s.adjustAndApprove);
+  const updateOvertimeHours = useOvertimeStore((s) => s.updateOvertimeHours);
   const subscribeRealtime = useOvertimeStore((s) => s.subscribeRealtime);
+
+  const canApprove = isFarmAdmin(currentUser) || isMaster(currentUser);
+  const canEditHours = currentUser?.role === 'hr_admin' || isMaster(currentUser);
   const employees = useEmployeeStore((s) => s.employees);
 
   const [processing, setProcessing] = useState(null);
@@ -141,25 +146,31 @@ export default function OvertimeApprovalPage() {
     }
   };
 
-  const openAdjust = (req) => {
-    setAdjustTarget(req);
+  const openAdjust = (req, mode = 'adjustAndApprove') => {
+    setAdjustTarget({ ...req, mode });
     setAdjustForm({ hours: req.hours, minutes: req.minutes });
   };
 
-  const handleAdjustSubmit = async () => {
+  const handleAdjustConfirm = async () => {
     if (!adjustTarget || processing) return;
     if (adjustForm.hours === 0 && adjustForm.minutes === 0) return;
     setProcessing(adjustTarget.id);
-    const { error } = await adjustAndApprove(adjustTarget.id, currentUser.id, adjustForm.hours, adjustForm.minutes);
-    setProcessing(null);
-    if (!error) {
-      const emp = empMap[adjustTarget.employeeId];
-      sendPushToEmployee({
-        employeeId: adjustTarget.employeeId,
-        title: '연장근무가 시간 조정 후 승인되었습니다',
-        body: `${adjustTarget.date} 연장근무 ${formatOvertimeTime(adjustForm.hours, adjustForm.minutes)}으로 조정 승인되었습니다`,
-        type: 'overtime_request',
-      }).catch(() => {});
+
+    if (adjustTarget.mode === 'editHours') {
+      const { error } = await updateOvertimeHours(adjustTarget.id, adjustForm.hours, adjustForm.minutes);
+      setProcessing(null);
+      if (error) alert('시간 수정 중 오류가 발생했습니다.');
+    } else {
+      const { error } = await adjustAndApprove(adjustTarget.id, currentUser.id, adjustForm.hours, adjustForm.minutes);
+      setProcessing(null);
+      if (!error) {
+        sendPushToEmployee({
+          employeeId: adjustTarget.employeeId,
+          title: '연장근무가 시간 조정 후 승인되었습니다',
+          body: `${adjustTarget.date} 연장근무 ${formatOvertimeTime(adjustForm.hours, adjustForm.minutes)}으로 조정 승인되었습니다`,
+          type: 'overtime_request',
+        }).catch(() => {});
+      }
     }
     setAdjustTarget(null);
   };
@@ -167,7 +178,7 @@ export default function OvertimeApprovalPage() {
   return (
     <div>
       <div className="flex items-center justify-between mb-6">
-        <h2 className="text-2xl font-heading font-bold text-gray-900">연장근무 승인</h2>
+        <h2 className="text-2xl font-heading font-bold text-gray-900">{canEditHours ? '연장근무 관리' : '연장근무 승인'}</h2>
         <span className="text-sm text-gray-400">대기 {pendingCount}건</span>
       </div>
 
@@ -199,7 +210,7 @@ export default function OvertimeApprovalPage() {
       </div>
 
       {/* 일괄 승인 액션 바 */}
-      {selectedIds.size > 0 && (
+      {canApprove && selectedIds.size > 0 && (
         <div className="flex items-center gap-3 mb-4 p-3 bg-blue-50 rounded-xl">
           <span className="text-sm font-medium text-blue-700">선택된 {selectedIds.size}건</span>
           <button
@@ -220,7 +231,7 @@ export default function OvertimeApprovalPage() {
 
       {/* 모바일 카드 뷰 */}
       <div className="md:hidden space-y-3">
-        {pendingCount > 0 && (
+        {canApprove && pendingCount > 0 && (
           <label className="flex items-center gap-2 px-1 py-1">
             <input
               type="checkbox"
@@ -242,7 +253,7 @@ export default function OvertimeApprovalPage() {
             <Card key={req.id} accent="gray" className={`p-4 ${isPending ? 'border-l-amber-400' : ''}`}>
               <div className="flex items-start justify-between mb-2">
                 <div className="flex items-center gap-2">
-                  {isPending && (
+                  {canApprove && isPending && (
                     <input
                       type="checkbox"
                       checked={selectedIds.has(req.id)}
@@ -263,18 +274,27 @@ export default function OvertimeApprovalPage() {
               {req.adjustedByReviewer && (
                 <span className="inline-block px-1.5 py-0.5 rounded text-[10px] font-medium bg-green-100 text-green-700 mb-2">재배팀 조정</span>
               )}
-              {isPending ? (
+              {canApprove && isPending ? (
                 <div className="flex gap-2 justify-end mt-2">
                   <Button size="sm" onClick={() => handleApprove(req.id)} disabled={processing === req.id}>
                     {processing === req.id ? '처리 중...' : '승인'}
                   </Button>
                   <button
-                    onClick={() => openAdjust(req)}
+                    onClick={() => openAdjust(req, 'adjustAndApprove')}
                     className="px-3 py-1.5 rounded-lg text-sm font-medium bg-blue-50 text-blue-600 active:scale-[0.98]"
                   >
                     시간 조정
                   </button>
                   <Button size="sm" variant="danger" onClick={() => handleReject(req.id)} disabled={processing === req.id}>반려</Button>
+                </div>
+              ) : canEditHours && req.status === 'approved' ? (
+                <div className="flex gap-2 justify-end mt-2">
+                  <button
+                    onClick={() => openAdjust(req, 'editHours')}
+                    className="px-3 py-1.5 rounded-lg text-sm font-medium bg-violet-50 text-violet-600 active:scale-[0.98]"
+                  >
+                    시간 수정
+                  </button>
                 </div>
               ) : (
                 <div className="text-right text-xs text-gray-400">처리 완료</div>
@@ -290,15 +310,17 @@ export default function OvertimeApprovalPage() {
           <table className="w-full text-sm">
             <thead>
               <tr className="bg-gray-50 text-left text-gray-500 border-b border-gray-100">
-                <th className="px-3 py-3 w-10">
-                  <input
-                    type="checkbox"
-                    checked={allPendingSelected}
-                    onChange={toggleSelectAll}
-                    disabled={pendingCount === 0}
-                    className="w-4 h-4 rounded border-gray-300 text-blue-600"
-                  />
-                </th>
+                {canApprove && (
+                  <th className="px-3 py-3 w-10">
+                    <input
+                      type="checkbox"
+                      checked={allPendingSelected}
+                      onChange={toggleSelectAll}
+                      disabled={pendingCount === 0}
+                      className="w-4 h-4 rounded border-gray-300 text-blue-600"
+                    />
+                  </th>
+                )}
                 <th className="px-5 py-3 font-medium">상태</th>
                 <th className="px-5 py-3 font-medium">이름</th>
                 <th className="px-5 py-3 font-medium">날짜</th>
@@ -311,7 +333,7 @@ export default function OvertimeApprovalPage() {
             <tbody className="divide-y divide-gray-50">
               {filtered.length === 0 && (
                 <tr>
-                  <td colSpan={8} className="text-center text-gray-400 py-12">연장근무 신청 내역이 없습니다</td>
+                  <td colSpan={canApprove ? 8 : 7} className="text-center text-gray-400 py-12">연장근무 신청 내역이 없습니다</td>
                 </tr>
               )}
               {filtered.map((req) => {
@@ -320,16 +342,18 @@ export default function OvertimeApprovalPage() {
                 const isPending = req.status === 'pending';
                 return (
                   <tr key={req.id} className={isPending ? 'bg-amber-50/50' : ''}>
-                    <td className="px-3 py-3">
-                      {isPending ? (
-                        <input
-                          type="checkbox"
-                          checked={selectedIds.has(req.id)}
-                          onChange={() => toggleSelect(req.id)}
-                          className="w-4 h-4 rounded border-gray-300 text-blue-600"
-                        />
-                      ) : null}
-                    </td>
+                    {canApprove && (
+                      <td className="px-3 py-3">
+                        {isPending ? (
+                          <input
+                            type="checkbox"
+                            checked={selectedIds.has(req.id)}
+                            onChange={() => toggleSelect(req.id)}
+                            className="w-4 h-4 rounded border-gray-300 text-blue-600"
+                          />
+                        ) : null}
+                      </td>
+                    )}
                     <td className="px-5 py-3">
                       <div className="flex items-center gap-2">
                         <span className={`w-2.5 h-2.5 rounded-full ${st.dot}`} />
@@ -347,19 +371,26 @@ export default function OvertimeApprovalPage() {
                       {req.createdAt ? new Date(req.createdAt).toLocaleString('ko-KR', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—'}
                     </td>
                     <td className="px-5 py-3 text-right">
-                      {isPending ? (
+                      {canApprove && isPending ? (
                         <div className="flex gap-2 justify-end">
                           <Button size="sm" onClick={() => handleApprove(req.id)} disabled={processing === req.id}>
                             {processing === req.id ? '처리 중...' : '승인'}
                           </Button>
                           <button
-                            onClick={() => openAdjust(req)}
+                            onClick={() => openAdjust(req, 'adjustAndApprove')}
                             className="px-3 py-1.5 rounded-lg text-sm font-medium bg-blue-50 text-blue-600 active:scale-[0.98]"
                           >
                             시간 조정
                           </button>
                           <Button size="sm" variant="danger" onClick={() => handleReject(req.id)} disabled={processing === req.id}>반려</Button>
                         </div>
+                      ) : canEditHours && req.status === 'approved' ? (
+                        <button
+                          onClick={() => openAdjust(req, 'editHours')}
+                          className="px-3 py-1.5 rounded-lg text-sm font-medium bg-violet-50 text-violet-600 active:scale-[0.98]"
+                        >
+                          시간 수정
+                        </button>
                       ) : (
                         <span className="text-xs text-gray-400">처리 완료</span>
                       )}
@@ -376,7 +407,7 @@ export default function OvertimeApprovalPage() {
       <BottomSheet
         isOpen={!!adjustTarget}
         onClose={() => setAdjustTarget(null)}
-        title="시간 조정 후 승인"
+        title={adjustTarget?.mode === 'editHours' ? '시간 수정' : '시간 조정 후 승인'}
       >
         {adjustTarget && (
           <div className="space-y-4">
@@ -413,10 +444,10 @@ export default function OvertimeApprovalPage() {
             <Button
               size="lg"
               className="w-full"
-              onClick={handleAdjustSubmit}
+              onClick={handleAdjustConfirm}
               disabled={processing || (adjustForm.hours === 0 && adjustForm.minutes === 0)}
             >
-              {processing ? '처리 중...' : '조정하여 승인'}
+              {processing ? '처리 중...' : adjustTarget?.mode === 'editHours' ? '시간 수정' : '조정하여 승인'}
             </Button>
           </div>
         )}

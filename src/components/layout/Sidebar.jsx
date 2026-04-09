@@ -88,6 +88,7 @@ const mgmtCategorizedMenu = [
       { label: '근태 현황', to: '/admin/leave-approval', icon: ICONS.leaveStatus },
       { label: '휴가 관리', to: '/admin/leave', icon: ICONS.leave },
       { label: '주간 일정', to: '/admin/schedule', icon: ICONS.schedule },
+      { label: '연장근무 관리', to: '/admin/overtime-approval', icon: ICONS.overtime },
     ],
   },
   {
