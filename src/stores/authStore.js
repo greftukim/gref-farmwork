@@ -105,7 +105,7 @@ const useAuthStore = create(
       loginWithDeviceToken: async (token) => {
         const { data, error } = await supabase
           .from('employees')
-          .select('*')
+          .select('id, name, role, branch, is_active, device_token, auth_user_id, job_type, work_start_time, work_end_time')
           .eq('device_token', token)
           .eq('is_active', true)
           .single();
