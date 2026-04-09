@@ -62,8 +62,10 @@ function ProxyCheckInModal({ isOpen, onClose, onConfirm, worker, date, loading }
 
   useEffect(() => {
     if (isOpen && worker) {
-      setCheckInTime(worker.workStartTime || '09:00');
-      setCheckOutTime(worker.workEndTime || '18:00');
+      // HH:MM:SS → HH:MM (Supabase TIME 타입이 초 포함 형식으로 오는 케이스 방어)
+      const toHHMM = (t) => (t ? String(t).slice(0, 5) : '');
+      setCheckInTime(toHHMM(worker.workStartTime) || '09:00');
+      setCheckOutTime(toHHMM(worker.workEndTime) || '18:00');
       setStatus('normal');
     }
   }, [isOpen, worker]);
@@ -166,9 +168,10 @@ export default function AttendancePage() {
     setProxyLoading(true);
 
     // date + HH:MM → ISO timestamp (로컬 시간대 기준)
-    const checkInIso = new Date(`${proxyTarget.date}T${checkInTime}:00`).toISOString();
+    // checkInTime이 혹시 HH:MM:SS 형식이어도 안전하도록 5자로 정규화
+    const checkInIso = new Date(`${proxyTarget.date}T${checkInTime.slice(0, 5)}:00`).toISOString();
     const checkOutIso = checkOutTime
-      ? new Date(`${proxyTarget.date}T${checkOutTime}:00`).toISOString()
+      ? new Date(`${proxyTarget.date}T${checkOutTime.slice(0, 5)}:00`).toISOString()
       : null;
 
     // 퇴근 시각이 출근 시각보다 이른 경우 거부
