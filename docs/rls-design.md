@@ -722,13 +722,124 @@ SELECT email, role, branch FROM employees WHERE role = 'farm_admin';
 
 ## 파트 2: 테이블별 상세 매트릭스 및 나머지 그룹 SQL
 
-**작성 예정.** 파트 1 커밋 후 이어서 작성.
+> **작성일:** 2026-04-09
+> **상태:** 완료. 18개 파일 전부 생성.
 
-내용 예정:
-- 그룹 A~F2 각각의 마이그레이션 SQL 전문
-- 그룹 A~F2 각각의 롤백 SQL
-- 각 그룹별 검증 체크리스트
-- 전체 매트릭스 표 (16개 테이블 × 6개 경로 × 4개 CRUD)
+### 2-A. 파트 1 설계 보완 사항 (파트 2 작성 과정에서 확정)
+
+**누락 발견 1: 그룹 A anon SELECT**
+- 파트 1은 그룹 A(branches/crops/zones/growth_survey_items) SELECT를 "모든 authenticated"로만 정의했으나, 작업자(anon)가 이 테이블들을 필요로 함.
+  - `cropMap[cropId].name`: WorkerTasksPage 작업 목록 작물명
+  - `zones`: 출퇴근 GPS 검증
+  - `growth_survey_items`: GrowthSurveyPage 폼
+- **결정:** 그룹 A 4개 테이블 전부 `FOR SELECT TO anon USING (true)` 추가.
+- **근거:** 전사 공용 마스터 데이터이며 민감 정보 없음.
+
+**누락 발견 2: notices anon SELECT**
+- WorkerNoticePage가 notices를 읽으므로 anon SELECT 필요.
+- **결정:** `FOR SELECT TO anon USING (true)` 추가.
+
+**Q3 (calls/issues anon INSERT) 결정:**
+- 옵션 A 채택: `EXISTS` 검증 패턴 + 상태 컬럼 false 강제.
+- `calls_anon_insert`: `worker_id IS NOT NULL AND EXISTS(활성 worker) AND is_confirmed=false`
+- `issues_anon_insert`: `worker_id IS NOT NULL AND EXISTS(활성 worker) AND is_resolved=false`
+- **RLS-DEBT-010 신설:** anon INSERT 시 worker_id 본인 검증 부재 → Edge Function 이관 시 해소.
+
+**Q4 (fcm_tokens) 결론:**
+- `pushNotify.js`: `supabase.functions.invoke('send-push')` → Edge Function → service_role → 클라이언트 SELECT 불필요.
+- `firebase.js saveTokenToSupabase`: 클라이언트 직접 SELECT + UPDATE + INSERT (anon + authenticated 양쪽).
+- **결정:** anon + authenticated 양쪽에 SELECT/INSERT/UPDATE 정책 필요. EXISTS 검증 패턴 동일 적용.
+
+### 2-B. 전체 CRUD 매트릭스
+
+| 테이블 | anon SELECT | anon INSERT | anon UPDATE | auth SELECT | auth INSERT | auth UPDATE | auth DELETE |
+|---|---|---|---|---|---|---|---|
+| branches | ✅ true | ❌ | ❌ | admin_level | can_write | can_write | master |
+| crops | ✅ true | ❌ | ❌ | admin_level | can_write | can_write | ❌ |
+| zones | ✅ true | ❌ | ❌ | admin_level | can_write | can_write | ❌ |
+| growth_survey_items | ✅ true | ❌ | ❌ | admin_level | can_write | can_write | ❌ |
+| notices | ✅ true | ❌ | ❌ | admin_level | can_write+본인 | can_write+본인 | can_write+본인 |
+| schedules | worker귀속 | ❌ | ❌ | 지점필터 | 지점필터 | 지점필터 | 지점필터 |
+| tasks | worker귀속 | ❌ | 상태변경 | 지점필터 | 지점필터 | 지점필터 | 지점필터 |
+| growth_surveys | worker귀속 | worker귀속 | ❌ | 지점필터 | 지점필터 | 지점필터 | ❌ |
+| calls | worker귀속 | EXISTS+false | ❌ | 지점필터 | ❌ | 지점필터(확인) | ❌ |
+| issues | worker귀속 | EXISTS+false | ❌ | 지점필터 | ❌ | 지점필터(해결) | ❌ |
+| fcm_tokens | worker귀속 | worker EXISTS | worker EXISTS | 본인만 | 본인만 | 본인만 | ❌ |
+| leave_requests | worker귀속 | EXISTS+pending | ❌ | 지점필터 | ❌ | farm+master | ❌ |
+| leave_balances | worker귀속 | ❌ | ❌ | 지점필터 | hr+master | 지점필터 | ❌ |
+| overtime_requests | worker귀속 | EXISTS+pending | ❌ | 지점필터 | ❌ | farm+master | ❌ |
+| attendance | worker귀속 | EXISTS+null_out | EXISTS | 지점필터 | ❌ | 지점필터 | 지점필터 |
+| employees | role=worker | ❌ | ❌ | 역할별 | 역할별 | 역할별 | ❌ |
+
+**범례:**
+- `worker귀속` = `EXISTS(employees WHERE id=worker_id AND role='worker' AND is_active=true)`
+- `지점필터` = `can_view_all_branches() OR (farm_admin AND 본인지점)`
+- `farm+master` = farm_admin(본인지점) + master
+- `hr+master` = hr_admin + master
+
+### 2-C. 생성된 파일 목록
+
+```
+supabase/migrations/
+├── 20260408120000_rls_helper_functions.sql         ← 파트 1 설계 → 파일화
+├── rollback_20260408120000_rls_helper_functions.sql
+├── 20260408121000_rls_group_a_reference.sql        ← 파트 2 신규
+├── rollback_20260408121000_rls_group_a_reference.sql
+├── 20260408122000_rls_group_b_notices.sql
+├── rollback_20260408122000_rls_group_b_notices.sql
+├── 20260408123000_rls_group_c_work_data.sql
+├── rollback_20260408123000_rls_group_c_work_data.sql
+├── 20260408124000_rls_group_d_events.sql
+├── rollback_20260408124000_rls_group_d_events.sql
+├── 20260408125000_rls_group_e_system.sql
+├── rollback_20260408125000_rls_group_e_system.sql
+├── 20260408126000_rls_group_f1_leave_overtime.sql
+├── rollback_20260408126000_rls_group_f1_leave_overtime.sql
+├── 20260408127000_rls_group_f2_attendance.sql
+├── rollback_20260408127000_rls_group_f2_attendance.sql
+├── 20260408128000_rls_group_f3_employees.sql       ← 파트 1 설계 → 파일화
+└── rollback_20260408128000_rls_group_f3_employees.sql
+```
+
+### 2-D. 적용 전 사전 작업 체크리스트
+
+1. **`loginWithDeviceToken` select 축소 (파트 1 설계):**
+   ```javascript
+   // authStore.js — 현재 select('*') → 아래로 교체
+   .select('id, name, role, branch, is_active, device_token, auth_user_id, job_type, work_start_time, work_end_time')
+   ```
+   사전 grep: `currentUser\.(phone|pinCode|hireDate|annualLeaveDays|empNo|workHoursPerWeek)` — 있으면 수정 필요.
+
+2. **관리자 7명 `auth_user_id` 확인:**
+   ```sql
+   SELECT name, role, branch, auth_user_id IS NOT NULL AS linked
+   FROM employees
+   WHERE role IN ('farm_admin', 'hr_admin', 'supervisor', 'master');
+   ```
+
+3. **Realtime publication 확인 (그룹 D 적용 전):**
+   ```sql
+   SELECT tablename FROM pg_publication_tables
+   WHERE pubname = 'supabase_realtime'
+     AND tablename IN ('tasks', 'calls', 'issues', 'overtime_requests');
+   -- 기대: 4개 행
+   ```
+
+### 2-E. 검증 게이트 요약
+
+각 그룹 적용 후 실패 시 해당 rollback 파일 즉시 실행.
+
+| 게이트 | 파일 | 핵심 확인 항목 |
+|---|---|---|
+| G0 | 120000 헬퍼 함수 | 함수 8개 존재 + SECURITY DEFINER |
+| G1 | 121000 그룹 A | 로그인 후 지점/작물 표시 정상, 작업자 작물명 표시 |
+| G2 | 122000 그룹 B | 공지 목록 관리자+작업자 양쪽 정상 |
+| G3 | 123000 그룹 C | 작업자 작업목록, 관리자 지점 필터, Realtime tasks |
+| G4 | 124000 그룹 D | 작업자 호출/이슈 생성, 관리자 Realtime 수신 |
+| G5 | 125000 그룹 E | 관리자/작업자 푸시 토큰 저장 |
+| G6 | 126000 그룹 F1 | 휴가/연장 신청, farm_admin 승인, hr_admin 조회 |
+| G7 | 127000 그룹 F2 | 출퇴근 QR, 엑셀 다운로드 지점 필터 |
+| G8 | 128000 그룹 F3 | QR 로그인, 관리자 직원 목록 지점 격리 |
 
 ---
 
@@ -745,6 +856,7 @@ SELECT email, role, branch FROM employees WHERE role = 'farm_admin';
 | RLS-DEBT-007 | master 자기 비활성화 가드 없음 | 미해결 | 앱/트리거 가드 |
 | RLS-DEBT-008 | master 자기 role 변경 가드 없음 | 미해결 | 앱/트리거 가드 |
 | RLS-DEBT-009 | employees UPDATE 시 auth_user_id 변경 가드 없음 | 미해결 | WITH CHECK 강화 |
+| RLS-DEBT-010 | anon INSERT 시 worker_id 본인 검증 부재 (calls/issues/attendance/leave_requests/overtime_requests/fcm_tokens) | 완화됨 (EXISTS 검증) | Edge Function 이관 |
 
 ---
 
