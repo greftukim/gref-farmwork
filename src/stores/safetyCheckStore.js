@@ -74,17 +74,17 @@ const useSafetyCheckStore = create((set, get) => ({
 
   // ── E-3 신규 함수 ──────────────────────────────────────────────────────
 
-  fetchRiskTemplates: async (cropId, taskTitles, workerId) => {
+  fetchRiskTemplates: async (cropIds, taskTitles, workerId) => {
+    const normalizedIds = Array.isArray(cropIds) ? cropIds.filter(Boolean) : (cropIds ? [cropIds] : []);
     const { data, error } = await supabase
       .from('tbm_risk_templates')
       .select('*')
-      .eq('is_active', true)
-      .or(`crop_id.eq.${cropId},crop_id.is.null`);
+      .eq('is_active', true);
     if (error) throw error;
 
     const templates = (data || []).map(snakeToCamel);
     const today = new Date().toISOString().slice(0, 10);
-    const matched = matchRiskTemplates(templates, taskTitles, workerId, today);
+    const matched = matchRiskTemplates(templates, normalizedIds, taskTitles, workerId, today);
     set({ riskTemplates: matched });
     return matched;
   },
