@@ -1,10 +1,12 @@
 import { create } from 'zustand';
 import { supabase } from '../lib/supabase';
 import { snakeToCamel } from '../lib/dbHelpers';
+import { matchRiskTemplates } from '../utils/tbmRiskMatcher';
 
 const useSafetyCheckStore = create((set, get) => ({
   items: [],
   itemsLoaded: false,
+  riskTemplates: [],
 
   fetchItems: async () => {
     if (get().itemsLoaded) return get().items;
@@ -65,6 +67,96 @@ const useSafetyCheckStore = create((set, get) => ({
         employees:worker_id ( id, name, branch )
       `)
       .eq('date', date)
+      .order('completed_at', { ascending: true });
+    if (error) throw error;
+    return (data || []).map(snakeToCamel);
+  },
+
+  // ── E-3 신규 함수 ──────────────────────────────────────────────────────
+
+  fetchRiskTemplates: async (cropId, taskTitles, workerId) => {
+    const { data, error } = await supabase
+      .from('tbm_risk_templates')
+      .select('*')
+      .eq('is_active', true)
+      .or(`crop_id.eq.${cropId},crop_id.is.null`);
+    if (error) throw error;
+
+    const templates = (data || []).map(snakeToCamel);
+    const today = new Date().toISOString().slice(0, 10);
+    const matched = matchRiskTemplates(templates, taskTitles, workerId, today);
+    set({ riskTemplates: matched });
+    return matched;
+  },
+
+  savePreTaskCheck: async (workerId, taskIds, itemResults) => {
+    const today = new Date().toISOString().slice(0, 10);
+    const { data: header, error: headerErr } = await supabase
+      .from('safety_checks')
+      .insert({
+        worker_id: workerId,
+        date: today,
+        check_type: 'pre_task',
+        task_ids: taskIds,
+      })
+      .select()
+      .single();
+    if (headerErr) throw headerErr;
+
+    const rows = itemResults.map((r) => ({
+      check_id: header.id,
+      item_id: r.itemId,
+      checked: r.checked,
+    }));
+    const { error: rowsErr } = await supabase
+      .from('safety_check_results')
+      .insert(rows);
+    if (rowsErr) {
+      await supabase.from('safety_checks').delete().eq('id', header.id);
+      throw rowsErr;
+    }
+
+    return header.id;
+  },
+
+  confirmRisks: async (checkId, shownRisks) => {
+    const { error } = await supabase
+      .from('safety_checks')
+      .update({
+        shown_risks: shownRisks,
+        risks_confirmed_at: new Date().toISOString(),
+      })
+      .eq('id', checkId);
+    if (error) throw error;
+    return true;
+  },
+
+  approveChecks: async (checkIds, approverId) => {
+    const { data, error } = await supabase
+      .from('safety_checks')
+      .update({
+        status: 'approved',
+        approved_by: approverId,
+        approved_at: new Date().toISOString(),
+      })
+      .in('id', checkIds)
+      .eq('status', 'submitted')
+      .select('id');
+    if (error) throw error;
+    return (data || []).length;
+  },
+
+  getPendingChecksForApproval: async (branch) => {
+    const today = new Date().toISOString().slice(0, 10);
+    const { data, error } = await supabase
+      .from('safety_checks')
+      .select(`
+        id, worker_id, date, check_type, task_ids, shown_risks, completed_at,
+        employees!inner ( id, name, branch )
+      `)
+      .eq('status', 'submitted')
+      .eq('date', today)
+      .eq('employees.branch', branch)
       .order('completed_at', { ascending: true });
     if (error) throw error;
     return (data || []).map(snakeToCamel);
