@@ -120,14 +120,18 @@ const useSafetyCheckStore = create((set, get) => ({
   },
 
   confirmRisks: async (checkId, shownRisks) => {
-    const { error } = await supabase
+    const { data, error } = await supabase
       .from('safety_checks')
       .update({
         shown_risks: shownRisks,
         risks_confirmed_at: new Date().toISOString(),
       })
-      .eq('id', checkId);
+      .eq('id', checkId)
+      .select('id');
     if (error) throw error;
+    if (!data || data.length === 0) {
+      throw new Error('위험 확인 저장 실패 (0 rows updated)');
+    }
     return true;
   },
 
