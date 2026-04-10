@@ -4,9 +4,11 @@ import useAuthStore from '../../stores/authStore';
 import useTaskStore from '../../stores/taskStore';
 import useCropStore from '../../stores/cropStore';
 import useZoneStore from '../../stores/zoneStore';
+import useSafetyCheckStore from '../../stores/safetyCheckStore';
 import Card from '../../components/common/Card';
 import Button from '../../components/common/Button';
 import BottomSheet from '../../components/common/BottomSheet';
+import SafetyCheckBottomSheet from '../../components/worker/SafetyCheckBottomSheet';
 
 const SURVEY_TASK_TYPE = '생육 조사';
 
@@ -24,9 +26,12 @@ export default function WorkerTasksPage() {
   const completeTask = useTaskStore((s) => s.completeTask);
   const crops = useCropStore((s) => s.crops);
   const zones = useZoneStore((s) => s.zones);
+  const getTodayCheck = useSafetyCheckStore((s) => s.getTodayCheck);
 
   const [completeTarget, setCompleteTarget] = useState(null);
   const [quantity, setQuantity] = useState('');
+  const [tbmModal, setTbmModal] = useState({ open: false, cropIds: [], taskIds: [], taskTitles: [] });
+  const [pendingTaskId, setPendingTaskId] = useState(null);
 
   const today = new Date().toISOString().split('T')[0];
 
@@ -42,6 +47,45 @@ export default function WorkerTasksPage() {
       }),
     [tasks, currentUser, today]
   );
+
+  const handleStartTask = async (taskId) => {
+    try {
+      const existing = await getTodayCheck(currentUser.id, 'pre_task');
+      if (existing) {
+        await startTask(taskId);
+        return;
+      }
+    } catch (e) {
+      console.error('TBM 조회 실패:', e);
+    }
+
+    const cropIds = Array.from(
+      new Set(myTasks.map((t) => t.cropId).filter(Boolean))
+    );
+    const taskIds = myTasks.map((t) => t.id);
+    const taskTitles = myTasks.map((t) => t.title).filter(Boolean);
+
+    setPendingTaskId(taskId);
+    setTbmModal({ open: true, cropIds, taskIds, taskTitles });
+  };
+
+  const handlePreTaskComplete = async (checkId) => {
+    setTbmModal({ open: false, cropIds: [], taskIds: [], taskTitles: [] });
+    if (pendingTaskId) {
+      try {
+        await startTask(pendingTaskId);
+      } catch (e) {
+        console.error('작업 시작 실패:', e);
+        alert('작업 시작 실패: ' + (e.message || '알 수 없는 오류'));
+      }
+      setPendingTaskId(null);
+    }
+  };
+
+  const handleTbmClose = () => {
+    setTbmModal({ open: false, cropIds: [], taskIds: [], taskTitles: [] });
+    setPendingTaskId(null);
+  };
 
   const handleComplete = () => {
     if (!completeTarget) return;
@@ -94,7 +138,7 @@ export default function WorkerTasksPage() {
                 ) : (
                   <>
                     {task.status === 'pending' && (
-                      <Button size="lg" className="flex-1" onClick={() => startTask(task.id)}>
+                      <Button size="lg" className="flex-1" onClick={() => handleStartTask(task.id)}>
                         작업 시작
                       </Button>
                     )}
@@ -137,6 +181,17 @@ export default function WorkerTasksPage() {
           완료 처리
         </Button>
       </BottomSheet>
+
+      <SafetyCheckBottomSheet
+        isOpen={tbmModal.open}
+        onClose={handleTbmClose}
+        checkType="pre_task"
+        workerId={currentUser?.id}
+        cropIds={tbmModal.cropIds}
+        taskIds={tbmModal.taskIds}
+        taskTitles={tbmModal.taskTitles}
+        onPreTaskComplete={handlePreTaskComplete}
+      />
     </div>
   );
 }

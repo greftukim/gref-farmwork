@@ -10,7 +10,7 @@ export default function SafetyCheckBottomSheet({
   onPreTaskComplete,
   workerId,
   checkType,
-  cropId,
+  cropIds,
   taskIds,
   taskTitles,
 }) {
@@ -43,9 +43,9 @@ export default function SafetyCheckBottomSheet({
       if (!onPreTaskComplete) console.error('onPreTaskComplete prop 필수');
       if (!taskIds) console.error('taskIds prop 필수');
       if (!taskTitles) console.error('taskTitles prop 필수');
-      if (!cropId) console.error('cropId prop 필수');
+      if (!cropIds || cropIds.length === 0) console.warn('cropIds 비어있음, 공통 위험만 표시됩니다');
     }
-  }, [isOpen, checkType, onPreTaskComplete, taskIds, taskTitles, cropId]);
+  }, [isOpen, checkType, onPreTaskComplete, taskIds, taskTitles, cropIds]);
 
   const allChecked = items.length > 0 && items.every((i) => checked[i.id]);
 
@@ -62,7 +62,7 @@ export default function SafetyCheckBottomSheet({
         checked: !!checked[it.id],
       }));
       if (checkType === 'pre_task') {
-        const matched = await fetchRiskTemplates(cropId, taskTitles, workerId);
+        const matched = await fetchRiskTemplates(cropIds, taskTitles, workerId);
         const newCheckId = await savePreTaskCheck(workerId, taskIds, itemResults);
         setCheckId(newCheckId);
         setRisks(matched);
