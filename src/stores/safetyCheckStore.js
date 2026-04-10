@@ -159,7 +159,16 @@ const useSafetyCheckStore = create((set, get) => ({
       .eq('employees.branch', branch)
       .order('completed_at', { ascending: true });
     if (error) throw error;
-    return (data || []).map(snakeToCamel);
+    return (data || []).map((row) => ({
+      id: row.id,
+      workerId: row.worker_id,
+      date: row.date,
+      checkType: row.check_type,
+      taskIds: row.task_ids,
+      shownRisks: row.shown_risks,
+      completedAt: row.completed_at,
+      worker: { id: row.employees.id, name: row.employees.name },
+    }));
   },
 }));
 

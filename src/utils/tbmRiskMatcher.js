@@ -42,3 +42,12 @@ export function matchRiskTemplates(templates, taskTitles, workerId, date) {
     mitigation: tpl.mitigation,
   }));
 }
+
+// 수동 테스트:
+// const templates = [
+//   {id: 'aaa', taskKeyword: '적엽', riskFactor: 'x', mitigation: 'y'},
+//   {id: 'bbb', taskKeyword: null, riskFactor: 'z', mitigation: 'w'},
+//   {id: 'ccc', taskKeyword: '수확', riskFactor: 'a', mitigation: 'b'},
+// ];
+// matchRiskTemplates(templates, ['토마토 적엽'], 'worker1', '2026-04-11')
+// 기대: 적엽 매칭(id=aaa) + 공통(id=bbb), 수확(ccc)은 제외. 2건 반환.
