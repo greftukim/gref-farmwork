@@ -12,6 +12,7 @@ import Card from '../../components/common/Card';
 import Button from '../../components/common/Button';
 import BottomSheet from '../../components/common/BottomSheet';
 import { sendPushToAdmins } from '../../lib/pushNotify';
+import TeamLeaderApprovalCard from '../../components/worker/TeamLeaderApprovalCard';
 
 // 현재 시각을 HH:MM 문자열로 반환
 function nowHHMM() {
@@ -407,6 +408,9 @@ export default function WorkerHome() {
           </>
         )}
       </Card>
+
+      {/* TBM 승인 대기 (반장 전용, 0건이면 자동 숨김) */}
+      <TeamLeaderApprovalCard />
 
       {/* 오늘의 작업 */}
       <Card accent="blue" className="p-5 mb-4">
