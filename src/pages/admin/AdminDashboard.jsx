@@ -1,6 +1,5 @@
 import { useState, useMemo, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import * as XLSX from 'xlsx';
 import { supabase } from '../../lib/supabase';
 import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts';
 import useEmployeeStore from '../../stores/employeeStore';
@@ -14,7 +13,6 @@ import useAuthStore from '../../stores/authStore';
 import useBranchStore from '../../stores/branchStore';
 import useCropStore from '../../stores/cropStore';
 import Card from '../../components/common/Card';
-import Button from '../../components/common/Button';
 import { isFarmAdmin } from '../../lib/permissions';
 
 const today = () => new Date().toISOString().split('T')[0];
@@ -46,12 +44,6 @@ export default function AdminDashboard() {
 
   const [missedDays, setMissedDays] = useState(7);
   const [tbmStats, setTbmStats] = useState({ approved: 0, submitted: 0 });
-  const [exportRange, setExportRange] = useState(() => {
-    const end = new Date().toISOString().split('T')[0];
-    const start = new Date(Date.now() - 6 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
-    return { start, end };
-  });
-  const [exporting, setExporting] = useState(false);
   const todayStr = today();
   const todayLabel = new Date().toLocaleDateString('ko-KR', {
     year: 'numeric', month: 'long', day: 'numeric', weekday: 'short',
@@ -152,64 +144,6 @@ export default function AdminDashboard() {
     fetch();
     return () => { cancelled = true; };
   }, [todayStr, currentBranchCode]);
-
-  // ─── Excel 내보내기 ───
-  const handleExport = async () => {
-    setExporting(true);
-    try {
-      // 교훈 12 적용: FK 제약명 명시로 Postgrest 모호성 회피
-      const { data, error } = await supabase
-        .from('safety_checks')
-        .select(`
-          id, date, risks_confirmed_at, approved_at, shown_risks,
-          worker:employees!safety_checks_worker_id_fkey(name, branch),
-          approver:employees!safety_checks_approved_by_fkey(name)
-        `)
-        .eq('check_type', 'pre_task')
-        .gte('date', exportRange.start)
-        .lte('date', exportRange.end)
-        .order('date', { ascending: true })
-        .order('risks_confirmed_at', { ascending: true });
-
-      if (error || !data) return;
-
-      // JS 레벨 지점 필터 (nested filter 미사용 — POSTGREST-001 교훈)
-      const rows = currentBranchCode ? data.filter((r) => r.worker?.branch === currentBranchCode) : data;
-      const branchCodeToName = Object.fromEntries(branches.map((b) => [b.code, b.name]));
-
-      // UTC → KST HH:mm 변환
-      const toKstHHmm = (iso) => {
-        if (!iso) return '—';
-        const kst = new Date(new Date(iso).getTime() + 9 * 60 * 60 * 1000);
-        return kst.toISOString().slice(11, 16);
-      };
-
-      // shown_risks JSONB → 쉼표 구분 텍스트
-      const formatRisks = (risks) => {
-        if (!risks || !Array.isArray(risks) || risks.length === 0) return '—';
-        return risks.map((r) => r.name || r.title || r.category || '항목').join(', ');
-      };
-
-      const header = ['일자', '농장', '작업자명', '위험요소', '동의시각(HH:mm)', '최종승인자', '승인시각(HH:mm)', 'TBM ID'];
-      const sheetRows = rows.map((r) => [
-        r.date,
-        branchCodeToName[r.worker?.branch] || r.worker?.branch || '—',
-        r.worker?.name || '—',
-        formatRisks(r.shown_risks),
-        toKstHHmm(r.risks_confirmed_at),
-        r.approver?.name || '—',
-        toKstHHmm(r.approved_at),
-        r.id,
-      ]);
-
-      const ws = XLSX.utils.aoa_to_sheet([header, ...sheetRows]);
-      const wb = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(wb, ws, 'TBM기록');
-      XLSX.writeFile(wb, `TBM기록_${currentBranchName}_${exportRange.start}_${exportRange.end}.xlsx`);
-    } finally {
-      setExporting(false);
-    }
-  };
 
   // 작업 그룹: cropId + taskType 조합별 집계
   const taskGroups = useMemo(() => {
@@ -394,36 +328,6 @@ export default function AdminDashboard() {
         </Card>
       </div>
 
-      {/* TBM 기록 내보내기 */}
-      <Card accent="gray" className="p-6 mt-4">
-        <div className="text-sm font-medium text-gray-500 mb-4">TBM 기록 내보내기</div>
-        <div className="flex flex-col sm:flex-row gap-3 mb-3">
-          <div className="flex-1">
-            <label className="block text-xs text-gray-400 mb-1">시작일</label>
-            <input
-              type="date"
-              value={exportRange.start}
-              onChange={(e) => setExportRange((r) => ({ ...r, start: e.target.value }))}
-              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm min-h-[44px]"
-            />
-          </div>
-          <div className="flex-1">
-            <label className="block text-xs text-gray-400 mb-1">종료일</label>
-            <input
-              type="date"
-              value={exportRange.end}
-              onChange={(e) => setExportRange((r) => ({ ...r, end: e.target.value }))}
-              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm min-h-[44px]"
-            />
-          </div>
-        </div>
-        <p className="text-xs text-gray-400 mb-3">
-          농장: {currentBranchName} · 산안법 TBM 실시 기록 (pre_task, 행 단위 원본)
-        </p>
-        <Button onClick={handleExport} disabled={exporting} className="w-full active:scale-[0.98]">
-          {exporting ? '생성 중...' : 'TBM 기록 내보내기 (.xlsx)'}
-        </Button>
-      </Card>
 
     </div>
   );

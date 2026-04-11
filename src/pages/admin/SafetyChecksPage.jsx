@@ -1,11 +1,30 @@
 import { useEffect, useMemo, useState } from 'react';
+import * as XLSX from 'xlsx';
+import { supabase } from '../../lib/supabase';
 import useSafetyCheckStore from '../../stores/safetyCheckStore';
 import useEmployeeStore from '../../stores/employeeStore';
 import useAttendanceStore from '../../stores/attendanceStore';
+import useBranchStore from '../../stores/branchStore';
+import useAuthStore from '../../stores/authStore';
 import Card from '../../components/common/Card';
+import Button from '../../components/common/Button';
+import { isFarmAdmin } from '../../lib/permissions';
 
 const BRANCH_LABEL = { busan: '부산LAB', hadong: '하동', jinju: '진주' };
 const ATT_LABEL = { normal: '정상', late: '지각', working: '출근 중' };
+
+// UTC → KST HH:mm 변환
+function toKstHHmm(iso) {
+  if (!iso) return '—';
+  const kst = new Date(new Date(iso).getTime() + 9 * 60 * 60 * 1000);
+  return kst.toISOString().slice(11, 16);
+}
+
+// shown_risks JSONB → 쉼표 구분 텍스트
+function formatRisks(risks) {
+  if (!risks || !Array.isArray(risks) || risks.length === 0) return '—';
+  return risks.map((r) => r.name || r.title || r.category || '항목').join(', ');
+}
 
 function formatTime(iso) {
   if (!iso) return '';
@@ -75,11 +94,20 @@ export default function SafetyChecksPage() {
   const fetchByDate = useSafetyCheckStore((s) => s.fetchByDate);
   const attendance = useAttendanceStore((s) => s.records);
   const fetchRecords = useAttendanceStore((s) => s.fetchRecords);
+  const branches = useBranchStore((s) => s.branches);
+  const selectedBranch = useBranchStore((s) => s.selectedBranch);
+  const currentUser = useAuthStore((s) => s.currentUser);
 
   const todayStr = new Date().toISOString().slice(0, 10);
   const [selectedDate, setSelectedDate] = useState(todayStr);
   const [checks, setChecks] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [exportRange, setExportRange] = useState(() => {
+    const end = new Date().toISOString().split('T')[0];
+    const start = new Date(Date.now() - 6 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+    return { start, end };
+  });
+  const [exporting, setExporting] = useState(false);
 
   useEffect(() => { fetchEmployees(); }, [fetchEmployees]);
   useEffect(() => { fetchRecords(); }, [fetchRecords]);
@@ -123,6 +151,85 @@ export default function SafetyChecksPage() {
 
   const getCheck = (workerId, checkType) =>
     checks.find((c) => c.workerId === workerId && c.checkType === checkType);
+
+  // Excel 내보내기용 지점 코드·이름 (TopBar selectedBranch 기준)
+  const currentBranchCode = useMemo(() => {
+    if (isFarmAdmin(currentUser)) return currentUser.branch ?? null;
+    if (selectedBranch === 'all') return null;
+    return branches.find((b) => b.id === selectedBranch)?.code ?? null;
+  }, [selectedBranch, branches, currentUser]);
+
+  const currentBranchName = useMemo(() => {
+    if (isFarmAdmin(currentUser)) return branches.find((b) => b.code === currentUser.branch)?.name || currentUser.branch || '농장';
+    if (selectedBranch === 'all') return '전체';
+    return branches.find((b) => b.id === selectedBranch)?.name || '농장';
+  }, [selectedBranch, branches, currentUser]);
+
+  // Excel 내보내기 — 교훈 12/POSTGREST-001: FK 제약명 명시
+  const handleExport = async () => {
+    setExporting(true);
+    try {
+      const { data, error } = await supabase
+        .from('safety_checks')
+        .select(`
+          id, worker_id, date, risks_confirmed_at, approved_at, shown_risks,
+          worker:employees!safety_checks_worker_id_fkey(name, branch),
+          approver:employees!safety_checks_approved_by_fkey(name)
+        `)
+        .eq('check_type', 'pre_task')
+        .gte('date', exportRange.start)
+        .lte('date', exportRange.end)
+        .order('date', { ascending: true })
+        .order('risks_confirmed_at', { ascending: true });
+
+      if (error || !data) return;
+
+      // JS 레벨 지점 필터 (nested filter 미사용 — POSTGREST-001 교훈)
+      const filtered = currentBranchCode
+        ? data.filter((r) => r.worker?.branch === currentBranchCode)
+        : data;
+
+      // 동일 기간 attendance 조회 (근태 컬럼용)
+      const workerIds = [...new Set(filtered.map((r) => r.worker_id).filter(Boolean))];
+      const { data: attData } = workerIds.length > 0
+        ? await supabase
+            .from('attendance')
+            .select('employee_id, date, status')
+            .gte('date', exportRange.start)
+            .lte('date', exportRange.end)
+            .in('employee_id', workerIds)
+        : { data: [] };
+
+      const attMap = {};
+      (attData || []).forEach((a) => { attMap[`${a.employee_id}_${a.date}`] = a.status; });
+
+      const branchCodeToName = Object.fromEntries(branches.map((b) => [b.code, b.name]));
+
+      const header = ['일자', '농장', '작업자명', '근태상태', '위험요소', '동의시각(HH:mm)', '최종승인자', '승인시각(HH:mm)', 'TBM ID'];
+      const sheetRows = filtered.map((r) => {
+        const attStatus = attMap[`${r.worker_id}_${r.date}`];
+        if (!attStatus) console.warn('[Excel] 근태 없는 safety_check:', r.id, r.worker_id, r.date);
+        return [
+          r.date,
+          branchCodeToName[r.worker?.branch] || r.worker?.branch || '—',
+          r.worker?.name || '—',
+          ATT_LABEL[attStatus] || '미출근',
+          formatRisks(r.shown_risks),
+          toKstHHmm(r.risks_confirmed_at),
+          r.approver?.name || '—',
+          toKstHHmm(r.approved_at),
+          r.id,
+        ];
+      });
+
+      const ws = XLSX.utils.aoa_to_sheet([header, ...sheetRows]);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, 'TBM기록');
+      XLSX.writeFile(wb, `TBM기록_${currentBranchName}_${exportRange.start}_${exportRange.end}.xlsx`);
+    } finally {
+      setExporting(false);
+    }
+  };
 
   return (
     <div className="space-y-4">
@@ -229,6 +336,37 @@ export default function SafetyChecksPage() {
       {Object.keys(byBranch).length === 0 && !loading && (
         <p className="text-gray-400 text-sm text-center py-12">표시할 작업자가 없습니다</p>
       )}
+
+      {/* TBM 기록 내보내기 */}
+      <Card accent="gray" className="p-6">
+        <div className="text-sm font-medium text-gray-500 mb-4">TBM 기록 내보내기</div>
+        <div className="flex flex-col sm:flex-row gap-3 mb-3">
+          <div className="flex-1">
+            <label className="block text-xs text-gray-400 mb-1">시작일</label>
+            <input
+              type="date"
+              value={exportRange.start}
+              onChange={(e) => setExportRange((r) => ({ ...r, start: e.target.value }))}
+              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm min-h-[44px]"
+            />
+          </div>
+          <div className="flex-1">
+            <label className="block text-xs text-gray-400 mb-1">종료일</label>
+            <input
+              type="date"
+              value={exportRange.end}
+              onChange={(e) => setExportRange((r) => ({ ...r, end: e.target.value }))}
+              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm min-h-[44px]"
+            />
+          </div>
+        </div>
+        <p className="text-xs text-gray-400 mb-3">
+          농장: {currentBranchName} · 산안법 TBM 실시 기록 (pre_task, 행 단위 원본)
+        </p>
+        <Button onClick={handleExport} disabled={exporting} className="w-full active:scale-[0.98]">
+          {exporting ? '생성 중...' : 'TBM 기록 내보내기 (.xlsx)'}
+        </Button>
+      </Card>
     </div>
   );
 }
