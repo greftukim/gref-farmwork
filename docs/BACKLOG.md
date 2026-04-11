@@ -14,8 +14,8 @@
 | RLS-DEBT-016 | RLS | open | Phase 2 (2026-04-09) | - | attendance authenticated INSERT 시 input_by=current_employee_id() 강제가 DB 정책이 아닌 앱 레벨 가드(proxyCheckIn)에만 의존 | [docs/handoff/2026-04-09.md](handoff/2026-04-09.md#설계-부채) |
 | RLS-DEBT-018 | RLS | resolved | Phase 5 세션 1 (2026-04-11) | - | safety_checks_authenticated_update 정책이 farm_admin 본인 지점 UPDATE를 명시적으로 허용하지 않음 | [docs/HANDOVER_PHASE5_SESSION1.md](HANDOVER_PHASE5_SESSION1.md#해결됨-) |
 | RLS-DEBT-019 | RLS | open | Phase 5 세션 1 (2026-04-11) | - | safety_checks_anon_select 정책이 지점 격리 없이 전체 조회 허용 — 보안 느슨 | [docs/HANDOVER_PHASE5_SESSION1.md](HANDOVER_PHASE5_SESSION1.md#신규-백로그-3건) |
-| RLS-DEBT-020 | RLS | open | Phase 5 세션 1 (2026-04-11) | **E-6.5 블로커** | fcm_tokens 테이블 INSERT RLS 정책 누락 — 반장 FCM 토큰 등록 불가 | [docs/HANDOVER_PHASE5_SESSION1.md](HANDOVER_PHASE5_SESSION1.md#신규-백로그-3건) |
-| POSTGREST-001 | POSTGREST | in-progress | Phase 5 세션 1 (2026-04-11) | - | employees JOIN 포함 스토어에서 동일 패턴의 FK 모호성 잠재 — safetyCheckStore.fetchByDate에서 추가 발견·수정(E-8.5), 타 스토어 잔존 가능 | [docs/HANDOVER_PHASE5_SESSION1.md](HANDOVER_PHASE5_SESSION1.md#신규-백로그-3건) |
+| RLS-DEBT-020 | RLS | resolved | Phase 5 세션 1 (2026-04-11) | - | fcm_tokens INSERT 정책 — Phase 5 세션 3 MCP 실측 결과 anon/authenticated INSERT 정책 이미 존재 확인. BACKLOG 기록 시점과 실제 DB 불일치였음. | [docs/HANDOVER_PHASE5_SESSION1.md](HANDOVER_PHASE5_SESSION1.md#신규-백로그-3건) |
+| POSTGREST-001 | POSTGREST | resolved | Phase 5 세션 1 (2026-04-11) | - | Phase 5 세션 3 전수 검토: embed 패턴 5곳 모두 FK 제약명 명시 확인, 수정 0건. 상세: [docs/audits/POSTGREST-001_audit.md](audits/POSTGREST-001_audit.md) | [docs/HANDOVER_PHASE5_SESSION1.md](HANDOVER_PHASE5_SESSION1.md#신규-백로그-3건) |
 | BUG-005 | BUG | resolved | Phase 5 세션 1 (2026-04-11) | - | loginWithDeviceToken select 목록에 is_team_leader 누락 — 반장 권한 판정 불가 | [docs/HANDOVER_PHASE5_SESSION1.md](HANDOVER_PHASE5_SESSION1.md#해결됨-) |
 | UX-005 | UX | open | Phase 2 (2026-04-09) | - | master가 LeaveStatusPage(읽기 전용)로 라우팅되나 RLS상 UPDATE 권한 있음 — UI/RLS 불일치 | [docs/handoff/2026-04-09.md](handoff/2026-04-09.md#ux-관련) |
 | UX-006 | UX | open | Phase 2 (2026-04-09) | - | farm_admin 대리 입력 전용 간소화 페이지 필요 여부 — 실사용 후 재평가 | [docs/handoff/2026-04-09.md](handoff/2026-04-09.md#ux-관련) |
