@@ -246,3 +246,30 @@ useBranchStore의 branches selector 호출(`const branches = useBranchStore(s =>
 - [ ] 운영 중 페이지에서 "항상 같은 값"이 나오면 데이터 부재가 아닌 버그를 의심
 
 **관련 커밋**: da216b9 (수정), 그리고 SafetyChecksPage 최초 작성 커밋(트랙 E 이전)
+
+---
+
+## 교훈 15 — service_role MCP 쿼리는 RLS 우회, anon 정책 검증 시 SET LOCAL ROLE anon 필수
+
+**맥락**: Phase 5 세션 3 (2026-04-11), RLS-DEBT-019 마이그레이션 검증 시도.
+`SET LOCAL ROLE anon; SELECT ...` 방법을 MCP에서 실행하려 했으나
+`ERROR: 42501: permission denied to set role "anon"` 발생.
+
+**잘못된 접근**:
+- MCP `execute_sql` 쿼리 결과를 "anon 시점의 데이터"로 오해
+- service_role로 실행한 COUNT 결과가 정책 동작을 증명한다고 보고
+
+**올바른 접근**:
+- MCP는 service_role로 연결 — service_role은 RLS를 우회하므로 RLS 정책의 **동작**을 검증할 수 없음
+- `pg_policy.polqual` 텍스트 확인(방법 B)은 정책 **정의** 검증으로만 유효
+- anon 정책 **동작** 검증은 다음 중 하나 필요:
+  - Supabase Dashboard API Tester (anon key 선택)
+  - 실제 앱 시크릿 창 (sb 토큰 없는 상태)
+  - 별도 anon key 직접 REST 호출
+
+**재발 방지**:
+- [ ] RLS 정책 수정 후 동작 검증은 MCP COUNT로 하지 말 것 — service_role은 항상 통과
+- [ ] polqual 텍스트 확인(방법 B)은 정책 존재 확인용, 동작 확인 아님
+- [ ] anon 동작 검증 = 실제 anon 세션(Dashboard API Tester 또는 시크릿 창) 필수
+
+**관련 커밋**: 6d92413 (RLS-DEBT-019 마이그레이션)
