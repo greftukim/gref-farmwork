@@ -86,6 +86,10 @@ src/
    - 작업 종료 시 `/exit` 또는 터미널 완전 종료로 MCP 연결 명시적 정리
    - 장시간 유휴 방치 금지 (Supabase MCP heartbeat가 Warp 레이어에서 
      timeout으로 집계되는 INFRA-001 재발 방지)
+6. 이번 세션에서 발견한 교훈은 LESSONS_LEARNED.md에 본문 포함하여 즉시 append (교훈 22):
+   - 핸드오버 문서에만 기록 금지 (인용은 OK, 신설은 LESSONS 파일에서만)
+   - 번호 발급과 본문 작성은 한 트랜잭션
+   - 교훈 번호 연속성 검사: `grep -E "^## 교훈 [0-9]+" docs/LESSONS_LEARNED.md`로 확인
 
 ## 작업 원칙
 1. 모든 작업은 사전 조사 → 진행 승인 → 구현 → 빌드 검증 → 커밋·푸시 순서
