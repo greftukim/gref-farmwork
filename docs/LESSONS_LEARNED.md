@@ -308,3 +308,86 @@ DO 블록 내 `SELECT COUNT(*), pg_get_expr(...)` 에서 GROUP BY 누락으로
 - [ ] ASSERT가 필요하면 롤백 스크립트가 아닌 외부 문서(검증 기록 .md)에 기대값 명시
 
 **관련 커밋**: 6d92413 (원본), fix 커밋 (DO 블록 제거)
+
+---
+
+## 교훈 17 — 정책 존재 확인은 정책 동작 확인이 아니다
+
+**맥락**: Phase 5 세션 3 (2026-04-11). RLS-DEBT-020을 "MCP 실측으로 정책 존재 확인됨"을
+근거로 resolved 처리했으나, 이후 fcm_tokens INSERT 403이 실제로 발생했다(최종 원인은
+INFRA-001 PostgREST 타임아웃으로 판명됐지만, 정책 동작을 검증하지 않고 닫은 절차 자체가 문제).
+
+**잘못된 접근**: polqual 텍스트 확인(정의 검증) = 동작 검증으로 혼동.
+정책이 존재해도 실제 호출 환경(PostgREST anon, SQL Editor anon)에서 통과하는지는 별개.
+
+**올바른 접근**: 정책 정의 검증과 동작 검증은 항상 분리된 두 단계.
+정의 검증: `pg_policy.polqual` 텍스트 확인.
+동작 검증: SQL Editor `SET LOCAL ROLE anon` 실제 INSERT 시도 + 성공 확인.
+
+**재발 방지**:
+- [ ] 정책 정의만으로 RLS-DEBT를 resolved 처리 금지
+- [ ] resolved 처리 전 SQL Editor anon INSERT 시뮬레이션 1회 통과 필수
+- [ ] BACKLOG 기록과 실제 DB 상태가 다를 수 있음 — 양쪽 모두 1차 자료로 취급
+
+**관련 커밋**: 0d803a5 (RLS-DEBT-020 resolved 처리)
+
+---
+
+## 교훈 18 — 가설 점프 안티패턴
+
+**맥락**: Phase 5 세션 3 (2026-04-11). fcm_tokens INSERT 403 디버깅에서 가설 6개를
+연속 세우고 모두 탈락. 약 4시간 소진 후 세션 종료. 최종 원인은 PostgREST Warp
+타임아웃(INFRA-001) — DB/정책과 무관한 인프라 레이어였음.
+
+**탈락한 가설 6개 (재현 방지용):**
+
+| # | 가설 | 검증 방법 | 탈락 근거 |
+|---|---|---|---|
+| 1 | RLS 정책 누락 | MCP pg_policy 조회 | 정책 6개 존재 확인 |
+| 2 | RESTRICTIVE 정책 | polpermissive 컬럼 조회 | 전체 PERMISSIVE |
+| 3 | 트리거 부수효과 | pg_trigger 조회 | 0건 |
+| 4 | 컬럼 default 문제 | information_schema.columns | default 안전 |
+| 5 | employee.role ≠ 'worker' | 실측 SELECT | role='worker' 확인 |
+| 6 | EXISTS 중첩 RLS | SQL Editor anon 시뮬레이션 계획 | 실행 전 원인 발견 |
+
+**진짜 원인**: PostgREST Warp 서버 `Thread killed by timeout manager`. HTTP 레이어
+타임아웃이 42501(RLS 위반) 에러로 감싸져 반환됨. Dashboard Logs에서 확인.
+
+**잘못된 접근**: 가설 탈락 → 즉시 새 가설 → 다음 진단 반복.
+'왜 이전 가설이 틀렸는가'와 '아직 확인 안 한 영역이 무엇인가'를 정리하지 않은 채
+같은 좁은 영역(DB 레이어)만 반복 순환.
+
+**올바른 접근**: DB 진단이 모두 결백이면 레이어를 올려라. RLS 403 ≠ DB RLS 위반.
+PostgREST, API 게이트웨이, 인프라 레이어도 가능한 원인.
+
+**재발 방지**:
+- [ ] 가설 3개 연속 탈락 시 강제 중단 → "확인된 사실 / 탈락 가설 / 미확인 영역" 표 작성
+- [ ] 미확인 영역이 없으면 도구를 바꾼다 (MCP DB → Dashboard Logs → 외부 fetch)
+- [ ] 동일 이슈 디버깅 90분 초과 시 세션 종료 검토
+- [ ] 다음 세션이 같은 가설을 반복하지 않도록 탈락 가설 전수 기록 (이 교훈처럼)
+
+**관련 커밋**: Phase 5 세션 3 전반
+
+---
+
+## 교훈 19 — RLS 403이 DB 진단 결백이면 PostgREST 인프라 로그를 먼저 확인하라
+
+**맥락**: Phase 5 세션 3 (2026-04-11). `new row violates row-level security policy` 에러가
+발생해 DB 레이어 진단을 4시간 진행했으나 전부 결백. 최종 원인은 Supabase PostgREST Warp
+서버의 `Thread killed by timeout manager` — HTTP 레이어 타임아웃이 RLS 에러로 포장됨.
+
+**올바른 진단 순서** (RLS 403 발생 시):
+
+1. DB 정책 정의 확인 (pg_policy) — 5분
+2. SQL Editor `SET LOCAL ROLE anon` 시뮬레이션 — 5분
+3. **시뮬레이션 통과 → 즉시 Dashboard → Logs → Postgres Logs 확인**
+   - `Warp server error`, `Thread killed`, `timeout` 키워드 검색
+   - 발생 시각이 403 시각과 일치하면 인프라 이슈 확정
+4. 인프라 이슈 → Pooler 크기 확인, 플랜 한도 검토, Support 티켓
+
+**재발 방지**:
+- [ ] `new row violates row-level security policy` + DB 진단 결백 조합이면 Logs 먼저
+- [ ] PostgREST 재시작 로그(`Schema cache reload`)가 보이면 타임아웃 의심
+- [ ] 인프라 이슈는 코드 수정으로 해결 불가 — 조치 방향이 완전히 다름
+
+**관련 커밋**: Phase 5 세션 3, INFRA-001 백로그
