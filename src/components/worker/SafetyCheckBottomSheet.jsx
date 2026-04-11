@@ -100,9 +100,7 @@ export default function SafetyCheckBottomSheet({
       ? step === 1
         ? '작업 전 안전점검'
         : '위험 요인 확인'
-      : checkType === 'pre_work'
-        ? '작업 전 안전점검 (TBM)'
-        : '작업 후 안전점검 (TBM)';
+      : '작업 후 안전점검 (TBM)';
 
   return (
     <BottomSheet isOpen={isOpen} onClose={onClose} title={title}>

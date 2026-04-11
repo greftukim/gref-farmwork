@@ -54,8 +54,8 @@ export default function SafetyChecksPage() {
     checks.find((c) => c.workerId === workerId && c.checkType === checkType);
 
   const totalWorkers = workers.length;
-  const preCount = checks.filter((c) => c.checkType === 'pre_work').length;
-  const postCount = checks.filter((c) => c.checkType === 'post_work').length;
+  const preCount = checks.filter((c) => c.checkType === 'pre_task').length;
+  const postCount = checks.filter((c) => c.checkType === 'post_task').length;
 
   return (
     <div className="space-y-4">
@@ -94,8 +94,8 @@ export default function SafetyChecksPage() {
           {/* 모바일 카드 뷰 */}
           <div className="md:hidden space-y-2 mb-2">
             {list.map((w) => {
-              const pre = getCheck(w.id, 'pre_work');
-              const post = getCheck(w.id, 'post_work');
+              const pre = getCheck(w.id, 'pre_task');
+              const post = getCheck(w.id, 'post_task');
               return (
                 <Card key={w.id} accent="gray" className="p-4">
                   <div className="flex items-center justify-between mb-2">
@@ -137,8 +137,8 @@ export default function SafetyChecksPage() {
                 </thead>
                 <tbody className="divide-y divide-gray-100">
                   {list.map((w) => {
-                    const pre = getCheck(w.id, 'pre_work');
-                    const post = getCheck(w.id, 'post_work');
+                    const pre = getCheck(w.id, 'pre_task');
+                    const post = getCheck(w.id, 'post_task');
                     return (
                       <tr key={w.id}>
                         <td className="px-4 py-2.5 font-medium text-gray-900">{w.name}</td>
