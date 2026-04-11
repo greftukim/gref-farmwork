@@ -62,11 +62,13 @@ const useSafetyCheckStore = create((set, get) => ({
 
   /** 관리자용: 일별 전체 조회 */
   fetchByDate: async (date) => {
+    // 교훈 12 적용: FK 제약명 명시 (POSTGREST-001)
+    // approved_by_fkey 공존으로 employees:worker_id 단독 사용 시 모호성 에러 위험
     const { data, error } = await supabase
       .from('safety_checks')
       .select(`
-        id, worker_id, date, check_type, completed_at,
-        employees:worker_id ( id, name, branch )
+        id, worker_id, date, check_type, completed_at, status,
+        worker:employees!safety_checks_worker_id_fkey ( id, name, branch )
       `)
       .eq('date', date)
       .order('completed_at', { ascending: true });
