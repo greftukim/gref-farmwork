@@ -267,10 +267,24 @@ useBranchStore의 branches selector 호출(`const branches = useBranchStore(s =>
   - 실제 앱 시크릿 창 (sb 토큰 없는 상태)
   - 별도 anon key 직접 REST 호출
 
+**보강 (2026-04-11 검증 후):** MCP service_role 연결에선 `SET LOCAL ROLE anon` 거부되지만,
+Supabase Dashboard SQL Editor는 postgres 슈퍼유저로 실행되어 통과한다.
+RLS 동작 검증 표준 패턴:
+```sql
+-- SQL Editor에서 실행
+BEGIN;
+SET LOCAL ROLE anon;
+SELECT COUNT(*) FROM <table> WHERE <condition>;
+COMMIT;
+-- service_role 대조군은 MCP 또는 별도 쿼리로 분리 실행
+```
+anon vs service_role 카운트를 대조하면 정책 차단 여부를 직접 증명 가능.
+
 **재발 방지**:
 - [ ] RLS 정책 수정 후 동작 검증은 MCP COUNT로 하지 말 것 — service_role은 항상 통과
-- [ ] polqual 텍스트 확인(방법 B)은 정책 존재 확인용, 동작 확인 아님
-- [ ] anon 동작 검증 = 실제 anon 세션(Dashboard API Tester 또는 시크릿 창) 필수
+- [ ] polqual 텍스트 확인(방법 B)은 정책 **정의** 확인용, 동작 확인 아님
+- [ ] anon 동작 검증 = SQL Editor(SET LOCAL ROLE anon) 또는 Dashboard API Tester 또는 시크릿 창
+- [ ] service_role 대조군과 anon 결과를 함께 기록 — 같은 날짜에 차이가 나면 정책 작동 증명
 
 **관련 커밋**: 6d92413 (RLS-DEBT-019 마이그레이션)
 

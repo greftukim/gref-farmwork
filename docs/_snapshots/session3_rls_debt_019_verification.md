@@ -127,6 +127,61 @@ service_role MCP 쿼리는 RLS 우회하므로 정책 **동작** 검증 불가.
 
 ---
 
+## 방법 C — anon role SQL Editor 실행 결과 (태우, 2026-04-11)
+
+```sql
+-- anon role로 실행
+BEGIN;
+SET LOCAL ROLE anon;
+SELECT 'today'     AS label, COUNT(*) FROM safety_checks WHERE date = CURRENT_DATE;
+SELECT 'yesterday' AS label, COUNT(*) FROM safety_checks WHERE date = CURRENT_DATE - 1;
+COMMIT;
+
+-- service_role 대조군 (별도 실행)
+SELECT
+  COUNT(*) FILTER (WHERE date = CURRENT_DATE)     AS service_today,
+  COUNT(*) FILTER (WHERE date = CURRENT_DATE - 1) AS service_yesterday
+FROM safety_checks
+WHERE EXISTS (SELECT 1 FROM employees WHERE employees.id = safety_checks.worker_id AND employees.role='worker' AND employees.is_active=true);
+```
+
+**결과:**
+
+| role | 오늘(2026-04-11) | 어제(2026-04-10) |
+|---|---|---|
+| anon | **2** | **0** |
+| service_role | 2 | 1 |
+
+**해석:** anon-yesterday=0 vs service-yesterday=1 — 동일 데이터에서 role 차이로만 발생.
+`CURRENT_DATE` 정책이 어제 row를 차단함을 직접 증명. 교훈 14 충족 ✅
+
+---
+
+## 방법 D — 시크릿창 PWA mount 검증 (태우, 2026-04-11)
+
+- **계정:** 시드_작업자07 QR 로그인
+- **오늘의 작업 카드:** "토마토 유인·결속" 정상 표시 ✅
+- **반장 승인 대기 안내:** 표시 ✅
+- **콘솔 에러:** 없음 ✅
+- **알림 권한 denied:** 별건 (E-6.5 변수), 회귀와 무관
+- **[FCM SW] 로그:** install·activate 완료 — SW 이미 등록 상태
+
+→ 교훈 13 이행 완료 (시크릿 창 + 실기기 mount 검증)
+
+---
+
+## 최종 판정
+
+| 검증 단계 | 방법 | 결과 |
+|---|---|---|
+| 정의 검증 (polqual) | 방법 B (MCP) | ✅ has_current_date=true |
+| 동작 검증 (anon 차단) | 방법 C (SQL Editor) | ✅ anon-yesterday=0 |
+| 회귀 검증 (PWA mount) | 방법 D (시크릿창) | ✅ 오늘 작업 카드 정상 |
+
+**RLS-DEBT-019 날짜 narrowing 완전 검증 완료.**
+
+---
+
 ## 다음 단계 — anon 동작 검증 (태우 담당)
 
 정의 검증(방법 B)은 완료. 실제 anon 세션에서의 정책 **동작** 검증은 태우가 수행:
