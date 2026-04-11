@@ -74,6 +74,15 @@ src/
 
 이 절차를 건너뛰지 말 것. 컨텍스트 누수의 주된 원인이다.
 
+## 세션 종료 필수 절차
+1. 작업 결과 요약 및 커밋·푸시 완료 확인
+2. BACKLOG/LESSONS 무결성 검증 (교훈 20):
+   - BACKLOG ID 중복 검사: `grep -oE "[A-Z]+-[A-Z]*-?[0-9]+" docs/BACKLOG.md | sort | uniq -d` → 0건
+   - LESSONS 교훈 번호 연속성 확인
+   - HANDOVER 인용 해시가 git log에 실존하는지 대조
+3. HANDOVER 작성 시 "마지막 커밋" 해시는 수작업 대신 `git log --oneline -1` 결과 붙여넣기
+4. 새 부채 ID 발급 전 중복 확인: `grep -c "{새-ID}" docs/BACKLOG.md` → 0
+
 ## 작업 원칙
 1. 모든 작업은 사전 조사 → 진행 승인 → 구현 → 빌드 검증 → 커밋·푸시 순서
 2. DB 상태 의존 값(건수/제약명/UUID)은 항상 information_schema 또는 SELECT로 실측
