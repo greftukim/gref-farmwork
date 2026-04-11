@@ -160,7 +160,7 @@ const useSafetyCheckStore = create((set, get) => ({
         }
       }
     } catch (notifErr) {
-      console.warn('[E-6.5] 반장 알림 발송 실패 (TBM 저장에는 영향 없음):', notifErr);
+      console.warn('[E-6.5] 반장 알림 발송 실패 (TBM 저장에는 영향 없음, INFRA-001 추적):', notifErr);
     }
 
     return header.id;
