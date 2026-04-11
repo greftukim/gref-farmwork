@@ -169,18 +169,18 @@ const useSafetyCheckStore = create((set, get) => ({
       .from('safety_checks')
       .select(`
         id, worker_id, date, check_type, status, task_ids, shown_risks, risks_confirmed_at, completed_at,
-        employees!inner ( id, name, branch )
+        employees!safety_checks_worker_id_fkey!inner ( id, name, branch )
       `)
       .eq('check_type', 'pre_task')
       .eq('status', 'submitted')
       .eq('date', today)
-      .eq('employees.branch', branch)
       .order('completed_at', { ascending: true });
     if (error) {
       console.error('[getPendingChecksForApproval]', error);
       throw error;
     }
-    return (data || []).map((row) => ({
+    const filtered = (data || []).filter((row) => row.employees?.branch === branch);
+    return filtered.map((row) => ({
       id: row.id,
       workerId: row.worker_id,
       date: row.date,
