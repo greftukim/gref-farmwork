@@ -524,6 +524,36 @@ export default function EmployeesPage() {
         </div>
       </Modal>
 
+      {/* 마지막 반장 해제 확인 모달 */}
+      {lastLeaderConfirm && (
+        <Modal
+          isOpen
+          onClose={() => setLastLeaderConfirm(null)}
+          title="마지막 반장 해제"
+        >
+          <p className="text-sm text-gray-700 leading-relaxed">
+            <span className="font-semibold">{lastLeaderConfirm.branchName}</span>의 마지막 반장을 해제합니다.
+            반장이 0명이 되면 신규 TBM 승인이 불가능합니다.
+            계속하시겠습니까?
+          </p>
+          <div className="flex gap-2 mt-5">
+            <button
+              onClick={async () => {
+                const { emp } = lastLeaderConfirm;
+                setLastLeaderConfirm(null);
+                await doToggleTeamLeader(emp, false);
+              }}
+              className="flex-1 px-4 py-2.5 text-sm font-medium text-red-600 border border-red-300 rounded-xl hover:bg-red-50 transition-colors active:scale-[0.98] min-h-[44px]"
+            >
+              해제
+            </button>
+            <Button className="flex-1" variant="secondary" onClick={() => setLastLeaderConfirm(null)}>
+              취소
+            </Button>
+          </div>
+        </Modal>
+      )}
+
       {/* QR 코드 모달 */}
       {qrEmployee?.deviceToken && (
         <QrModal
