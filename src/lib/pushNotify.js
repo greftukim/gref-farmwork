@@ -29,7 +29,8 @@ export async function sendPushToWorkers({ title, body, type = 'notice', urgent =
 /**
  * 특정 직원 1명에게 푸시
  * @param {string} employeeId
+ * @param {string} [url] - 알림 클릭 시 이동할 경로 (SW notificationclick에서 data.url로 전달)
  */
-export async function sendPushToEmployee({ employeeId, title, body, type = 'info', urgent = false }) {
-  return invoke({ title, body, type, urgent, targetEmployeeId: employeeId });
+export async function sendPushToEmployee({ employeeId, title, body, type = 'info', urgent = false, url }) {
+  return invoke({ title, body, type, urgent, targetEmployeeId: employeeId, ...(url && { url }) });
 }

@@ -3,7 +3,10 @@ import { supabase } from '../lib/supabase';
 import { snakeToCamel } from '../lib/dbHelpers';
 import { matchRiskTemplates } from '../utils/tbmRiskMatcher';
 import { canApproveSafetyChecks, isTeamLeader } from '../lib/permissions';
+import { sendPushToEmployee } from '../lib/pushNotify';
 import useAuthStore from './authStore';
+
+const BRANCH_NAMES = { busan: '부산LAB', jinju: '진주', hadong: '하동' };
 
 const useSafetyCheckStore = create((set, get) => ({
   items: [],
@@ -118,6 +121,41 @@ const useSafetyCheckStore = create((set, get) => ({
     if (rowsErr) {
       await supabase.from('safety_checks').delete().eq('id', header.id);
       throw rowsErr;
+    }
+
+    // ── E-6.5: TBM 제출 완료 후 반장 알림 발송 ──────────────────────────────────
+    // 알림 실패는 저장 성공과 완전 분리 — console.warn만, 반환값 영향 없음
+    try {
+      const currentUser = useAuthStore.getState().currentUser;
+      const workerBranch = currentUser?.branch;
+      const workerName = currentUser?.name || '작업자';
+
+      if (workerBranch) {
+        // anon_qr_login 정책(role='worker' AND is_active=true) 범위 내 직접 조회 가능
+        const { data: leader } = await supabase
+          .from('employees')
+          .select('id')
+          .eq('branch', workerBranch)
+          .eq('role', 'worker')
+          .eq('is_active', true)
+          .eq('is_team_leader', true)
+          .maybeSingle();
+
+        // 반장 본인 TBM이면 알림 생략 (worker_id === teamLeaderId)
+        if (leader?.id && leader.id !== workerId) {
+          const branchLabel = BRANCH_NAMES[workerBranch] || workerBranch;
+          await sendPushToEmployee({
+            employeeId: leader.id,
+            title: 'TBM 승인 요청',
+            body: `${workerName}(${branchLabel})이 작업 전 안전점검을 제출했습니다.`,
+            type: 'tbm_approval',
+            urgent: false,
+            url: '/worker',
+          });
+        }
+      }
+    } catch (notifErr) {
+      console.warn('[E-6.5] 반장 알림 발송 실패 (TBM 저장에는 영향 없음):', notifErr);
     }
 
     return header.id;

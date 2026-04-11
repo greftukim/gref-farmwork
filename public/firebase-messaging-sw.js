@@ -94,12 +94,14 @@ self.addEventListener('push', (event) => {
 self.addEventListener('notificationclick', (event) => {
   console.log('[FCM SW] 알림 클릭:', event.notification.tag);
   event.notification.close();
+  // data.url이 있으면 해당 경로로, 없으면 루트(앱이 role에 따라 자동 리다이렉트)
+  const targetUrl = event.notification.data?.url || '/';
   event.waitUntil(
     clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
       if (clientList.length > 0) {
         return clientList[0].focus();
       }
-      return clients.openWindow('/');
+      return clients.openWindow(targetUrl);
     })
   );
 });
