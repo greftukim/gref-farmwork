@@ -4,7 +4,8 @@ import useEmployeeStore from '../../stores/employeeStore';
 import useBranchStore from '../../stores/branchStore';
 import useAuthStore from '../../stores/authStore';
 import Button from '../../components/common/Button';
-import { isFarmAdmin, canHrCrud, roleLabel } from '../../lib/permissions';
+import { isFarmAdmin, canHrCrud, canWrite, roleLabel } from '../../lib/permissions';
+import useNotificationStore from '../../stores/notificationStore';
 import Card from '../../components/common/Card';
 import Modal from '../../components/common/Modal';
 
@@ -172,12 +173,15 @@ function QrModal({ employee, onClose, onReissue, onRevoke }) {
 export default function EmployeesPage() {
   const currentUser = useAuthStore((s) => s.currentUser);
   const isManagement = canHrCrud(currentUser);
+  const canToggleTeamLeader = canWrite(currentUser); // farm_admin, hr_admin, master
 
   const employees = useEmployeeStore((s) => s.employees);
   const addEmployee = useEmployeeStore((s) => s.addEmployee);
   const updateEmployee = useEmployeeStore((s) => s.updateEmployee);
   const toggleActive = useEmployeeStore((s) => s.toggleActive);
+  const toggleTeamLeader = useEmployeeStore((s) => s.toggleTeamLeader);
   const branches = useBranchStore((s) => s.branches);
+  const addNotification = useNotificationStore((s) => s.addNotification);
 
   const branchOptions = useMemo(() => [
     { value: '', label: '선택 안 함' },
@@ -188,6 +192,7 @@ export default function EmployeesPage() {
     Object.fromEntries(branches.map((b) => [b.code, b.name])),
   [branches]);
 
+  const [lastLeaderConfirm, setLastLeaderConfirm] = useState(null); // { emp, branchName }
   const [showModal, setShowModal] = useState(false);
   const [editTarget, setEditTarget] = useState(null);
   const [form, setForm] = useState(emptyForm);
@@ -262,6 +267,32 @@ export default function EmployeesPage() {
     await issueToken(qrEmployee);
   };
 
+  const handleToggleTeamLeader = async (emp, nextValue) => {
+    // 반장 해제 시 마지막 반장 여부 확인
+    if (!nextValue) {
+      const othersInBranch = employees.filter(
+        (e) => e.branch === emp.branch && e.isTeamLeader && e.id !== emp.id
+      );
+      if (othersInBranch.length === 0) {
+        const branchName = branchNameMap[emp.branch] || emp.branch;
+        setLastLeaderConfirm({ emp, branchName });
+        return;
+      }
+    }
+    await doToggleTeamLeader(emp, nextValue);
+  };
+
+  const doToggleTeamLeader = async (emp, nextValue) => {
+    const { error } = await toggleTeamLeader(emp.id, nextValue);
+    if (error) {
+      addNotification({
+        type: 'issue_report',
+        title: '반장 변경 실패',
+        message: `${emp.name} 반장 ${nextValue ? '지정' : '해제'}에 실패했습니다. 권한을 확인하세요.`,
+      });
+    }
+  };
+
   const handleRevoke = async () => {
     if (!qrEmployee) return;
     await updateEmployee(qrEmployee.id, { deviceToken: null });
@@ -330,7 +361,7 @@ export default function EmployeesPage() {
               {emp.phone && <div>{emp.phone}</div>}
               {emp.hireDate && <div>입사 {emp.hireDate}</div>}
             </div>
-            <div className="flex gap-2 justify-end">
+            <div className="flex gap-2 justify-end items-center">
               {emp.role === 'worker' && (
                 <button
                   onClick={() => handleQrOpen(emp)}
@@ -342,6 +373,22 @@ export default function EmployeesPage() {
                 >
                   {emp.deviceToken ? 'QR확인' : 'QR발급'}
                 </button>
+              )}
+              {canToggleTeamLeader && emp.role === 'worker' && (
+                <div className="flex items-center gap-1.5">
+                  <button
+                    onClick={() => handleToggleTeamLeader(emp, !emp.isTeamLeader)}
+                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors active:scale-[0.98] ${
+                      emp.isTeamLeader ? 'bg-emerald-600' : 'bg-gray-300'
+                    }`}
+                    aria-label={emp.isTeamLeader ? '반장 해제' : '반장 지정'}
+                  >
+                    <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${
+                      emp.isTeamLeader ? 'translate-x-6' : 'translate-x-1'
+                    }`} />
+                  </button>
+                  <span className="text-xs text-gray-500">반장</span>
+                </div>
               )}
               {isManagement && (
                 <>
@@ -371,6 +418,7 @@ export default function EmployeesPage() {
                 <th className="px-4 py-3 font-medium">입사일</th>
                 <th className="px-4 py-3 font-medium">상태</th>
                 <th className="px-4 py-3 font-medium">QR</th>
+                {canToggleTeamLeader && <th className="px-4 py-3 font-medium">반장</th>}
                 <th className="px-4 py-3 font-medium">관리</th>
               </tr>
             </thead>
@@ -423,6 +471,25 @@ export default function EmployeesPage() {
                       </button>
                     )}
                   </td>
+                  {canToggleTeamLeader && (
+                    <td className="px-4 py-3">
+                      {emp.role === 'worker' && (
+                        <div className="flex items-center gap-1.5">
+                          <button
+                            onClick={() => handleToggleTeamLeader(emp, !emp.isTeamLeader)}
+                            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors active:scale-[0.98] ${
+                              emp.isTeamLeader ? 'bg-emerald-600' : 'bg-gray-300'
+                            }`}
+                            aria-label={emp.isTeamLeader ? '반장 해제' : '반장 지정'}
+                          >
+                            <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${
+                              emp.isTeamLeader ? 'translate-x-6' : 'translate-x-1'
+                            }`} />
+                          </button>
+                        </div>
+                      )}
+                    </td>
+                  )}
                   <td className="px-4 py-3">
                     {isManagement && (
                       <div className="flex gap-1">
