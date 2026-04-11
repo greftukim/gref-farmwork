@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import useAuthStore from '../../stores/authStore';
 import useTaskStore from '../../stores/taskStore';
@@ -32,8 +32,16 @@ export default function WorkerTasksPage() {
   const [quantity, setQuantity] = useState('');
   const [tbmModal, setTbmModal] = useState({ open: false, cropIds: [], taskIds: [], taskTitles: [] });
   const [pendingTaskId, setPendingTaskId] = useState(null);
+  const [todayCheck, setTodayCheck] = useState(null);
 
   const today = new Date().toISOString().split('T')[0];
+
+  useEffect(() => {
+    if (!currentUser) return;
+    getTodayCheck(currentUser.id, 'pre_task')
+      .then((check) => setTodayCheck(check))
+      .catch(() => {});
+  }, []);
 
   const cropMap = useMemo(() => Object.fromEntries(crops.map((c) => [c.id, c])), [crops]);
   const zoneMap = useMemo(() => Object.fromEntries(zones.map((z) => [z.id, z])), [zones]);
@@ -71,6 +79,13 @@ export default function WorkerTasksPage() {
 
   const handlePreTaskComplete = async (checkId) => {
     setTbmModal({ open: false, cropIds: [], taskIds: [], taskTitles: [] });
+    // TBM 제출 후 배너용 상태 갱신
+    try {
+      const check = await getTodayCheck(currentUser.id, 'pre_task');
+      setTodayCheck(check);
+    } catch (e) {
+      // 조용히 실패 — 배너만 영향
+    }
     if (pendingTaskId) {
       try {
         await startTask(pendingTaskId);
@@ -97,6 +112,16 @@ export default function WorkerTasksPage() {
   return (
     <div>
       <h2 className="text-lg font-heading font-semibold text-gray-900 mb-4">오늘의 작업</h2>
+
+      {todayCheck?.status === 'submitted' && (
+        <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 mb-3 flex items-center gap-2">
+          <span className="text-amber-600">⏳</span>
+          <div className="flex-1">
+            <div className="text-sm font-medium text-amber-900">TBM 승인 대기 중</div>
+            <div className="text-xs text-amber-700">반장의 승인 후 정식 기록됩니다. 작업은 진행하셔도 됩니다.</div>
+          </div>
+        </div>
+      )}
 
       {myTasks.length === 0 && (
         <p className="text-gray-400 text-sm text-center py-12">배정된 작업이 없습니다</p>

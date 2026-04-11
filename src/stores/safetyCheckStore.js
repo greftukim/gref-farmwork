@@ -27,7 +27,7 @@ const useSafetyCheckStore = create((set, get) => ({
     const today = new Date().toISOString().slice(0, 10);
     const { data, error } = await supabase
       .from('safety_checks')
-      .select('id')
+      .select('id, status, check_type')
       .eq('worker_id', workerId)
       .eq('date', today)
       .eq('check_type', checkType)
