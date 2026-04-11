@@ -168,14 +168,18 @@ const useSafetyCheckStore = create((set, get) => ({
     const { data, error } = await supabase
       .from('safety_checks')
       .select(`
-        id, worker_id, date, check_type, task_ids, shown_risks, completed_at,
+        id, worker_id, date, check_type, status, task_ids, shown_risks, risks_confirmed_at, completed_at,
         employees!inner ( id, name, branch )
       `)
+      .eq('check_type', 'pre_task')
       .eq('status', 'submitted')
       .eq('date', today)
       .eq('employees.branch', branch)
       .order('completed_at', { ascending: true });
-    if (error) throw error;
+    if (error) {
+      console.error('[getPendingChecksForApproval]', error);
+      throw error;
+    }
     return (data || []).map((row) => ({
       id: row.id,
       workerId: row.worker_id,

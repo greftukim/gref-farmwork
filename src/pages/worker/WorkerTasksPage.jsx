@@ -57,16 +57,30 @@ export default function WorkerTasksPage() {
   );
 
   const handleStartTask = async (taskId) => {
+    let existingCheck = null;
     try {
-      const existing = await getTodayCheck(currentUser.id, 'pre_task');
-      if (existing) {
-        await startTask(taskId);
-        return;
-      }
+      existingCheck = await getTodayCheck(currentUser.id, 'pre_task');
     } catch (e) {
       console.error('TBM 조회 실패:', e);
     }
 
+    if (existingCheck) {
+      if (existingCheck.status === 'submitted') {
+        alert('반장 승인 대기 중입니다. 승인 후 작업을 시작할 수 있습니다.');
+        return;
+      }
+      if (existingCheck.status === 'approved') {
+        try {
+          await startTask(taskId);
+        } catch (e) {
+          console.error('작업 시작 실패:', e);
+          alert('작업 시작 실패: ' + (e.message || '알 수 없는 오류'));
+        }
+        return;
+      }
+    }
+
+    // 미제출 → TBM 모달
     const cropIds = Array.from(
       new Set(myTasks.map((t) => t.cropId).filter(Boolean))
     );
@@ -79,22 +93,15 @@ export default function WorkerTasksPage() {
 
   const handlePreTaskComplete = async (checkId) => {
     setTbmModal({ open: false, cropIds: [], taskIds: [], taskTitles: [] });
-    // TBM 제출 후 배너용 상태 갱신
+    setPendingTaskId(null);
+    // TBM 제출 후 배너 갱신 (startTask 호출 없음 — 반장 승인 대기)
     try {
       const check = await getTodayCheck(currentUser.id, 'pre_task');
       setTodayCheck(check);
     } catch (e) {
-      // 조용히 실패 — 배너만 영향
+      // 조용히 실패
     }
-    if (pendingTaskId) {
-      try {
-        await startTask(pendingTaskId);
-      } catch (e) {
-        console.error('작업 시작 실패:', e);
-        alert('작업 시작 실패: ' + (e.message || '알 수 없는 오류'));
-      }
-      setPendingTaskId(null);
-    }
+    alert('TBM이 제출되었습니다. 반장 승인 후 작업을 시작할 수 있습니다.');
   };
 
   const handleTbmClose = () => {
@@ -114,11 +121,11 @@ export default function WorkerTasksPage() {
       <h2 className="text-lg font-heading font-semibold text-gray-900 mb-4">오늘의 작업</h2>
 
       {todayCheck?.status === 'submitted' && (
-        <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 mb-3 flex items-center gap-2">
-          <span className="text-amber-600">⏳</span>
+        <div className="bg-red-50 border border-red-200 rounded-lg p-3 mb-3 flex items-center gap-2">
+          <span className="text-red-600">⛔</span>
           <div className="flex-1">
-            <div className="text-sm font-medium text-amber-900">TBM 승인 대기 중</div>
-            <div className="text-xs text-amber-700">반장의 승인 후 정식 기록됩니다. 작업은 진행하셔도 됩니다.</div>
+            <div className="text-sm font-medium text-red-900">반장 승인 대기 중</div>
+            <div className="text-xs text-red-700">반장 승인 후에만 작업 시작이 가능합니다.</div>
           </div>
         </div>
       )}
@@ -163,7 +170,12 @@ export default function WorkerTasksPage() {
                 ) : (
                   <>
                     {task.status === 'pending' && (
-                      <Button size="lg" className="flex-1" onClick={() => handleStartTask(task.id)}>
+                      <Button
+                        size="lg"
+                        className={`flex-1 ${todayCheck?.status === 'submitted' ? 'opacity-50' : ''}`}
+                        disabled={todayCheck?.status === 'submitted'}
+                        onClick={() => handleStartTask(task.id)}
+                      >
                         작업 시작
                       </Button>
                     )}

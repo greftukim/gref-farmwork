@@ -18,40 +18,58 @@ export default function TeamLeaderApprovalCard() {
   const [expanded, setExpanded] = useState(false);
   const [pendingChecks, setPendingChecks] = useState([]);
   const [excludedIds, setExcludedIds] = useState(new Set());
+  const [fetched, setFetched] = useState(false);   // 뱃지 표시 여부 제어
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState(null);
 
   const teamLeader = isTeamLeader(currentUser);
 
+  // 내부 fetch 함수 (취소 플래그 포함)
+  const doFetch = async (onResult, onError, onDone) => {
+    try {
+      const result = await getPendingChecksForApproval(currentUser.branch);
+      onResult(result);
+    } catch (e) {
+      onError(e.message || '불러오기 실패');
+    } finally {
+      onDone();
+    }
+  };
+
+  // 마운트 시 1회 fetch — 뱃지 건수 표시용
   useEffect(() => {
-    if (!expanded || !teamLeader) return;
-
+    if (!teamLeader) return;
     let cancelled = false;
-    (async () => {
-      setLoading(true);
-      setError(null);
-      try {
-        const result = await getPendingChecksForApproval(currentUser.branch);
-        if (!cancelled) {
-          setPendingChecks([...result]);
-          setExcludedIds(new Set());
-        }
-      } catch (e) {
-        if (!cancelled) setError(e.message || '불러오기 실패');
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    })();
+    setLoading(true);
+    setError(null);
+    doFetch(
+      (result) => { if (!cancelled) { setPendingChecks([...result]); setFetched(true); } },
+      (msg)    => { if (!cancelled) setError(msg); },
+      ()       => { if (!cancelled) setLoading(false); }
+    );
     return () => { cancelled = true; };
-  }, [expanded, teamLeader]);
+  }, [currentUser?.id]);
 
-  // 반장이 아니면 모든 hooks 완료 후 렌더 차단
+  // 펼칠 때마다 재fetch — 최신 목록 유지
+  useEffect(() => {
+    if (!expanded || !teamLeader || !fetched) return;  // fetched 전 이중 호출 방지
+    let cancelled = false;
+    setLoading(true);
+    setError(null);
+    doFetch(
+      (result) => { if (!cancelled) { setPendingChecks([...result]); setExcludedIds(new Set()); } },
+      (msg)    => { if (!cancelled) setError(msg); },
+      ()       => { if (!cancelled) setLoading(false); }
+    );
+    return () => { cancelled = true; };
+  }, [expanded]);
+
+  // 반장이 아니면 렌더 차단 (hooks 완료 후)
   if (!teamLeader) return null;
 
   const visibleCount = pendingChecks.length - excludedIds.size;
 
-  // 작업자별 그룹화, 이름순 정렬
   const grouped = Object.values(
     pendingChecks.reduce((acc, check) => {
       const key = check.workerId;
@@ -80,7 +98,6 @@ export default function TeamLeaderApprovalCard() {
     setError(null);
     try {
       await approveChecks(notExcludedIds, currentUser.id);
-      // 재조회
       const result = await getPendingChecksForApproval(currentUser.branch);
       setPendingChecks([...result]);
       setExcludedIds(new Set());
@@ -92,14 +109,9 @@ export default function TeamLeaderApprovalCard() {
     }
   };
 
-  // 모든 항목이 제외된 경우 또는 펼쳐진 후 0건 → 카드 숨김
-  if (expanded && !loading && pendingChecks.length === 0) {
-    return null;
-  }
-
   return (
     <Card accent="amber" className="mb-4 overflow-hidden">
-      {/* 헤더 */}
+      {/* 헤더 — 항상 표시 */}
       <button
         onClick={handleToggle}
         disabled={loading}
@@ -108,13 +120,13 @@ export default function TeamLeaderApprovalCard() {
         <div className="flex items-center gap-2">
           <span className="text-base">🛡️</span>
           <span className="text-sm font-semibold text-amber-900">TBM 승인 대기</span>
-          {!loading && (
+          {loading && (
+            <span className="ml-1 text-xs text-amber-500">불러오는 중...</span>
+          )}
+          {!loading && fetched && (
             <span className="ml-1 px-2 py-0.5 rounded-full text-xs font-bold bg-amber-100 text-amber-700">
               {visibleCount}건
             </span>
-          )}
-          {loading && (
-            <span className="ml-1 text-xs text-amber-500">불러오는 중...</span>
           )}
         </div>
         <svg
@@ -125,7 +137,7 @@ export default function TeamLeaderApprovalCard() {
         </svg>
       </button>
 
-      {/* 본문 */}
+      {/* 본문 — 펼친 상태에서만 */}
       {expanded && (
         <div className="border-t border-amber-100">
           {/* 에러 */}
@@ -150,13 +162,19 @@ export default function TeamLeaderApprovalCard() {
             </div>
           )}
 
+          {/* 빈 상태 */}
+          {!loading && !error && pendingChecks.length === 0 && (
+            <div className="px-4 py-6 text-center text-sm text-gray-400">
+              승인 대기 중인 TBM이 없습니다
+            </div>
+          )}
+
           {/* 목록 */}
           {!loading && grouped.length > 0 && (
             <div className="px-4 py-3 space-y-2">
               {grouped.map(({ workerName, checks }) =>
                 checks.map((check) => {
-                  const excluded = excludedIds.has(check.id);
-                  if (excluded) return null;
+                  if (excludedIds.has(check.id)) return null;
                   const riskCount = check.shownRisks?.length || 0;
                   return (
                     <div
@@ -183,6 +201,13 @@ export default function TeamLeaderApprovalCard() {
             </div>
           )}
 
+          {/* 전부 제외된 경우 */}
+          {!loading && !error && pendingChecks.length > 0 && notExcludedIds.length === 0 && (
+            <div className="px-4 pb-4 text-center text-sm text-gray-400 py-3">
+              모든 항목을 제외했습니다
+            </div>
+          )}
+
           {/* 전체 승인 액션 바 */}
           {!loading && notExcludedIds.length > 0 && (
             <div className="px-4 pb-4">
@@ -193,13 +218,6 @@ export default function TeamLeaderApprovalCard() {
               >
                 {submitting ? '승인 중...' : `전체 승인 (${notExcludedIds.length}건)`}
               </button>
-            </div>
-          )}
-
-          {/* 전부 제외된 경우 */}
-          {!loading && !error && pendingChecks.length > 0 && notExcludedIds.length === 0 && (
-            <div className="px-4 pb-4 text-center text-sm text-gray-400 py-3">
-              모든 항목을 제외했습니다
             </div>
           )}
         </div>
