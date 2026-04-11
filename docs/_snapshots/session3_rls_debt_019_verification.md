@@ -47,7 +47,32 @@ using_clause: (EXISTS ( SELECT 1
 
 `CURRENT_DATE` 없음 → 마이그레이션 **미적용** 확인 ✅
 
-#### 적용 후 (태우가 SQL Editor 실행 후 아래 쿼리로 재확인)
+#### 적용 후 — 1차 확인 (2026-04-11, 마이그레이션 미적용 확인됨)
+
+```sql
+SELECT polname,
+       pg_get_expr(polqual, polrelid) AS using_clause,
+       pg_get_expr(polqual, polrelid) LIKE '%CURRENT_DATE%' AS has_current_date
+FROM pg_policy
+WHERE polrelid = 'safety_checks'::regclass
+  AND polname = 'safety_checks_anon_select';
+```
+
+**결과:**
+```
+polname: safety_checks_anon_select
+has_current_date: false
+using_clause: (EXISTS ( SELECT 1
+   FROM employees
+  WHERE ((employees.id = safety_checks.worker_id)
+    AND ((employees.role)::text = 'worker'::text)
+    AND (employees.is_active = true))))
+```
+
+**`has_current_date = false` → 마이그레이션 미적용.**
+using_clause가 적용 전과 동일. 태우 SQL Editor 실행 필요.
+
+#### 적용 후 — 2차 확인 (태우가 SQL Editor 실행 후 아래 쿼리로 재확인)
 
 ```sql
 SELECT polname, pg_get_expr(polqual, polrelid) AS using_clause
