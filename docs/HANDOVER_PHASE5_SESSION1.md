@@ -1,5 +1,7 @@
 # Phase 5 세션 1 인수인계 — 2026-04-11
 
+> 부채는 [docs/BACKLOG.md](BACKLOG.md), 교훈은 [docs/LESSONS_LEARNED.md](LESSONS_LEARNED.md)에 누적 관리됨.
+
 ## 1. 개요
 
 이 문서는 Phase 5 세션 1 (GREF FarmWork 트랙 E — 반장 승인 플로우 E-6 완성) 작업
