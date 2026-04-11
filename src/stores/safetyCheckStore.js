@@ -130,8 +130,11 @@ const useSafetyCheckStore = create((set, get) => ({
       const workerBranch = currentUser?.branch;
       const workerName = currentUser?.name || '작업자';
 
-      if (workerBranch) {
+      if (!workerBranch) {
+        console.warn('[E-6.5] currentUser.branch 없음 — 알림 스킵');
+      } else {
         // anon_qr_login 정책(role='worker' AND is_active=true) 범위 내 직접 조회 가능
+        // FCM-001: 반장 2명 이상 시 maybeSingle() 에러 → catch로 silent fail (백로그)
         const { data: leader } = await supabase
           .from('employees')
           .select('id')
@@ -142,7 +145,9 @@ const useSafetyCheckStore = create((set, get) => ({
           .maybeSingle();
 
         // 반장 본인 TBM이면 알림 생략 (worker_id === teamLeaderId)
-        if (leader?.id && leader.id !== workerId) {
+        if (leader?.id && leader.id === workerId) {
+          console.log('[E-6.5] 반장 본인 TBM — 알림 생략');
+        } else if (leader?.id && leader.id !== workerId) {
           const branchLabel = BRANCH_NAMES[workerBranch] || workerBranch;
           await sendPushToEmployee({
             employeeId: leader.id,
