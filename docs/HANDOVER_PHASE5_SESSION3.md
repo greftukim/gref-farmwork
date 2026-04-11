@@ -88,6 +88,10 @@ savePreTaskCheck 성공 후:
 | **알림 클릭** | 알림 클릭 | 앱 포커스 또는 `/worker` (TeamLeaderApprovalCard) |
 | **mount 회귀** | 시크릿창 작업자 TBM 화면 | 콘솔 에러 없음 |
 
+> **[세션 4 후속 업데이트]** INFRA-001은 세션 4에서 원인이 재판정되어 
+> resolved 처리됨. 실제 원인은 Supabase 인프라가 아닌 Claude Code MCP 연결. 
+> 상세: LESSONS_LEARNED.md 교훈 21 및 BACKLOG.md INFRA-001 resolved 기록 참조.
+
 ---
 
 ## 4. 결정적 발견 — INFRA-001 PostgREST Warp 타임아웃

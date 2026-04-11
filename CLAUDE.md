@@ -82,6 +82,10 @@ src/
    - HANDOVER 인용 해시가 git log에 실존하는지 대조
 3. HANDOVER 작성 시 "마지막 커밋" 해시는 수작업 대신 `git log --oneline -1` 결과 붙여넣기
 4. 새 부채 ID 발급 전 중복 확인: `grep -c "{새-ID}" docs/BACKLOG.md` → 0
+5. Claude Code 자체의 MCP 연결 해제: 
+   - 작업 종료 시 `/exit` 또는 터미널 완전 종료로 MCP 연결 명시적 정리
+   - 장시간 유휴 방치 금지 (Supabase MCP heartbeat가 Warp 레이어에서 
+     timeout으로 집계되는 INFRA-001 재발 방지)
 
 ## 작업 원칙
 1. 모든 작업은 사전 조사 → 진행 승인 → 구현 → 빌드 검증 → 커밋·푸시 순서
