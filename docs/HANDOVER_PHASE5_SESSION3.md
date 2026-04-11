@@ -192,6 +192,8 @@ WHERE table_name = 'fcm_tokens';
 
 ---
 
+> **세션 4 kickoff 지시문:** [docs/SESSION4_KICKOFF.md](SESSION4_KICKOFF.md) — Claude Code 새 세션에 붙여넣기
+
 ## 9. 작업 환경
 
 | 항목 | 값 |
