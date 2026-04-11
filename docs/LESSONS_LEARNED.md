@@ -273,3 +273,24 @@ useBranchStore의 branches selector 호출(`const branches = useBranchStore(s =>
 - [ ] anon 동작 검증 = 실제 anon 세션(Dashboard API Tester 또는 시크릿 창) 필수
 
 **관련 커밋**: 6d92413 (RLS-DEBT-019 마이그레이션)
+
+---
+
+## 교훈 16 — 마이그레이션 파일에 자기검증 SQL을 끼우면 검증 코드 버그가 본 DDL을 롤백시킨다
+
+**맥락**: Phase 5 세션 3 (2026-04-11), RLS-DEBT-019 마이그레이션.
+DO 블록 내 `SELECT COUNT(*), pg_get_expr(...)` 에서 GROUP BY 누락으로
+`ERROR 42803` 발생 → `BEGIN` 트랜잭션 전체 롤백 → `has_current_date=false` 원인.
+
+**잘못된 접근**: 마이그레이션 파일 안에 DO 블록으로 자기검증 SQL을 포함.
+검증 코드의 버그가 본 DDL(DROP/CREATE POLICY)까지 롤백시킴.
+
+**올바른 접근**: 마이그레이션 파일은 DDL만 담는다. 검증은 항상 별도 SELECT로 분리.
+마이그레이션은 멱등성과 단순성이 핵심 — 검증 로직이 들어오는 순간 단일 실패 지점이 두 개로 늘어난다.
+
+**재발 방지**:
+- [ ] 마이그레이션 파일에 SELECT/COUNT/DO 블록 금지 (COMMENT ON 제외)
+- [ ] 검증 쿼리는 항상 마이그레이션 적용 후 별도 실행 (MCP 또는 SQL Editor)
+- [ ] ASSERT가 필요하면 롤백 스크립트가 아닌 외부 문서(검증 기록 .md)에 기대값 명시
+
+**관련 커밋**: 6d92413 (원본), fix 커밋 (DO 블록 제거)
