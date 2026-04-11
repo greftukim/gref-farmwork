@@ -72,21 +72,51 @@ using_clause: (EXISTS ( SELECT 1
 **`has_current_date = false` → 마이그레이션 미적용.**
 using_clause가 적용 전과 동일. 태우 SQL Editor 실행 필요.
 
-#### 적용 후 — 2차 확인 (태우가 SQL Editor 실행 후 아래 쿼리로 재확인)
+#### 적용 후 — 2차 확인 (2026-04-11, 태우 SQL Editor 실행 후)
 
+**쿼리 1 — 정의 검증 (service_role MCP):**
 ```sql
-SELECT polname, pg_get_expr(polqual, polrelid) AS using_clause
+SELECT polname,
+       pg_get_expr(polqual, polrelid) AS using_clause,
+       pg_get_expr(polqual, polrelid) LIKE '%CURRENT_DATE%' AS has_current_date
 FROM pg_policy
 WHERE polrelid = 'safety_checks'::regclass
   AND polname = 'safety_checks_anon_select';
 ```
 
-**기대 결과:**
+**결과:**
 ```
-using_clause: ((date = CURRENT_DATE) AND EXISTS (...))
+polname:          safety_checks_anon_select
+has_current_date: true   ← 정책 교체 확인 ✅
+using_clause:     ((date = CURRENT_DATE) AND (EXISTS ( SELECT 1
+                     FROM employees
+                    WHERE ((employees.id = safety_checks.worker_id)
+                      AND ((employees.role)::text = 'worker'::text)
+                      AND (employees.is_active = true)))))
 ```
 
-`CURRENT_DATE` 포함 여부로 정책 교체 확인. → [태우 실행 후 결과 여기에 기록]
+**쿼리 2 — 테스트 데이터 존재 확인 (service_role 기준, 정책 동작 입증 아님):**
+```sql
+SELECT 
+  COUNT(*) FILTER (WHERE date = CURRENT_DATE)     AS today_rows,
+  COUNT(*) FILTER (WHERE date = CURRENT_DATE - 1) AS yesterday_rows
+FROM safety_checks
+WHERE EXISTS (
+  SELECT 1 FROM employees 
+  WHERE employees.id = safety_checks.worker_id
+    AND employees.role = 'worker' AND employees.is_active = true
+);
+```
+
+**결과:**
+```
+today_rows:     2   ← 오늘 데이터 존재 ✅
+yesterday_rows: 1   ← 어제 데이터 존재 ✅ (anon 동작 검증의 음성 케이스 재료)
+```
+
+→ 두 쿼리 모두 통과. 정의 검증 완료.
+
+**⚠️ 주의:** 위 카운트는 service_role(RLS 우회) 기준. 실제 anon 정책 동작은 아래 단계에서 확인 필요.
 
 ---
 
@@ -94,6 +124,12 @@ using_clause: ((date = CURRENT_DATE) AND EXISTS (...))
 
 service_role MCP 쿼리는 RLS 우회하므로 정책 **동작** 검증 불가.
 아래 두 방법 중 하나로 실제 anon 동작 확인 필요:
+
+---
+
+## 다음 단계 — anon 동작 검증 (태우 담당)
+
+정의 검증(방법 B)은 완료. 실제 anon 세션에서의 정책 **동작** 검증은 태우가 수행:
 
 ### 방법 C — Supabase Dashboard API Tester (anon key)
 
