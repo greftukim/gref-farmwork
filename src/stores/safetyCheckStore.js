@@ -2,6 +2,8 @@ import { create } from 'zustand';
 import { supabase } from '../lib/supabase';
 import { snakeToCamel } from '../lib/dbHelpers';
 import { matchRiskTemplates } from '../utils/tbmRiskMatcher';
+import { canApproveSafetyChecks, isTeamLeader } from '../lib/permissions';
+import useAuthStore from './authStore';
 
 const useSafetyCheckStore = create((set, get) => ({
   items: [],
@@ -136,6 +138,10 @@ const useSafetyCheckStore = create((set, get) => ({
   },
 
   approveChecks: async (checkIds, approverId) => {
+    const currentUser = useAuthStore.getState().currentUser;
+    if (!canApproveSafetyChecks(currentUser)) {
+      throw new Error('승인 권한이 없습니다');
+    }
     const { data, error } = await supabase
       .from('safety_checks')
       .update({
@@ -151,6 +157,13 @@ const useSafetyCheckStore = create((set, get) => ({
   },
 
   getPendingChecksForApproval: async (branch) => {
+    const currentUser = useAuthStore.getState().currentUser;
+    if (!canApproveSafetyChecks(currentUser)) {
+      throw new Error('승인 대기 목록 조회 권한이 없습니다');
+    }
+    if (isTeamLeader(currentUser) && currentUser.branch !== branch) {
+      throw new Error('본인 지점만 조회 가능합니다');
+    }
     const today = new Date().toISOString().slice(0, 10);
     const { data, error } = await supabase
       .from('safety_checks')

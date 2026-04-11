@@ -55,3 +55,15 @@ export const ROLE_LABELS = {
 export function roleLabel(role) {
   return ROLE_LABELS[role] || role || '';
 }
+
+export function isTeamLeader(user) {
+  return !!user?.isTeamLeader;
+}
+
+export function canApproveSafetyChecks(user) {
+  if (!user) return false;
+  if (user.isTeamLeader) return true;
+  if (user.role === 'farm_admin') return true;
+  if (user.role === 'hr_admin' || user.role === 'master') return true;
+  return false;
+}
