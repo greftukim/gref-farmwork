@@ -41,6 +41,7 @@ export default function AdminDashboard() {
   const leaveRequests = useLeaveStore((s) => s.requests);
   const notices = useNoticeStore((s) => s.notices);
   const crops = useCropStore((s) => s.crops);
+  const branches = useBranchStore((s) => s.branches);
   const selectedBranch = useBranchStore((s) => s.selectedBranch);
 
   const [missedDays, setMissedDays] = useState(7);
