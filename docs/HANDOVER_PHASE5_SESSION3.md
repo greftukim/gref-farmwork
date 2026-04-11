@@ -73,7 +73,20 @@ savePreTaskCheck 성공 후:
 ```
 
 **검증 미완 사유:** INFRA-001 PostgREST 타임아웃으로 반장 fcm_tokens INSERT 403,
-작업자 safety_checks INSERT 403 간헐적 발생. 코드·정책 결백 확인, 인프라 복구 후 재검증 필요.
+작업자 safety_checks INSERT 403 간헐적 발생. **2026-04-11 10:35 KST 자동 복구 확인**
+(반장 PC 재로그인 시 fcm_tokens INSERT 성공, 콘솔 'FCM 토큰 저장 완료 (DB)').
+→ **다음 세션 즉시 E-6.5 검증 진입 가능.**
+
+**E-6.5 검증 표 (다음 세션 즉시 실행):**
+
+| 케이스 | 방법 | 기대 결과 |
+|---|---|---|
+| **포그라운드** | 반장 앱 열린 상태, 작업자 TBM 제출 | 앱 내 toast 알림 |
+| **백그라운드** | 반장 탭 숨김, 작업자 TBM 제출 | OS 알림 팝업 1회 |
+| **앱 종료** | 반장 브라우저 닫음, 작업자 TBM 제출 | OS 알림 팝업 (알림 권한 허용 필요) |
+| **음성 — 본인** | 반장 직접 TBM 제출 | **알림 없음** + console.log "반장 본인 TBM — 알림 생략" |
+| **알림 클릭** | 알림 클릭 | 앱 포커스 또는 `/worker` (TeamLeaderApprovalCard) |
+| **mount 회귀** | 시크릿창 작업자 TBM 화면 | 콘솔 에러 없음 |
 
 ---
 
@@ -150,16 +163,12 @@ git log --oneline -5
 - `docs/BACKLOG.md` 전체 읽기 — INFRA-001 상태 확인
 - `docs/LESSONS_LEARNED.md` — 교훈 17·18·19 반드시 확인
 
-### 1순위 — INFRA-001 상태 재확인
+### 1순위 — E-6.5 검증 (INFRA-001 자동 복구 확인됨, 즉시 진입 가능)
 
-```
-Dashboard → Logs → Postgres Logs → 검색: "Thread killed" OR "timeout"
-```
+**INFRA-001 상태:** 2026-04-11 10:35 KST 자동 복구 확인. 지속 이슈 아님.
+시작 전 Postgres Logs에서 `Thread killed` 24시간 내 빈도 1회 확인 후 진입.
 
-- **로그 없음 (안정):** E-6.5 검증 재진입 (fcm_tokens INSERT + safety_checks INSERT 시도)
-- **로그 있음 (지속):** Pooler 크기 증설, 플랜 업그레이드 검토, Support 티켓
-
-### E-6.5 검증 재진입 (INFRA-001 안정 후)
+### E-6.5 검증
 
 | 케이스 | 방법 | 기대 |
 |---|---|---|
