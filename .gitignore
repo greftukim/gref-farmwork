@@ -45,4 +45,3 @@ temp_*.sql
 
 # MCP config
 .mcp.json
-supabase.mcp.json
