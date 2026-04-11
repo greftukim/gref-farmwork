@@ -42,3 +42,6 @@ backup/
 
 # Temp SQL files
 temp_*.sql
+
+# MCP config
+.mcp.json
