@@ -186,3 +186,32 @@ const filtered = (data || []).filter(c => c.workers?.branch === branch);
 - [ ] `information_schema.table_constraints`로 제약명 조회 후 embed 구문 작성
 
 **관련 커밋:** `c9482f6` (E-6 hotfix)
+
+---
+
+## 교훈 13 — 빌드 통과는 런타임 안전을 의미하지 않는다
+
+**맥락**: E-8.2(3829f46)에서 AdminDashboard에 currentBranchCode/currentBranchName
+useMemo와 handleExport를 추가하면서 `branches` 식별자를 참조했으나,
+useBranchStore의 branches selector 호출(`const branches = useBranchStore(s => s.branches)`)을
+빠뜨림. npm run build는 통과했고 보고도 "빌드 성공"으로 마무리됐으나,
+대시보드 첫 mount에서 ReferenceError로 페이지 전체 렌더 실패. 핫픽스 ab17667로 1줄 추가.
+
+**잘못된 접근**:
+- 빌드 통과를 검증 완료로 간주하고 푸시
+- MCP로 SQL 쿼리는 실측했으나 컴포넌트 mount는 한 번도 확인하지 않음
+- Zustand selector 패턴에서 useMemo/useEffect 본문을 먼저 작성하고 selector 선언을 누락
+
+**올바른 접근**:
+- Vite/esbuild는 함수 스코프 내 미정의 식별자를 빌드 시점에 잡지 못함 (런타임 결정)
+- 새 식별자를 컴포넌트에 도입했으면 빌드 성공 외에 mount 검증이 별도로 필요
+- MCP 도입으로 DB 검증은 강해졌으나 프론트엔드 런타임 검증은 그대로임. 이 비대칭을 의식할 것
+
+**재발 방지 체크리스트**:
+- [ ] 새 useMemo/useEffect/handler가 참조하는 모든 식별자가 컴포넌트 스코프에 선언돼 있는가?
+- [ ] Zustand store에서 새 값을 쓰면 `const x = useStore(s => s.x)` 선언이 먼저 있는가?
+- [ ] 빌드 통과 후, 수정한 컴포넌트가 실제로 라우트되는 페이지를 1회 진입해봤는가?
+- [ ] 보고서에 "빌드 성공"만 적지 말고 "X 페이지 mount 확인"을 명시할 것
+- [ ] MCP DB 검증과 프론트엔드 mount 검증은 별개의 검증 단계임을 의식
+
+**관련 커밋**: 3829f46 (도입), ab17667 (핫픽스)
