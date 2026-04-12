@@ -181,31 +181,49 @@ async function getBranchTbmSummary(
   const dateRange = resolveDateRange(input.date_from as string | undefined, input.date_to as string | undefined);
   if (isToolError(dateRange)) return dateRange;
 
-  // safety_checks JOIN employees (branch는 employees 쪽)
+  // safety_checks FK 없음 (runtime 확인 2026-04-12 세션 12) → 수동 JOIN
   // check_type='pre_task', status별 집계
   let query = client
     .from('safety_checks')
-    .select('status, employees!inner(branch)', { count: 'exact' })
+    .select('worker_id, status')
     .eq('check_type', 'pre_task')
     .gte('date', dateRange.from)
     .lte('date', dateRange.to);
 
+  // branch 필터: 해당 지점 employee id 집합으로 worker_id IN 필터
   if (branchResolved !== null) {
-    query = query.eq('employees.branch', branchResolved);
+    const branchEmpIds = await fetchEmployeeIdsByBranch(branchResolved, client);
+    if (branchEmpIds.length === 0) {
+      return {
+        ok: true,
+        result: { period: { from: dateRange.from, to: dateRange.to }, results: [] },
+        row_count: 0,
+        truncated: false,
+      };
+    }
+    query = query.in('worker_id', branchEmpIds);
   }
 
-  const { data, error } = await query.limit(10000); // 집계용, 상한은 안전장치
+  const { data, error } = await query.limit(10000);
   if (error) {
     return { ok: false, error: 'query_failed', message: error.message };
   }
 
+  const rows = data ?? [];
+
+  // worker_id → employee.branch 매핑 (수동 JOIN)
+  // deno-lint-ignore no-explicit-any
+  const workerIds = Array.from(new Set(rows.map((r) => (r as any).worker_id).filter((x): x is string => typeof x === 'string')));
+  const workerMap = await fetchEmployeeMap(workerIds, client);
+
   // 클라이언트 측 GROUP BY (branch, status)
   const agg = new Map<string, { submitted: number; approved: number; total: number }>();
-  for (const row of data ?? []) {
+  for (const row of rows) {
     // deno-lint-ignore no-explicit-any
-    const branch = (row as any).employees?.branch ?? 'unknown';
-    // deno-lint-ignore no-explicit-any
-    const status = (row as any).status as string;
+    const rr = row as any;
+    const emp = workerMap.get(rr.worker_id);
+    const branch = emp?.branch ?? 'unknown';
+    const status = rr.status as string;
     if (!agg.has(branch)) agg.set(branch, { submitted: 0, approved: 0, total: 0 });
     const entry = agg.get(branch)!;
     entry.total += 1;
@@ -317,17 +335,36 @@ async function getBranchSafetyCheckSummary(
   const dateRange = resolveDateRange(input.date_from as string | undefined, input.date_to as string | undefined);
   if (isToolError(dateRange)) return dateRange;
 
+  // safety_checks FK 없음 (runtime 확인 2026-04-12 세션 12) → 수동 JOIN
   let query = client
     .from('safety_checks')
-    .select('check_type, status, employees!inner(branch)')
+    .select('worker_id, check_type, status')
     .in('check_type', ['pre_work', 'post_work'])
     .gte('date', dateRange.from)
     .lte('date', dateRange.to);
 
-  if (branchResolved !== null) query = query.eq('employees.branch', branchResolved);
+  if (branchResolved !== null) {
+    const branchEmpIds = await fetchEmployeeIdsByBranch(branchResolved, client);
+    if (branchEmpIds.length === 0) {
+      return {
+        ok: true,
+        result: { period: { from: dateRange.from, to: dateRange.to }, results: [] },
+        row_count: 0,
+        truncated: false,
+      };
+    }
+    query = query.in('worker_id', branchEmpIds);
+  }
 
   const { data, error } = await query.limit(10000);
   if (error) return { ok: false, error: 'query_failed', message: error.message };
+
+  const rows = data ?? [];
+
+  // worker_id → employee.branch 매핑
+  // deno-lint-ignore no-explicit-any
+  const workerIds = Array.from(new Set(rows.map((r) => (r as any).worker_id).filter((x): x is string => typeof x === 'string')));
+  const workerMap = await fetchEmployeeMap(workerIds, client);
 
   // branch × check_type × status 집계
   const agg = new Map<string, {
@@ -335,10 +372,11 @@ async function getBranchSafetyCheckSummary(
     post_work: { submitted: number; approved: number };
   }>();
 
-  for (const row of data ?? []) {
+  for (const row of rows) {
     // deno-lint-ignore no-explicit-any
     const r = row as any;
-    const branch = r.employees?.branch ?? 'unknown';
+    const emp = workerMap.get(r.worker_id);
+    const branch = emp?.branch ?? 'unknown';
     const ct = r.check_type as 'pre_work' | 'post_work';
     const st = r.status as 'submitted' | 'approved';
 
@@ -368,6 +406,47 @@ async function getBranchSafetyCheckSummary(
 // ----------------------------------------------------------------------------
 // 도구 4: get_pending_approvals
 // ----------------------------------------------------------------------------
+// ----------------------------------------------------------------------------
+// 내부 유틸: employee_id 배열 → {id: {name, branch}} 매핑
+// leave_requests·overtime_requests에 employees FK 미선언 상태 (2026-04-12 확인).
+// PostgREST embed 불가 → 수동 JOIN. 교훈 25·26: 원인 층(DB 스키마) 확정 후 우회.
+// ----------------------------------------------------------------------------
+async function fetchEmployeeMap(
+  employeeIds: string[],
+  client: SupabaseClient,
+): Promise<Map<string, { name: string; branch: string }>> {
+  const map = new Map<string, { name: string; branch: string }>();
+  if (employeeIds.length === 0) return map;
+  const { data, error } = await client
+    .from('employees')
+    .select('id, name, branch')
+    .in('id', employeeIds);
+  if (error || !data) return map;
+  for (const row of data) {
+    // deno-lint-ignore no-explicit-any
+    const r = row as any;
+    map.set(r.id, { name: r.name, branch: r.branch });
+  }
+  return map;
+}
+
+// ----------------------------------------------------------------------------
+// 내부 유틸: branch 필터링용 — 특정 지점의 활성 employee id 집합 반환
+// ----------------------------------------------------------------------------
+async function fetchEmployeeIdsByBranch(
+  branch: string,
+  client: SupabaseClient,
+): Promise<string[]> {
+  const { data, error } = await client
+    .from('employees')
+    .select('id')
+    .eq('branch', branch)
+    .eq('is_active', true);
+  if (error || !data) return [];
+  // deno-lint-ignore no-explicit-any
+  return (data as any[]).map((r) => r.id);
+}
+
 async function getPendingApprovals(
   input: Record<string, unknown>,
   client: SupabaseClient,
@@ -380,6 +459,22 @@ async function getPendingApprovals(
     return { ok: false, error: 'invalid_approval_type' };
   }
 
+  // branch 필터 준비: branchResolved가 있으면 해당 지점 employee id 집합 조회
+  // leave·overtime은 FK 없어 PostgREST embed 불가 → in() 필터로 대체
+  let branchEmpIds: string[] | null = null;
+  if (branchResolved !== null) {
+    branchEmpIds = await fetchEmployeeIdsByBranch(branchResolved, client);
+    // 빈 배열이면 해당 지점 소속 없음 → 모든 결과 빈 배열 반환
+    if (branchEmpIds.length === 0) {
+      return {
+        ok: true,
+        result: { results: { leave: [], overtime: [], safety_check: [] }, counts: { leave: 0, overtime: 0, safety_check: 0, total: 0 } },
+        row_count: 0,
+        truncated: false,
+      };
+    }
+  }
+
   const results: {
     leave: unknown[];
     overtime: unknown[];
@@ -388,56 +483,70 @@ async function getPendingApprovals(
 
   let truncated = false;
 
-  // --- leave_requests ---
-  // TODO (교훈 17): leave_requests.status의 실제 enum 값은 runtime 확인 필요.
-  //   현재는 'pending'으로 가정. 배포 후 Supabase MCP로 SELECT DISTINCT status 검증.
+  // --- leave_requests (FK 없음 → 수동 JOIN) ---
+  // leave_requests.status='pending' 확인 완료 (교훈 17 runtime 검증 2026-04-12).
   if (approvalType === 'leave' || approvalType === 'all') {
     let q = client
       .from('leave_requests')
-      .select('id, employee_id, date, type, status, employees!inner(name, branch)')
+      .select('id, employee_id, date, type, status')
       .eq('status', 'pending')
       .limit(MAX_ROWS + 1);
-    if (branchResolved !== null) q = q.eq('employees.branch', branchResolved);
+    if (branchEmpIds !== null) q = q.in('employee_id', branchEmpIds);
 
     const { data, error } = await q;
     if (error) return { ok: false, error: 'query_failed', message: `leave: ${error.message}` };
 
     const rows = data ?? [];
     if (rows.length > MAX_ROWS) truncated = true;
-    results.leave = rows.slice(0, MAX_ROWS).map((r) => {
+    const sliced = rows.slice(0, MAX_ROWS);
+
+    // employee_id 집합 → name/branch 매핑
+    // deno-lint-ignore no-explicit-any
+    const empIds = sliced.map((r) => (r as any).employee_id).filter((x): x is string => typeof x === 'string');
+    const empMap = await fetchEmployeeMap(empIds, client);
+
+    results.leave = sliced.map((r) => {
       // deno-lint-ignore no-explicit-any
       const rr = r as any;
+      const emp = empMap.get(rr.employee_id);
       return {
         id: rr.id,
-        employee_name: rr.employees?.name,
-        branch: rr.employees?.branch,
+        employee_name: emp?.name ?? null,
+        branch: emp?.branch ?? null,
         date: rr.date,
         type: rr.type,
       };
     });
   }
 
-  // --- overtime_requests ---
+  // --- overtime_requests (FK 없음 → 수동 JOIN) ---
   if (approvalType === 'overtime' || approvalType === 'all') {
     let q = client
       .from('overtime_requests')
-      .select('id, employee_id, date, hours, minutes, status, employees!inner(name, branch)')
+      .select('id, employee_id, date, hours, minutes, status')
       .eq('status', 'pending')
       .limit(MAX_ROWS + 1);
-    if (branchResolved !== null) q = q.eq('employees.branch', branchResolved);
+    if (branchEmpIds !== null) q = q.in('employee_id', branchEmpIds);
 
     const { data, error } = await q;
     if (error) return { ok: false, error: 'query_failed', message: `overtime: ${error.message}` };
 
     const rows = data ?? [];
     if (rows.length > MAX_ROWS) truncated = true;
-    results.overtime = rows.slice(0, MAX_ROWS).map((r) => {
+    const sliced = rows.slice(0, MAX_ROWS);
+
+    // deno-lint-ignore no-explicit-any
+    const empIds = sliced.map((r) => (r as any).employee_id).filter((x): x is string => typeof x === 'string');
+    const empMap = await fetchEmployeeMap(empIds, client);
+
+    results.overtime = sliced.map((r) => {
       // deno-lint-ignore no-explicit-any
       const rr = r as any;
+      const emp = empMap.get(rr.employee_id);
       return {
         id: rr.id,
-        employee_name: rr.employees?.name,
-        branch: rr.employees?.branch,
+        employee_name: emp?.name ?? null,
+        branch: emp?.branch ?? null,
         date: rr.date,
         hours: rr.hours,
         minutes: rr.minutes,
@@ -445,28 +554,38 @@ async function getPendingApprovals(
     });
   }
 
-  // --- safety_checks (승인 대기 = status='submitted', check_type='pre_task') ---
+  // --- safety_checks (FK 없음 runtime 확인 2026-04-12 세션 12 → 수동 JOIN) ---
+  // 마이그레이션 파일(safety_checks.sql)에는 worker_id UUID REFERENCES public.employees(id)
+  // 선언이 있으나, 실제 DB 제약은 0건(information_schema 확인). 교훈 17 정면 사례.
   if (approvalType === 'safety_check' || approvalType === 'all') {
     let q = client
       .from('safety_checks')
-      .select('id, worker_id, date, check_type, status, employees!inner(name, branch)')
+      .select('id, worker_id, date, check_type, status')
       .eq('status', 'submitted')
       .eq('check_type', 'pre_task')
       .limit(MAX_ROWS + 1);
-    if (branchResolved !== null) q = q.eq('employees.branch', branchResolved);
+    if (branchEmpIds !== null) q = q.in('worker_id', branchEmpIds);
 
     const { data, error } = await q;
     if (error) return { ok: false, error: 'query_failed', message: `safety_check: ${error.message}` };
 
     const rows = data ?? [];
     if (rows.length > MAX_ROWS) truncated = true;
-    results.safety_check = rows.slice(0, MAX_ROWS).map((r) => {
+    const sliced = rows.slice(0, MAX_ROWS);
+
+    // worker_id 집합 → name/branch 매핑
+    // deno-lint-ignore no-explicit-any
+    const workerIds = sliced.map((r) => (r as any).worker_id).filter((x): x is string => typeof x === 'string');
+    const workerMap = await fetchEmployeeMap(workerIds, client);
+
+    results.safety_check = sliced.map((r) => {
       // deno-lint-ignore no-explicit-any
       const rr = r as any;
+      const emp = workerMap.get(rr.worker_id);
       return {
         id: rr.id,
-        worker_name: rr.employees?.name,
-        branch: rr.employees?.branch,
+        worker_name: emp?.name ?? null,
+        branch: emp?.branch ?? null,
         check_type: rr.check_type,
         date: rr.date,
       };
