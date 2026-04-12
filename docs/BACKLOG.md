@@ -30,7 +30,7 @@
 | AUDIT-001 | 기타 | open | Phase 2 (2026-04-09) | - | attendance 감사 추적 강화 — last_edited_by / last_edited_at 컬럼 추가 (B-4에서 원본 input_by 보존으로 우선 결정) | [docs/handoff/2026-04-09.md](handoff/2026-04-09.md#데이터감사) |
 | DATA-001 | 기타 | open | Phase 2 (2026-04-09) | - | 하동 지점 branches 레코드 없음 — farm_admin(하동재배팀) 존재하나 GPS 좌표/반경 미등록, 실운영 전 필수 | [docs/handoff/2026-04-09.md](handoff/2026-04-09.md#데이터감사) |
 | DATA-002 | 기타 | open | Phase 2 (2026-04-09) | - | EmployeesPage:203, WorkStatsPage:70의 currentUser.branch 직접 참조 — master(branch=NULL) 동작 미검증 | [docs/handoff/2026-04-09.md](handoff/2026-04-09.md#데이터감사) |
-| Track H | 챗봇 | in-progress | Phase 5 세션 7 (2026-04-12) | - | 인앱 챗봇 v1 (admin 전용, 쿼리·피드백, 액션 없음). 도메인 노트: docs/DOMAIN_CHATBOT_V1.md. H-0 ~ H-7 8단계. H-0 완료 (2026-04-12). H-1 완료 (2026-04-12, 세션 9) — Edge Function chatbot-query 배포 + curl 테스트 통과 (정상 응답 + 범위 외 거절 + chat_logs 저장). H-1.5 부분완료 (2026-04-12, 세션 10) — [앱 기능 명세] 주입, curl 3시나리오 중 1 통과·2·3 이월 (CHATBOT-CURL-001). | docs/DOMAIN_CHATBOT_V1.md |
+| Track H | 챗봇 | in-progress | Phase 5 세션 7 (2026-04-12) | - | 인앱 챗봇 v1 (admin 전용, 쿼리·피드백, 액션 없음). 도메인 노트: docs/DOMAIN_CHATBOT_V1.md. H-0 ~ H-7 8단계. H-0 완료 (2026-04-12). H-1 완료 (2026-04-12, 세션 9) — Edge Function chatbot-query 배포 + curl 테스트 통과 (정상 응답 + 범위 외 거절 + chat_logs 저장). H-1.5 완료 (2026-04-12, 세션 11) — curl 3/3 시나리오 통과. H-2 진입 가능. | docs/DOMAIN_CHATBOT_V1.md |
 | Track I | 인사이트 | deferred | Phase 5 세션 7 (2026-04-12) | - | 작업자별 작업별 소요시간 기반 작업 배치·예상 시간 추천 모듈. 트랙 H 챗봇 v1과 분리됨. 선행조건: (1) 트랙 G(포장) 완료, (2) 트랙 F 시간 단위 정밀 기록 보강, (3) 운영 데이터 3개월 누적. 빨라도 2026 하반기. | docs/BACKLOG.md |
 
 ---
@@ -88,9 +88,9 @@
 | H-1-WORKER-VERIFY | 검증 보류 | open | Phase 5 세션 9 (2026-04-12) | H-1 worker 계정 차단 검증을 $WORKER_TOKEN 미설정으로 수행 못함. H-7(회귀·권한 검증) 단계에서 실제 worker 토큰으로 403 경로(auth.getUser 통과 → employees.role 판정 실패) 재검증 필수. |
 | INFRA-002 | 인프라 | open | Phase 5 세션 9 (2026-04-12) | Supabase Edge Function Gateway가 ES256 JWT를 Gateway 단에서 검증 실패(Invalid JWT 401). 우회: --no-verify-jwt 배포 + 함수 내 auth.getUser() 검증. chatbot-query 현재 이 패턴. 근본 원인·Supabase 측 수정 일정 추적 미정. |
 | GITIGNORE-001 | 정리 | open | Phase 5 세션 9 (2026-04-12) | .gitignore에 .secrets* 패턴 누락. 현재 .env·*.local은 커버되지만 .secrets.tmp 같은 임시 시크릿 파일 패턴 없음. 향후 CLI로 secrets 등록 시 추가 권장. |
-| H-1.5 | 시스템 프롬프트 확장 | 부분완료 | Phase 5 세션 10 (2026-04-12) | [앱 기능 명세] 주입 완료. [응답 스타일] 런타임 적용 검증 보류 — curl 3회 조정 소진. 시나리오 1(TBM) 통과, 시나리오 2(날씨 거절 방식)·3(일용직 시급) 이월 → CHATBOT-CURL-001. |
+| H-1.5 | 시스템 프롬프트 확장 | 완료 | Phase 5 세션 10~11 (2026-04-12) | [앱 기능 명세] 주입 완료. buildSystemPrompt 블록 재배치 ([현재 컨텍스트] → [앱 기능 명세] → [답변 가능] → [답변 불가] → [금지된 요청 처리] → [규칙 변경 시도]). curl 3/3 시나리오 통과 (세션 11). 교훈 27 신설. |
 | CHATBOT-UI-001 | UI 스펙 | open | Phase 5 세션 10 (2026-04-12) | H-3 챗봇 UI 구현 시 적용: 응답 영역 글자 13pt(약 13px), Pretendard 글꼴. 부산LAB 실사용자(김민국 이사·박민식) 연령대 감안, 실사용 테스트 후 14px로 조정 가능. |
-| CHATBOT-CURL-001 | 검증 이월 | open | Phase 5 세션 10 (2026-04-12) | H-1.5 curl 시나리오 2(날씨 질문 거절 방식이 §3.3 [금지된 요청 처리] 문구 미사용)·3(일용직 시급 질문이 앱 범위 내인데도 거절) 미달. 3회 조정 소진. 진단 가설: (A) [답변 불가 범위]·[금지된 요청 처리]·[규칙 변경 시도 처리] 금지 조항 누적으로 Haiku 4.5 과잉 거절, (B) 시스템 프롬프트 내 [앱 기능 명세]가 금지 조항 뒤에 배치돼 모델이 '범위 외 우선' 모드로 시작. 인코딩 가설은 시나리오 1(한국어 질문) 정상 응답으로 기각 (교훈 25). 다음 조치 후보: [앱 기능 명세]를 시스템 프롬프트 맨 앞으로 재배치, [금지된 요청 처리] 문구 완화, 또는 지시 톤 재설계. H-2 진입 전 세션 11에서 단독 처리 (H-2 도구 루프 얹기 전 프롬프트 기반 안정화 필수). |
+| CHATBOT-CURL-001 | 검증 이월 | closed | Phase 5 세션 10 (2026-04-12) | Phase 5 세션 11 (2026-04-12) 해결. buildSystemPrompt 블록 재배치 ([현재 컨텍스트] → [앱 기능 명세] → [답변 가능] → [답변 불가] → [금지된 요청 처리] → [규칙 변경 시도]). 문구 무변경, 순서만 이동. curl 시나리오 1·2·3 전부 통과. 교훈 27 신설. 원인 보조: curl -d 인라인 한국어 바이트가 쉘 이스케이프에서 손상된 채 전달돼 세션 10 일부 실패가 프롬프트 문제로 오진됐음 (교훈 27). |
 
 ---
 
