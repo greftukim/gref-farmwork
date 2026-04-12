@@ -32,18 +32,18 @@
 | 컬럼 | 타입 | 비고 |
 |---|---|---|
 | id | uuid PK | |
-| date | date NOT NULL | 근무 일자 |
+| work_date | date NOT NULL | 근무 일자. 원안 `date`에서 변경 — PostgreSQL 예약어 충돌 회피 |
 | branch | text NOT NULL | 농장 코드 (busan/jinju/hadong 등) |
 | worker_name | text NOT NULL | 작업자 이름 |
 | worker_phone | text nullable | 일별 지급 시 계좌이체용 (선택) |
 | start_time | time NOT NULL | 협의 출근 시각 |
-| end_time | time NOT NULL | 협의 퇴근 시각 |
-| break_minutes | int NOT NULL default 0 | 휴게시간(분), 행마다 입력 |
-| work_minutes | int NOT NULL | 자동 계산: (end - start) - break |
+| end_time | time NOT NULL | 협의 퇴근 시각. CHECK: end_time > start_time |
+| break_minutes | int nullable | 휴게시간(분), 행마다 입력. NULL = 미기록 **[TEMP-DECISION-2]** 원안: int NOT NULL default 0 |
+| work_minutes | int NOT NULL | 자동 계산 (GENERATED): (end - start)분 - COALESCE(break, 0) |
 | hourly_wage | int NOT NULL | 시급(원), 등록 시 입력. 기본값 없음 |
-| daily_wage | int NOT NULL | 자동 계산: hourly_wage × (work_minutes / 60) |
+| daily_wage | int NOT NULL | 자동 계산 (GENERATED): ROUND(hourly_wage × work_minutes / 60) **[TEMP-DECISION-4]** 반올림 정책 미확인 |
 | work_description | text nullable | "포장 보조", "수확" 등 |
-| payment_status | text NOT NULL default 'unpaid' | enum: unpaid / paid_daily / paid_monthly |
+| payment_status | payment_status enum NOT NULL default 'pending' | 2단계: pending / paid **[TEMP-DECISION-1]** 원안: text 'unpaid'/paid_daily/paid_monthly |
 | paid_at | date nullable | 지급일 |
 | created_at | timestamptz NOT NULL default now() | |
 | updated_at | timestamptz NOT NULL default now() | |
@@ -162,7 +162,7 @@
 - [ ] 부산LAB이 지금 수기 장부에서 휴게시간을 어떻게 처리하는지 (실제 값 확인)
 - [ ] 일별 지급(현금/계좌이체) 비율과 월말 정산 비율 (UI 우선순위 결정용)
 - [ ] payment_status enum이 충분한지 (혹시 "보류"나 "조정 중" 같은 상태가 필요한지)
-- [ ] 진주·하동에도 일용직 운영이 있는지, 부산LAB과 운영 방식이 같은지
+- [ ] 진주·하동에도 일용직 운영이 있는지, 부산LAB과 운영 방식이 같은지 → **[TEMP-DECISION-3]** F-0 마이그레이션 RLS branch CHECK는 3개 지점 모두 허용으로 임시 적용. 답 수신 시 마이그레이션 RLS의 branch IN 절만 수정.
 
 ## 9. 트랙 F 작업 단계 초안 (확정 아님)
 

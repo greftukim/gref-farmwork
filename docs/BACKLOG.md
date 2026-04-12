@@ -58,6 +58,18 @@
 
 ---
 
+## 트랙 F — 일용직/시급제 임금 장부
+
+| ID | 분류 | 상태 | 등록 | 비고 |
+|---|---|---|---|---|
+| F-0 | 마이그레이션 | resolved | Phase 5 세션 6 (2026-04-12) | daily_work_logs 테이블 + RLS 2정책 + GENERATED 2컬럼 + 인덱스 2개. 검증 9/9 통과 (work_minutes=480, daily_wage=80000) |
+| TEMP-DECISION-1 | 도메인 미확정 | open | Phase 5 세션 6 (2026-04-12) | payment_status enum 임시 2단계(pending/paid). 박민식·김민국 답 수신 시 ALTER TYPE 확장. 위치: 마이그레이션 + 도메인 노트 |
+| TEMP-DECISION-2 | 도메인 미확정 | open | Phase 5 세션 6 (2026-04-12) | break_minutes nullable 임시. 답 수신 시 NOT NULL DEFAULT 0 전환. 위치: 마이그레이션 + 도메인 노트 |
+| TEMP-DECISION-3 | 도메인 미확정 | open | Phase 5 세션 6 (2026-04-12) | branch CHECK 3개 지점 모두 허용 임시. 진주·하동 운영 여부 미확인. 위치: 마이그레이션. 도메인 노트 §8 추적 |
+| TEMP-DECISION-4 | 도메인 미확정 | open | Phase 5 세션 6 (2026-04-12) | daily_wage 반올림 정책 ROUND() 임시. 답 수신 시 GENERATED 식만 교체. 위치: 마이그레이션 + 도메인 노트 |
+
+---
+
 ## ID 미부여 항목 (2026-04-08 핸드오버)
 
 아래 항목들은 2026-04-08.md의 "기타 백로그" 섹션에 서술됐으나 공식 ID가 부여되지
