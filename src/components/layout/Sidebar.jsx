@@ -53,6 +53,7 @@ const farmCategorizedMenu = [
     label: '인사 관리',
     items: [
       { label: '직원 관리', to: '/admin/employees', icon: ICONS.employees },
+      { label: '일용직/시급제', to: '/admin/daily-work-logs', icon: ICONS.employees },
     ],
   },
   {
@@ -86,7 +87,7 @@ const mgmtCategorizedMenu = [
     label: '인사 관리',
     items: [
       { label: '정직원', to: '/admin/employees', icon: ICONS.employees },
-      { label: '일용직/시급제', to: '/admin/temporary-workers', icon: ICONS.employees },
+      { label: '일용직/시급제', to: '/admin/daily-work-logs', icon: ICONS.employees },
     ],
   },
   {
@@ -144,7 +145,7 @@ const masterCategorizedMenu = [
     label: '인사 관리',
     items: [
       { label: '정직원', to: '/admin/employees', icon: ICONS.employees },
-      { label: '일용직/시급제', to: '/admin/temporary-workers', icon: ICONS.employees },
+      { label: '일용직/시급제', to: '/admin/daily-work-logs', icon: ICONS.employees },
     ],
   },
   {
