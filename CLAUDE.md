@@ -97,6 +97,7 @@ src/
 3. RLS 정책은 역할 × CRUD 매트릭스로 검증, UPDATE는 .select() 검증 코드 필수
 4. 마이그레이션 SQL은 BEGIN/COMMIT + 검증 DO 블록 + 롤백 주석 포함
 5. 시드 데이터는 UUID 하드코딩 금지, DO 블록 + 서브쿼리 변수화
+6. Edge Function 배포 시 --no-verify-jwt 플래그 필수 + 함수 내 auth.getUser() 검증 (교훈 24 참조)
 
 ## 최근 커밋 (Phase 5 세션 6)
 489f635 IOS-001: iOS PWA 설치 가이드 + 인앱 브라우저 감지

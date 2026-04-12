@@ -30,7 +30,7 @@
 | AUDIT-001 | 기타 | open | Phase 2 (2026-04-09) | - | attendance 감사 추적 강화 — last_edited_by / last_edited_at 컬럼 추가 (B-4에서 원본 input_by 보존으로 우선 결정) | [docs/handoff/2026-04-09.md](handoff/2026-04-09.md#데이터감사) |
 | DATA-001 | 기타 | open | Phase 2 (2026-04-09) | - | 하동 지점 branches 레코드 없음 — farm_admin(하동재배팀) 존재하나 GPS 좌표/반경 미등록, 실운영 전 필수 | [docs/handoff/2026-04-09.md](handoff/2026-04-09.md#데이터감사) |
 | DATA-002 | 기타 | open | Phase 2 (2026-04-09) | - | EmployeesPage:203, WorkStatsPage:70의 currentUser.branch 직접 참조 — master(branch=NULL) 동작 미검증 | [docs/handoff/2026-04-09.md](handoff/2026-04-09.md#데이터감사) |
-| Track H | 챗봇 | in-progress | Phase 5 세션 7 (2026-04-12) | - | 인앱 챗봇 v1 (admin 전용, 쿼리·피드백, 액션 없음). 도메인 노트: docs/DOMAIN_CHATBOT_V1.md. H-0 ~ H-7 8단계. H-0 완료 (2026-04-12). H-1 완료 (2026-04-12, 세션 9) — Edge Function chatbot-query 배포 + curl 테스트 통과 (정상 응답 + 범위 외 거절 + chat_logs 저장). | docs/DOMAIN_CHATBOT_V1.md |
+| Track H | 챗봇 | in-progress | Phase 5 세션 7 (2026-04-12) | - | 인앱 챗봇 v1 (admin 전용, 쿼리·피드백, 액션 없음). 도메인 노트: docs/DOMAIN_CHATBOT_V1.md. H-0 ~ H-7 8단계. H-0 완료 (2026-04-12). H-1 완료 (2026-04-12, 세션 9) — Edge Function chatbot-query 배포 + curl 테스트 통과 (정상 응답 + 범위 외 거절 + chat_logs 저장). H-1.5 부분완료 (2026-04-12, 세션 10) — [앱 기능 명세] 주입, curl 3시나리오 중 1 통과·2·3 이월 (CHATBOT-CURL-001). | docs/DOMAIN_CHATBOT_V1.md |
 | Track I | 인사이트 | deferred | Phase 5 세션 7 (2026-04-12) | - | 작업자별 작업별 소요시간 기반 작업 배치·예상 시간 추천 모듈. 트랙 H 챗봇 v1과 분리됨. 선행조건: (1) 트랙 G(포장) 완료, (2) 트랙 F 시간 단위 정밀 기록 보강, (3) 운영 데이터 3개월 누적. 빨라도 2026 하반기. | docs/BACKLOG.md |
 
 ---
@@ -88,6 +88,9 @@
 | H-1-WORKER-VERIFY | 검증 보류 | open | Phase 5 세션 9 (2026-04-12) | H-1 worker 계정 차단 검증을 $WORKER_TOKEN 미설정으로 수행 못함. H-7(회귀·권한 검증) 단계에서 실제 worker 토큰으로 403 경로(auth.getUser 통과 → employees.role 판정 실패) 재검증 필수. |
 | INFRA-002 | 인프라 | open | Phase 5 세션 9 (2026-04-12) | Supabase Edge Function Gateway가 ES256 JWT를 Gateway 단에서 검증 실패(Invalid JWT 401). 우회: --no-verify-jwt 배포 + 함수 내 auth.getUser() 검증. chatbot-query 현재 이 패턴. 근본 원인·Supabase 측 수정 일정 추적 미정. |
 | GITIGNORE-001 | 정리 | open | Phase 5 세션 9 (2026-04-12) | .gitignore에 .secrets* 패턴 누락. 현재 .env·*.local은 커버되지만 .secrets.tmp 같은 임시 시크릿 파일 패턴 없음. 향후 CLI로 secrets 등록 시 추가 권장. |
+| H-1.5 | 시스템 프롬프트 확장 | 부분완료 | Phase 5 세션 10 (2026-04-12) | [앱 기능 명세] 주입 완료. [응답 스타일] 런타임 적용 검증 보류 — curl 3회 조정 소진. 시나리오 1(TBM) 통과, 시나리오 2(날씨 거절 방식)·3(일용직 시급) 이월 → CHATBOT-CURL-001. |
+| CHATBOT-UI-001 | UI 스펙 | open | Phase 5 세션 10 (2026-04-12) | H-3 챗봇 UI 구현 시 적용: 응답 영역 글자 13pt(약 13px), Pretendard 글꼴. 부산LAB 실사용자(김민국 이사·박민식) 연령대 감안, 실사용 테스트 후 14px로 조정 가능. |
+| CHATBOT-CURL-001 | 검증 이월 | open | Phase 5 세션 10 (2026-04-12) | H-1.5 curl 시나리오 2(날씨→거절 방식 부정확)·3(일용직 시급→거절) 미달. 3회 조정 소진. Windows Git Bash 순수 한국어 인코딩 또는 Haiku 4.5 모델 특성 가능성. H-3(UI) 통합 후 브라우저 실검증으로 재확인. |
 
 ---
 
