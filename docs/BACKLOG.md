@@ -30,6 +30,8 @@
 | AUDIT-001 | 기타 | open | Phase 2 (2026-04-09) | - | attendance 감사 추적 강화 — last_edited_by / last_edited_at 컬럼 추가 (B-4에서 원본 input_by 보존으로 우선 결정) | [docs/handoff/2026-04-09.md](handoff/2026-04-09.md#데이터감사) |
 | DATA-001 | 기타 | open | Phase 2 (2026-04-09) | - | 하동 지점 branches 레코드 없음 — farm_admin(하동재배팀) 존재하나 GPS 좌표/반경 미등록, 실운영 전 필수 | [docs/handoff/2026-04-09.md](handoff/2026-04-09.md#데이터감사) |
 | DATA-002 | 기타 | open | Phase 2 (2026-04-09) | - | EmployeesPage:203, WorkStatsPage:70의 currentUser.branch 직접 참조 — master(branch=NULL) 동작 미검증 | [docs/handoff/2026-04-09.md](handoff/2026-04-09.md#데이터감사) |
+| Track H | 챗봇 | open | Phase 5 세션 7 (2026-04-12) | - | 인앱 챗봇 v1 (admin 전용, 쿼리·피드백, 액션 없음). 도메인 노트: docs/DOMAIN_CHATBOT_V1.md. H-0 ~ H-7 8단계. | docs/DOMAIN_CHATBOT_V1.md |
+| Track I | 인사이트 | deferred | Phase 5 세션 7 (2026-04-12) | - | 작업자별 작업별 소요시간 기반 작업 배치·예상 시간 추천 모듈. 트랙 H 챗봇 v1과 분리됨. 선행조건: (1) 트랙 G(포장) 완료, (2) 트랙 F 시간 단위 정밀 기록 보강, (3) 운영 데이터 3개월 누적. 빨라도 2026 하반기. | docs/BACKLOG.md |
 
 ---
 
@@ -72,6 +74,17 @@
 | TEMP-DECISION-2 | 도메인 미확정 | open | Phase 5 세션 6 (2026-04-12) | break_minutes nullable 임시. 답 수신 시 NOT NULL DEFAULT 0 전환. 위치: 마이그레이션 + 도메인 노트 |
 | TEMP-DECISION-3 | 도메인 미확정 | open | Phase 5 세션 6 (2026-04-12) | branch CHECK 3개 지점 모두 허용 임시. 진주·하동 운영 여부 미확인. 위치: 마이그레이션. 도메인 노트 §8 추적 |
 | TEMP-DECISION-4 | 도메인 미확정 | open | Phase 5 세션 6 (2026-04-12) | daily_wage 반올림 정책 ROUND() 임시. 답 수신 시 GENERATED 식만 교체. 위치: 마이그레이션 + 도메인 노트 |
+
+---
+
+## 트랙 H — 인앱 챗봇 v1
+
+| ID | 분류 | 상태 | 등록 | 비고 |
+|---|---|---|---|---|
+| TEMP-DECISION-5 | 도메인 미확정 | open | Phase 5 세션 7 (2026-04-12) | 피드백(`d` 용도) 저장 위치: chat_logs 통합 vs 별도 feedback 테이블. 임시: chat_logs 통합 (tools_used에 'submit_feedback' 마킹). 위치: 도메인 노트 §8 |
+| TEMP-DECISION-6 | 도메인 미확정 | open | Phase 5 세션 7 (2026-04-12) | 일 100회 캡 도달 시 사용자 안내 문구. 임시: "오늘 챗봇 사용 한도(100회)에 도달했습니다. 내일 다시 이용해 주세요." 박민식 톤앤매너 검토 후 확정. |
+| TEMP-DECISION-7 | 도메인 미확정 | open | Phase 5 세션 7 (2026-04-12) | 챗 위젯 미노출 admin 페이지. 임시: 로그인·PWA 설치 가이드 페이지만 제외. |
+| TEMP-DECISION-8 | 도메인 미확정 | open | Phase 5 세션 7 (2026-04-12) | 트랙 I 진입 시 챗봇 v1과 통합 UI vs 별도 메뉴. 트랙 I 진입 시점에 결정. |
 
 ---
 
