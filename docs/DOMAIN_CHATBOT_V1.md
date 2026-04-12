@@ -184,7 +184,7 @@ v1 챗봇 제약:
 | `get_user_list` | 사용자 목록·역할 조회 | `employees` | farm_admin+ |
 | `submit_feedback` | 관리자 피드백 저장 (버그/기능 제안/일반 의견) | `chatbot_feedback` | admin 3종 (farm_admin·hr_admin·master) |
 
-**v1 제외 (H-2.5로 분리):** `submit_feedback` — 기반 테이블(`feedback` 또는 유사) 미존재. H-2.5 단계에서 마이그레이션과 함께 추가.
+**H-2.5 통합 완료 (2026-04-13, 세션 13):** `submit_feedback` — `chatbot_feedback` 테이블 신설(마이그레이션 20260412135309) + RLS 정책 3종 + executeTool context 주입 규약 적용. §3.4.2 도구 6 참조.
 
 **v2 예약 (트랙 H v2):** 모든 쓰기 도구 (`create_*`, `update_*`, `delete_*`, `approve_*`)
 
@@ -579,7 +579,7 @@ executeTool 시그니처 확장은 단위 4에서 반영. 공통 규약 §3.4.3 
 | **H-0** | 마이그레이션: chat_logs 테이블 + RLS (worker/team_leader 차단 포함) |
 | **H-1** | Edge Function chatbot-query 골격 (LLM 호출 + 시스템 프롬프트 + admin 권한 검증, 도구 없음) |
 | **H-2** | 도구 5종(조회 전용) 정의 + 사용자 JWT 기반 RLS 위임 호출 + Anthropic tool_use 루프 통합 |
-| **H-2.5** | `submit_feedback` 도구 + `chatbot_feedback` 테이블 마이그레이션 + RLS 정책 + index.ts user turn INSERT 선행 분리 리팩토링(독립 커밋). 경로: (B) 별도 테이블 확정. 작업 단위 6개 (단위 1~6, 단위 3.5 포함). 진행 중 (세션 13) |
+| **H-2.5** | `submit_feedback` 도구 + `chatbot_feedback` 테이블 + RLS 정책 3종 + index.ts user turn INSERT 선행 분리 리팩토링. 작업 단위 6개 + fix 커밋 1건. 완료 (2026-04-13, 세션 13). 이월: BACKLOG `RLS-WORKER-ROLE-TEST-001`, `RLS-MASTER-VISIBILITY-STRONG-001`, `CURL-WORKER-SKIP-001` |
 | **H-3** | AdminLayout 챗 위젯 UI (플로팅 버튼 + 패널) — Worker layout 미통합 확인 |
 | **H-4** | 레이트 리밋 + 입력 길이 제한 + 에러 처리 |
 | **H-5** | 관리자 모니터링 페이지 (master 전용 chat_logs 조회) |
