@@ -627,3 +627,70 @@ curl --data-binary @/tmp/req.json -H "Content-Type: application/json; charset=ut
 **교훈 25와의 관계:** 교훈 25는 "인코딩 가설로 귀인 금지"를 말했지만, 그건 *파일 저장 인코딩* 층에 한정된 얘기였음. 요청 전송 경로의 쉘 이스케이프는 별개 층이며 실제로 인코딩 오염이 일어날 수 있다. 교훈 25는 "문제 해결이 안 될 때 인코딩으로 도피하지 말 것" 의미로 유지, 교훈 27은 "실제 오염 발생 경로는 식별할 것" 의미로 병존.
 
 **관련 커밋:** 세션 11 마무리 커밋
+
+---
+
+## 교훈 28 — PostgREST embed(resource!inner(...))는 FK runtime 검증 필수
+
+**배경 (2026-04-12, 세션 12 H-2 진단)**
+
+H-2 도구 `get_pending_approvals` curl 테스트에서 `query_failed` 발생. 진단 결과 `leave_requests`, `overtime_requests`, `safety_checks` 3개 테이블 모두 `employees` 참조 FK가 DB에 선언되지 않은 상태 확인 (`information_schema` 0건). 특히 `safety_checks`는 마이그레이션 파일(`20260410100000_safety_checks.sql`)에 `worker_id UUID NOT NULL REFERENCES public.employees(id) ON DELETE CASCADE` 선언이 명시되어 있었으나, 실제 DB에 제약이 반영되지 않음. 파일 선언과 runtime 상태의 괴리.
+
+**핵심**
+
+- PostgREST `!inner(...)` embed syntax는 `information_schema.table_constraints`의 FK 메타데이터를 기반으로 관계 추론. FK가 없으면 embed 실패 → `query_failed` 반환.
+- 마이그레이션 파일의 `REFERENCES` 선언 ≠ DB 실제 제약. 파일만 보고 embed 가능 판정 금지.
+- 교훈 17(정의만으로 닫지 말 것)의 직접 적용 사례.
+
+**진단 SQL (information_schema 기반)**
+
+```sql
+SELECT tc.constraint_name, kcu.column_name, ccu.table_name AS foreign_table
+FROM information_schema.table_constraints tc
+JOIN information_schema.key_column_usage kcu ON tc.constraint_name = kcu.constraint_name
+JOIN information_schema.constraint_column_usage ccu ON tc.constraint_name = ccu.constraint_name
+WHERE tc.table_name = '<테이블>' AND tc.constraint_type = 'FOREIGN KEY';
+```
+
+결과 0건이면 embed 불가 → 수동 JOIN (별도 쿼리로 id 집합 조회 후 `in()` 필터) 필요.
+
+**재사용 패턴 (tools.ts `fetchEmployeeMap` 등)**
+
+1. 본 테이블에서 외래키 컬럼(예: `employee_id`, `worker_id`)만 select
+2. 외래키 값들을 모아 참조 테이블을 `.in('id', [...])` 로 일괄 조회
+3. `Map<id, row>` 로 메모리 조합
+
+**후속 액션 (차기 세션 이월)**
+
+DB FK 제약 정상화 마이그레이션: `leave_requests.employee_id`, `overtime_requests.employee_id`, `safety_checks.worker_id`/`approved_by` FK 추가. 데이터 무결성 차원에서도 필요.
+
+**관련 커밋:** 세션 12 8294d3b
+
+---
+
+## 교훈 29 — LLM 시스템 프롬프트에 현재 날짜 미주입 시 상대 날짜 해석 오류
+
+**배경 (2026-04-12, 세션 12 H-2 curl)**
+
+시나리오 "지난 일주일 부산LAB 일용직" 질의에 LLM이 `date_from=2024-12-16`, `date_to=2024-12-22`로 도구 호출. 또는 "구체 날짜를 알려주세요"로 되묻기.
+
+**원인**
+
+`buildSystemPrompt` `[현재 사용자 컨텍스트]` 블록에 현재 날짜 부재. LLM은 기준점 없으면 사전학습 시점(2024년 말 근처) 기준으로 상대 날짜 계산.
+
+**해결**
+
+- `index.ts`: `new Date().toISOString().slice(0, 10)`로 UTC YYYY-MM-DD 생성 후 프롬프트 주입
+- 도메인 노트 §3.3 원문에도 `- 오늘 날짜: {TODAY}` 플레이스홀더 추가하여 코드 1:1 정합
+
+**재발 방지 체크리스트 (LLM 호출 신규 추가 시)**
+
+- [ ] 상대 시간·날짜 해석이 필요한 도구(`date_from`/`date_to`, 기간 필터 등)가 있는가?
+- [ ] 있다면 시스템 프롬프트에 현재 날짜(KST 또는 UTC)를 명시했는가?
+- [ ] 도메인 노트 원문과 코드의 플레이스홀더 일치 여부 확인했는가?
+
+**주의**
+
+`new Date()`는 Edge Function 실행 서버의 UTC. KST(+9h)와 최대 9시간 차이. 자정 직후 호출 시 하루 어긋날 수 있으나 상대 날짜 해석 용도상 허용 오차. 정밀한 날짜가 필요한 경우(일별 정산 등) KST 변환 후 전달 고려.
+
+**관련 커밋:** 세션 12 f060189
