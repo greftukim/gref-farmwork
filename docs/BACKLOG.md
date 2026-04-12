@@ -19,6 +19,7 @@
 | RLS-DEBT-021 | RLS | open | Phase 5 세션 3 (2026-04-11) | - | safety_checks anon SELECT의 worker 단위 격리 — device_token claim 기반 RLS 재설계 필요. RLS-DEBT-019의 근본 해소 항목. 트랙 F 후보. | docs/BACKLOG.md |
 | E-6.5 | 검증 | resolved | Phase 5 세션 5·6 (2026-04-12) | - | TBM 반장 알림 FCM 실기기 검증 6/6 통과. 시크릿 손상(FIREBASE_SERVICE_ACCOUNT) 사고 추적 및 복구. 교훈 23 박제. | docs/BACKLOG.md |
 | UX-009 | UX | open | Phase 5 세션 3 (2026-04-11) | - | 알림 권한 denied 상태에서 사용자가 권한 재요청할 수 있는 UI 없음. 시크릿창/처음 사용자에게 권한 안내 + 재시도 버튼 필요. 트랙 F 후보. | docs/BACKLOG.md |
+| IOS-001 | UX | open | Phase 5 세션 6 (2026-04-12) | - | iOS PWA 설치 가이드 + 인앱 브라우저(카카오톡/네이버) 감지 → Safari 안내. iOS는 홈 화면 추가 후에만 푸시 수신. 트랙 F 마감 후 처리 권고. UX-009와 통합 검토. | docs/BACKLOG.md |
 | RLS-DEBT-020 | RLS | resolved | Phase 5 세션 1 (2026-04-11) | - | fcm_tokens INSERT 정책 — Phase 5 세션 3 MCP 실측 결과 anon/authenticated INSERT 정책 이미 존재 확인. BACKLOG 기록 시점과 실제 DB 불일치였음. | [docs/HANDOVER_PHASE5_SESSION1.md](HANDOVER_PHASE5_SESSION1.md#신규-백로그-3건) |
 | POSTGREST-001 | POSTGREST | resolved | Phase 5 세션 1 (2026-04-11) | - | Phase 5 세션 3 전수 검토: embed 패턴 5곳 모두 FK 제약명 명시 확인, 수정 0건. 상세: [docs/audits/POSTGREST-001_audit.md](audits/POSTGREST-001_audit.md) | [docs/HANDOVER_PHASE5_SESSION1.md](HANDOVER_PHASE5_SESSION1.md#신규-백로그-3건) |
 | BUG-005 | BUG | resolved | Phase 5 세션 1 (2026-04-11) | - | loginWithDeviceToken select 목록에 is_team_leader 누락 — 반장 권한 판정 불가 | [docs/HANDOVER_PHASE5_SESSION1.md](HANDOVER_PHASE5_SESSION1.md#해결됨-) |
@@ -29,6 +30,31 @@
 | AUDIT-001 | 기타 | open | Phase 2 (2026-04-09) | - | attendance 감사 추적 강화 — last_edited_by / last_edited_at 컬럼 추가 (B-4에서 원본 input_by 보존으로 우선 결정) | [docs/handoff/2026-04-09.md](handoff/2026-04-09.md#데이터감사) |
 | DATA-001 | 기타 | open | Phase 2 (2026-04-09) | - | 하동 지점 branches 레코드 없음 — farm_admin(하동재배팀) 존재하나 GPS 좌표/반경 미등록, 실운영 전 필수 | [docs/handoff/2026-04-09.md](handoff/2026-04-09.md#데이터감사) |
 | DATA-002 | 기타 | open | Phase 2 (2026-04-09) | - | EmployeesPage:203, WorkStatsPage:70의 currentUser.branch 직접 참조 — master(branch=NULL) 동작 미검증 | [docs/handoff/2026-04-09.md](handoff/2026-04-09.md#데이터감사) |
+
+---
+
+### IOS-001 (open) — iOS PWA 설치 가이드 + 인앱 브라우저 감지
+
+**배경**: 트랙 E 14/14 마감 시점에 발견. iOS는 안드로이드와 푸시알림 동작 방식이 근본적으로 다름.
+
+**제약사항**:
+- iOS는 PWA(홈 화면에 추가) 설치 시에만 푸시 알림 수신 가능
+- "홈 화면에 추가"는 Safari로 접속한 경우에만 정상 동작
+- iOS Chrome / 카카오톡 인앱 브라우저 / 네이버 인앱 브라우저는 PWA 설치 불가
+- iOS 16.4 미만은 웹 푸시 자체 불가
+- iOS는 알림 권한 자동 요청 불가, 사용자가 직접 버튼 눌러야 함
+
+**필요 작업**:
+- 부산LAB iOS 사용자 비율 확인 (박민식 통해)
+- User Agent 기반 iOS / Safari / 인앱 브라우저 감지 로직
+- 인앱 브라우저(카카오톡/네이버) 감지 시 "Safari로 열기" 안내 모달
+- iOS Safari 감지 시 "홈 화면에 추가" 단계별 안내
+- 안드로이드 사용자에게는 노출 안 함 (UX 분리)
+- iOS 16.4 미만 기기 식별 및 안내 정책
+
+**연관**: UX-009 (알림 권한 denied 재요청 UI)와 통합 검토
+
+**우선순위**: 트랙 F 마감 후, 트랙 G 진입 전 처리 권고. 미해결 시 iOS 사용자 1명 추가될 때마다 알림 미수신 클레임 발생 가능.
 
 ---
 
