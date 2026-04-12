@@ -1,13 +1,16 @@
-// Supabase Edge Function: chatbot-query (트랙 H-1)
-// 배포:
-//   supabase functions deploy chatbot-query --project-ref yzqdpfauadbtutkhxzeu
+// Supabase Edge Function: chatbot-query (트랙 H-2)
+// 배포 (교훈 24 — --no-verify-jwt 필수):
+//   npx supabase functions deploy chatbot-query --no-verify-jwt --project-ref yzqdpfauadbtutkhxzeu
 // 시크릿 설정:
 //   supabase secrets set ANTHROPIC_API_KEY='<키>'
 // 도메인 노트: docs/DOMAIN_CHATBOT_V1.md §3
-// H-1 범위: LLM 호출 + 시스템 프롬프트 + admin 권한 검증 + chat_logs 저장 (도구 없음)
+// H-2 범위: H-1 + 조회 도구 5종 (tools.ts) + tool_use 루프 (최대 5회)
 
 import { createClient } from 'npm:@supabase/supabase-js@2';
 import Anthropic from 'npm:@anthropic-ai/sdk';
+import { TOOL_DEFINITIONS, executeTool, type ToolResult } from './tools.ts';
+
+const MAX_TOOL_LOOP = 5;
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -183,41 +186,143 @@ Deno.serve(async (req) => {
     const branchDisplay = emp.branch ?? '전 지점';
     const systemPrompt = buildSystemPrompt(emp.id, emp.role, branchDisplay);
 
-    // 7. Anthropic 호출
+    // 7. Anthropic 호출 + tool_use 루프
     const anthropicApiKey = Deno.env.get('ANTHROPIC_API_KEY');
     if (!anthropicApiKey) throw new Error('ANTHROPIC_API_KEY 시크릿 미설정');
 
     const anthropic = new Anthropic({ apiKey: anthropicApiKey });
 
-    let llmResult: Awaited<ReturnType<typeof anthropic.messages.create>>;
-    try {
-      llmResult = await anthropic.messages.create({
-        model: 'claude-haiku-4-5-20251001',
-        max_tokens: 1024,
-        system: systemPrompt,
-        messages: messages as Array<{ role: 'user' | 'assistant'; content: string }>,
-      });
-    } catch (llmErr) {
-      console.error('[chatbot-query] LLM 호출 실패:', errMsg(llmErr));
-      return new Response(JSON.stringify({ error: `LLM 호출 실패: ${errMsg(llmErr)}` }), {
+    // 루프 내부에서 누적
+    type LoopMessage = { role: 'user' | 'assistant'; content: unknown };
+    const loopMessages: LoopMessage[] = messages.map((m) => ({
+      role: m.role as 'user' | 'assistant',
+      content: m.content,
+    }));
+
+    let inputTokens = 0;
+    let outputTokens = 0;
+    const toolsUsedLog: Array<{
+      tool_name: string;
+      input: unknown;
+      result_summary: { ok: boolean; row_count?: number; truncated?: boolean; error?: string };
+      duration_ms: number;
+    }> = [];
+
+    let assistantText = '';
+    let loopIteration = 0;
+
+    while (loopIteration < MAX_TOOL_LOOP) {
+      loopIteration += 1;
+
+      let llmResult: Awaited<ReturnType<typeof anthropic.messages.create>>;
+      try {
+        llmResult = await anthropic.messages.create({
+          model: 'claude-haiku-4-5-20251001',
+          max_tokens: 1024,
+          system: systemPrompt,
+          tools: TOOL_DEFINITIONS,
+          // deno-lint-ignore no-explicit-any
+          messages: loopMessages as any,
+        });
+      } catch (llmErr) {
+        console.error('[chatbot-query] LLM 호출 실패 (loop ' + loopIteration + '):', errMsg(llmErr));
+        return new Response(JSON.stringify({ error: `LLM 호출 실패: ${errMsg(llmErr)}` }), {
+          status: 502,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      inputTokens += llmResult.usage.input_tokens;
+      outputTokens += llmResult.usage.output_tokens;
+
+      console.log('[chatbot-query] loop', loopIteration, 'stop_reason:', llmResult.stop_reason,
+        'blocks:', llmResult.content.map((b) => b.type).join(','));
+
+      // end_turn: 최종 text 추출 후 루프 종료
+      if (llmResult.stop_reason === 'end_turn' || llmResult.stop_reason === 'stop_sequence') {
+        const textBlock = llmResult.content.find((b) => b.type === 'text');
+        if (!textBlock || textBlock.type !== 'text') {
+          console.error('[chatbot-query] end_turn이지만 text 블록 없음');
+          return new Response(JSON.stringify({ error: 'LLM 응답에 텍스트 없음' }), {
+            status: 502,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          });
+        }
+        assistantText = textBlock.text;
+        break;
+      }
+
+      // tool_use: 도구 실행 후 loopMessages에 추가하고 재호출
+      if (llmResult.stop_reason === 'tool_use') {
+        // assistant 턴(tool_use 블록 포함) 전체를 messages에 추가
+        loopMessages.push({
+          role: 'assistant',
+          content: llmResult.content,
+        });
+
+        // 모든 tool_use 블록 실행 후 tool_result를 한 개의 user 턴으로 묶어 추가
+        const toolResultBlocks: Array<{
+          type: 'tool_result';
+          tool_use_id: string;
+          content: string;
+          is_error?: boolean;
+        }> = [];
+
+        for (const block of llmResult.content) {
+          if (block.type !== 'tool_use') continue;
+
+          const t0 = Date.now();
+          // deno-lint-ignore no-explicit-any
+          const toolRes: ToolResult = await executeTool(block.name, block.input as any, supabaseUser);
+          const duration = Date.now() - t0;
+
+          toolsUsedLog.push({
+            tool_name: block.name,
+            input: block.input,
+            result_summary: toolRes.ok
+              ? { ok: true, row_count: toolRes.row_count, truncated: toolRes.truncated }
+              : { ok: false, error: toolRes.error },
+            duration_ms: duration,
+          });
+
+          toolResultBlocks.push({
+            type: 'tool_result',
+            tool_use_id: block.id,
+            content: JSON.stringify(toolRes.ok ? toolRes.result : { error: toolRes.error, message: toolRes.message }),
+            is_error: !toolRes.ok,
+          });
+        }
+
+        loopMessages.push({
+          role: 'user',
+          content: toolResultBlocks,
+        });
+
+        continue;
+      }
+
+      // 기타 stop_reason (max_tokens 등) — 현재 블록에서 text 추출 시도
+      console.warn('[chatbot-query] 예상 외 stop_reason:', llmResult.stop_reason);
+      const fallbackText = llmResult.content.find((b) => b.type === 'text');
+      if (fallbackText && fallbackText.type === 'text') {
+        assistantText = fallbackText.text;
+      } else {
+        assistantText = '(응답 생성 중 오류가 발생했습니다)';
+      }
+      break;
+    }
+
+    if (loopIteration >= MAX_TOOL_LOOP && !assistantText) {
+      console.error('[chatbot-query] tool_loop_exceeded iteration:', loopIteration);
+      return new Response(JSON.stringify({ error: 'tool_loop_exceeded' }), {
         status: 502,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
-    if (llmResult.content[0]?.type !== 'text') {
-      console.error('[chatbot-query] 예상치 못한 응답 형식:', llmResult.content[0]?.type);
-      return new Response(JSON.stringify({ error: '예상치 못한 응답 형식' }), {
-        status: 502,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
-
-    const assistantText = llmResult.content[0].text;
-    const inputTokens = llmResult.usage.input_tokens;
-    const outputTokens = llmResult.usage.output_tokens;
-
-    console.log('[chatbot-query] LLM 응답 완료 input_tokens:', inputTokens, 'output_tokens:', outputTokens);
+    console.log('[chatbot-query] LLM 응답 완료 input_tokens:', inputTokens,
+      'output_tokens:', outputTokens, 'tool_calls:', toolsUsedLog.length,
+      'loop_iterations:', loopIteration);
 
     // 8. chat_logs INSERT (service_role 클라이언트)
     const supabaseAdmin = createClient(
@@ -248,7 +353,7 @@ Deno.serve(async (req) => {
         content: assistantText,
         token_input: inputTokens,
         token_output: outputTokens,
-        tools_used: null,
+        tools_used: toolsUsedLog.length > 0 ? toolsUsedLog : null,
       },
     ]);
 
