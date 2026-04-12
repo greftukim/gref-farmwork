@@ -762,13 +762,9 @@ async function submitFeedback(
     .single();
 
   if (error) {
-    // RLS 거부 식별 — PostgreSQL code 42501 + message fallback 이중화
-    // 단위 5 curl 실증 후 정교화 예정
-    const isRlsError =
-      error.code === '42501' ||
-      (typeof error.message === 'string' &&
-        (error.message.includes('row-level security') ||
-          error.message.includes('policy')));
+    // SQL-2 시뮬레이션(세션 13, 2026-04-13)으로 PostgreSQL error.code === '42501'
+    // 정확 작동 확인. message fallback 제거. supabase-js 메이저 업그레이드 시 재검증 필요.
+    const isRlsError = error.code === '42501';
 
     if (isRlsError) {
       return {
