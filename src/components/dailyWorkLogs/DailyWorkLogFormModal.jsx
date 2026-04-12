@@ -22,6 +22,17 @@ function toTimeInput(t) {
   return String(t).slice(0, 5);
 }
 
+// HH:MM 자동 포맷팅
+// "0830" → "08:30", "8" → "8", "08" → "08", "083" → "08:3"
+const formatTimeInput = (raw) => {
+  const digits = raw.replace(/\D/g, '').slice(0, 4);
+  if (digits.length <= 2) return digits;
+  return `${digits.slice(0, 2)}:${digits.slice(2)}`;
+};
+
+// "08:30" 완성된 HH:MM 여부
+const isValidTime = (value) => /^(?:[01]\d|2[0-3]):[0-5]\d$/.test(value);
+
 // [TEMP-DECISION-4] 일당 프리뷰 반올림: ROUND (DB GENERATED와 동일)
 function calcPreview(startTime, endTime, breakMinutes, hourlyWage) {
   if (!startTime || !endTime || !hourlyWage) return null;
@@ -91,10 +102,11 @@ export default function DailyWorkLogFormModal({
   const farmAdmin = isFarmAdmin(currentUser);
 
   // 실시간 프리뷰 (JS 계산 — DB GENERATED와 동일 공식)
-  const preview = useMemo(
-    () => calcPreview(form.start_time, form.end_time, form.break_minutes, form.hourly_wage),
-    [form.start_time, form.end_time, form.break_minutes, form.hourly_wage]
-  );
+  // isValidTime 통과 시에만 계산 — 불완전 입력("08:3" 등) NaN 방지
+  const preview = useMemo(() => {
+    if (!isValidTime(form.start_time) || !isValidTime(form.end_time)) return null;
+    return calcPreview(form.start_time, form.end_time, form.break_minutes, form.hourly_wage);
+  }, [form.start_time, form.end_time, form.break_minutes, form.hourly_wage]);
 
   function set(key, val) {
     setForm((prev) => ({ ...prev, [key]: val }));
@@ -104,8 +116,10 @@ export default function DailyWorkLogFormModal({
 
   function validate() {
     if (!form.worker_name.trim()) return '작업자 이름을 입력하세요';
-    if (!form.start_time)        return '출근 시각을 입력하세요';
-    if (!form.end_time)          return '퇴근 시각을 입력하세요';
+    // 형식 체크 먼저 — 불완전 입력 상태에서 문자열 비교 방지
+    if (!isValidTime(form.start_time) || !isValidTime(form.end_time)) {
+      return '시간 형식이 올바르지 않습니다. HH:MM 형식으로 입력해주세요. 예: 08:30';
+    }
     if (form.end_time <= form.start_time) return '퇴근 시각은 출근 시각보다 늦어야 합니다';
     if (form.break_minutes !== '' && Number(form.break_minutes) < 0) return '휴게시간은 0 이상이어야 합니다';
     if (!form.hourly_wage || Number(form.hourly_wage) <= 0) return '시급을 올바르게 입력하세요';
@@ -217,26 +231,32 @@ export default function DailyWorkLogFormModal({
           />
         </div>
 
-        {/* start_time / end_time */}
+        {/* start_time / end_time — 텍스트 입력 + 자동 HH:MM 포맷팅 */}
         <div className="grid grid-cols-2 gap-3">
           <div>
             <label className={labelCls}>출근 시각 *</label>
             <input
-              type="time"
+              type="text"
+              inputMode="numeric"
               value={form.start_time}
-              onChange={(e) => set('start_time', e.target.value)}
+              onChange={(e) => set('start_time', formatTimeInput(e.target.value))}
+              placeholder="08:30"
+              maxLength={5}
+              pattern="^(?:[01]\d|2[0-3]):[0-5]\d$"
               className={inputCls}
-              required
             />
           </div>
           <div>
             <label className={labelCls}>퇴근 시각 *</label>
             <input
-              type="time"
+              type="text"
+              inputMode="numeric"
               value={form.end_time}
-              onChange={(e) => set('end_time', e.target.value)}
+              onChange={(e) => set('end_time', formatTimeInput(e.target.value))}
+              placeholder="16:30"
+              maxLength={5}
+              pattern="^(?:[01]\d|2[0-3]):[0-5]\d$"
               className={inputCls}
-              required
             />
           </div>
         </div>
@@ -271,12 +291,16 @@ export default function DailyWorkLogFormModal({
         </div>
 
         {/* 예상 근무시간·일당 프리뷰 (GENERATED 컬럼 입력 필드 없음 — 읽기 전용 표시) */}
-        {preview && (
+        {preview ? (
           <div className="bg-emerald-50 border border-emerald-100 rounded-lg px-3 py-2 text-sm text-emerald-700 flex justify-between">
             {/* [TEMP-DECISION-4] 일당 프리뷰 반올림: ROUND (DB GENERATED와 동일) */}
             <span>예상 근무: <strong>{preview.workMins}분</strong></span>
             <span>예상 일당: <strong>{formatWon(preview.dailyWage)}</strong></span>
           </div>
+        ) : (
+          <p className="text-xs text-gray-400 text-center py-1">
+            시간 입력 후 근무시간·일당이 자동 계산됩니다
+          </p>
         )}
 
         {/* work_description */}
