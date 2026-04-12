@@ -51,19 +51,17 @@ src/
 - main 브랜치 단독 작업
 - 커밋 후 즉시 push
 
-## 현재 트랙
-트랙 E (TBM 시스템 고도화) — 9/13 완료
+## 현재 상태 (2026-04-12 Phase 5 세션 6 종료)
 
-## 진행률
-✅ E-1 ~ E-5c (작업자 측 TBM 전체)
-⏳ E-6 반장 승인 플로우 ← 다음
-⏳ E-7 EmployeesPage 반장 토글
-⏳ E-8 관리자 확장 + Excel
+✅ 트랙 E (TBM 반장 승인 플로우) — 14/14 완료
+✅ 트랙 F (일용직/시급제 임금 장부) — 6/6 완료
+✅ IOS-001 (PWA 설치 가이드) — 구현 완료, iOS 실기기 검증 보류
 
-## 활성 백로그
-- RLS-DEBT-018: safety_checks_team_leader_update 정책 역할 오류 (E-6에서 수정)
-- BUG-004: snakeToCamel 중첩 객체 재귀 미처리
-- UX-010: pre_task Step 2 중도 닫기 재오픈 로직
+## 다음 세션 후보
+- 트랙 G (포장 작업) — 다음 트랙, 도메인 노트 신설부터 시작
+- TEMP-DECISION-1~4 — 박민식·김민국 답 수신 시 일괄 해소
+- FCM-001 — 반장 2명 이상 maybeSingle() 처리 로직 결정
+- UX-009 — 알림 권한 denied 재요청 UI (IOS-001과 통합 검토)
 
 ## 세션 시작 필수 절차
 1. git log -5 --oneline 으로 최근 작업 확인
@@ -98,14 +96,10 @@ src/
 4. 마이그레이션 SQL은 BEGIN/COMMIT + 검증 DO 블록 + 롤백 주석 포함
 5. 시드 데이터는 UUID 하드코딩 금지, DO 블록 + 서브쿼리 변수화
 
-## 최근 커밋 (Phase 4)
-b08f1d0 E-5c: anon update 정책 + confirmRisks 방어
-ac248ba E-5b: WorkerTasksPage 첫 작업 TBM 인터셉트
-048ade6 E-5a: SafetyCheckBottomSheet 2단계 확장
-7bd37ad E-4: WorkerHome TBM 인터셉트 제거
-ff1f39b E-3.1: cropIds 배열 지원
-3fdf9cc E-3 핫픽스
-2f8c27a E-3: safetyCheckStore 확장
-ff55104 E-2: 위험 템플릿 35건 시드
-8aee6a9 E-2.1: 부산LAB 현장 피드백 반영 (35→32건)
-e632d53 E-1: TBM v2 스키마
+## 최근 커밋 (Phase 5 세션 6)
+489f635 IOS-001: iOS PWA 설치 가이드 + 인앱 브라우저 감지
+8e5ab22 F-5: RLS 권한 회귀 검증 통과 — 트랙 F 6/6 마감
+49ba657 F-4: 월별 보기 탭 + 월별 엑셀 2시트
+c150ae6 F-3: 일별 엑셀 다운로드
+7a28d24 F-2 hotfix: 시간 입력 자동 포맷팅
+06995b2 F-2 hotfix: 시급 입력 step 1000 → 10
