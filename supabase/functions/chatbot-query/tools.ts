@@ -22,6 +22,25 @@
 import type { SupabaseClient } from 'npm:@supabase/supabase-js@2';
 
 // ----------------------------------------------------------------------------
+// ToolContext — executeTool 4번째 필수 파라미터 (H-2.5 이후)
+// ----------------------------------------------------------------------------
+/**
+ * 도구 실행 컨텍스트. H-2.5 이후 executeTool의 4번째 필수 파라미터.
+ * 도메인 노트 §3.4.3 참조.
+ *
+ * 도구 1~5(읽기)는 사용자 JWT client만으로 충족되므로 context 미사용.
+ * 도구 6(submit_feedback, 쓰기)는 chat_log_id·session_id·turn_index를
+ * chatbot_feedback 테이블에 기록하기 위해 context 소비.
+ */
+export interface ToolContext {
+  auth_user_id: string;       // auth.users.id
+  employee_id: string;        // employees.id
+  session_id: string;         // 현재 챗봇 세션 UUID
+  turn_index: number;         // 현재 user turn index
+  chat_log_id: string | null; // 현재 user turn chat_logs row id (NULL 허용)
+}
+
+// ----------------------------------------------------------------------------
 // 상수
 // ----------------------------------------------------------------------------
 const VALID_BRANCHES = ['busan', 'jinju', 'hadong'] as const;
@@ -111,6 +130,28 @@ export const TOOL_DEFINITIONS = [
       required: [],
     },
   },
+  // 도구 6: submit_feedback (H-2.5, §3.4.2)
+  {
+    name: 'submit_feedback',
+    description: '관리자가 GREF FarmWork 시스템에 대한 피드백을 저장합니다. 현재 챗봇 대화의 turn 정보가 자동으로 함께 기록됩니다.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        feedback_type: {
+          type: 'string',
+          enum: ['bug', 'feature_request', 'general'],
+          description: '피드백 종류. bug=버그 신고, feature_request=기능 제안, general=일반 의견',
+        },
+        content: {
+          type: 'string',
+          minLength: 1,
+          maxLength: 2000,
+          description: '피드백 본문. 버그 신고의 경우 재현 스텝과 기대 동작을 포함하는 것을 권장.',
+        },
+      },
+      required: ['feedback_type', 'content'],
+    },
+  },
 ];
 
 // ----------------------------------------------------------------------------
@@ -174,6 +215,7 @@ function isToolError(v: unknown): v is ToolResult & { ok: false } {
 async function getBranchTbmSummary(
   input: Record<string, unknown>,
   client: SupabaseClient,
+  _context: ToolContext, // v2 예약, 현 구현 미사용
 ): Promise<ToolResult> {
   const branchResolved = resolveBranch(input.branch);
   if (isToolError(branchResolved)) return branchResolved;
@@ -247,6 +289,7 @@ async function getBranchTbmSummary(
 async function getBranchDailyWorkSummary(
   input: Record<string, unknown>,
   client: SupabaseClient,
+  _context: ToolContext, // v2 예약, 현 구현 미사용
 ): Promise<ToolResult> {
   const branchResolved = resolveBranch(input.branch);
   if (isToolError(branchResolved)) return branchResolved;
@@ -328,6 +371,7 @@ async function getBranchDailyWorkSummary(
 async function getBranchSafetyCheckSummary(
   input: Record<string, unknown>,
   client: SupabaseClient,
+  _context: ToolContext, // v2 예약, 현 구현 미사용
 ): Promise<ToolResult> {
   const branchResolved = resolveBranch(input.branch);
   if (isToolError(branchResolved)) return branchResolved;
@@ -450,6 +494,7 @@ async function fetchEmployeeIdsByBranch(
 async function getPendingApprovals(
   input: Record<string, unknown>,
   client: SupabaseClient,
+  _context: ToolContext, // v2 예약, 현 구현 미사용
 ): Promise<ToolResult> {
   const branchResolved = resolveBranch(input.branch);
   if (isToolError(branchResolved)) return branchResolved;
@@ -613,6 +658,7 @@ async function getPendingApprovals(
 async function getUserList(
   input: Record<string, unknown>,
   client: SupabaseClient,
+  _context: ToolContext, // v2 예약, 현 구현 미사용
 ): Promise<ToolResult> {
   const branchResolved = resolveBranch(input.branch);
   if (isToolError(branchResolved)) return branchResolved;
@@ -657,12 +703,108 @@ async function getUserList(
 }
 
 // ----------------------------------------------------------------------------
+// 도구 6: submit_feedback (H-2.5, §3.4.2)
+// ----------------------------------------------------------------------------
+async function submitFeedback(
+  input: unknown,
+  client: SupabaseClient,
+  context: ToolContext,
+): Promise<ToolResult> {
+  const parsed = input as { feedback_type?: string; content?: string };
+  const feedbackType = parsed?.feedback_type;
+  const content = parsed?.content ?? '';
+
+  // 1) content 빈 문자열
+  if (typeof content !== 'string' || content.trim().length === 0) {
+    return {
+      ok: false,
+      error: 'content_empty',
+      message: '피드백 본문을 입력해주세요',
+    };
+  }
+
+  // 2) content 길이 초과
+  if (content.length > 2000) {
+    return {
+      ok: false,
+      error: 'content_too_long',
+      message: '피드백은 2000자 이하로 입력해주세요',
+    };
+  }
+
+  // 3) feedback_type enum 검증
+  const validTypes = ['bug', 'feature_request', 'general'];
+  if (typeof feedbackType !== 'string' || !validTypes.includes(feedbackType)) {
+    return {
+      ok: false,
+      error: 'invalid_feedback_type',
+      message: 'feedback_type은 bug, feature_request, general 중 하나여야 합니다',
+    };
+  }
+
+  // 4) chat_log_id 누락 시 경고 후 NULL 삽입 진행
+  if (context.chat_log_id == null) {
+    console.warn('[submitFeedback] chat_log_id missing, inserting NULL');
+  }
+
+  // 5) INSERT (사용자 JWT client — RLS 위임, §3.4.3 일관성)
+  const { data, error } = await client
+    .from('chatbot_feedback')
+    .insert({
+      employee_id: context.employee_id,
+      feedback_type: feedbackType,
+      content: content,
+      chat_log_id: context.chat_log_id,
+      session_id: context.session_id,
+      turn_index: context.turn_index,
+    })
+    .select('id, created_at')
+    .single();
+
+  if (error) {
+    // RLS 거부 식별 — PostgreSQL code 42501 + message fallback 이중화
+    // 단위 5 curl 실증 후 정교화 예정
+    const isRlsError =
+      error.code === '42501' ||
+      (typeof error.message === 'string' &&
+        (error.message.includes('row-level security') ||
+          error.message.includes('policy')));
+
+    if (isRlsError) {
+      return {
+        ok: false,
+        error: 'unauthorized_role',
+        message: '피드백 제출은 관리자 계정에서만 가능합니다',
+      };
+    }
+
+    console.error('[submitFeedback] DB INSERT 실패:', error.message, 'code:', error.code);
+    return {
+      ok: false,
+      error: 'db_error',
+      message: '피드백 저장 중 오류가 발생했습니다',
+    };
+  }
+
+  return {
+    ok: true,
+    result: {
+      feedback_id: data.id,
+      created_at: data.created_at,
+    },
+    row_count: 1,
+    truncated: false,
+  };
+}
+
+// ----------------------------------------------------------------------------
 // 디스패처
 // ----------------------------------------------------------------------------
 export async function executeTool(
   name: string,
   input: unknown,
   client: SupabaseClient,
+  context: ToolContext,
 ): Promise<ToolResult> {
   if (typeof input !== 'object' || input === null) {
     return { ok: false, error: 'invalid_input', message: 'input은 객체여야 합니다.' };
@@ -671,15 +813,17 @@ export async function executeTool(
 
   switch (name) {
     case 'get_branch_tbm_summary':
-      return await getBranchTbmSummary(inp, client);
+      return await getBranchTbmSummary(inp, client, context);
     case 'get_branch_daily_work_summary':
-      return await getBranchDailyWorkSummary(inp, client);
+      return await getBranchDailyWorkSummary(inp, client, context);
     case 'get_branch_safety_check_summary':
-      return await getBranchSafetyCheckSummary(inp, client);
+      return await getBranchSafetyCheckSummary(inp, client, context);
     case 'get_pending_approvals':
-      return await getPendingApprovals(inp, client);
+      return await getPendingApprovals(inp, client, context);
     case 'get_user_list':
-      return await getUserList(inp, client);
+      return await getUserList(inp, client, context);
+    case 'submit_feedback':
+      return await submitFeedback(inp, client, context);
     default:
       return { ok: false, error: 'unknown_tool', message: `알 수 없는 도구: ${name}` };
   }

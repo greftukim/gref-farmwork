@@ -8,7 +8,7 @@
 
 import { createClient } from 'npm:@supabase/supabase-js@2';
 import Anthropic from 'npm:@anthropic-ai/sdk';
-import { TOOL_DEFINITIONS, executeTool, type ToolResult } from './tools.ts';
+import { TOOL_DEFINITIONS, executeTool, type ToolResult, type ToolContext } from './tools.ts';
 
 const MAX_TOOL_LOOP = 5;
 
@@ -251,6 +251,15 @@ Deno.serve(async (req) => {
       console.log('[chatbot-query] chat_logs INSERT 완료 turn_index:', turn_index);
     }
 
+    // H-2.5 단위 4 — executeTool context 구성 (§3.4.3 규약)
+    const toolContext: ToolContext = {
+      auth_user_id: authUid,
+      employee_id: emp.id,
+      session_id: session_id,
+      turn_index: turn_index,
+      chat_log_id: userChatLogId,
+    };
+
     while (loopIteration < MAX_TOOL_LOOP) {
       loopIteration += 1;
 
@@ -313,7 +322,7 @@ Deno.serve(async (req) => {
 
           const t0 = Date.now();
           // deno-lint-ignore no-explicit-any
-          const toolRes: ToolResult = await executeTool(block.name, block.input as any, supabaseUser);
+          const toolRes: ToolResult = await executeTool(block.name, block.input as any, supabaseUser, toolContext);
           const duration = Date.now() - t0;
 
           toolsUsedLog.push({
