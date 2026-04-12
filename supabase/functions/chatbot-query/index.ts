@@ -22,11 +22,16 @@ function errMsg(e: unknown): string {
   return String(e);
 }
 
-// 시스템 프롬프트 (도메인 노트 §3.3 원문 — 플레이스홀더 3개만 치환)
-function buildSystemPrompt(userId: string, userRole: string, branch: string): string {
+// 시스템 프롬프트 (도메인 노트 §3.3 원문 — 플레이스홀더 4개 치환)
+// 세션 12(2026-04-12): [현재 날짜] 플레이스홀더 추가. H2-BUG-002 fix.
+//   원인 — 도구 호출 시 LLM이 상대 날짜("지난 일주일", "오늘")를 학습 시점 기준으로
+//          해석하여 엉뚱한 date_from/date_to 생성.
+//   §3.3 도메인 노트 동기화는 세션 마감 문서 커밋에서 처리.
+function buildSystemPrompt(userId: string, userRole: string, branch: string, today: string): string {
   return `당신은 GREF FarmWork 앱 전용 관리자 도우미입니다.
 
 [현재 사용자 컨텍스트]
+- 오늘 날짜: ${today}
 - 사용자 ID: ${userId}
 - 역할: ${userRole}
 - 지점: ${branch}
@@ -183,8 +188,12 @@ Deno.serve(async (req) => {
     }
 
     // 6. 시스템 프롬프트 조립 (§3.3 원문 + 치환)
+    // 오늘 날짜는 Edge Function 실행 시점의 UTC 기준 YYYY-MM-DD.
+    // KST(+9h)와 최대 9시간 차이 — 자정 직후 호출 시 하루 어긋날 수 있으나
+    // 도구 호출의 상대 날짜 해석 목적상 허용 오차 범위.
     const branchDisplay = emp.branch ?? '전 지점';
-    const systemPrompt = buildSystemPrompt(emp.id, emp.role, branchDisplay);
+    const today = new Date().toISOString().slice(0, 10);
+    const systemPrompt = buildSystemPrompt(emp.id, emp.role, branchDisplay, today);
 
     // 7. Anthropic 호출 + tool_use 루프
     const anthropicApiKey = Deno.env.get('ANTHROPIC_API_KEY');
