@@ -263,8 +263,8 @@ export default function DailyWorkLogFormModal({
             value={form.hourly_wage}
             onChange={(e) => set('hourly_wage', e.target.value)}
             placeholder="10000"
-            min="1"
-            step="1000"
+            min="10"
+            step="10"
             className={inputCls}
             required
           />
