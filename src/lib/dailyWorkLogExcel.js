@@ -99,15 +99,73 @@ export function downloadDailyExcel(logs, { branchLabel, dateLabel }) {
   XLSX.writeFile(wb, `일용직_${branchLabel}_${dateLabel}.xlsx`);
 }
 
+// ─── F-4 월별 엑셀 ────────────────────────────────────────────────────────────
+
 /**
- * F-4 월별 엑셀 placeholder
- * 구현은 F-4에서. buildDailySheet를 import해 사용.
+ * worker_name 기준 사람별 집계
+ * 도메인 노트 D-2: 사람 테이블 없음, 동명이인 식별 안 함 → worker_name으로만 group by.
+ * 동명이인은 합쳐짐 — 이는 도메인 결정사항이며 의도된 동작.
  *
- * F-4 시나리오 (참고용):
- *   const { header, rows, summaryRow } = buildDailySheet(allMonthLogs, { branchLabel, dateLabel: yearMonth });
- *   const ws1 = XLSX.utils.aoa_to_sheet([header, ...rows, summaryRow]);  // 시트 1: 행 단위 raw
- *   XLSX.utils.book_append_sheet(wb, ws1, '전체');
- *   // buildSummarySheet()로 시트2 추가 (worker_name groupby — F-4에서 구현)
- *   XLSX.writeFile(wb, `일용직임금_${branchLabel}_${yearMonth}.xlsx`);
+ * @param {Array} logs - daily_work_logs camelCase row 배열
+ * @returns {{ name, days, totalMinutes, totalWage }[]} totalWage desc 정렬
  */
-// export function downloadMonthlyExcel(...) { } // F-4에서 구현
+export function aggregateByPerson(logs) {
+  const map = new Map();
+  for (const log of (logs || [])) {
+    const key = log.workerName;
+    const existing = map.get(key) || { name: key, days: 0, totalMinutes: 0, totalWage: 0 };
+    existing.days         += 1;
+    existing.totalMinutes += log.workMinutes || 0;
+    existing.totalWage    += log.dailyWage   || 0;
+    map.set(key, existing);
+  }
+  return Array.from(map.values()).sort((a, b) => b.totalWage - a.totalWage);
+}
+
+/**
+ * 사람별 합계 시트 데이터
+ * 도메인 노트 §4.3(ii) 시트 2:
+ *   worker_name group by → 근무일수 / 총시간 / 총임금
+ * 컬럼: 이름 / 근무일수 / 총 근무시간(분) / 총 일당(원)
+ *
+ * @param {Array} logs
+ * @returns {{ header, rows, summaryRow }}
+ */
+export function buildPersonSummarySheet(logs) {
+  const header = ['이름', '근무일수', '총 근무시간(분)', '총 일당(원)'];
+
+  const people = aggregateByPerson(logs);
+  const rows = people.map((p) => [p.name, p.days, p.totalMinutes, p.totalWage]);
+
+  const totalMinutes = people.reduce((s, p) => s + p.totalMinutes, 0);
+  const totalWage    = people.reduce((s, p) => s + p.totalWage,    0);
+  const summaryRow   = ['합계', `${people.length}명`, totalMinutes, totalWage];
+
+  return { header, rows, summaryRow };
+}
+
+/**
+ * 월별 엑셀 다운로드 — 2시트 (F-4)
+ * 시트 1: 전체 raw (buildDailySheet 재사용)
+ * 시트 2: 사람별 합계 (buildPersonSummarySheet)
+ * 파일명: 일용직임금_{branchLabel}_{YYYY-MM}.xlsx  (도메인 노트 §4.3(ii))
+ *
+ * @param {Array}  logs
+ * @param {Object} options - { branchLabel, monthLabel } monthLabel: 'YYYY-MM'
+ */
+export function downloadMonthlyExcel(logs, { branchLabel, monthLabel }) {
+  const wb = XLSX.utils.book_new();
+
+  // 시트 1: 행 단위 raw (F-3 buildDailySheet 재사용)
+  const daily = buildDailySheet(logs, { branchLabel, dateLabel: monthLabel });
+  const ws1   = XLSX.utils.aoa_to_sheet([daily.header, ...daily.rows, daily.summaryRow]);
+  XLSX.utils.book_append_sheet(wb, ws1, '전체');
+
+  // 시트 2: 사람별 합계
+  const person = buildPersonSummarySheet(logs);
+  const ws2    = XLSX.utils.aoa_to_sheet([person.header, ...person.rows, person.summaryRow]);
+  XLSX.utils.book_append_sheet(wb, ws2, '사람별합계');
+
+  // 도메인 노트 §4.3(ii): 파일명 = 일용직임금_{농장}_{YYYY-MM}.xlsx
+  XLSX.writeFile(wb, `일용직임금_${branchLabel}_${monthLabel}.xlsx`);
+}
