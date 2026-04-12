@@ -63,6 +63,11 @@
 | ID | 분류 | 상태 | 등록 | 비고 |
 |---|---|---|---|---|
 | F-0 | 마이그레이션 | resolved | Phase 5 세션 6 (2026-04-12) | daily_work_logs 테이블 + RLS 2정책 + GENERATED 2컬럼 + 인덱스 2개. 검증 9/9 통과 (work_minutes=480, daily_wage=80000) |
+| F-1 | Store | resolved | Phase 5 세션 6 (2026-04-12) | dailyWorkLogStore + CRUD 액션. GENERATED 컬럼 payload 방어 |
+| F-2 | UI | resolved | Phase 5 세션 6 (2026-04-12) | 일별 보기 페이지 + 등록/수정/삭제 모달. 시간 입력 자동 포맷팅 hotfix(7a28d24), 시급 step hotfix(06995b2) 포함 |
+| F-3 | Excel | resolved | Phase 5 세션 6 (2026-04-12) | 일별 엑셀 다운로드. 도메인 노트 §4.3(i) 10컬럼 1:1 |
+| F-4 | UI+Excel | resolved | Phase 5 세션 6 (2026-04-12) | 월별 보기 탭 + 월별 엑셀 2시트(전체/사람별합계). 도메인 노트 §4.3(ii) |
+| F-5 | 검증 | resolved | Phase 5 세션 6 (2026-04-12) | RLS 권한 회귀 검증 8/8 통과. 보고서: docs/audits/F5_rls_verification.md |
 | TEMP-DECISION-1 | 도메인 미확정 | open | Phase 5 세션 6 (2026-04-12) | payment_status enum 임시 2단계(pending/paid). 박민식·김민국 답 수신 시 ALTER TYPE 확장. 위치: 마이그레이션 + 도메인 노트 |
 | TEMP-DECISION-2 | 도메인 미확정 | open | Phase 5 세션 6 (2026-04-12) | break_minutes nullable 임시. 답 수신 시 NOT NULL DEFAULT 0 전환. 위치: 마이그레이션 + 도메인 노트 |
 | TEMP-DECISION-3 | 도메인 미확정 | open | Phase 5 세션 6 (2026-04-12) | branch CHECK 3개 지점 모두 허용 임시. 진주·하동 운영 여부 미확인. 위치: 마이그레이션. 도메인 노트 §8 추적 |
