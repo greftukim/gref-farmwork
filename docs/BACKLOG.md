@@ -30,7 +30,7 @@
 | AUDIT-001 | 기타 | open | Phase 2 (2026-04-09) | - | attendance 감사 추적 강화 — last_edited_by / last_edited_at 컬럼 추가 (B-4에서 원본 input_by 보존으로 우선 결정) | [docs/handoff/2026-04-09.md](handoff/2026-04-09.md#데이터감사) |
 | DATA-001 | 기타 | open | Phase 2 (2026-04-09) | - | 하동 지점 branches 레코드 없음 — farm_admin(하동재배팀) 존재하나 GPS 좌표/반경 미등록, 실운영 전 필수 | [docs/handoff/2026-04-09.md](handoff/2026-04-09.md#데이터감사) |
 | DATA-002 | 기타 | open | Phase 2 (2026-04-09) | - | EmployeesPage:203, WorkStatsPage:70의 currentUser.branch 직접 참조 — master(branch=NULL) 동작 미검증 | [docs/handoff/2026-04-09.md](handoff/2026-04-09.md#데이터감사) |
-| Track H | 챗봇 | in-progress | Phase 5 세션 7 (2026-04-12) | - | 인앱 챗봇 v1 (admin 전용, 쿼리·피드백, 액션 없음). 도메인 노트: docs/DOMAIN_CHATBOT_V1.md. H-0 ~ H-7 8단계. H-0 완료 (2026-04-12). | docs/DOMAIN_CHATBOT_V1.md |
+| Track H | 챗봇 | in-progress | Phase 5 세션 7 (2026-04-12) | - | 인앱 챗봇 v1 (admin 전용, 쿼리·피드백, 액션 없음). 도메인 노트: docs/DOMAIN_CHATBOT_V1.md. H-0 ~ H-7 8단계. H-0 완료 (2026-04-12). H-1 완료 (2026-04-12, 세션 9) — Edge Function chatbot-query 배포 + curl 테스트 통과 (정상 응답 + 범위 외 거절 + chat_logs 저장). | docs/DOMAIN_CHATBOT_V1.md |
 | Track I | 인사이트 | deferred | Phase 5 세션 7 (2026-04-12) | - | 작업자별 작업별 소요시간 기반 작업 배치·예상 시간 추천 모듈. 트랙 H 챗봇 v1과 분리됨. 선행조건: (1) 트랙 G(포장) 완료, (2) 트랙 F 시간 단위 정밀 기록 보강, (3) 운영 데이터 3개월 누적. 빨라도 2026 하반기. | docs/BACKLOG.md |
 
 ---
@@ -85,6 +85,9 @@
 | TEMP-DECISION-6 | 도메인 미확정 | open | Phase 5 세션 7 (2026-04-12) | 일 100회 캡 도달 시 사용자 안내 문구. 임시: "오늘 챗봇 사용 한도(100회)에 도달했습니다. 내일 다시 이용해 주세요." 박민식 톤앤매너 검토 후 확정. |
 | TEMP-DECISION-7 | 도메인 미확정 | open | Phase 5 세션 7 (2026-04-12) | 챗 위젯 미노출 admin 페이지. 임시: 로그인·PWA 설치 가이드 페이지만 제외. |
 | TEMP-DECISION-8 | 도메인 미확정 | open | Phase 5 세션 7 (2026-04-12) | 트랙 I 진입 시 챗봇 v1과 통합 UI vs 별도 메뉴. 트랙 I 진입 시점에 결정. |
+| H-1-WORKER-VERIFY | 검증 보류 | open | Phase 5 세션 9 (2026-04-12) | H-1 worker 계정 차단 검증을 $WORKER_TOKEN 미설정으로 수행 못함. H-7(회귀·권한 검증) 단계에서 실제 worker 토큰으로 403 경로(auth.getUser 통과 → employees.role 판정 실패) 재검증 필수. |
+| INFRA-002 | 인프라 | open | Phase 5 세션 9 (2026-04-12) | Supabase Edge Function Gateway가 ES256 JWT를 Gateway 단에서 검증 실패(Invalid JWT 401). 우회: --no-verify-jwt 배포 + 함수 내 auth.getUser() 검증. chatbot-query 현재 이 패턴. 근본 원인·Supabase 측 수정 일정 추적 미정. |
+| GITIGNORE-001 | 정리 | open | Phase 5 세션 9 (2026-04-12) | .gitignore에 .secrets* 패턴 누락. 현재 .env·*.local은 커버되지만 .secrets.tmp 같은 임시 시크릿 파일 패턴 없음. 향후 CLI로 secrets 등록 시 추가 권장. |
 
 ---
 
