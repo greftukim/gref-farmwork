@@ -30,7 +30,7 @@
 | AUDIT-001 | 기타 | open | Phase 2 (2026-04-09) | - | attendance 감사 추적 강화 — last_edited_by / last_edited_at 컬럼 추가 (B-4에서 원본 input_by 보존으로 우선 결정) | [docs/handoff/2026-04-09.md](handoff/2026-04-09.md#데이터감사) |
 | DATA-001 | 기타 | open | Phase 2 (2026-04-09) | - | 하동 지점 branches 레코드 없음 — farm_admin(하동재배팀) 존재하나 GPS 좌표/반경 미등록, 실운영 전 필수 | [docs/handoff/2026-04-09.md](handoff/2026-04-09.md#데이터감사) |
 | DATA-002 | 기타 | open | Phase 2 (2026-04-09) | - | EmployeesPage:203, WorkStatsPage:70의 currentUser.branch 직접 참조 — master(branch=NULL) 동작 미검증 | [docs/handoff/2026-04-09.md](handoff/2026-04-09.md#데이터감사) |
-| Track H | 챗봇 | open | Phase 5 세션 7 (2026-04-12) | - | 인앱 챗봇 v1 (admin 전용, 쿼리·피드백, 액션 없음). 도메인 노트: docs/DOMAIN_CHATBOT_V1.md. H-0 ~ H-7 8단계. | docs/DOMAIN_CHATBOT_V1.md |
+| Track H | 챗봇 | in-progress | Phase 5 세션 7 (2026-04-12) | - | 인앱 챗봇 v1 (admin 전용, 쿼리·피드백, 액션 없음). 도메인 노트: docs/DOMAIN_CHATBOT_V1.md. H-0 ~ H-7 8단계. H-0 완료 (2026-04-12). | docs/DOMAIN_CHATBOT_V1.md |
 | Track I | 인사이트 | deferred | Phase 5 세션 7 (2026-04-12) | - | 작업자별 작업별 소요시간 기반 작업 배치·예상 시간 추천 모듈. 트랙 H 챗봇 v1과 분리됨. 선행조건: (1) 트랙 G(포장) 완료, (2) 트랙 F 시간 단위 정밀 기록 보강, (3) 운영 데이터 3개월 누적. 빨라도 2026 하반기. | docs/BACKLOG.md |
 
 ---
