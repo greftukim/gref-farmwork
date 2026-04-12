@@ -694,3 +694,89 @@ DB FK 제약 정상화 마이그레이션: `leave_requests.employee_id`, `overti
 `new Date()`는 Edge Function 실행 서버의 UTC. KST(+9h)와 최대 9시간 차이. 자정 직후 호출 시 하루 어긋날 수 있으나 상대 날짜 해석 용도상 허용 오차. 정밀한 날짜가 필요한 경우(일별 정산 등) KST 변환 후 전달 고려.
 
 **관련 커밋:** 세션 12 f060189
+
+---
+
+## 교훈 30 — RLS 시뮬레이션은 MCP 불가, 대시보드 SQL Editor 필수
+
+**요지**: Supabase MCP는 read-only `service_role` 연결이므로 `SET LOCAL ROLE authenticated` · `SET LOCAL request.jwt.claims` 등 identity 전환 명령을 원천 거부한다. RLS 정책의 실제 동작을 시뮬레이션하려면 반드시 Supabase 대시보드 SQL Editor에서 수동 실행해야 한다.
+
+**근거**:
+- service_role은 RLS를 우회하므로 MCP SELECT는 모든 row를 반환함 → RLS 정책 실증 불가
+- MCP는 `SET LOCAL ROLE`을 permissions error가 아닌 "by design" 거부
+- 대시보드 SQL Editor는 Supabase가 인증한 운영자 경로로 `SET LOCAL` 계열 허용
+
+**재현 사례 (세션 13, 2026-04-13)**:
+단위 5 진행 중 사용자가 "SQL 시뮬레이션도 Claude Code가 할 수 있지 않나"라고 문의. Claude Code는 MCP의 read-only service_role 제약(교훈 14)을 근거로 정확히 거부. 사용자가 인정한 후 대시보드 SQL Editor에서 6건 수동 실행 → SQL-2가 `ERROR 42501: new row violates row-level security policy` 반환 → 단위 4의 `error.code === '42501'` primary 조건 정확 작동 실증.
+
+이 재현 사례는 교훈 14("MCP는 read-only service-role")의 파생 결론("그러므로 시뮬레이션은 대시보드")이 실전에서 얼마나 쉽게 잊히는지 보여줌. 교훈 14를 알고 있어도 작업 흐름에 휩쓸리면 같은 실수 반복 가능.
+
+**실천 규약**:
+- RLS 정책 검증이 필요한 단계에서는 MCP 쿼리 시도 전 "이것이 identity 전환을 요구하는가" 자문
+- 요구하면 대시보드 경로 즉시 전환, 사용자에게 수동 실행 요청
+- BEGIN + SET LOCAL + 쿼리 + ROLLBACK 4단 블록을 시나리오당 개별 트랜잭션으로 구성
+- 결과 수신 후 Claude Code가 MCP SELECT로 정리 상태 재확인 (찌꺼기 row 0건 등)
+
+---
+
+## 교훈 31 — RLS INSERT 정책 employees 조인 경유 패턴 (auth.uid() → employees.auth_user_id → role IN)
+
+**요지**: GREF FarmWork의 쓰기 RLS INSERT 정책은 `auth.uid()`를 직접 `employee_id` 컬럼과 비교하는 대신, `employees` 테이블을 경유하여 `auth_user_id` 매핑 + `role` 조건을 동시 검증한다. 향후 쓰기 도구 추가 시 동일 구조로 작성.
+
+**근거**:
+- GREF 스키마에서 `auth.users`와 `employees`는 `employees.auth_user_id`로 연결 (1:1 not enforced)
+- 쓰기 RLS는 "해당 row의 employee가 (1) 현재 인증 사용자와 매핑되고 (2) 허용된 role을 가진다"를 동시 보장 필요
+- 단일 `EXISTS` 서브쿼리로 두 조건 결합하여 정책 문법 간결 유지
+
+**재사용 템플릿**:
+
+```sql
+CREATE POLICY <name>_insert ON <table>
+  FOR INSERT TO authenticated
+  WITH CHECK (
+    EXISTS (
+      SELECT 1 FROM employees
+      WHERE id = <table>.<employee_fk_column>
+        AND auth_user_id = auth.uid()
+        AND role IN ('<허용_role1>', '<허용_role2>', ...)
+    )
+  );
+```
+
+**원본 적용 사례 (세션 13, 2026-04-13)**:
+chatbot_feedback 테이블의 `chatbot_feedback_insert_own` 정책.
+- `<table>`: chatbot_feedback
+- `<employee_fk_column>`: employee_id
+- `<허용_role>`: farm_admin, hr_admin, master
+
+단위 5 SQL-2 시뮬레이션으로 unauthorized sub UUID에 대해 RLS가 정확히 42501 차단 확인.
+
+**SELECT 정책 변형**:
+본인 row 조회 정책은 `role IN (...)` 조건 생략 + `USING` 절 사용:
+```sql
+CREATE POLICY <name>_select_own ON <table>
+  FOR SELECT TO authenticated
+  USING (
+    EXISTS (
+      SELECT 1 FROM employees
+      WHERE id = <table>.<employee_fk_column>
+        AND auth_user_id = auth.uid()
+    )
+  );
+```
+
+master 전체 조회는 role만 검증:
+```sql
+CREATE POLICY <name>_select_master ON <table>
+  FOR SELECT TO authenticated
+  USING (
+    EXISTS (
+      SELECT 1 FROM employees
+      WHERE auth_user_id = auth.uid() AND role = 'master'
+    )
+  );
+```
+
+**주의**:
+- 타 테이블 정책 작성 시 `<table>.<column>` 한정 참조 필수 (PostgreSQL 외부 참조 모호성 회피)
+- `employees.auth_user_id` NULLABLE이므로 worker 계정(auth_user_id NULL)은 이 구조에서 자동 차단 — 별도 조건 불필요
