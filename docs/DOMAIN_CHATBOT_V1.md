@@ -170,22 +170,242 @@ v1 챗봇 제약:
 
 > **세션 11 재배치 이력 (2026-04-12):** [응답 스타일]·[응답 예시] 블록 삭제 (코드에서 세션 10 3차 조정 시 제거됨). 블록 순서를 코드(chatbot-query/index.ts buildSystemPrompt)와 1:1 정합화. 문구 변경 없음.
 
-### 3.4 도구(Tool) 정의 — v1 = 조회 전용
+### 3.4 도구(Tool) 정의 — v1 = 조회 전용 5종
 
-| 도구명 | 설명 | 권한 |
-|---|---|---|
-| `get_branch_tbm_summary` | 지점 TBM 작성·승인 현황 집계 | farm_admin+ |
-| `get_branch_daily_work_summary` | 지점 일용직 작업 집계 (기간 필터) | farm_admin+ |
-| `get_branch_safety_check_summary` | 지점 안전점검 현황 | farm_admin+ |
-| `get_pending_approvals` | 반장 승인 대기 건 (전체 지점 또는 본인 지점) | farm_admin+ |
-| `get_user_list` | 지점별 사용자 목록·역할 조회 | farm_admin+ |
-| `submit_feedback` | 사용자 피드백 저장 | 전 admin |
+#### 3.4.1 도구 목록 개요
 
-**v2 예약 영역** (v1 코드 미존재):
-- 모든 쓰기 작업 (`create_*`, `update_*`, `delete_*`, `approve_*` 등)
+| 도구명 | 용도 | 기반 테이블 | 권한 |
+|---|---|---|---|
+| `get_branch_tbm_summary` | 지점 TBM(사전위험성평가) 작성·승인 집계 | `safety_checks` (check_type='pre_task') | farm_admin+ |
+| `get_branch_daily_work_summary` | 일용직 작업·임금 집계 | `daily_work_logs` | farm_admin+ |
+| `get_branch_safety_check_summary` | 일반 안전점검(pre_work/post_work) 현황 | `safety_checks` | farm_admin+ |
+| `get_pending_approvals` | 승인 대기 통합 조회 | `leave_requests`, `overtime_requests`, `safety_checks` | farm_admin+ |
+| `get_user_list` | 사용자 목록·역할 조회 | `employees` | farm_admin+ |
 
-**트랙 I 예약 영역** (v1·v2 모두 미존재):
-- `recommend_worker_assignment`, `predict_work_duration` 등 추천·예측 도구
+**v1 제외 (H-2.5로 분리):** `submit_feedback` — 기반 테이블(`feedback` 또는 유사) 미존재. H-2.5 단계에서 마이그레이션과 함께 추가.
+
+**v2 예약 (트랙 H v2):** 모든 쓰기 도구 (`create_*`, `update_*`, `delete_*`, `approve_*`)
+
+**트랙 I 예약 (분리 트랙):** `recommend_worker_assignment`, `predict_work_duration` 등 추천·예측 도구.
+
+#### 3.4.2 도구별 상세 스펙
+
+##### 도구 1: `get_branch_tbm_summary`
+
+```json
+{
+  "name": "get_branch_tbm_summary",
+  "description": "지점 TBM(사전위험성평가, check_type='pre_task') 작성·승인 현황 집계.",
+  "input_schema": {
+    "type": "object",
+    "properties": {
+      "branch": {
+        "type": "string",
+        "enum": ["busan", "jinju", "hadong"],
+        "description": "조회 지점. farm_admin은 본인 지점만 접근 가능(RLS 자동 필터). 생략 시 hr_admin/master는 전 지점 합산."
+      },
+      "date_from": {
+        "type": "string",
+        "format": "date",
+        "description": "조회 시작일(YYYY-MM-DD). 생략 시 오늘(CURRENT_DATE)."
+      },
+      "date_to": {
+        "type": "string",
+        "format": "date",
+        "description": "조회 종료일(YYYY-MM-DD). 생략 시 date_from과 동일."
+      }
+    },
+    "required": []
+  }
+}
+```
+
+**반환 계약:**
+```json
+{
+  "period": {"from": "YYYY-MM-DD", "to": "YYYY-MM-DD"},
+  "results": [
+    {"branch": "busan", "submitted": 8, "approved": 5, "total": 13}
+  ]
+}
+```
+
+**에러:**
+- `{"error": "invalid_date_range"}` — date_from > date_to
+- `{"error": "invalid_branch"}` — enum 외 값
+
+---
+
+##### 도구 2: `get_branch_daily_work_summary`
+
+```json
+{
+  "name": "get_branch_daily_work_summary",
+  "description": "일용직(daily_work_logs) 작업·임금 집계. 기간 필수.",
+  "input_schema": {
+    "type": "object",
+    "properties": {
+      "branch": {"type": "string", "enum": ["busan", "jinju", "hadong"]},
+      "date_from": {"type": "string", "format": "date"},
+      "date_to": {"type": "string", "format": "date"},
+      "payment_status": {
+        "type": "string",
+        "enum": ["pending", "paid"],
+        "description": "지급 상태 필터. 생략 시 전체."
+      }
+    },
+    "required": ["date_from", "date_to"]
+  }
+}
+```
+
+**반환:**
+```json
+{
+  "period": {"from": "...", "to": "..."},
+  "results": [
+    {
+      "branch": "busan",
+      "total_work_days": 12,
+      "unique_workers": 5,
+      "total_wage": 1840000,
+      "pending_wage": 420000,
+      "paid_wage": 1420000
+    }
+  ]
+}
+```
+
+**에러:**
+- `{"error": "date_range_too_wide"}` — 3개월(93일) 초과 시 토큰 보호
+- `{"error": "invalid_date_range"}`, `{"error": "invalid_branch"}`
+
+---
+
+##### 도구 3: `get_branch_safety_check_summary`
+
+```json
+{
+  "name": "get_branch_safety_check_summary",
+  "description": "일반 안전점검(check_type IN ('pre_work','post_work')) 현황.",
+  "input_schema": {
+    "type": "object",
+    "properties": {
+      "branch": {"type": "string", "enum": ["busan", "jinju", "hadong"]},
+      "date_from": {"type": "string", "format": "date", "description": "생략 시 오늘."},
+      "date_to": {"type": "string", "format": "date", "description": "생략 시 date_from과 동일."}
+    },
+    "required": []
+  }
+}
+```
+
+**반환:**
+```json
+{
+  "period": {...},
+  "results": [
+    {
+      "branch": "busan",
+      "pre_work": {"submitted": 15, "approved": 15},
+      "post_work": {"submitted": 15, "approved": 14}
+    }
+  ]
+}
+```
+
+**v1.1 후보:** `workers_missing_today` (employees LEFT JOIN safety_checks) — 복잡도 이유로 v1 제외.
+
+---
+
+##### 도구 4: `get_pending_approvals`
+
+```json
+{
+  "name": "get_pending_approvals",
+  "description": "승인 대기 통합 조회 — 휴가/연장근무/안전점검 3개 테이블.",
+  "input_schema": {
+    "type": "object",
+    "properties": {
+      "branch": {"type": "string", "enum": ["busan", "jinju", "hadong"]},
+      "approval_type": {
+        "type": "string",
+        "enum": ["leave", "overtime", "safety_check", "all"],
+        "default": "all"
+      }
+    },
+    "required": []
+  }
+}
+```
+
+**반환:**
+```json
+{
+  "results": {
+    "leave": [
+      {"id": "uuid", "employee_name": "...", "branch": "busan", "date": "2026-04-15", "type": "연차"}
+    ],
+    "overtime": [
+      {"id": "uuid", "employee_name": "...", "branch": "busan", "date": "2026-04-12", "hours": 2, "minutes": 30}
+    ],
+    "safety_check": [
+      {"id": "uuid", "worker_name": "...", "branch": "busan", "check_type": "pre_task", "date": "2026-04-12"}
+    ]
+  },
+  "counts": {"leave": 1, "overtime": 1, "safety_check": 1, "total": 3}
+}
+```
+
+**제한:** 각 카테고리 최대 50건. 초과 시 `"truncated": true` 플래그.
+
+**구현 시 runtime 확인 필요 (교훈 17):** `leave_requests.status` 실제 enum 값. 마이그레이션 파일 부재로 정의만으로 닫지 말 것. Supabase MCP로 `SELECT DISTINCT status FROM leave_requests` 검증 후 WHERE 절 확정.
+
+---
+
+##### 도구 5: `get_user_list`
+
+```json
+{
+  "name": "get_user_list",
+  "description": "지점별 사용자 목록·역할 조회. 개인정보 보호를 위해 민감 필드 제외.",
+  "input_schema": {
+    "type": "object",
+    "properties": {
+      "branch": {"type": "string", "enum": ["busan", "jinju", "hadong"]},
+      "role": {
+        "type": "string",
+        "enum": ["worker", "farm_admin", "hr_admin", "master", "team_leader"],
+        "description": "역할 필터. 'team_leader'는 role='worker' AND is_team_leader=true 매핑."
+      },
+      "active_only": {"type": "boolean", "default": true}
+    },
+    "required": []
+  }
+}
+```
+
+**반환 (민감 필드 제외):**
+```json
+{
+  "results": [
+    {"id": "uuid", "name": "...", "branch": "busan", "role": "worker", "is_team_leader": false, "is_active": true}
+  ],
+  "count": 15
+}
+```
+
+**반환 제외 필드 (개인정보 보호):** phone, annual_leave_days, 주소, 주민번호 등 일체.
+
+#### 3.4.3 공통 규약
+
+- **RLS 위임:** 모든 도구는 사용자 JWT로 Supabase 쿼리. service_role 우회 금지.
+- **branch 자동 주입:** farm_admin이 branch 생략 시 `current_employee_branch()` RLS 헬퍼로 자동 필터. hr_admin/master 생략 시 전 지점.
+- **날짜 기본값:** 생략 시 CURRENT_DATE (오늘).
+- **에러 계약:** `{"error": "<code>", "message": "<optional human-readable>"}` 형식.
+  - 공통 에러 코드: `invalid_date_range`, `invalid_branch`, `date_range_too_wide`, `permission_denied`
+- **권한 없음:** RLS가 차단하면 빈 `results` 반환 (에러 아님). LLM은 "해당 데이터에 접근 권한이 없습니다"로 응답.
+- **결과 상한:** 리스트 반환 도구는 카테고리당 최대 50건, 초과 시 `"truncated": true`.
 
 ### 3.5 데이터 접근 권한 = RLS 위임
 
@@ -264,7 +484,8 @@ v1 챗봇 제약:
 |---|---|
 | **H-0** | 마이그레이션: chat_logs 테이블 + RLS (worker/team_leader 차단 포함) |
 | **H-1** | Edge Function chatbot-query 골격 (LLM 호출 + 시스템 프롬프트 + admin 권한 검증, 도구 없음) |
-| **H-2** | 도구 6종 정의 + 사용자 JWT 기반 RLS 위임 호출 |
+| **H-2** | 도구 5종(조회 전용) 정의 + 사용자 JWT 기반 RLS 위임 호출 + Anthropic tool_use 루프 통합 |
+| **H-2.5** | `submit_feedback` 도구 + 피드백 저장용 테이블 마이그레이션 (H-2에서 분리) |
 | **H-3** | AdminLayout 챗 위젯 UI (플로팅 버튼 + 패널) — Worker layout 미통합 확인 |
 | **H-4** | 레이트 리밋 + 입력 길이 제한 + 에러 처리 |
 | **H-5** | 관리자 모니터링 페이지 (master 전용 chat_logs 조회) |
@@ -290,3 +511,4 @@ v1 챗봇 제약:
 
 - 2026-04-12 (세션 7): v1 초안 작성 (8개 결정 + 추천 2건 반영)
 - 2026-04-12 (세션 7): v2 갱신 — 사용자 대상 admin 한정(b), 트랙 I 분리 결정 반영
+- 2026-04-12 (세션 12): §3.4 전면 개정 — 도구 6종 이름·설명·권한만 있던 상태에서 각 도구별 `input_schema` + 반환 계약 + 에러 계약 명시. `submit_feedback`은 기반 테이블 부재로 H-2.5 분리. §7에 H-2.5 단계 추가. H-2 범위를 "조회 5종"으로 좁힘. 교훈 14(도메인 노트 단일 출처) 강화.
