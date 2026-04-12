@@ -182,6 +182,7 @@ v1 챗봇 제약:
 | `get_branch_safety_check_summary` | 일반 안전점검(pre_work/post_work) 현황 | `safety_checks` | farm_admin+ |
 | `get_pending_approvals` | 승인 대기 통합 조회 | `leave_requests`, `overtime_requests`, `safety_checks` | farm_admin+ |
 | `get_user_list` | 사용자 목록·역할 조회 | `employees` | farm_admin+ |
+| `submit_feedback` | 관리자 피드백 저장 (버그/기능 제안/일반 의견) | `chatbot_feedback` | admin 3종 (farm_admin·hr_admin·master) |
 
 **v1 제외 (H-2.5로 분리):** `submit_feedback` — 기반 테이블(`feedback` 또는 유사) 미존재. H-2.5 단계에서 마이그레이션과 함께 추가.
 
@@ -398,6 +399,97 @@ v1 챗봇 제약:
 
 **반환 제외 필드 (개인정보 보호):** phone, annual_leave_days, 주소, 주민번호 등 일체.
 
+---
+
+##### 도구 6: `submit_feedback`
+
+**목적**: 관리자(farm_admin, hr_admin, master)가 GREF FarmWork 시스템에 대한 피드백
+(버그 신고, 기능 제안, 일반 의견)을 저장. 현재 챗봇 대화의 turn 정보(chat_log_id,
+session_id, turn_index)가 context로 자동 주입되어 역추적 가능.
+
+**input_schema**:
+
+```json
+{
+  "name": "submit_feedback",
+  "description": "관리자가 GREF FarmWork 시스템에 대한 피드백을 저장합니다. 현재 챗봇 대화의 turn 정보가 자동으로 함께 기록됩니다.",
+  "input_schema": {
+    "type": "object",
+    "properties": {
+      "feedback_type": {
+        "type": "string",
+        "enum": ["bug", "feature_request", "general"],
+        "description": "피드백 종류. bug=버그 신고, feature_request=기능 제안, general=일반 의견"
+      },
+      "content": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 2000,
+        "description": "피드백 본문. 버그 신고의 경우 재현 스텝과 기대 동작을 포함하는 것을 권장."
+      }
+    },
+    "required": ["feedback_type", "content"]
+  }
+}
+```
+
+**executeTool context 주입 (도구 1~5와 차별)**:
+
+기존 도구 1~5는 사용자 JWT client만으로 충족되었으나 submit_feedback은 다음 컨텍스트 필요:
+
+- `auth_user_id`: 현재 auth 사용자 UUID
+- `employee_id`: 현재 사용자의 employees.id
+- `session_id`: 현재 챗봇 세션 UUID
+- `turn_index`: 현재 user turn index
+- `chat_log_id`: 현재 user turn이 chat_logs에 선행 INSERT된 row의 id (NULL 허용 — 외부 수동 삽입 시나리오 대비)
+- `admin_client`: supabaseAdmin (feedback INSERT용, RLS 정책 경유)
+
+executeTool 시그니처 확장은 단위 4에서 반영. 공통 규약 §3.4.3 참조.
+
+**반환 계약**:
+
+성공:
+```json
+{
+  "ok": true,
+  "result": { "feedback_id": "uuid", "created_at": "ISO8601" },
+  "row_count": 1,
+  "truncated": false
+}
+```
+
+실패:
+```json
+{ "ok": false, "error": "<code>", "message": "<한국어 메시지>" }
+```
+
+**에러 케이스**:
+
+| error 코드 | 트리거 | 검증 계층 | message |
+|-----------|--------|----------|---------|
+| `content_empty` | content.trim() 빈 문자열 | Edge Function 선제 | 피드백 본문을 입력해주세요 |
+| `content_too_long` | content.length > 2000 | Edge Function + DB CHECK 이중 | 피드백은 2000자 이하로 입력해주세요 |
+| `invalid_feedback_type` | enum 밖 값 | Edge Function + DB CHECK 이중 | feedback_type은 bug, feature_request, general 중 하나여야 합니다 |
+| `unauthorized_role` | RLS INSERT 거부 (Postgres 42501) | DB RLS | 피드백 제출은 관리자 계정에서만 가능합니다 |
+| `db_error` | 기타 Postgres 에러 | DB | 피드백 저장 중 오류가 발생했습니다 |
+
+**검증 순서 (tools.ts submitFeedback 내부)**:
+
+1. content.trim().length === 0 → content_empty
+2. content.length > 2000 → content_too_long
+3. enum 검증 → invalid_feedback_type
+4. context.chat_log_id 누락 시 console.warn 후 NULL 삽입으로 진행
+5. supabaseAdmin INSERT 실행. error.code === '42501' 또는 RLS 관련 → unauthorized_role. 기타 → db_error.
+
+**RLS 정책 요약** (상세는 마이그레이션 파일):
+
+- INSERT: employees.auth_user_id = auth.uid() AND role IN ('farm_admin','hr_admin','master')
+- SELECT 1 (본인): employees.auth_user_id = auth.uid() 경유
+- SELECT 2 (master 전체): employees.role = 'master'
+- UPDATE/DELETE: 정책 없음 → 전면 차단
+
+**RLS 이중 방어 근거**: H-1 layer에서 worker·team_leader 차단됨에도 DB RLS 정책으로 이중 방어. 교훈 17 (정의만으로 닫지 말 것) 준수.
+
 #### 3.4.3 공통 규약
 
 - **RLS 위임:** 모든 도구는 사용자 JWT로 Supabase 쿼리. service_role 우회 금지.
@@ -407,6 +499,7 @@ v1 챗봇 제약:
   - 공통 에러 코드: `invalid_date_range`, `invalid_branch`, `date_range_too_wide`, `permission_denied`
 - **권한 없음:** RLS가 차단하면 빈 `results` 반환 (에러 아님). LLM은 "해당 데이터에 접근 권한이 없습니다"로 응답.
 - **결과 상한:** 리스트 반환 도구는 카테고리당 최대 50건, 초과 시 `"truncated": true`.
+- **executeTool context 주입 규약** (H-2.5 이후): 쓰기 도구는 `{ auth_user_id, employee_id, session_id, turn_index, chat_log_id, admin_client }` 컨텍스트를 executeTool 파라미터로 받는다. 읽기 도구(도구 1~5)는 사용자 JWT client만으로 충족되므로 context 활용 선택적. 상세는 §3.4.2 도구별 정의.
 
 ### 3.5 데이터 접근 권한 = RLS 위임
 
@@ -486,7 +579,7 @@ v1 챗봇 제약:
 | **H-0** | 마이그레이션: chat_logs 테이블 + RLS (worker/team_leader 차단 포함) |
 | **H-1** | Edge Function chatbot-query 골격 (LLM 호출 + 시스템 프롬프트 + admin 권한 검증, 도구 없음) |
 | **H-2** | 도구 5종(조회 전용) 정의 + 사용자 JWT 기반 RLS 위임 호출 + Anthropic tool_use 루프 통합 |
-| **H-2.5** | `submit_feedback` 도구 + 피드백 저장용 테이블 마이그레이션 (H-2에서 분리) |
+| **H-2.5** | `submit_feedback` 도구 + `chatbot_feedback` 테이블 마이그레이션 + RLS 정책 + index.ts user turn INSERT 선행 분리 리팩토링(독립 커밋). 경로: (B) 별도 테이블 확정. 작업 단위 6개 (단위 1~6, 단위 3.5 포함). 진행 중 (세션 13) |
 | **H-3** | AdminLayout 챗 위젯 UI (플로팅 버튼 + 패널) — Worker layout 미통합 확인 |
 | **H-4** | 레이트 리밋 + 입력 길이 제한 + 에러 처리 |
 | **H-5** | 관리자 모니터링 페이지 (master 전용 chat_logs 조회) |
@@ -501,7 +594,7 @@ v1 챗봇 제약:
 
 | ID | 내용 | 임시 결정 |
 |---|---|---|
-| TEMP-DECISION-5 | 피드백(`d` 용도) 저장 위치: chat_logs 통합 vs 별도 feedback 테이블 | v1은 chat_logs 통합 (tools_used에 'submit_feedback' 마킹) |
+| TEMP-DECISION-5 | 피드백(`d` 용도) 저장 위치: chat_logs 통합 vs 별도 feedback 테이블 | v1은 chat_logs 통합 (tools_used에 'submit_feedback' 마킹) — **해소**: 2026-04-13 세션 13 — H-2.5에서 별도 `chatbot_feedback` 테이블 경로 확정. chat_logs 통합 경로는 폐기. |
 | TEMP-DECISION-6 | 일 100회 캡 도달 시 사용자 안내 문구 | "오늘 챗봇 사용 한도(100회)에 도달했습니다. 내일 다시 이용해 주세요." |
 | TEMP-DECISION-7 | 챗 위젯 미노출 admin 페이지 (예: 로그인) | v1은 로그인·PWA 설치 가이드 페이지만 제외 |
 | TEMP-DECISION-8 | 트랙 I 진입 시 챗봇 v1과 통합 UI vs 별도 메뉴 | 트랙 I 진입 시점에 결정 |
