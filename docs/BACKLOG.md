@@ -19,7 +19,7 @@
 | RLS-DEBT-021 | RLS | open | Phase 5 세션 3 (2026-04-11) | - | safety_checks anon SELECT의 worker 단위 격리 — device_token claim 기반 RLS 재설계 필요. RLS-DEBT-019의 근본 해소 항목. 트랙 F 후보. | docs/BACKLOG.md |
 | E-6.5 | 검증 | resolved | Phase 5 세션 5·6 (2026-04-12) | - | TBM 반장 알림 FCM 실기기 검증 6/6 통과. 시크릿 손상(FIREBASE_SERVICE_ACCOUNT) 사고 추적 및 복구. 교훈 23 박제. | docs/BACKLOG.md |
 | UX-009 | UX | open | Phase 5 세션 3 (2026-04-11) | - | 알림 권한 denied 상태에서 사용자가 권한 재요청할 수 있는 UI 없음. 시크릿창/처음 사용자에게 권한 안내 + 재시도 버튼 필요. 트랙 F 후보. | docs/BACKLOG.md |
-| IOS-001 | UX | open | Phase 5 세션 6 (2026-04-12) | - | iOS PWA 설치 가이드 + 인앱 브라우저(카카오톡/네이버) 감지 → Safari 안내. iOS는 홈 화면 추가 후에만 푸시 수신. 트랙 F 마감 후 처리 권고. UX-009와 통합 검토. | docs/BACKLOG.md |
+| IOS-001 | UX | resolved (검증 보류) | Phase 5 세션 6 (2026-04-12) | - | 구현 완료. iOS 실기기 부재로 검증은 박민식·김민국·iOS 사용자 만났을 때. 안드로이드 Chrome 회귀 0건 확인. deviceDetect.js + PWAInstallGuideModal.jsx 신규, Worker/AdminLayout 양쪽 통합. | docs/BACKLOG.md |
 | RLS-DEBT-020 | RLS | resolved | Phase 5 세션 1 (2026-04-11) | - | fcm_tokens INSERT 정책 — Phase 5 세션 3 MCP 실측 결과 anon/authenticated INSERT 정책 이미 존재 확인. BACKLOG 기록 시점과 실제 DB 불일치였음. | [docs/HANDOVER_PHASE5_SESSION1.md](HANDOVER_PHASE5_SESSION1.md#신규-백로그-3건) |
 | POSTGREST-001 | POSTGREST | resolved | Phase 5 세션 1 (2026-04-11) | - | Phase 5 세션 3 전수 검토: embed 패턴 5곳 모두 FK 제약명 명시 확인, 수정 0건. 상세: [docs/audits/POSTGREST-001_audit.md](audits/POSTGREST-001_audit.md) | [docs/HANDOVER_PHASE5_SESSION1.md](HANDOVER_PHASE5_SESSION1.md#신규-백로그-3건) |
 | BUG-005 | BUG | resolved | Phase 5 세션 1 (2026-04-11) | - | loginWithDeviceToken select 목록에 is_team_leader 누락 — 반장 권한 판정 불가 | [docs/HANDOVER_PHASE5_SESSION1.md](HANDOVER_PHASE5_SESSION1.md#해결됨-) |

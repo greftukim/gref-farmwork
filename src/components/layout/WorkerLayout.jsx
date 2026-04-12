@@ -1,4 +1,4 @@
-import { useCallback, useEffect } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Outlet } from 'react-router-dom';
 import TopBar from './TopBar';
 import BottomNav from './BottomNav';
@@ -12,12 +12,29 @@ import {
   onForegroundMessage,
 } from '../../lib/firebase';
 import InstallPromptBanner from '../common/InstallPromptBanner';
+import PWAInstallGuideModal from '../PWAInstallGuideModal';
+import { getGuideType } from '../../lib/deviceDetect';
+
+const SESSION_KEY = 'pwa_guide_shown';
 
 export default function WorkerLayout() {
   useDataLoader();
 
   const addNotification = useNotificationStore((s) => s.addNotification);
   const currentUser = useAuthStore((s) => s.currentUser);
+  const [guideType, setGuideType] = useState(null);
+
+  // IOS-001: 로그인 직후 1회 PWA 설치 안내 모달
+  useEffect(() => {
+    if (sessionStorage.getItem(SESSION_KEY)) return;
+    const type = getGuideType();
+    if (type) setGuideType(type);
+  }, []);
+
+  const closeGuide = () => {
+    sessionStorage.setItem(SESSION_KEY, '1');
+    setGuideType(null);
+  };
 
   // 1단계: FCM 서비스 워커 등록 (알림 권한 무관)
   useEffect(() => {
@@ -57,6 +74,7 @@ export default function WorkerLayout() {
       <BottomNav />
       <ToastContainer />
       <InstallPromptBanner />
+      <PWAInstallGuideModal guideType={guideType} onClose={closeGuide} />
     </div>
   );
 }

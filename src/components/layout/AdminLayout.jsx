@@ -1,4 +1,4 @@
-import { useCallback, useEffect } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Outlet } from 'react-router-dom';
 import Sidebar from './Sidebar';
 import TopBar from './TopBar';
@@ -13,18 +13,35 @@ import {
   requestNotificationPermission,
   onForegroundMessage,
 } from '../../lib/firebase';
+import PWAInstallGuideModal from '../PWAInstallGuideModal';
+import { getGuideType } from '../../lib/deviceDetect';
+
+const SESSION_KEY = 'pwa_guide_shown';
 
 export default function AdminLayout() {
   useDataLoader();
 
   const addNotification = useNotificationStore((s) => s.addNotification);
   const currentUser = useAuthStore((s) => s.currentUser);
+  const [guideType, setGuideType] = useState(null);
 
   const handleNotification = useCallback((n) => {
     addNotification(n);
   }, [addNotification]);
 
   useRealtimeSubscriptions(handleNotification);
+
+  // IOS-001: 로그인 직후 1회 PWA 설치 안내 모달
+  useEffect(() => {
+    if (sessionStorage.getItem(SESSION_KEY)) return;
+    const type = getGuideType();
+    if (type) setGuideType(type);
+  }, []);
+
+  const closeGuide = () => {
+    sessionStorage.setItem(SESSION_KEY, '1');
+    setGuideType(null);
+  };
 
   // 1단계: 앱 진입 시 FCM SW 즉시 등록 (알림 권한과 무관)
   useEffect(() => {
@@ -77,6 +94,7 @@ export default function AdminLayout() {
       {/* 모바일 하단 네비 (md 미만에서만 표시) */}
       <AdminBottomNav />
       <ToastContainer />
+      <PWAInstallGuideModal guideType={guideType} onClose={closeGuide} />
     </div>
   );
 }
