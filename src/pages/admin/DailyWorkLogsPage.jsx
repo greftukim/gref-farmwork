@@ -6,6 +6,7 @@ import Card from '../../components/common/Card';
 import Button from '../../components/common/Button';
 import Modal from '../../components/common/Modal';
 import DailyWorkLogFormModal from '../../components/dailyWorkLogs/DailyWorkLogFormModal';
+import { downloadDailyExcel } from '../../lib/dailyWorkLogExcel';
 
 const BRANCH_OPTIONS = [
   { value: 'busan', label: '부산LAB' },
@@ -69,9 +70,26 @@ export default function DailyWorkLogsPage() {
       {/* 헤더 */}
       <div className="flex items-center justify-between flex-wrap gap-3">
         <h1 className="text-lg font-bold text-gray-900">일용직/시급제 임금 장부</h1>
-        <Button onClick={() => setCreateOpen(true)} className="active:scale-[0.98]">
-          + 등록
-        </Button>
+        <div className="flex gap-2">
+          <Button
+            variant="secondary"
+            size="md"
+            disabled={logs.length === 0}
+            title={logs.length === 0 ? '조회된 데이터가 없습니다' : '현재 날짜 데이터를 엑셀로 다운로드'}
+            onClick={() =>
+              downloadDailyExcel(logs, {
+                branchLabel: BRANCH_LABEL[effectiveBranch] || effectiveBranch,
+                dateLabel: selectedDate,
+              })
+            }
+            className="active:scale-[0.98]"
+          >
+            엑셀 다운로드
+          </Button>
+          <Button onClick={() => setCreateOpen(true)} className="active:scale-[0.98]">
+            + 등록
+          </Button>
+        </div>
       </div>
 
       {/* 필터 행 */}
