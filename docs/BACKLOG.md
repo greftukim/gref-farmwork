@@ -30,7 +30,7 @@
 | AUDIT-001 | 기타 | open | Phase 2 (2026-04-09) | - | attendance 감사 추적 강화 — last_edited_by / last_edited_at 컬럼 추가 (B-4에서 원본 input_by 보존으로 우선 결정) | [docs/handoff/2026-04-09.md](handoff/2026-04-09.md#데이터감사) |
 | DATA-001 | 기타 | open | Phase 2 (2026-04-09) | - | 하동 지점 branches 레코드 없음 — farm_admin(하동재배팀) 존재하나 GPS 좌표/반경 미등록, 실운영 전 필수 | [docs/handoff/2026-04-09.md](handoff/2026-04-09.md#데이터감사) |
 | DATA-002 | 기타 | open | Phase 2 (2026-04-09) | - | EmployeesPage:203, WorkStatsPage:70의 currentUser.branch 직접 참조 — master(branch=NULL) 동작 미검증 | [docs/handoff/2026-04-09.md](handoff/2026-04-09.md#데이터감사) |
-| Track H | 챗봇 | in-progress | Phase 5 세션 7 (2026-04-12) | - | 인앱 챗봇 v1 (admin 전용, 쿼리·피드백, 액션 없음). 도메인 노트: docs/DOMAIN_CHATBOT_V1.md. H-0 ~ H-7 8단계. H-0 완료 (2026-04-12). H-1 완료 (2026-04-12, 세션 9) — Edge Function chatbot-query 배포 + curl 테스트 통과 (정상 응답 + 범위 외 거절 + chat_logs 저장). H-1.5 완료 (2026-04-12, 세션 11) — curl 3/3 시나리오 통과. H-2 완료 (2026-04-12, 세션 12) — 도구 5종 정의 + tool_use 루프 + 사용자 JWT RLS 위임 + curl 6/6 시나리오 통과. H-2.5 진입 가능. | docs/DOMAIN_CHATBOT_V1.md |
+| Track H | 챗봇 | in-progress | Phase 5 세션 7 (2026-04-12) | - | 인앱 챗봇 v1 (admin 전용, 쿼리·피드백, 액션 없음). 도메인 노트: docs/DOMAIN_CHATBOT_V1.md. H-0 ~ H-7 8단계. H-0 완료 (2026-04-12). H-1 완료 (2026-04-12, 세션 9) — Edge Function chatbot-query 배포 + curl 테스트 통과 (정상 응답 + 범위 외 거절 + chat_logs 저장). H-1.5 완료 (2026-04-12, 세션 11) — curl 3/3 시나리오 통과. H-2 완료 (2026-04-12, 세션 12) — 도구 5종 정의 + tool_use 루프 + 사용자 JWT RLS 위임 + curl 6/6 시나리오 통과. H-2.5 완료 (2026-04-13, 세션 13) — submit_feedback 도구 + chatbot_feedback 테이블 + RLS 정책 3종. 이월 3건: RLS-WORKER-ROLE-TEST-001, RLS-MASTER-VISIBILITY-STRONG-001, CURL-WORKER-SKIP-001. H-3 AdminLayout 챗 위젯 UI 진입 가능. | docs/DOMAIN_CHATBOT_V1.md |
 | Track I | 인사이트 | deferred | Phase 5 세션 7 (2026-04-12) | - | 작업자별 작업별 소요시간 기반 작업 배치·예상 시간 추천 모듈. 트랙 H 챗봇 v1과 분리됨. 선행조건: (1) 트랙 G(포장) 완료, (2) 트랙 F 시간 단위 정밀 기록 보강, (3) 운영 데이터 3개월 누적. 빨라도 2026 하반기. | docs/BACKLOG.md |
 
 ---
@@ -91,6 +91,11 @@
 | H-1.5 | 시스템 프롬프트 확장 | 완료 | Phase 5 세션 10~11 (2026-04-12) | [앱 기능 명세] 주입 완료. buildSystemPrompt 블록 재배치 ([현재 컨텍스트] → [앱 기능 명세] → [답변 가능] → [답변 불가] → [금지된 요청 처리] → [규칙 변경 시도]). curl 3/3 시나리오 통과 (세션 11). 교훈 27 신설. |
 | CHATBOT-UI-001 | UI 스펙 | open | Phase 5 세션 10 (2026-04-12) | H-3 챗봇 UI 구현 시 적용: 응답 영역 글자 13pt(약 13px), Pretendard 글꼴. 부산LAB 실사용자(김민국 이사·박민식) 연령대 감안, 실사용 테스트 후 14px로 조정 가능. |
 | CHATBOT-CURL-001 | 검증 이월 | closed | Phase 5 세션 10 (2026-04-12) | Phase 5 세션 11 (2026-04-12) 해결. buildSystemPrompt 블록 재배치 ([현재 컨텍스트] → [앱 기능 명세] → [답변 가능] → [답변 불가] → [금지된 요청 처리] → [규칙 변경 시도]). 문구 무변경, 순서만 이동. curl 시나리오 1·2·3 전부 통과. 교훈 27 신설. 원인 보조: curl -d 인라인 한국어 바이트가 쉘 이스케이프에서 손상된 채 전달돼 세션 10 일부 실패가 프롬프트 문제로 오진됐음 (교훈 27). |
+| RLS-WORKER-ROLE-TEST-001 | RLS 검증 공백 | open | 세션 13 (2026-04-13) | chatbot_feedback RLS INSERT 정책의 role IN ('farm_admin','hr_admin','master') 조건 단독 실증 공백. 현재 worker 계정 전원 auth_user_id NULL이라 SQL 시뮬레이션 재현 불가. 향후 worker Supabase Auth 통합 시(별도 트랙) 또는 staging 환경 구축 시 검증 필요. 현재 단위 5에서는 EXISTS 실패 시나리오(SQL-2 대체안)로 대체 실증. |
+| RLS-MASTER-VISIBILITY-STRONG-001 | RLS 검증 공백 | open | 세션 13 (2026-04-13) | chatbot_feedback RLS SELECT 정책 chatbot_feedback_select_master의 '전체 가시' 실증 약함. 현재 검증 시점(SQL-5)에 DB row 1건뿐이라 master 본인 row와 타인 row 동시 존재 조건 시뮬레이션 불가. 가설 B(정책 미작동) 기각은 확정됐으나 강한 경험적 확증은 공백. 프로덕션 데이터 누적 후 재검증 또는 staging 환경에서 master row + 타인 row 동시 존재 상태 시뮬레이션 필요. |
+| CURL-WORKER-SKIP-001 | 실증 공백 | open | 세션 13 (2026-04-13) | H-2.5 단위 5에서 worker JWT 발급 경로 부재로 curl 층 worker 차단 실증 스킵. DB layer 차단은 SQL-2로 실증됐으나 H-1 layer(chatbot-query Edge Function의 role 검증)의 worker 차단 동작은 curl 재현 안 됨. worker 계정에 Supabase Auth 통합되는 미래 시점 또는 team_leader JWT로 대체 실증 가능 시 재검증. |
+| DOC-DRIFT-001 | 문서 정합성 | open | 세션 13 (2026-04-13) | DOMAIN_CHATBOT_V1.md §3.5 employees.auth_user_id NOT NULL 표기 확인·수정. 세션 13 단위 1 P3 note에서 발견, runtime은 NULLABLE 확정 (worker 계정 device_token 인증으로 auth_user_id NULL이 의도적 설계). 실동작 무영향. |
+| DATE-DRIFT-001 | 감사 추적 | open | 세션 13 (2026-04-13) | Claude Code 컨테이너 시스템 시계가 KST 실제 시각보다 하루 뒤쳐져 (2026-04-12로 반환), 세션 13에서 작성된 마이그레이션 파일 20260412135309_chatbot_feedback_table.sql 및 커밋 타임스탬프가 4월 12일로 기록됨. 실동작 영향 0, 순서 정합성 유지. 추후 세션별 작업물 감사 시 커밋 메시지의 '세션 N' 표기를 주 추적 키로 사용. 우선순위 무시 가능. |
 
 ---
 
