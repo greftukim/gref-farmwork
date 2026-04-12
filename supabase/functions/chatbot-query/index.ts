@@ -220,6 +220,37 @@ Deno.serve(async (req) => {
     let assistantText = '';
     let loopIteration = 0;
 
+    // 8. user turn chat_logs 선행 INSERT (chat_log_id 주입 경로 확보 — H-2.5 단위 3.5)
+    const supabaseAdmin = createClient(
+      Deno.env.get('SUPABASE_URL')!,
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
+    );
+
+    const { data: userRow, error: userInsertError } = await supabaseAdmin
+      .from('chat_logs')
+      .insert({
+        user_id: authUid,
+        branch: emp.branch,
+        user_role: emp.role,
+        session_id: session_id,
+        turn_index: turn_index,
+        role: 'user',
+        content: lastMessage.content,
+        token_input: null,
+        token_output: null,
+        tools_used: null,
+      })
+      .select('id')
+      .single();
+
+    let userChatLogId: string | null = null;
+    if (userInsertError) {
+      console.error('[chatbot-query] chat_logs INSERT 실패:', userInsertError.message);
+    } else {
+      userChatLogId = userRow?.id ?? null;
+      console.log('[chatbot-query] chat_logs INSERT 완료 turn_index:', turn_index);
+    }
+
     while (loopIteration < MAX_TOOL_LOOP) {
       loopIteration += 1;
 
@@ -333,47 +364,28 @@ Deno.serve(async (req) => {
       'output_tokens:', outputTokens, 'tool_calls:', toolsUsedLog.length,
       'loop_iterations:', loopIteration);
 
-    // 8. chat_logs INSERT (service_role 클라이언트)
-    const supabaseAdmin = createClient(
-      Deno.env.get('SUPABASE_URL')!,
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
-    );
+    // 9. assistant turn chat_logs INSERT
+    const { error: assistantInsertError } = await supabaseAdmin.from('chat_logs').insert({
+      user_id: authUid,
+      branch: emp.branch,
+      user_role: emp.role,
+      session_id: session_id,
+      turn_index: turn_index + 1,
+      role: 'assistant',
+      content: assistantText,
+      token_input: inputTokens,
+      token_output: outputTokens,
+      tools_used: toolsUsedLog.length > 0 ? toolsUsedLog : null,
+    });
 
-    const { error: insertError } = await supabaseAdmin.from('chat_logs').insert([
-      {
-        user_id: authUid,
-        branch: emp.branch,
-        user_role: emp.role,
-        session_id: session_id,
-        turn_index: turn_index,
-        role: 'user',
-        content: lastMessage.content,
-        token_input: null,
-        token_output: null,
-        tools_used: null,
-      },
-      {
-        user_id: authUid,
-        branch: emp.branch,
-        user_role: emp.role,
-        session_id: session_id,
-        turn_index: turn_index + 1,
-        role: 'assistant',
-        content: assistantText,
-        token_input: inputTokens,
-        token_output: outputTokens,
-        tools_used: toolsUsedLog.length > 0 ? toolsUsedLog : null,
-      },
-    ]);
-
-    if (insertError) {
+    if (assistantInsertError) {
       // LLM 응답은 이미 생성됨 (비용 발생) — 사용자에게 반환하고 로그만 남김
-      console.error('[chatbot-query] chat_logs INSERT 실패:', insertError.message);
+      console.error('[chatbot-query] chat_logs INSERT 실패:', assistantInsertError.message);
     } else {
-      console.log('[chatbot-query] chat_logs INSERT 완료 turn_index:', turn_index, turn_index + 1);
+      console.log('[chatbot-query] chat_logs INSERT 완료 turn_index:', turn_index + 1);
     }
 
-    // 9. 정상 응답 반환
+    // 10. 정상 응답 반환
     return new Response(
       JSON.stringify({
         reply: assistantText,
