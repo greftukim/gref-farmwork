@@ -532,25 +532,66 @@ executeTool 시그니처 확장은 단위 4에서 반영. 공통 규약 §3.4.3 
 
 ## §5 UI
 
-### 5.1 위치 (변경)
-- **AdminLayout 우하단 플로팅 버튼** — admin 페이지에만 노출
-- Worker layout에는 챗 위젯 미통합
-- Edge Function 진입 시 user_role 재검증 (URL 직접 호출 차단)
+### 5.1 위치 · 진입점 · 노출 조건
+
+- **FAB 위치**: AdminLayout 우하단 고정 (fixed bottom-6 right-6, z-[60])
+- **노출 role**: farm_admin / hr_admin / master 3종. supervisor 제외 (Edge Function ALLOWED_ROLES 3종과 노출 조건 일치).
+- **이중 방어**: 라우팅 ProtectedRoute(ADMIN_ROLES) + FAB 컴포넌트 내부 role 체크. 두 층 모두 통과해야 FAB 렌더.
+- Worker layout 미통합.
+- Edge Function 진입 시 user_role 재검증 (URL 직접 호출 차단, 서버 3차 방어).
+- **미노출 페이지**: 로그인·PWA 설치 가이드는 AdminLayout 외부 라우트이므로 별도 제외 로직 불필요. AdminLayout 하위 전 admin 페이지에서 FAB 상시 노출. (§8 TEMP-DECISION-7 참조)
 
 ### 5.2 챗 패널 구성
-- 헤더: "GREF 관리자 도우미", 닫기 버튼
-- 메시지 영역: 스크롤, 사용자/봇 구분
-- 입력창: 500자 카운터, 전송 버튼
-- 첫 진입 시 환영 메시지 + admin용 예시 질문 3개
+
+**레이아웃**:
+- 모바일(< md / 768px): 전체화면 모달 (fixed inset-0)
+- 데스크톱(≥ md): 우측 슬라이드 오버, 고정 너비 440px, fixed top-0 right-0 h-full
+- z-[70] (FAB z-[60] 위, ToastContainer z-[100] 아래)
+
+**헤더**:
+- 문구: "GREF 관리자 도우미"
+- 버튼: 새 대화(🔄) + 닫기(✕)
+- 새 대화 버튼: 메시지 1개 이상일 때만 활성 + confirm("현재 대화를 지우고 새로 시작할까요?"). 0개(빈 세션)일 때 비활성.
+
+**폰트**:
+- 패널 내부 기본 폰트: 13px (CHATBOT-UI-001)
+- 폰트 패밀리: var(--font-body) 상속. Pretendard 전역 로드 완료 (index.html v1.3.9 variable dynamic-subset).
+
+**첫 진입 환영 메시지** (패널 오픈 시 자동 삽입, chat_logs 미저장):
+> 안녕하세요, GREF 관리자 도우미입니다. 출근·휴가·안전점검 같은 운영 데이터를 질문하시거나, 버그·개선 의견을 자유롭게 남겨주세요. 아래 예시처럼 편하게 말씀하셔도 됩니다.
+
+**예시 질문 3개** (환영 메시지 하단 tappable 버튼, 클릭 시 입력창에 주입 후 전송):
+1. "오늘 부산 지점 출근자 몇 명이야?"
+2. "이번 주 휴가 신청 현황 알려줘"
+3. "지난주 TBM 미실시 건 있었어?"
+
+**메시지 렌더링**:
+- user turn: 우측 정렬, bg-blue-500 text-white
+- assistant turn: 좌측 정렬, bg-gray-100
+- tool_use 실행 중: 좌측 "🔍 데이터 조회 중..." 봇 말풍선 (도구명 숨김). tool_result 완료 시 제거.
+- tool_result: UI 미노출 (LLM 내부 흐름)
+
+**입력창**:
+- textarea, 500자 카운터
+- Enter 전송 / Shift+Enter 줄바꿈
+- 전송 중: 입력창 비활성 + 전송 버튼 스피너 + 새 대화 버튼 비활성 + 중복 전송 차단
+
+**스크롤**:
+- 새 메시지 도착 시 자동 하단 스크롤
+- 사용자 수동 스크롤 업 시 자동 스크롤 일시 중단
+- 사용자가 다시 하단 근처 도달 시 자동 스크롤 복원
 
 ### 5.3 세션 관리
-- 챗 패널 열 때 session_id 발급
-- 닫으면 클라이언트 메모리 폐기 (서버는 영구 저장)
-- 재열기 시 새 세션 (이전 대화 안 보임)
+
+- 패널 첫 오픈 시 `crypto.randomUUID()` 로 session_id 발급
+- 닫으면 클라이언트 메모리 폐기 (서버 chat_logs 영구 저장)
+- 재오픈 시 새 session_id 발급, 빈 메시지 배열로 시작 (이전 대화 안 보임)
 
 ### 5.4 v1.1 후보
+
 - 이전 대화 이력 조회
 - 즐겨찾는 질문 저장
+- 메시지별 👍👎 버튼 (submit_feedback 직접 호출 경로)
 
 ---
 
@@ -580,7 +621,7 @@ executeTool 시그니처 확장은 단위 4에서 반영. 공통 규약 §3.4.3 
 | **H-1** | Edge Function chatbot-query 골격 (LLM 호출 + 시스템 프롬프트 + admin 권한 검증, 도구 없음) |
 | **H-2** | 도구 5종(조회 전용) 정의 + 사용자 JWT 기반 RLS 위임 호출 + Anthropic tool_use 루프 통합 |
 | **H-2.5** | `submit_feedback` 도구 + `chatbot_feedback` 테이블 + RLS 정책 3종 + index.ts user turn INSERT 선행 분리 리팩토링. 작업 단위 6개 + fix 커밋 1건. 완료 (2026-04-13, 세션 13). 이월: BACKLOG `RLS-WORKER-ROLE-TEST-001`, `RLS-MASTER-VISIBILITY-STRONG-001`, `CURL-WORKER-SKIP-001` |
-| **H-3** | AdminLayout 챗 위젯 UI (플로팅 버튼 + 패널) — Worker layout 미통합 확인 |
+| **H-3** | AdminLayout FAB(z-[60]) + 슬라이드 오버 패널(z-[70], 모바일 전체화면/데스크톱 440px). useChatStore(Zustand non-persist). supabase.functions.invoke 연동. role 3종(farm_admin/hr_admin/master) 노출, supervisor 제외. 13pt Pretendard(전역 로드 완료). D1~D7 UX 결정 §5 참조. 작업 단위 6개 (단위 1~6). 진행 중 (세션 14). |
 | **H-4** | 레이트 리밋 + 입력 길이 제한 + 에러 처리 |
 | **H-5** | 관리자 모니터링 페이지 (master 전용 chat_logs 조회) |
 | **H-6** | 비용 집계 대시보드 (token 합산) |
@@ -596,7 +637,7 @@ executeTool 시그니처 확장은 단위 4에서 반영. 공통 규약 §3.4.3 
 |---|---|---|
 | TEMP-DECISION-5 | 피드백(`d` 용도) 저장 위치: chat_logs 통합 vs 별도 feedback 테이블 | v1은 chat_logs 통합 (tools_used에 'submit_feedback' 마킹) — **해소**: 2026-04-13 세션 13 — H-2.5에서 별도 `chatbot_feedback` 테이블 경로 확정. chat_logs 통합 경로는 폐기. |
 | TEMP-DECISION-6 | 일 100회 캡 도달 시 사용자 안내 문구 | "오늘 챗봇 사용 한도(100회)에 도달했습니다. 내일 다시 이용해 주세요." |
-| TEMP-DECISION-7 | 챗 위젯 미노출 admin 페이지 (예: 로그인) | v1은 로그인·PWA 설치 가이드 페이지만 제외 |
+| TEMP-DECISION-7 | 챗 위젯 미노출 admin 페이지 (예: 로그인) | v1은 로그인·PWA 설치 가이드 페이지만 제외 — **해소**: 2026-04-13 세션 14 — 해당 페이지들은 AdminLayout 외부 라우트로 구조상 FAB 미노출. 별도 제외 로직 구현 불필요. AdminLayout 하위 전 admin 페이지에서는 FAB 상시 노출. 특정 페이지 제외 필요성 발견 시 v1.1 이후 별도 검토. |
 | TEMP-DECISION-8 | 트랙 I 진입 시 챗봇 v1과 통합 UI vs 별도 메뉴 | 트랙 I 진입 시점에 결정 |
 
 ---
