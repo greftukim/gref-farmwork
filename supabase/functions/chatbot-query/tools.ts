@@ -168,8 +168,11 @@ function isValidBranch(b: unknown): b is Branch {
   return typeof b === 'string' && (VALID_BRANCHES as readonly string[]).includes(b);
 }
 
-function todayISO(): string {
-  return new Date().toISOString().slice(0, 10);
+const KST_OFFSET_MS = 9 * 60 * 60 * 1000; // UTC+9
+
+/** 서버 실행 시점의 KST(UTC+9) 기준 YYYY-MM-DD 반환 */
+export function todayKST(): string {
+  return new Date(Date.now() + KST_OFFSET_MS).toISOString().slice(0, 10);
 }
 
 function daysBetween(from: string, to: string): number {
@@ -186,7 +189,7 @@ function resolveDateRange(
   if (requireBoth && (!date_from || !date_to)) {
     return { ok: false, error: 'invalid_date_range', message: 'date_from과 date_to가 모두 필요합니다.' };
   }
-  const from = date_from ?? todayISO();
+  const from = date_from ?? todayKST();
   const to = date_to ?? from;
   if (new Date(from).getTime() > new Date(to).getTime()) {
     return { ok: false, error: 'invalid_date_range', message: 'date_from이 date_to보다 늦습니다.' };

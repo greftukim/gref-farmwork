@@ -8,7 +8,7 @@
 
 import { createClient } from 'npm:@supabase/supabase-js@2';
 import Anthropic from 'npm:@anthropic-ai/sdk';
-import { TOOL_DEFINITIONS, executeTool, type ToolResult, type ToolContext } from './tools.ts';
+import { TOOL_DEFINITIONS, executeTool, todayKST, type ToolResult, type ToolContext } from './tools.ts';
 
 const MAX_TOOL_LOOP = 5;
 
@@ -188,11 +188,9 @@ Deno.serve(async (req) => {
     }
 
     // 6. 시스템 프롬프트 조립 (§3.3 원문 + 치환)
-    // 오늘 날짜는 Edge Function 실행 시점의 UTC 기준 YYYY-MM-DD.
-    // KST(+9h)와 최대 9시간 차이 — 자정 직후 호출 시 하루 어긋날 수 있으나
-    // 도구 호출의 상대 날짜 해석 목적상 허용 오차 범위.
+    // 오늘 날짜: KST(UTC+9) 기준 YYYY-MM-DD (tools.ts todayKST 사용)
     const branchDisplay = emp.branch ?? '전 지점';
-    const today = new Date().toISOString().slice(0, 10);
+    const today = todayKST();
     const systemPrompt = buildSystemPrompt(emp.id, emp.role, branchDisplay, today);
 
     // 7. Anthropic 호출 + tool_use 루프
