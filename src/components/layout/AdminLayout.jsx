@@ -15,6 +15,8 @@ import {
 } from '../../lib/firebase';
 import PWAInstallGuideModal from '../PWAInstallGuideModal';
 import { getGuideType } from '../../lib/deviceDetect';
+import ChatbotFab from '../chatbot/ChatbotFab';
+import ChatbotPanel from '../chatbot/ChatbotPanel';
 
 const SESSION_KEY = 'pwa_guide_shown';
 
@@ -95,6 +97,14 @@ export default function AdminLayout() {
       <AdminBottomNav />
       <ToastContainer />
       <PWAInstallGuideModal guideType={guideType} onClose={closeGuide} />
+      {/*
+        챗봇 영역.
+        z-index 값으로 레이어 보장: FAB z-[60] < Panel z-[70] < Toast z-[100].
+        DOM append 순서는 일관성 목적일 뿐, z-index 값이 시각 우선순위 결정.
+        렌더 순서: FAB 먼저, Panel 다음 (구조상 의미 없음, 가독성 관례).
+      */}
+      <ChatbotFab />
+      <ChatbotPanel />
     </div>
   );
 }
