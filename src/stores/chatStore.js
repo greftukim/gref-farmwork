@@ -92,7 +92,7 @@ const useChatStore = create((set, get) => ({
   },
 
   /**
-   * tool_use 로딩 말풍선 토글 (§5.2 "🔍 데이터 조회 중..." 시스템 말풍선)
+   * LLM 응답 대기 로딩 말풍선 토글 (§5.2 "응답 생성 중..." 봇 말풍선)
    * pending=true: 임시 말풍선 push (멱등 — 중복 호출 안전)
    * pending=false: TOOL_USE_PENDING_ID 말풍선 제거
    */
@@ -107,7 +107,7 @@ const useChatStore = create((set, get) => ({
             ...s.messages,
             {
               role: 'assistant',
-              content: '🔍 데이터 조회 중...',
+              content: '응답 생성 중...',
               id: TOOL_USE_PENDING_ID,
               timestamp: new Date().toISOString(),
               toolUsePending: true,
