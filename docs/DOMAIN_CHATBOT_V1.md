@@ -621,7 +621,7 @@ executeTool 시그니처 확장은 단위 4에서 반영. 공통 규약 §3.4.3 
 | **H-1** | Edge Function chatbot-query 골격 (LLM 호출 + 시스템 프롬프트 + admin 권한 검증, 도구 없음) |
 | **H-2** | 도구 5종(조회 전용) 정의 + 사용자 JWT 기반 RLS 위임 호출 + Anthropic tool_use 루프 통합 |
 | **H-2.5** | `submit_feedback` 도구 + `chatbot_feedback` 테이블 + RLS 정책 3종 + index.ts user turn INSERT 선행 분리 리팩토링. 작업 단위 6개 + fix 커밋 1건. 완료 (2026-04-13, 세션 13). 이월: BACKLOG `RLS-WORKER-ROLE-TEST-001`, `RLS-MASTER-VISIBILITY-STRONG-001`, `CURL-WORKER-SKIP-001` |
-| **H-3** | AdminLayout FAB(z-[60]) + 슬라이드 오버 패널(z-[70], 모바일 전체화면/데스크톱 440px). useChatStore(Zustand non-persist). supabase.functions.invoke 연동. role 3종(farm_admin/hr_admin/master) 노출, supervisor 제외. 13pt Pretendard(전역 로드 완료). D1~D7 UX 결정 §5 참조. 작업 단위 6개 (단위 1~6). 진행 중 (세션 14). |
+| **H-3** | AdminLayout FAB(z-[60]) + 슬라이드 오버 패널(z-[70], 모바일 전체화면/데스크톱 440px). useChatStore(Zustand non-persist). supabase.functions.invoke 연동. role 3종(farm_admin/hr_admin/master) 노출, supervisor 제외. 13pt Pretendard(전역 로드 완료). D1~D7 UX 결정 §5 참조. 작업 단위 6개 (단위 1~6). 완료 (2026-04-14, 세션 15 단위 6 마감). |
 | **H-4** | 레이트 리밋 + 입력 길이 제한 + 에러 처리 |
 | **H-5** | 관리자 모니터링 페이지 (master 전용 chat_logs 조회) |
 | **H-6** | 비용 집계 대시보드 (token 합산) |
