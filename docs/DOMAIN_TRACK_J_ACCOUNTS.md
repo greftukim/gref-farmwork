@@ -109,11 +109,11 @@
 ```sql
 ALTER TABLE public.employees
   ADD COLUMN IF NOT EXISTS job_title  text,   -- 직책 (LAB장, HUB장, 재배사, 과장 등)
-  ADD COLUMN IF NOT EXISTS job_grade  text;   -- 직급 (대표, 부장, 매니저, 사원 등 / NULL 허용)
+  ADD COLUMN IF NOT EXISTS job_rank  text;   -- 직급 (대표, 부장, 매니저, 사원 등 / NULL 허용)
 ```
 
 - 두 컬럼 모두 NULLABLE (직급 NULL 허용 — 김현도(타회사 소속) 등)
-- 작업자(role='worker')는 job_title=NULL, job_grade=NULL → UI에서 '-' 표시
+- 작업자(role='worker')는 job_title=NULL, job_rank=NULL → UI에서 '-' 표시
 
 ### §4.2 job_type NULL 7건 처리
 
@@ -147,7 +147,7 @@ auth.users 생성은 **마이그레이션 SQL이 아닌 별도 작업**. 순서 
 
 ### §4.4 신규 시드 10건
 
-| login_id | name | branch | role | job_type | job_title | job_grade | 비고 |
+| login_id | name | branch | role | job_type | job_title | job_rank | 비고 |
 |---|---|---|---|---|---|---|---|
 | `mspark` | 박민식 | headquarters | general | 관리자 | 총괄 | 대표 | |
 | `mkkim` | 김민국 | headquarters | general | 관리자 | 총괄 | 부장 | |
@@ -254,7 +254,7 @@ CREATE POLICY <table>_select_admin ON <table>
 | 조건 | 직책 | 직급 |
 |---|---|---|
 | job_type = '작업자' | `-` | `-` |
-| job_type = '관리자' | job_title 값 또는 `—` | job_grade 값 또는 `—` |
+| job_type = '관리자' | job_title 값 또는 `—` | job_rank 값 또는 `—` |
 
 ### §6.4 수정 권한
 
