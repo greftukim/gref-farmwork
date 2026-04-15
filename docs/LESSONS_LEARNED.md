@@ -868,3 +868,55 @@ CREATE POLICY <name>_select_master ON <table>
 - **silent fail 패턴 회피 — 결함은 일찍 표면화시켜라** — 서버가 "그냥 받아주는" 것은 유연성이 아니라 결함 은폐. 의도적 거절·상태 marking·로그 발생으로 결함을 즉시 노출한다.
 - **리팩토링 시 "서버 측 부수 영향" 검토 절차 보강** — 클라이언트 동작만 보고 리팩토링하면 서버 측 검증 누락이 부작용으로 누적된다. 리팩토링 PR 검토 항목에 "서버 측 검증 필요 여부" 포함.
 - **데이터 정합 책임 분담은 명시적으로 — "관대한 서버 + 보수적 클라이언트" 또는 "엄격한 서버 + 자유로운 클라이언트" 중 선택해 명문화** — 양쪽 모두 검증 부재면 결함 누적, 양쪽 모두 검증이면 중복. 트랙별 진입 시점에 정책 결정 필요.
+
+---
+
+## 교훈 35 — CHECK 제약은 information_schema에 안 보인다, pg_constraint를 직접 조회하라
+
+**맥락:** 세션 16 (2026-04-15), 트랙 J-1 파트 B 시드 INSERT 실행 시 `employees_branch_check` CHECK 제약 위반 에러 발생.
+
+**잘못된 접근:** 단계 1 조사에서 `information_schema.columns` 기반으로 employees 스키마 조사. 결과에 "CHECK 제약 없음"으로 보고. 도메인 노트 §3에 "CHECK 없음" 박음. J-1 파트 B 시드 INSERT 진입 시 23514 에러 발견. CHECK 제약 2건(`employees_branch_check`, `employees_role_check`) 실 존재 확인 → 별도 마이그레이션 파일(`20260415_track_j_check_constraints.sql`) 신설로 우회.
+
+**올바른 접근:** PostgreSQL의 CHECK 제약은 `information_schema.columns`에는 표시되지 않음 (data_type·is_nullable 등 컬럼 자체 메타만). CHECK 제약 조회는 반드시 `pg_constraint` 시스템 카탈로그 사용:
+
+```sql
+SELECT conname, pg_get_constraintdef(oid)
+FROM pg_constraint
+WHERE conrelid = '<테이블>'::regclass
+AND contype = 'c';
+```
+
+**재발 방지 체크리스트 (스키마 조사 시):**
+- [ ] `information_schema.columns` — 컬럼 타입·nullable·default 확인
+- [ ] `pg_constraint` (contype='c') — CHECK 제약 확인
+- [ ] `pg_constraint` (contype='f') — FK 제약 확인 (교훈 12 관련)
+- [ ] `pg_constraint` (contype='u') — UNIQUE 제약 확인
+- [ ] `pg_indexes` — 인덱스 확인
+- [ ] `pg_policies` — RLS 정책 확인 (교훈 30·31 관련)
+
+**핵심 원칙:** 단일 도구·단일 카탈로그가 모든 제약을 커버하지 않음. 스키마 조사는 "도구별 반환 범위"를 의식하고 다중 카탈로그 조회로 사각지대 제거.
+
+교훈 1·2(스키마 실측 선행) 확장. 실측은 "조회만으로 충분"이 아니라 "조회 도구의 반환 범위를 의식한 다중 카탈로그 조회"가 본질.
+
+**관련 커밋:** 세션 16 `c611e8f` (CHECK 제약 ALTER + 시드 재실행)
+
+---
+
+## 교훈 36 — Supabase MCP 다중 쿼리 단일 호출 시 마지막 결과만 반환됨
+
+**맥락:** 세션 16 (2026-04-15), J-2 RLS 검증 + J-4-DB 검증 시 다중 쿼리 결과 누락 발생.
+
+**잘못된 접근:** Supabase MCP `execute_sql` 호출 시 세미콜론으로 구분된 다중 SQL 문 단일 호출로 전달. 검증 1·2 두 쿼리 동시 전달 시 실측 결과로 마지막 쿼리(검증 2)만 반환됨. 검증 1 결과는 누락. 처음에는 누락 사실 인지 못해 "검증 통과"로 자체 판정 위험 → 단일 호출 재실행으로 검증 1 별도 확인.
+
+**올바른 접근:** Supabase MCP는 단일 호출당 단일 결과 set만 반환하는 것으로 추정 (다중 statement 시 마지막 결과 우선). 검증 쿼리는 반드시 **각 쿼리당 개별 호출**로 분리. 결과 누락 발견 시 자체 판정 금지, 즉시 재실행.
+
+**재발 방지 체크리스트:**
+- [ ] MCP `execute_sql` 호출 시 단일 SQL statement만 전달
+- [ ] 검증 N건은 N회 호출로 분리
+- [ ] 결과 누락 의심 시 단일 호출 재검증
+- [ ] "마지막 쿼리만 반환됐을 가능성" 의식 후 진행
+- [ ] ※ 동일 패턴 의심 영역: Edge Function 내부 PostgREST 호출, RPC 호출, supabase-js .rpc() 메서드 — 각 도구의 호출-결과 단위 실측 권고.
+
+**핵심 원칙:** MCP 도구의 호출 단위 ≠ SQL statement 단위. 도구 동작 가정을 실측으로 검증한 뒤 검증 절차 설계.
+
+**관련 커밋:** 세션 16 `f348187` (J-2 RLS, 검증 재실행), `915c88f` (J-4-DB, 검증 재실행)
