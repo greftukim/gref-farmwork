@@ -112,7 +112,8 @@
 | HIRE-DATE-AFFILIATION-001 | 데이터 정합 | open | 세션 16 (2026-04-15) | - | 박민식·김민국·김현도 hire_date NULL 상태 (엑셀 비고가 소속 정보 "대표이사"·"대한제강 소속"). 실 GREF 입사일 확보 시 UPDATE 필요. 우선순위 낮음. | docs/handoff/2026-04-15_session16.md |
 | PACKING-LEADER-COLUMN-001 | 도메인 미확정 | open | 세션 16 (2026-04-15) | - | 엑셀 비고 "포장반장"·"포장" 표기는 트랙 G(포장) 진입 시 별 컬럼 신설 검토. 현재 is_team_leader=false 처리 (반장만 매핑). 트랙 G 진입 시점에 처리. | docs/handoff/2026-04-15_session16.md |
 | BRANCH-LABEL-MAPPING-001 | UI | open | 세션 16 (2026-04-15) | - | UI 라벨 매핑 — busan→부산LAB, jinju→진주HUB, hadong→하동HUB, headquarters→총괄본사, management→관리팀, seedlab→Seed LAB. J-4-UI 진입 시 구현 대상. | docs/handoff/2026-04-15_session16.md |
-| RESIDENT-ID-ENCRYPTION-001 | 보안 | open | 세션 16 (2026-04-15) | 운영 critical | resident_id 컬럼 평문 저장 상태. 실 운영 전 암호화(Supabase Vault 또는 pgcrypto) 검토 필요. 개인정보 보호법 준수. J-4-UI 진입 전 또는 J-4-UI와 병행 처리 권장. | docs/handoff/2026-04-15_session16.md |
+| RESIDENT-ID-ENCRYPTION-001 | 보안 | in-progress | 세션 16 (2026-04-15) | 운영 critical | resident_id 컬럼 평문 저장 상태. 실 운영 전 암호화(Supabase Vault 또는 pgcrypto) 검토 필요. 개인정보 보호법 준수. J-4-UI 진입 전 또는 J-4-UI와 병행 처리 권장. 세션 17: encrypt_resident_id + decrypt_resident_id RPC 구현 완료 (b425e87 + UI-0-B-2 fix). UI-C 모달 신설 + round-trip 검증 후 resolved 처리 예정. | docs/handoff/2026-04-15_session16.md |
+| RESIDENT-ID-DECRYPT-RUNTIME-VERIFY-001 | 검증 공백 | open | 세션 17 (2026-04-15) | - | decrypt_resident_id round-trip 검증 보류 — UI-0-B-2-F CTE 가시성 한계로 시뮬레이션 불가. UI-C 모달 신설 후 평문 입력→DB 저장→모달 재진입→평문 표시 일치 확인 필수. 판정 기준: 저장 후 모달 재진입 시 평문 표시 일치. 연관: b425e87 (UI-0-B) + UI-0-B-2 fix. | docs/BACKLOG.md |
 
 ---
 
