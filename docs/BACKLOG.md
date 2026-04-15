@@ -32,6 +32,9 @@
 | DATA-002 | 기타 | open | Phase 2 (2026-04-09) | - | EmployeesPage:203, WorkStatsPage:70의 currentUser.branch 직접 참조 — master(branch=NULL) 동작 미검증 | [docs/handoff/2026-04-09.md](handoff/2026-04-09.md#데이터감사) |
 | Track H | 챗봇 | in-progress | Phase 5 세션 7 (2026-04-12) | - | 인앱 챗봇 v1 (admin 전용, 쿼리·피드백, 액션 없음). 도메인 노트: docs/DOMAIN_CHATBOT_V1.md. H-0 ~ H-7 8단계. H-0 완료 (2026-04-12). H-1 완료 (2026-04-12, 세션 9) — Edge Function chatbot-query 배포 + curl 테스트 통과 (정상 응답 + 범위 외 거절 + chat_logs 저장). H-1.5 완료 (2026-04-12, 세션 11) — curl 3/3 시나리오 통과. H-2 완료 (2026-04-12, 세션 12) — 도구 5종 정의 + tool_use 루프 + 사용자 JWT RLS 위임 + curl 6/6 시나리오 통과. H-2.5 완료 (2026-04-13, 세션 13) — submit_feedback 도구 + chatbot_feedback 테이블 + RLS 정책 3종. 이월 3건: RLS-WORKER-ROLE-TEST-001, RLS-MASTER-VISIBILITY-STRONG-001, CURL-WORKER-SKIP-001. H-3 완료 (2026-04-14, 세션 14·15, 단위 1~6 완료) — AdminLayout FAB + 슬라이드 패널 + Zustand 스토어 + 5종 query 도구 + submit_feedback 통합. 챗봇 v1 실사용 가능. | docs/DOMAIN_CHATBOT_V1.md |
 | Track I | 인사이트 | deferred | Phase 5 세션 7 (2026-04-12) | - | 작업자별 작업별 소요시간 기반 작업 배치·예상 시간 추천 모듈. 트랙 H 챗봇 v1과 분리됨. 선행조건: (1) 트랙 G(포장) 완료, (2) 트랙 F 시간 단위 정밀 기록 보강, (3) 운영 데이터 3개월 누적. 빨라도 2026 하반기. | docs/BACKLOG.md |
+| GENERAL-DASHBOARD-ITEMS-001 | 도메인 미확정 | open | 세션 15 (2026-04-14) | - | general role 대시보드 노출 항목 정의 — 박민식·김민국 답변 대기. 트랙 J 단위 4 또는 별 트랙에서 처리. | docs/handoff/2026-04-14_session15.md |
+| EMPLOYEE-PASSWORD-FIRST-LOGIN-001 | 보안 | open | 세션 15 (2026-04-14) | - | 트랙 J 마감 후 계정별 비밀번호 변경 필수. 첫 로그인 시 비밀번호 변경 강제 정책 검토. 현재 통일 비밀번호(rmfpvm001) 임시 운용. | docs/handoff/2026-04-14_session15.md |
+| TRACK-L-G-MERGE-001 | 트랙 매핑 | open | 세션 15 (2026-04-14) | - | 트랙 L (거터 QR 작업 흐름) 진입 시 Track G (포장 작업)와 통합 검토. 둘 다 작업자 흐름 재설계 영역 겹침. | docs/handoff/2026-04-14_session15.md |
 
 ---
 
