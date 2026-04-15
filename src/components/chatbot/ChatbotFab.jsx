@@ -2,7 +2,7 @@
  * ChatbotFab — AdminLayout 우하단 플로팅 챗봇 버튼
  *
  * §5.1 위치: fixed bottom-6 right-6, z-[60]
- * §5.1 노출 조건: role ∈ {farm_admin, hr_admin, master} (3종)
+ * §5.1 노출 조건: role ∈ {farm_admin, hr_admin, master, general} (4종)
  *
  * 이중 방어:
  *   1차: 라우팅 ProtectedRoute가 ADMIN_ROLES 4종(farm_admin/
@@ -22,7 +22,7 @@
 import useAuthStore from '../../stores/authStore';
 import useChatStore from '../../stores/chatStore';
 
-const CHATBOT_ALLOWED_ROLES = ['farm_admin', 'hr_admin', 'master'];
+const CHATBOT_ALLOWED_ROLES = ['farm_admin', 'hr_admin', 'master', 'general'];
 
 export default function ChatbotFab() {
   const currentUser = useAuthStore((s) => s.currentUser);

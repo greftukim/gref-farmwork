@@ -87,7 +87,7 @@ v1 챗봇 제약:
 위 기능에 관한 모든 질문에 충실하게 답변하세요. 이모지와 마크다운 헤딩(#, ##)은 사용하지 마세요. 간결하게 답하되 단순 질문은 1~3문장으로 끝내세요.`;
 }
 
-const ALLOWED_ROLES = ['farm_admin', 'hr_admin', 'master'] as const;
+const ALLOWED_ROLES = ['farm_admin', 'hr_admin', 'master', 'general'] as const;
 type AllowedRole = typeof ALLOWED_ROLES[number];
 
 function isAllowedRole(role: string): role is AllowedRole {
