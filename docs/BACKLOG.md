@@ -109,6 +109,10 @@
 | CHATBOT-ROLES-EXTRACT-001 | 코드 정리 | open | 세션 14 (2026-04-14) | 챗봇 노출 role 검증 로직(farm_admin/hr_admin/master) 여러 곳 중복 — permissions.js로 공통화. H-4·H-5 진입 시 검토. 우선순위 낮음. |
 | I18N-FOUNDATION-001 | 인프라 | open | 세션 14 (2026-04-14) | i18n 도입 검토 — 한국어 외 다국어 지원 필요 시점에 진입. 현재 한국어 단일. 부산LAB 사용자 한국어 단일 확정 시 wontfix 가능. 우선순위 낮음. |
 | CHATBOT-NAMING-DRIFT-001 | 코드 정리 | open | 세션 15 (2026-04-14) | chatStore.js setToolUsePending 함수명·TOOL_USE_PENDING_ID·toolUsePending 필드명이 "tool_use 전용" 명명이지만 실 호출 패턴은 LLM 응답 대기 전 일반 로딩 (도구 호출 + 순수 텍스트 응답 통합). 단위 6-B에서 content + JSDoc만 일반화, rename은 deps·import·filter selector 영향 광범으로 별건. v1.1 또는 별 트랙에서 일괄 rename 검토. 우선순위 낮음 (코드 동작 영향 0). 단위 6-D 박제 교훈 32 회고 사례 추가 후보 — 단위 5-A·5-B 명명 결정이 후속 일반화(D27)와 안 맞은 사례. |
+| HIRE-DATE-AFFILIATION-001 | 데이터 정합 | open | 세션 16 (2026-04-15) | - | 박민식·김민국·김현도 hire_date NULL 상태 (엑셀 비고가 소속 정보 "대표이사"·"대한제강 소속"). 실 GREF 입사일 확보 시 UPDATE 필요. 우선순위 낮음. | docs/handoff/2026-04-15_session16.md |
+| PACKING-LEADER-COLUMN-001 | 도메인 미확정 | open | 세션 16 (2026-04-15) | - | 엑셀 비고 "포장반장"·"포장" 표기는 트랙 G(포장) 진입 시 별 컬럼 신설 검토. 현재 is_team_leader=false 처리 (반장만 매핑). 트랙 G 진입 시점에 처리. | docs/handoff/2026-04-15_session16.md |
+| BRANCH-LABEL-MAPPING-001 | UI | open | 세션 16 (2026-04-15) | - | UI 라벨 매핑 — busan→부산LAB, jinju→진주HUB, hadong→하동HUB, headquarters→총괄본사, management→관리팀, seedlab→Seed LAB. J-4-UI 진입 시 구현 대상. | docs/handoff/2026-04-15_session16.md |
+| RESIDENT-ID-ENCRYPTION-001 | 보안 | open | 세션 16 (2026-04-15) | 운영 critical | resident_id 컬럼 평문 저장 상태. 실 운영 전 암호화(Supabase Vault 또는 pgcrypto) 검토 필요. 개인정보 보호법 준수. J-4-UI 진입 전 또는 J-4-UI와 병행 처리 권장. | docs/handoff/2026-04-15_session16.md |
 
 ---
 
