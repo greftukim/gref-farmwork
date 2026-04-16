@@ -16,6 +16,32 @@ import { isFarmAdmin } from '../../lib/permissions';
 
 const today = () => new Date().toISOString().split('T')[0];
 
+// ─── 관리팀 전용 더미 데이터 (실 데이터 연동 예정) ───────────────────────────
+const BRANCH_ATTENDANCE_DUMMY = [
+  { code: 'busan', label: '부산LAB', checkedIn: 8, total: 10, leaveCount: 1 },
+  { code: 'jinju', label: '진주HUB', checkedIn: 5, total: 6, leaveCount: 0 },
+  { code: 'hadong', label: '하동HUB', checkedIn: 3, total: 4, leaveCount: 1 },
+];
+
+const BRANCH_TBM_DUMMY = [
+  { code: 'busan', label: '부산LAB', rate: 80 },
+  { code: 'jinju', label: '진주HUB', rate: 100 },
+  { code: 'hadong', label: '하동HUB', rate: 75 },
+];
+
+const TOP_PERFORMERS_DUMMY = [
+  { rank: 1, name: '김민국', branch: '부산LAB', score: 98 },
+  { rank: 2, name: '박민식', branch: '진주HUB', score: 95 },
+  { rank: 3, name: '이성호', branch: '하동HUB', score: 91 },
+];
+
+const RECENT_ISSUES_DUMMY = [
+  { id: 1, dot: 'bg-red-500', branch: '부산LAB', time: '09:14', content: '긴급 호출 — 작업자 부상 (경미)' },
+  { id: 2, dot: 'bg-amber-500', branch: '진주HUB', time: '08:52', content: '이상 신고 — 온실 온도 이상' },
+  { id: 3, dot: 'bg-indigo-400', branch: '하동HUB', time: '07:30', content: '정기 점검 완료 보고' },
+];
+// ─────────────────────────────────────────────────────────────────────────────
+
 function StatCard({ label, value, color, sub }) {
   return (
     <div className="bg-white p-6 rounded-[24px] shadow-sm border border-gray-100 text-center">
@@ -201,6 +227,24 @@ export default function AdminDashboard() {
     { name: '대기', value: taskPending, color: '#D1D5DB' },
   ].filter((d) => d.value > 0);
   if (donutData.length === 0) donutData.push({ name: '없음', value: 1, color: '#E5E7EB' });
+
+  // 지점별 출근 현황: branchStore 지점명으로 더미 데이터 라벨 보강
+  const branchAttendanceRows = useMemo(() => {
+    if (branches.length === 0) return BRANCH_ATTENDANCE_DUMMY;
+    return BRANCH_ATTENDANCE_DUMMY.map((d) => ({
+      ...d,
+      label: branches.find((b) => b.code === d.code)?.name || d.label,
+    }));
+  }, [branches]);
+
+  // 지점별 TBM 완료율: branchStore 지점명으로 더미 데이터 라벨 보강
+  const branchTbmRows = useMemo(() => {
+    if (branches.length === 0) return BRANCH_TBM_DUMMY;
+    return BRANCH_TBM_DUMMY.map((d) => ({
+      ...d,
+      label: branches.find((b) => b.code === d.code)?.name || d.label,
+    }));
+  }, [branches]);
 
   // 출퇴근 누락 카드 (공통 — 재배팀/비재배팀 모두 사용)
   const MissedCheckoutCard = () => (
@@ -414,6 +458,120 @@ export default function AdminDashboard() {
             {/* 비재배팀: 출퇴근 누락 */}
             <div className="col-span-12">
               <MissedCheckoutCard />
+            </div>
+
+            {/* 비재배팀 고유: 지점별 출근 현황 ─ 실 데이터 연동 예정 */}
+            <div className="col-span-12 bg-white rounded-[24px] shadow-sm border border-gray-100 p-6">
+              <div className="flex items-center justify-between mb-5">
+                <div className="text-sm font-semibold text-gray-500">지점별 출근 현황</div>
+                <span className="text-xs text-gray-400 bg-gray-100 px-2.5 py-1 rounded-full">실 데이터 연동 예정</span>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                {branchAttendanceRows.map((b) => {
+                  const pct = b.total > 0 ? Math.round((b.checkedIn / b.total) * 100) : 0;
+                  const badgeColor = pct >= 90 ? 'bg-emerald-100 text-emerald-700' : pct >= 70 ? 'bg-amber-100 text-amber-700' : 'bg-red-100 text-red-600';
+                  return (
+                    <div key={b.code} className="bg-gray-50 rounded-2xl p-4">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-sm font-semibold text-gray-800">{b.label}</span>
+                        <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${badgeColor}`}>{pct}%</span>
+                      </div>
+                      <div className="text-2xl font-bold text-gray-900 mb-1">
+                        {b.checkedIn}
+                        <span className="text-sm font-normal text-gray-400 ml-1">/ {b.total}명</span>
+                      </div>
+                      {/* 출근 진행 바 */}
+                      <div className="bg-gray-200 rounded-full h-1.5 mb-2 overflow-hidden">
+                        <div
+                          className="h-full bg-[#6366F1] rounded-full"
+                          style={{ width: `${pct}%` }}
+                        />
+                      </div>
+                      {b.leaveCount > 0 && (
+                        <div className="text-xs text-gray-400">근태 신청 {b.leaveCount}명 제외됨</div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* 비재배팀 고유: 지점별 TBM 완료율 + 성과 상위 명단 + 최근 이슈 피드 */}
+            {/* TBM 완료율 (col-span-4) */}
+            <div className="col-span-12 md:col-span-4 bg-white rounded-[24px] shadow-sm border border-gray-100 p-6">
+              <div className="flex items-center justify-between mb-5">
+                <div className="text-sm font-semibold text-gray-500">지점별 TBM 완료율</div>
+                <span className="text-xs text-gray-400 bg-gray-100 px-2.5 py-1 rounded-full">더미 데이터</span>
+              </div>
+              <div className="space-y-4">
+                {branchTbmRows.map((b) => {
+                  const barColor = b.rate === 100 ? 'bg-emerald-500' : b.rate >= 75 ? 'bg-[#6366F1]' : 'bg-amber-500';
+                  const textColor = b.rate === 100 ? 'text-emerald-600' : b.rate >= 75 ? 'text-indigo-600' : 'text-amber-600';
+                  return (
+                    <div key={b.code}>
+                      <div className="flex items-center justify-between mb-1.5">
+                        <span className="text-sm text-gray-700">{b.label}</span>
+                        <span className={`text-sm font-bold ${textColor}`}>{b.rate}%</span>
+                      </div>
+                      <div className="bg-gray-100 rounded-full h-2 overflow-hidden">
+                        <div
+                          className={`h-full ${barColor} rounded-full`}
+                          style={{ width: `${b.rate}%` }}
+                        />
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* 성과 상위 명단 (col-span-4) */}
+            <div className="col-span-12 md:col-span-4 bg-white rounded-[24px] shadow-sm border border-gray-100 p-6">
+              <div className="flex items-center justify-between mb-5">
+                <div className="text-sm font-semibold text-gray-500">성과 상위 명단</div>
+                <span className="text-xs text-gray-400 bg-gray-100 px-2.5 py-1 rounded-full">더미 데이터</span>
+              </div>
+              <div className="space-y-3">
+                {TOP_PERFORMERS_DUMMY.map((p) => {
+                  const rankColors = ['text-amber-500', 'text-gray-400', 'text-orange-400'];
+                  const rankBg = ['bg-amber-50', 'bg-gray-50', 'bg-orange-50'];
+                  return (
+                    <div key={p.rank} className={`flex items-center gap-3 rounded-2xl px-3 py-2.5 ${rankBg[p.rank - 1]}`}>
+                      <span className={`text-lg font-black w-6 text-center flex-shrink-0 ${rankColors[p.rank - 1]}`}>
+                        {p.rank}
+                      </span>
+                      <div className="flex-1 min-w-0">
+                        <div className="text-sm font-semibold text-gray-900">{p.name}</div>
+                        <div className="text-xs text-gray-400">{p.branch}</div>
+                      </div>
+                      <div className="text-sm font-bold text-indigo-600 flex-shrink-0">{p.score}점</div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* 최근 이슈 피드 (col-span-4) */}
+            <div className="col-span-12 md:col-span-4 bg-white rounded-[24px] shadow-sm border border-gray-100 p-6">
+              <div className="flex items-center justify-between mb-5">
+                <div className="text-sm font-semibold text-gray-500">최근 이슈</div>
+                <span className="text-xs text-gray-400 bg-gray-100 px-2.5 py-1 rounded-full">더미 데이터</span>
+              </div>
+              <div className="space-y-3">
+                {RECENT_ISSUES_DUMMY.map((issue) => (
+                  <div key={issue.id} className="flex items-start gap-3 pb-3 border-b border-gray-50 last:border-0">
+                    <span className={`mt-1 flex-shrink-0 block w-2.5 h-2.5 rounded-full ${issue.dot}`} />
+                    <div className="flex-1 min-w-0">
+                      <div className="text-sm text-gray-800 leading-snug">{issue.content}</div>
+                      <div className="flex items-center gap-2 mt-1">
+                        <span className="text-xs text-gray-400">{issue.branch}</span>
+                        <span className="text-xs text-gray-300">·</span>
+                        <span className="text-xs text-gray-400">{issue.time}</span>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
           </>
         )}
