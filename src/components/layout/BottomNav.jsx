@@ -28,7 +28,7 @@ export default function BottomNav() {
           end={tab.to === '/worker'}
           className={({ isActive }) =>
             `flex flex-col items-center justify-center gap-0.5 min-w-[56px] min-h-[52px] px-2 py-1 rounded-xl transition-colors ${
-              isActive ? 'text-blue-600' : 'text-gray-400'
+              isActive ? 'text-indigo-600' : 'text-gray-400'
             }`
           }
         >

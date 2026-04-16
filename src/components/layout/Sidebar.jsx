@@ -221,8 +221,8 @@ function MenuItem({ item }) {
         className={({ isActive }) =>
           `flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm transition-all min-h-[42px] ${
             isActive
-              ? 'bg-blue-600 text-white font-medium shadow-lg shadow-blue-600/20'
-              : 'text-slate-400 hover:bg-slate-800 hover:text-white'
+              ? 'bg-white/20 text-white font-medium'
+              : 'text-white/60 hover:bg-white/10 hover:text-white'
           }`
         }
       >
@@ -239,11 +239,11 @@ export default function Sidebar() {
   const roleBadge = ROLE_LABELS[currentUser?.role];
 
   return (
-    <nav className="w-60 bg-slate-900 min-h-screen py-5 flex-shrink-0 flex flex-col">
-      <div className="px-5 pb-5 mb-3 border-b border-slate-700/50">
+    <nav className="w-60 bg-[#6366F1] min-h-screen py-5 flex-shrink-0 flex flex-col">
+      <div className="px-5 pb-5 mb-3 border-b border-white/20">
         <div className="text-xl font-heading font-bold text-white tracking-tight">GREF FarmWork</div>
         {roleBadge && (
-          <span className="inline-block mt-2 px-2 py-0.5 rounded text-xs font-medium bg-blue-600/20 text-blue-300">
+          <span className="inline-block mt-2 px-2 py-0.5 rounded text-xs font-medium bg-white/20 text-white/90">
             {roleBadge}
           </span>
         )}
@@ -253,7 +253,7 @@ export default function Sidebar() {
           if (entry.type === 'category') {
             return (
               <li key={entry.label} className={idx > 0 ? 'pt-4' : ''}>
-                <p className="px-3 pb-1.5 text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
+                <p className="px-3 pb-1.5 text-[11px] font-semibold text-white/40 uppercase tracking-wider">
                   {entry.label}
                 </p>
                 <ul className="space-y-0.5">
