@@ -5,11 +5,12 @@ export const ROLES = {
   HR_ADMIN: 'hr_admin',
   SUPERVISOR: 'supervisor',
   MASTER: 'master',
+  GENERAL: 'general',  // 세션 17 UI-A 추가 (J-3 부채 해소)
 };
 
 // 역할 그룹
-export const ADMIN_ROLES = ['farm_admin', 'hr_admin', 'supervisor', 'master'];
-export const ALL_BRANCH_ROLES = ['hr_admin', 'supervisor', 'master']; // 전체 지점 조회
+export const ADMIN_ROLES = ['farm_admin', 'hr_admin', 'supervisor', 'master', 'general'];
+export const ALL_BRANCH_ROLES = ['hr_admin', 'supervisor', 'master', 'general']; // 전체 지점 조회
 export const WRITE_ROLES = ['farm_admin', 'hr_admin', 'master'];      // 수정 권한
 export const HR_CRUD_ROLES = ['hr_admin', 'master'];                   // 직원 CRUD
 
@@ -49,6 +50,7 @@ export const ROLE_LABELS = {
   hr_admin: '관리팀',
   supervisor: '총괄',
   master: '마스터',
+  general: '총괄',  // 세션 17 UI-A 추가
   admin: '관리자', // 하위 호환
 };
 
@@ -65,5 +67,36 @@ export function canApproveSafetyChecks(user) {
   if (user.isTeamLeader) return true;
   if (user.role === 'farm_admin') return true;
   if (user.role === 'hr_admin' || user.role === 'master') return true;
+  return false;
+}
+
+/**
+ * 직원 편집 권한 (resident_id, contract_end_date, birth_date 등 일반 편집)
+ *
+ * - master/hr_admin: 전체 편집 가능
+ * - 그 외: 편집 불가 (읽기 전용)
+ * - is_active=false: 모든 역할 편집 불가
+ *
+ * 세션 17 UI-A 추가 (메타 §3 결정 정합)
+ */
+export function canEditEmployee(currentUser) {
+  if (!currentUser || !currentUser.is_active) return false;
+  return ['master', 'hr_admin'].includes(currentUser.role);
+}
+
+/**
+ * 반장 부여 권한 (job_rank = '반장' 설정)
+ *
+ * - master/hr_admin: 전체 지점 반장 부여 가능
+ * - farm_admin: 본인 지점 직원만 반장 부여 가능
+ * - 그 외: 불가
+ * - is_active=false: 모든 역할 불가
+ *
+ * 세션 17 UI-A 추가 (메타 §3 결정 정합)
+ */
+export function canAssignLeader(currentUser, targetEmployee) {
+  if (!currentUser || !currentUser.is_active) return false;
+  if (['master', 'hr_admin'].includes(currentUser.role)) return true;
+  if (currentUser.role === 'farm_admin' && currentUser.branch === targetEmployee?.branch) return true;
   return false;
 }

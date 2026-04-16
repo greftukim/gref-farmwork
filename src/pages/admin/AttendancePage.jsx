@@ -7,9 +7,7 @@ import Card from '../../components/common/Card';
 import { isFarmAdmin } from '../../lib/permissions';
 import Button from '../../components/common/Button';
 import Modal from '../../components/common/Modal';
-
-const BRANCH_LABEL = { busan: '부산LAB', jinju: '진주', hadong: '하동' };
-const BRANCH_ORDER = ['busan', 'jinju', 'hadong', ''];
+import { BRANCH_LABEL, BRANCH_ORDER } from '../../constants/branchLabels';
 
 function formatTime(iso) {
   if (!iso) return '—';

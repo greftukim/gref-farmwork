@@ -9,8 +9,7 @@ import useAuthStore from '../../stores/authStore';
 import Card from '../../components/common/Card';
 import Button from '../../components/common/Button';
 import { isFarmAdmin } from '../../lib/permissions';
-
-const BRANCH_LABEL = { busan: '부산LAB', hadong: '하동', jinju: '진주' };
+import { BRANCH_LABEL } from '../../constants/branchLabels';
 const ATT_LABEL = { normal: '정상', late: '지각', working: '출근 중' };
 
 // UTC → KST HH:mm 변환

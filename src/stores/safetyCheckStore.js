@@ -5,8 +5,7 @@ import { matchRiskTemplates } from '../utils/tbmRiskMatcher';
 import { canApproveSafetyChecks, isTeamLeader } from '../lib/permissions';
 import { sendPushToEmployee } from '../lib/pushNotify';
 import useAuthStore from './authStore';
-
-const BRANCH_NAMES = { busan: '부산LAB', jinju: '진주', hadong: '하동' };
+import { BRANCH_LABEL as BRANCH_NAMES } from '../constants/branchLabels';
 
 const useSafetyCheckStore = create((set, get) => ({
   items: [],

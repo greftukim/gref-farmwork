@@ -26,6 +26,11 @@ const emptyForm = {
   branch: '',
   workStartTime: '',
   workEndTime: '',
+  // 세션 17 UI-A 추가 (4필드, residentId는 UI-C에서 처리)
+  jobTitle: '',
+  jobRank: '',
+  birthDate: '',
+  contractEndDate: '',
 };
 
 function EmployeeForm({ form, setForm, branchOptions }) {

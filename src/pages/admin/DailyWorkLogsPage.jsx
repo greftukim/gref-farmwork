@@ -11,13 +11,7 @@ import {
   downloadMonthlyExcel,
   aggregateByPerson,
 } from '../../lib/dailyWorkLogExcel';
-
-const BRANCH_OPTIONS = [
-  { value: 'busan', label: '부산LAB' },
-  { value: 'jinju', label: '진주' },
-  { value: 'hadong', label: '하동' },
-];
-const BRANCH_LABEL = { busan: '부산LAB', jinju: '진주', hadong: '하동' };
+import { BRANCH_OPTIONS, BRANCH_LABEL } from '../../constants/branchLabels';
 
 // [TEMP-DECISION-1] payment_status 2단계. 박민식·김민국 답 수신 시 옵션 확장
 const PAYMENT_LABEL = { pending: '미지급', paid: '지급완료' };
