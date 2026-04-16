@@ -9,6 +9,7 @@ import useNotificationStore from '../../stores/notificationStore';
 import Card from '../../components/common/Card';
 import Modal from '../../components/common/Modal';
 import { BRANCH_NULL_FALLBACK } from '../../constants/branchLabels';
+import EmployeeDetailModal from '../../components/employees/EmployeeDetailModal';
 
 // 본 앱의 기본 URL (배포 환경 우선, 로컬에서는 현재 origin)
 const APP_BASE_URL =
@@ -212,6 +213,9 @@ export default function EmployeesPage() {
   const [form, setForm] = useState(emptyForm);
   const [filter, setFilter] = useState('all');
 
+  // 상세 모달
+  const [detailTarget, setDetailTarget] = useState(null);
+
   // QR 모달
   const [qrEmployee, setQrEmployee] = useState(null); // 현재 QR 보고 있는 직원
 
@@ -351,7 +355,7 @@ export default function EmployeesPage() {
           <p className="text-center text-gray-400 py-12">등록된 직원이 없습니다</p>
         )}
         {filtered.map((emp) => (
-          <Card key={emp.id} accent="gray" className={`p-4 ${!emp.isActive ? 'opacity-50' : ''}`}>
+          <Card key={emp.id} accent="gray" className={`p-4 ${!emp.isActive ? 'opacity-50' : ''}`} onClick={() => setDetailTarget(emp)}>
             <div className="flex items-start justify-between mb-2">
               <span className="font-semibold text-gray-900 text-base">{emp.name}</span>
               <div className="flex items-center gap-1.5">
@@ -388,7 +392,7 @@ export default function EmployeesPage() {
             <div className="flex gap-2 justify-end items-center">
               {emp.role === 'worker' && (
                 <button
-                  onClick={() => handleQrOpen(emp)}
+                  onClick={(e) => { e.stopPropagation(); handleQrOpen(emp); }}
                   className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors min-h-[36px] ${
                     emp.deviceToken
                       ? 'bg-emerald-100 text-emerald-700'
@@ -401,7 +405,7 @@ export default function EmployeesPage() {
               {canToggleTeamLeader && emp.role === 'worker' && (
                 <div className="flex items-center gap-1.5">
                   <button
-                    onClick={() => handleToggleTeamLeader(emp, !emp.isTeamLeader)}
+                    onClick={(e) => { e.stopPropagation(); handleToggleTeamLeader(emp, !emp.isTeamLeader); }}
                     className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors active:scale-[0.98] ${
                       emp.isTeamLeader ? 'bg-emerald-600' : 'bg-gray-300'
                     }`}
@@ -416,8 +420,8 @@ export default function EmployeesPage() {
               )}
               {isManagement && (
                 <>
-                  <Button size="sm" variant="ghost" onClick={() => openEdit(emp)}>수정</Button>
-                  <Button size="sm" variant="ghost" onClick={() => toggleActive(emp.id)}>
+                  <Button size="sm" variant="ghost" onClick={(e) => { e.stopPropagation(); openEdit(emp); }}>수정</Button>
+                  <Button size="sm" variant="ghost" onClick={(e) => { e.stopPropagation(); toggleActive(emp.id); }}>
                     {emp.isActive ? '비활성' : '활성'}
                   </Button>
                 </>
@@ -452,7 +456,7 @@ export default function EmployeesPage() {
             </thead>
             <tbody className="divide-y divide-gray-100">
               {filtered.map((emp) => (
-                <tr key={emp.id} className={`${!emp.isActive ? 'opacity-50' : ''}`}>
+                <tr key={emp.id} className={`cursor-pointer hover:bg-gray-50 ${!emp.isActive ? 'opacity-50' : ''}`} onClick={() => setDetailTarget(emp)}>
                   <td className="px-4 py-3 font-medium text-gray-900">{emp.name}</td>
                   <td className="px-4 py-3">
                     <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-700">
@@ -492,7 +496,7 @@ export default function EmployeesPage() {
                   <td className="px-4 py-3">
                     {emp.role === 'worker' && (
                       <button
-                        onClick={() => handleQrOpen(emp)}
+                        onClick={(e) => { e.stopPropagation(); handleQrOpen(emp); }}
                         className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-colors min-h-[32px] ${
                           emp.deviceToken
                             ? 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200'
@@ -508,7 +512,7 @@ export default function EmployeesPage() {
                       {emp.role === 'worker' && (
                         <div className="flex items-center gap-1.5">
                           <button
-                            onClick={() => handleToggleTeamLeader(emp, !emp.isTeamLeader)}
+                            onClick={(e) => { e.stopPropagation(); handleToggleTeamLeader(emp, !emp.isTeamLeader); }}
                             className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors active:scale-[0.98] ${
                               emp.isTeamLeader ? 'bg-emerald-600' : 'bg-gray-300'
                             }`}
@@ -525,8 +529,8 @@ export default function EmployeesPage() {
                   <td className="px-4 py-3">
                     {isManagement && (
                       <div className="flex gap-1">
-                        <Button size="sm" variant="ghost" onClick={() => openEdit(emp)}>수정</Button>
-                        <Button size="sm" variant="ghost" onClick={() => toggleActive(emp.id)}>
+                        <Button size="sm" variant="ghost" onClick={(e) => { e.stopPropagation(); openEdit(emp); }}>수정</Button>
+                        <Button size="sm" variant="ghost" onClick={(e) => { e.stopPropagation(); toggleActive(emp.id); }}>
                           {emp.isActive ? '비활성' : '활성'}
                         </Button>
                       </div>
@@ -595,6 +599,14 @@ export default function EmployeesPage() {
           onRevoke={handleRevoke}
         />
       )}
+
+      {/* 직원 상세 모달 */}
+      <EmployeeDetailModal
+        employee={detailTarget}
+        onClose={() => setDetailTarget(null)}
+        onEdit={openEdit}
+        branchNameMap={branchNameMap}
+      />
     </div>
   );
 }

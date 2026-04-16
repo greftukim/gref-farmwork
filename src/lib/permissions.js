@@ -100,3 +100,18 @@ export function canAssignLeader(currentUser, targetEmployee) {
   if (currentUser.role === 'farm_admin' && currentUser.branch === targetEmployee?.branch) return true;
   return false;
 }
+
+/**
+ * 주민번호 조회 권한 (decrypt_resident_id RPC 호출)
+ *
+ * - master/hr_admin: 복호화 조회 가능
+ * - 그 외: 불가
+ * - is_active=false: 모든 역할 불가
+ *
+ * 세션 17 UI-C 추가 (메타 결정 — 민감정보 조회 권한 별 헬퍼)
+ * 현 매트릭스 canEditEmployee와 동일하나 의미 차원 분리 (편집 vs 조회)
+ */
+export function canViewResidentId(currentUser) {
+  if (!currentUser || !currentUser.is_active) return false;
+  return ['master', 'hr_admin'].includes(currentUser.role);
+}
