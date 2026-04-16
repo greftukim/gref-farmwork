@@ -51,16 +51,19 @@ src/
 - main 브랜치 단독 작업
 - 커밋 후 즉시 push
 
-## 현재 상태 (2026-04-12 Phase 5 세션 6 종료)
+## 현재 상태 (2026-04-16 Phase 5 세션 17 종료)
 
 ✅ 트랙 E (TBM 반장 승인 플로우) — 14/14 완료
 ✅ 트랙 F (일용직/시급제 임금 장부) — 6/6 완료
 ✅ IOS-001 (PWA 설치 가이드) — 구현 완료, iOS 실기기 검증 보류
+✅ 트랙 H (인앱 챗봇 v1) — H-3 완료 (챗봇 v1 실사용 가능)
+✅ 트랙 J (직종 관리 UI + 데이터 정리) — ~99% (J-CLEANUP-DEEP-001 잔여)
 
 ## 다음 세션 후보
-- 트랙 H (인앱 챗봇 v1) — 진행 중: 도메인 노트 작성 완료 (세션 7). H-0 마이그레이션 진입 대기. 도메인 노트: docs/DOMAIN_CHATBOT_V1.md
+- 트랙 H (인앱 챗봇 v1) — H-4~H-7 잔여. 도메인 노트: docs/DOMAIN_CHATBOT_V1.md
 - 트랙 G (포장 작업) — 보류: 관리팀(박민식·김민국) 상의 후 도메인 노트 시작
 - 트랙 I (작업 추천·예측) — deferred: 트랙 G + 운영 데이터 3개월 누적 후
+- J-CLEANUP-DEEP-001 — 14명 employees 후속 처리 (delete_rule 재확인, 교훈 35·37 준수)
 - TEMP-DECISION-1~4 — 박민식·김민국 답 수신 시 일괄 해소
 - TEMP-DECISION-5~8 — 트랙 H 운영 후 결정
 - FCM-001, UX-009, RLS-DEBT-021 — 짧은 부채 정리 세션 후보
@@ -93,16 +96,16 @@ src/
 
 ## 작업 원칙
 1. 모든 작업은 사전 조사 → 진행 승인 → 구현 → 빌드 검증 → 커밋·푸시 순서
-2. DB 상태 의존 값(건수/제약명/UUID)은 항상 information_schema 또는 SELECT로 실측
+2. DB 상태 의존 값(건수/제약명/UUID)은 pg_constraint/pg_* 직접 조회 우선, information_schema는 권한 의존성 인지 (교훈 35·37)
 3. RLS 정책은 역할 × CRUD 매트릭스로 검증, UPDATE는 .select() 검증 코드 필수
 4. 마이그레이션 SQL은 BEGIN/COMMIT + 검증 DO 블록 + 롤백 주석 포함
 5. 시드 데이터는 UUID 하드코딩 금지, DO 블록 + 서브쿼리 변수화
 6. Edge Function 배포 시 --no-verify-jwt 플래그 필수 + 함수 내 auth.getUser() 검증 (교훈 24 참조)
 
-## 최근 커밋 (Phase 5 세션 6)
-489f635 IOS-001: iOS PWA 설치 가이드 + 인앱 브라우저 감지
-8e5ab22 F-5: RLS 권한 회귀 검증 통과 — 트랙 F 6/6 마감
-49ba657 F-4: 월별 보기 탭 + 월별 엑셀 2시트
-c150ae6 F-3: 일별 엑셀 다운로드
-7a28d24 F-2 hotfix: 시간 입력 자동 포맷팅
-06995b2 F-2 hotfix: 시급 입력 step 1000 → 10
+## 최근 커밋 (Phase 5 세션 17)
+c3ffade docs: 세션 17 HANDOVER 인수인계 문서 추가
+0471cef docs: LESSONS_LEARNED 교훈 35 보강 + 교훈 37-45 추가 (세션 17)
+bbfde05 chore(cleanup): J-4-J-CLEANUP-001 — 테스트 계정 2명 삭제 + 14명 BACKLOG 승격 (옵션 C)
+45b8dcf feat(ui): J-4-UI-E — 계약만료 강조 표시 (인라인 색상 분기)
+8bbfcfb feat(ui): J-4-UI-D — 권한 분기 통합 적용 (헬퍼 활용 + 생년월일 분기)
+0093617 fix(permissions): J-4-UI-C-FIX — is_active → isActive 불일치 정정 (UI-A 부채)
