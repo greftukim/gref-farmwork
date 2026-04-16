@@ -12,7 +12,7 @@ export default function InstallPromptBanner() {
 
         {/* 헤더 */}
         <div className="flex items-center gap-3 mb-3">
-          <div className="w-12 h-12 rounded-xl bg-emerald-600 flex items-center justify-center flex-shrink-0">
+          <div className="w-12 h-12 rounded-xl bg-[#6366F1] flex items-center justify-center flex-shrink-0">
             <span className="text-white text-xl font-bold">G</span>
           </div>
           <div>
@@ -46,8 +46,8 @@ export default function InstallPromptBanner() {
           {promptType === 'android' && (
             <button
               onClick={triggerInstall}
-              className="flex-1 bg-emerald-600 text-white text-sm font-bold rounded-xl py-3
-                active:scale-95 transition-all shadow-lg shadow-emerald-600/20"
+              className="flex-1 bg-[#6366F1] text-white text-sm font-bold rounded-xl py-3
+                active:scale-95 transition-all shadow-lg shadow-indigo-500/20"
             >
               홈 화면에 추가
             </button>

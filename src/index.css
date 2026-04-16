@@ -3,6 +3,11 @@
 @theme {
   --font-heading: 'Pretendard', -apple-system, BlinkMacSystemFont, sans-serif;
   --font-body: 'Pretendard', -apple-system, BlinkMacSystemFont, sans-serif;
+
+  /* K-1: 프라이머리 색상 — indigo */
+  --color-primary: #6366F1;
+  --color-primary-light: #EEF2FF;
+  --color-primary-dark: #4F46E5;
 }
 
 @keyframes slideUp {
