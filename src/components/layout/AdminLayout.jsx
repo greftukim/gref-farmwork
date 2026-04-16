@@ -81,12 +81,11 @@ export default function AdminLayout() {
   }, [addNotification]);
 
   return (
-    <div className="flex min-h-screen bg-gray-50">
-      {/* 사이드바: 모바일에서 숨김 (md 이상에서만 표시) */}
-      <div className="hidden md:block">
-        <Sidebar />
-      </div>
-      <div className="flex-1 flex flex-col min-w-0">
+    <div className="min-h-screen bg-gray-50">
+      {/* 사이드바: fixed 포지션, 모바일에서는 Sidebar 내부에서 hidden md:flex 처리 */}
+      <Sidebar />
+      {/* 메인 콘텐츠: 데스크탑에서 사이드바 기본 너비(72px)만큼 좌측 여백 */}
+      <div className="flex flex-col min-h-screen md:ml-[72px]">
         <TopBar />
         {/* 모바일: 하단 네비 여백, 데스크탑: 기본 패딩 */}
         <main className="flex-1 p-4 md:p-6 pb-24 md:pb-6">
