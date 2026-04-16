@@ -80,7 +80,7 @@ export function canApproveSafetyChecks(user) {
  * 세션 17 UI-A 추가 (메타 §3 결정 정합)
  */
 export function canEditEmployee(currentUser) {
-  if (!currentUser || !currentUser.is_active) return false;
+  if (!currentUser || !currentUser.isActive) return false;
   return ['master', 'hr_admin'].includes(currentUser.role);
 }
 
@@ -95,7 +95,7 @@ export function canEditEmployee(currentUser) {
  * 세션 17 UI-A 추가 (메타 §3 결정 정합)
  */
 export function canAssignLeader(currentUser, targetEmployee) {
-  if (!currentUser || !currentUser.is_active) return false;
+  if (!currentUser || !currentUser.isActive) return false;
   if (['master', 'hr_admin'].includes(currentUser.role)) return true;
   if (currentUser.role === 'farm_admin' && currentUser.branch === targetEmployee?.branch) return true;
   return false;
@@ -112,6 +112,6 @@ export function canAssignLeader(currentUser, targetEmployee) {
  * 현 매트릭스 canEditEmployee와 동일하나 의미 차원 분리 (편집 vs 조회)
  */
 export function canViewResidentId(currentUser) {
-  if (!currentUser || !currentUser.is_active) return false;
+  if (!currentUser || !currentUser.isActive) return false;
   return ['master', 'hr_admin'].includes(currentUser.role);
 }
