@@ -4,7 +4,8 @@ import useEmployeeStore from '../../stores/employeeStore';
 import useBranchStore from '../../stores/branchStore';
 import useAuthStore from '../../stores/authStore';
 import Button from '../../components/common/Button';
-import { isFarmAdmin, canHrCrud, canWrite, roleLabel, canEditEmployee, canAssignLeader, canViewBirthDate } from '../../lib/permissions';
+import { isFarmAdmin, canHrCrud, canWrite, roleLabel, canEditEmployee, canAssignLeader, canViewBirthDate, canViewContractExpiry } from '../../lib/permissions';
+import { getContractExpiryStatus, getExpiryColorClass } from '../../utils/contractExpiry';
 import useNotificationStore from '../../stores/notificationStore';
 import Card from '../../components/common/Card';
 import Modal from '../../components/common/Modal';
@@ -387,7 +388,15 @@ export default function EmployeesPage() {
               {emp.jobTitle && <div>직책: {emp.jobTitle}</div>}
               {emp.jobRank && <div>직급: {emp.jobRank}</div>}
               {emp.hireDate && <div>입사 {emp.hireDate}</div>}
-              {emp.contractEndDate && <div>계약 ~ {emp.contractEndDate}</div>}
+              {emp.contractEndDate && (
+                <div className={
+                  canViewContractExpiry(currentUser)
+                    ? getExpiryColorClass(getContractExpiryStatus(emp.contractEndDate))
+                    : ''
+                }>
+                  계약 ~ {emp.contractEndDate}
+                </div>
+              )}
             </div>
             <div className="flex gap-2 justify-end items-center">
               {emp.role === 'worker' && (
@@ -483,7 +492,13 @@ export default function EmployeesPage() {
                   <td className="px-4 py-3 text-gray-600">{emp.phone}</td>
                   {canViewBirthDate(currentUser) && <td className="px-4 py-3 text-gray-600">{emp.birthDate || BRANCH_NULL_FALLBACK}</td>}
                   <td className="px-4 py-3 text-gray-600">{emp.hireDate}</td>
-                  <td className="px-4 py-3 text-gray-600">{emp.contractEndDate || BRANCH_NULL_FALLBACK}</td>
+                  <td className={`px-4 py-3 ${
+                    canViewContractExpiry(currentUser) && emp.contractEndDate
+                      ? getExpiryColorClass(getContractExpiryStatus(emp.contractEndDate))
+                      : 'text-gray-600'
+                  }`}>
+                    {emp.contractEndDate || BRANCH_NULL_FALLBACK}
+                  </td>
                   <td className="px-4 py-3">
                     <span
                       className={`px-2 py-0.5 rounded-full text-xs font-medium ${

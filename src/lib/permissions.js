@@ -125,3 +125,13 @@ export function canViewBirthDate(currentUser) {
   if (!currentUser?.isActive) return false;
   return ['master', 'hr_admin'].includes(currentUser.role);
 }
+
+/**
+ * 계약만료 강조 표시 권한 체크
+ * - master / hr_admin
+ * - isActive 필수
+ */
+export function canViewContractExpiry(currentUser) {
+  if (!currentUser?.isActive) return false;
+  return ['master', 'hr_admin'].includes(currentUser.role);
+}
