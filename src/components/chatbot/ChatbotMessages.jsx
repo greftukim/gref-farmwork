@@ -31,11 +31,11 @@ const EXAMPLE_QUESTIONS = [
 ];
 
 function MessageBubble({ message }) {
-  const baseClass = 'rounded-lg p-3 max-w-[85%] break-words';
+  const baseClass = 'p-3 max-w-[85%] break-words text-sm';
 
   if (message.isError) {
     return (
-      <div className={`${baseClass} bg-red-50 text-red-800 border border-red-200`}>
+      <div className={`${baseClass} rounded-2xl rounded-tl-sm bg-red-50 text-red-800 border border-red-200`}>
         <span className="mr-1">⚠️</span>
         {message.content}
       </div>
@@ -44,7 +44,7 @@ function MessageBubble({ message }) {
 
   if (message.role === 'user') {
     return (
-      <div className={`${baseClass} bg-blue-500 text-white ml-auto`}>
+      <div className={`${baseClass} rounded-2xl rounded-tr-sm bg-[#6366F1] text-white ml-auto`}>
         {message.content}
       </div>
     );
@@ -52,7 +52,7 @@ function MessageBubble({ message }) {
 
   // assistant (toolUsePending 포함 — content 자체가 "🔍 데이터 조회 중...")
   return (
-    <div className={`${baseClass} bg-gray-100 text-gray-900`}>
+    <div className={`${baseClass} rounded-2xl rounded-tl-sm bg-white text-gray-900 shadow-sm`}>
       {message.content}
     </div>
   );
@@ -61,7 +61,7 @@ function MessageBubble({ message }) {
 function WelcomeArea({ onExampleClick, disabled }) {
   return (
     <div className="space-y-4">
-      <div className="bg-gray-100 text-gray-900 rounded-lg p-3">
+      <div className="bg-white text-gray-900 rounded-2xl rounded-tl-sm shadow-sm p-3 text-sm">
         {WELCOME_MESSAGE}
       </div>
       <div className="space-y-2">
@@ -71,7 +71,7 @@ function WelcomeArea({ onExampleClick, disabled }) {
             type="button"
             onClick={() => !disabled && onExampleClick(q)}
             disabled={disabled}
-            className="w-full text-left bg-white border border-gray-200 rounded-lg p-3 hover:bg-gray-50 active:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            className="w-full text-left bg-indigo-50 text-indigo-600 border border-indigo-100 rounded-xl p-3 hover:bg-indigo-100 active:bg-indigo-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-sm"
           >
             {q}
           </button>
@@ -111,7 +111,7 @@ export default function ChatbotMessages() {
     <div
       ref={scrollContainerRef}
       onScroll={handleScroll}
-      className="flex-1 overflow-y-auto p-4 space-y-3"
+      className="flex-1 overflow-y-auto p-4 space-y-3 bg-gray-50"
     >
       {messages.length === 0 ? (
         <WelcomeArea onExampleClick={send} disabled={isPending} />

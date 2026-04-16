@@ -74,7 +74,7 @@ export default function ChatbotInput() {
           maxLength={500}
           placeholder="질문 또는 피드백을 입력하세요..."
           rows={1}
-          className="w-full border border-gray-200 rounded-lg px-3 py-2.5 pr-16 resize-none max-h-[100px] overflow-y-auto focus:outline-none focus:ring-2 focus:ring-blue-500/30 disabled:opacity-60 disabled:cursor-not-allowed disabled:bg-gray-50"
+          className="w-full border border-gray-200 rounded-2xl px-3 py-2.5 pr-16 resize-none max-h-[100px] overflow-y-auto focus:outline-none focus:ring-2 focus:ring-indigo-200 disabled:opacity-60 disabled:cursor-not-allowed disabled:bg-gray-50"
         />
         <span className={`absolute right-3 bottom-2 text-xs ${counterColor}`}>
           {value.length}/500
@@ -85,7 +85,7 @@ export default function ChatbotInput() {
           type="button"
           onClick={handleSend}
           disabled={isPending || value.trim() === ''}
-          className="min-h-[44px] px-4 py-2 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 active:scale-95 text-white rounded-lg font-medium shadow-lg shadow-blue-600/20 disabled:bg-gray-200 disabled:text-gray-400 disabled:cursor-not-allowed disabled:shadow-none transition-all"
+          className="min-h-[44px] px-4 py-2 bg-[#6366F1] hover:bg-[#4F46E5] active:bg-[#4F46E5] active:scale-95 text-white rounded-xl font-medium shadow-lg shadow-indigo-200 disabled:bg-gray-200 disabled:text-gray-400 disabled:cursor-not-allowed disabled:shadow-none transition-all"
         >
           전송
         </button>

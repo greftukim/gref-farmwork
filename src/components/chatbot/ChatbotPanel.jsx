@@ -2,11 +2,11 @@
  * ChatbotPanel — AdminLayout 챗봇 패널 (완성판)
  *
  * §5.2 레이아웃:
- *   모바일(< md): 전체화면 모달 (fixed inset-0)
- *   데스크톱(≥ md): 우측 슬라이드 오버, 440px 고정 너비
- *   z-[70] (FAB z-[60] 위, Toast z-[100] 아래)
+ *   fixed bottom-28 right-8, w-[380px] h-[550px]
+ *   rounded-3xl shadow-2xl, z-[70]
+ *   전환 애니메이션: opacity + translate-y (항상 마운트, CSS 전환)
  *
- * §5.2 헤더: "GREF 관리자 도우미" + 새 대화(🔄) + 닫기(✕)
+ * §5.2 헤더: bg-[#6366F1] + "GREF 관리자 도우미" + 새 대화(🔄) + 닫기(✕)
  *   - 새 대화 활성 조건: messages 1개 이상(toolUsePending 제외) + !isPending
  *   - confirm 다이얼로그로 의도 확인 후 resetSession
  *
@@ -18,7 +18,7 @@
  * body 스크롤 잠금: isOpen=true 시 모든 viewport 적용.
  *   useEffect cleanup으로 isOpen=false / unmount 시 자동 복원.
  *
- * isOpen === false 시 return null (DOM 제거).
+ * isOpen === false 시 opacity-0 translate-y-4 pointer-events-none (DOM 유지, CSS 은닉).
  *
  * 자식 컴포넌트가 useSendChatbotMessage 직접 호출.
  * Panel은 조립자 — 셀렉터(isOpen, closePanel, resetSession, messages, isPending)만 사용.
@@ -44,10 +44,6 @@ export default function ChatbotPanel() {
     };
   }, [isOpen]);
 
-  if (!isOpen) {
-    return null;
-  }
-
   // 새 대화 버튼 활성 조건 (D43): toolUsePending 제외 실 메시지 1개 이상 + 전송 중 아님
   const hasMessages = messages.filter((m) => !m.toolUsePending).length >= 1;
   const canResetSession = hasMessages && !isPending;
@@ -60,16 +56,28 @@ export default function ChatbotPanel() {
   };
 
   return (
-    <div className="fixed inset-0 md:inset-auto md:top-0 md:right-0 md:w-[440px] md:h-full z-[70] bg-white flex flex-col shadow-xl text-[13px]">
-      <header className="flex items-center justify-between p-4 border-b">
-        <h2 className="text-base font-semibold">GREF 관리자 도우미</h2>
+    <div
+      className={`fixed bottom-28 right-8 w-[380px] h-[550px] z-[70]
+        bg-white rounded-3xl shadow-2xl flex flex-col overflow-hidden text-[13px]
+        transition-all duration-300 ease-in-out
+        ${isOpen
+          ? 'opacity-100 translate-y-0 pointer-events-auto'
+          : 'opacity-0 translate-y-4 pointer-events-none'
+        }`}
+    >
+      {/* 헤더 */}
+      <header className="bg-[#6366F1] px-4 py-3 flex items-center justify-between flex-shrink-0">
         <div className="flex items-center gap-2">
+          <span className="text-white text-base leading-none">💬</span>
+          <h2 className="text-sm font-semibold text-white">GREF 관리자 도우미</h2>
+        </div>
+        <div className="flex items-center gap-0.5">
           <button
             type="button"
             onClick={handleNewConversation}
             disabled={!canResetSession}
             aria-label="새 대화 시작"
-            className="w-10 h-10 flex items-center justify-center rounded hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+            className="w-8 h-8 flex items-center justify-center rounded-xl text-white/70 hover:text-white hover:bg-white/10 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
           >
             🔄
           </button>
@@ -77,7 +85,7 @@ export default function ChatbotPanel() {
             type="button"
             onClick={closePanel}
             aria-label="챗봇 닫기"
-            className="w-10 h-10 flex items-center justify-center rounded hover:bg-gray-100 transition-colors"
+            className="w-8 h-8 flex items-center justify-center rounded-xl text-white/70 hover:text-white hover:bg-white/10 transition-colors"
           >
             ✕
           </button>
