@@ -27,28 +27,6 @@ function StatCard({ label, value, color, sub }) {
   );
 }
 
-function relativeTime(iso) {
-  if (!iso) return '';
-  const diff = Date.now() - new Date(iso).getTime();
-  const mins = Math.floor(diff / 60000);
-  if (mins < 60) return `${mins}분 전`;
-  const hrs = Math.floor(mins / 60);
-  if (hrs < 24) return `${hrs}시간 전`;
-  return `${Math.floor(hrs / 24)}일 전`;
-}
-
-const BRANCH_ACCENTS = [
-  { dot: 'bg-teal-400', bg: 'bg-teal-50', text: 'text-teal-600', iconBg: 'bg-teal-50', iconText: 'text-teal-500' },
-  { dot: 'bg-indigo-400', bg: 'bg-indigo-50', text: 'text-indigo-600', iconBg: 'bg-indigo-50', iconText: 'text-indigo-500' },
-  { dot: 'bg-pink-400', bg: 'bg-pink-50', text: 'text-pink-600', iconBg: 'bg-pink-50', iconText: 'text-pink-500' },
-];
-
-function issueDotStyle(type) {
-  if (type === '병해충' || type === '긴급') return { dot: 'bg-red-400', card: 'bg-red-50 border-red-100' };
-  if (type === '기타') return { dot: 'bg-teal-400', card: 'bg-teal-50 border-teal-100' };
-  return { dot: 'bg-amber-400', card: 'bg-yellow-50 border-yellow-100' };
-}
-
 export default function AdminDashboard() {
   const currentUser = useAuthStore((s) => s.currentUser);
   const isFarmTeam = isFarmAdmin(currentUser);
@@ -68,7 +46,6 @@ export default function AdminDashboard() {
   const [missedDays, setMissedDays] = useState(7);
   const [tbmStats, setTbmStats] = useState({ approved: 0, submitted: 0 });
   const [scheduleTab, setScheduleTab] = useState('today');
-  const [attendanceModalBranch, setAttendanceModalBranch] = useState(null);
   const todayStr = today();
   const todayLabel = new Date().toLocaleDateString('ko-KR', {
     year: 'numeric', month: 'long', day: 'numeric', weekday: 'short',
@@ -446,204 +423,164 @@ export default function AdminDashboard() {
   }
 
   // ── 인사팀(hr_admin / master) 대시보드 ──────────────────────────────
-  const recentIssues = issues.filter((i) => !i.isResolved).slice(0, 4);
-
   return (
     <div>
-      {/* 헤더 */}
-      <div className="flex items-end justify-between mb-8 flex-wrap gap-4">
-        <div>
-          <p className="text-xs font-bold text-teal-600 mb-1 uppercase tracking-widest">관리팀 대시보드</p>
-          <h2 className="text-2xl font-heading font-bold text-gray-900">{todayLabel}</h2>
-        </div>
-        <Link
-          to="/admin/notices"
-          className="bg-[#6366F1] hover:bg-[#4F46E5] text-white px-5 py-2.5 rounded-full text-sm font-medium shadow-lg shadow-indigo-200 transition"
-        >
-          + 공지 등록
-        </Link>
+      <div className="flex items-baseline gap-3 mb-6 flex-wrap">
+        <h2 className="text-2xl font-heading font-bold text-gray-900">대시보드</h2>
+        <span className="text-sm text-gray-400">{todayLabel}</span>
       </div>
 
-      <div className="grid grid-cols-12 gap-6">
-        {/* W1: 지점별 출근 카드 */}
-        <div className="col-span-12 grid grid-cols-1 md:grid-cols-3 gap-6">
-          {branches.length === 0 ? (
-            <div className="md:col-span-3 bg-white rounded-[24px] border border-gray-100 p-6 text-center text-gray-400 text-sm">
-              지점 데이터 없음
+      {/* 1행: 출근 현황 4열 카드 */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+        <StatCard label="출근" value={checkedIn} color="text-blue-600" sub="명" />
+        <StatCard label="지각" value={lateCount} color="text-amber-500" sub="명" />
+        <StatCard label="휴가" value={todayLeaves.length} color="text-green-500" sub="명" />
+        <StatCard label="미출근" value={notCheckedIn} color="text-gray-400" sub="명" />
+      </div>
+
+      {/* TBM 지표 4열 카드 */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+        <StatCard label="오늘 TBM 승인" value={tbmStats.approved} color="text-emerald-600" sub="건" />
+        <StatCard label="오늘 TBM 미승인" value={tbmStats.submitted} color={tbmStats.submitted > 0 ? 'text-red-500' : 'text-gray-400'} sub="건" />
+        <StatCard label="활성 작업자" value={workers.length} color="text-blue-600" sub="명" />
+        <StatCard label="활성 반장" value={teamLeaderCount} color="text-emerald-600" sub="명" />
+      </div>
+
+      {/* 2행: 작업 도넛(재배팀) + 출퇴근 누락 */}
+      <div className={`grid grid-cols-1 ${isFarmTeam ? 'md:grid-cols-2' : ''} gap-4 mb-4`}>
+        {isFarmTeam && (
+          <Card accent="blue" className="p-6">
+            <div className="flex items-center justify-between mb-4">
+              <div className="text-sm font-medium text-gray-500">작업 진행</div>
+              <span className="text-xs text-gray-400">총 {taskTotal}건</span>
+            </div>
+            <div className="flex items-start gap-4">
+              {/* 도넛 차트 */}
+              <div className="w-24 h-24 flex-shrink-0">
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie data={donutData} cx="50%" cy="50%" innerRadius={25} outerRadius={42} dataKey="value" strokeWidth={0}>
+                      {donutData.map((entry, i) => <Cell key={i} fill={entry.color} />)}
+                    </Pie>
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
+              {/* 작업 그룹 목록 */}
+              <div className="flex-1 min-w-0 space-y-1.5 max-h-[140px] overflow-y-auto">
+                {taskGroups.length === 0 ? (
+                  <p className="text-xs text-gray-400 pt-2">오늘 배정된 작업 없음</p>
+                ) : (
+                  taskGroups.map((g, i) => {
+                    const allDone = g.completed === g.total;
+                    const isActive = g.inProgress > 0;
+                    return (
+                      <div key={i} className={`flex items-center justify-between text-xs rounded-lg px-2.5 py-1.5 ${
+                        allDone ? 'bg-green-50 text-green-700' : isActive ? 'bg-blue-50 text-blue-700' : 'bg-gray-50 text-gray-600'
+                      }`}>
+                        <span className="font-medium truncate mr-2">
+                          {cropMap[g.cropId]?.name || '—'} {g.taskType}
+                        </span>
+                        <span className="flex-shrink-0 font-semibold">
+                          {allDone ? '완료' : isActive ? '진행중'  : '대기'} ({g.completed}/{g.total})
+                        </span>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+            </div>
+            {/* 범례 */}
+            <div className="flex gap-3 mt-3 pt-3 border-t border-gray-100 text-xs text-gray-500">
+              <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-green-500" />완료 {taskCompleted}</span>
+              <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-blue-600" />진행 {taskInProgress}</span>
+              <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-gray-300" />대기 {taskPending}</span>
+            </div>
+          </Card>
+        )}
+
+        <Card accent={missedRecords.length > 0 ? 'amber' : 'gray'} className="p-6">
+          <div className="flex items-center justify-between mb-4">
+            <div className="text-sm font-medium text-gray-500">출퇴근 누락</div>
+            <select
+              value={missedDays}
+              onChange={(e) => setMissedDays(Number(e.target.value))}
+              className="border border-gray-200 rounded-lg px-2 py-1 text-xs bg-white"
+            >
+              <option value={3}>최근 3일</option>
+              <option value={7}>최근 7일</option>
+              <option value={14}>최근 14일</option>
+              <option value={30}>최근 30일</option>
+            </select>
+          </div>
+          {missedRecords.length === 0 ? (
+            <div className="text-center py-6">
+              <div className="text-3xl font-bold text-gray-300">0</div>
+              <div className="text-xs text-gray-400 mt-1">누락 없음</div>
             </div>
           ) : (
-            branches.map((branch, idx) => {
-              const accent = BRANCH_ACCENTS[idx % BRANCH_ACCENTS.length];
-              return (
-                <button
-                  key={branch.id}
-                  onClick={() => setAttendanceModalBranch(branch)}
-                  className="bg-white rounded-[24px] border border-gray-200 p-6 text-left cursor-pointer hover:border-indigo-300 hover:shadow-md transition-all group flex flex-col justify-between"
-                >
-                  <div className="flex justify-between items-center mb-2">
-                    <h3 className="text-sm font-bold text-gray-500 group-hover:text-[#6366F1] transition-colors">{branch.name}</h3>
-                    <div className={`w-8 h-8 rounded-full ${accent.iconBg} flex items-center justify-center ${accent.iconText}`}>
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                      </svg>
-                    </div>
-                  </div>
-                  <div className="flex items-end justify-between mt-4">
-                    <span className="text-2xl font-bold text-gray-400">—<span className="text-base text-gray-300 font-medium ml-1">명</span></span>
-                    <span className={`${accent.bg} ${accent.text} px-2 py-1 rounded text-xs font-bold`}>연동 예정</span>
-                  </div>
-                  <p className="text-[10px] text-gray-400 mt-2">데이터 연동 후 활성화</p>
-                </button>
-              );
-            })
-          )}
-        </div>
-
-        {/* W2: 지점별 수확량 */}
-        <div className="col-span-12 lg:col-span-6 bg-white rounded-[24px] shadow-sm border border-gray-100 p-6">
-          <div className="mb-6">
-            <h3 className="font-semibold text-gray-900">지점별 이번 주 수확량</h3>
-          </div>
-          <div className="flex items-end gap-6 h-40 px-4 border-b border-gray-100 pb-2">
-            {branches.length === 0 ? (
-              <div className="flex-1 flex items-center justify-center text-gray-300 text-sm">데이터 연동 예정</div>
-            ) : (
-              branches.map((branch, idx) => {
-                const accent = BRANCH_ACCENTS[idx % BRANCH_ACCENTS.length];
-                return (
-                  <div key={branch.id} className="flex-1 flex flex-col items-center gap-1 h-full justify-end">
-                    <span className={`text-xs font-bold ${accent.text} mb-1`}>— kg</span>
-                    <div className={`w-full max-w-[3rem] ${accent.bg} rounded-t-lg`} style={{ height: '20%' }} />
-                    <span className="text-xs font-bold text-gray-400 mt-1">{branch.name}</span>
-                  </div>
-                );
-              })
-            )}
-          </div>
-          <p className="text-xs text-gray-300 text-center mt-3">데이터 연동 예정</p>
-        </div>
-
-        {/* W3: 최근 이슈 피드 */}
-        <div className="col-span-12 lg:col-span-6 bg-white rounded-[24px] shadow-sm border border-gray-100 p-6">
-          <h3 className="font-semibold text-gray-900 mb-6">최근 이슈 피드</h3>
-          {recentIssues.length === 0 ? (
-            <div className="text-center py-8 text-gray-400 text-sm">미해결 이슈 없음</div>
-          ) : (
-            <div className="space-y-4">
-              {recentIssues.map((issue) => {
-                const ds = issueDotStyle(issue.type);
-                const branchName = branches.find((b) => b.id === empMap[issue.workerId]?.branchId)?.name || '—';
-                return (
-                  <div key={issue.id} className={`flex items-start gap-4 p-4 ${ds.card} rounded-xl border transition hover:shadow-sm`}>
-                    <span className={`w-2.5 h-2.5 rounded-full ${ds.dot} shrink-0 mt-1.5`} />
-                    <div>
-                      <p className="text-sm font-bold text-gray-800">
-                        {branchName}
-                        <span className="text-xs font-normal text-gray-500 ml-2">{relativeTime(issue.createdAt)}</span>
-                      </p>
-                      <p className="text-sm text-gray-600 mt-1">[{issue.type}] {issue.comment || '이상 신고 접수'}</p>
-                    </div>
-                  </div>
-                );
-              })}
+            <div className="space-y-2 max-h-[140px] overflow-y-auto">
+              {missedRecords.map((r) => (
+                <div key={r.id} className="flex items-center justify-between text-sm bg-amber-50 rounded-lg px-3 py-2">
+                  <span className="font-medium text-gray-900">{empMap[r.employeeId]?.name}</span>
+                  <span className="text-gray-400 text-xs">{r.date}</span>
+                  <span className="text-xs text-amber-600 font-medium">퇴근 미등록</span>
+                </div>
+              ))}
             </div>
           )}
-        </div>
+        </Card>
+      </div>
 
-        {/* W4: 지점별 TBM 완료율 */}
-        <div className="col-span-12 lg:col-span-4 bg-white rounded-[24px] shadow-sm border border-gray-100 p-6">
-          <h3 className="font-semibold text-gray-900 mb-5">지점별 TBM 완료율</h3>
-          {branches.length === 0 ? (
-            <p className="text-sm text-gray-300 text-center py-4">데이터 연동 예정</p>
-          ) : (
-            <div className="space-y-5">
-              {branches.map((branch, idx) => {
-                const accent = BRANCH_ACCENTS[idx % BRANCH_ACCENTS.length];
-                return (
-                  <div key={branch.id}>
-                    <div className="flex justify-between text-xs font-bold mb-1">
-                      <span className="text-gray-600">{branch.name}</span>
-                      <span className="text-gray-300">—%</span>
-                    </div>
-                    <div className="w-full bg-gray-100 rounded-full h-2">
-                      <div className={`${accent.dot} h-2 rounded-full w-0`} />
-                    </div>
-                  </div>
-                );
-              })}
-              <p className="text-xs text-gray-300 text-center pt-1">데이터 연동 예정</p>
+      {/* 3행: 승인 대기 + 공지사항 */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+        <Link to="/admin/leave-approval">
+          <Card accent={alertCount > 0 ? 'red' : 'gray'} className="p-6 active:scale-[0.98] transition-transform">
+            <div className="text-sm font-medium text-gray-500 mb-3">승인 대기</div>
+            <div className="text-3xl font-bold text-gray-900 mb-3">
+              {alertCount}<span className="text-sm text-gray-400 ml-1">건</span>
             </div>
-          )}
-        </div>
+            <div className="flex flex-wrap gap-2 text-xs">
+              {pendingLeaves.length > 0 && (
+                <span className="px-2.5 py-1 rounded-full bg-amber-50 text-amber-600 font-medium">
+                  근태 {pendingLeaves.length}
+                </span>
+              )}
+              {unresolvedIssues.length > 0 && (
+                <span className="px-2.5 py-1 rounded-full bg-red-50 text-red-600 font-medium">
+                  신고 {unresolvedIssues.length}
+                </span>
+              )}
+              {unconfirmedCalls.length > 0 && (
+                <span className="px-2.5 py-1 rounded-full bg-red-50 text-red-600 font-medium">
+                  호출 {unconfirmedCalls.length}
+                </span>
+              )}
+              {alertCount === 0 && <span className="text-gray-400">처리할 건이 없습니다</span>}
+            </div>
+          </Card>
+        </Link>
 
-        {/* W5: 성과 상위 명단 */}
-        <div className="col-span-12 lg:col-span-4 bg-white rounded-[24px] shadow-sm border border-gray-100 p-6">
-          <h3 className="font-semibold text-gray-900 mb-5">작업자 성과 상위 명단</h3>
-          <div className="flex items-center justify-center h-[120px] text-gray-300 text-sm">
-            데이터 연동 예정
-          </div>
-        </div>
-
-        {/* W6: 공지사항 관리 */}
-        <div className="col-span-12 lg:col-span-4 bg-white rounded-[24px] shadow-sm border border-gray-100 p-6">
-          <div className="flex justify-between items-center mb-4">
-            <h3 className="font-semibold text-gray-900">공지사항 관리</h3>
-            <Link to="/admin/notices" className="text-xs font-bold text-[#6366F1] hover:underline">+ 새 공지</Link>
+        <Card accent="gray" className="p-6">
+          <div className="flex items-center justify-between mb-3">
+            <div className="text-sm font-medium text-gray-500">공지사항</div>
+            <Link to="/admin/notices" className="text-xs text-blue-600 hover:underline">더보기</Link>
           </div>
           {recentNotices.length === 0 ? (
-            <p className="text-sm text-gray-400 text-center py-4">등록된 공지 없음</p>
+            <p className="text-gray-400 text-sm text-center py-6">등록된 공지 없음</p>
           ) : (
-            <ul className="space-y-3 mt-4">
-              {recentNotices.slice(0, 4).map((n) => (
-                <li key={n.id} className="flex items-center gap-3 bg-gray-50 p-2.5 rounded-xl border border-gray-100">
-                  <span className="bg-teal-100 text-teal-600 px-2 py-0.5 rounded text-[10px] font-bold shrink-0">최신</span>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-xs text-gray-800 font-medium truncate">{n.title}</p>
-                  </div>
-                </li>
+            <div className="space-y-2.5">
+              {recentNotices.map((n) => (
+                <div key={n.id} className="flex items-center justify-between text-sm">
+                  <span className="text-gray-900 truncate flex-1 mr-3">{n.title}</span>
+                  <span className="text-xs text-gray-400 flex-shrink-0">{n.createdAt?.split('T')[0]}</span>
+                </div>
               ))}
-            </ul>
+            </div>
           )}
-        </div>
+        </Card>
       </div>
 
-      {/* 지점 출근 상세 모달 */}
-      {attendanceModalBranch && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center">
-          <div
-            className="absolute inset-0 bg-black/40 backdrop-blur-sm cursor-pointer"
-            onClick={() => setAttendanceModalBranch(null)}
-          />
-          <div className="bg-white rounded-[24px] shadow-2xl w-full max-w-md mx-4 relative z-10 overflow-hidden flex flex-col max-h-[80vh]">
-            <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-gray-50">
-              <h3 className="text-lg font-bold text-gray-800">{attendanceModalBranch.name} 출근 상세</h3>
-              <button
-                onClick={() => setAttendanceModalBranch(null)}
-                className="text-gray-400 hover:text-gray-600 bg-white rounded-full p-1 shadow-sm min-w-[32px] min-h-[32px] flex items-center justify-center"
-              >
-                ✕
-              </button>
-            </div>
-            <div className="p-6 overflow-y-auto flex-1 space-y-6">
-              <div className="flex justify-between bg-indigo-50 rounded-xl p-4 border border-indigo-100">
-                <div className="text-center">
-                  <p className="text-[10px] text-indigo-400 font-bold mb-1">총 인원</p>
-                  <p className="text-lg font-bold text-indigo-700">—명</p>
-                </div>
-                <div className="text-center border-x border-indigo-200 px-4">
-                  <p className="text-[10px] text-gray-500 font-bold mb-1">근태 (제외)</p>
-                  <p className="text-lg font-bold text-gray-700">—명</p>
-                </div>
-                <div className="text-center">
-                  <p className="text-[10px] text-teal-500 font-bold mb-1">실 출근</p>
-                  <p className="text-lg font-bold text-teal-600">—명</p>
-                </div>
-              </div>
-              <div className="text-center text-gray-300 text-sm py-6">지점별 출근 데이터 연동 예정</div>
-            </div>
-          </div>
-        </div>
-      )}
+
     </div>
   );
 }
