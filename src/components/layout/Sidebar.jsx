@@ -206,30 +206,72 @@ function getMenuForUser(user) {
 // ─── 컴포넌트 ────────────────────────────────────────────────────────────────
 function MenuIcon({ path }) {
   return (
-    <svg className="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+    <svg className="w-6 h-6 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
       <path strokeLinecap="round" strokeLinejoin="round" d={path} />
     </svg>
   );
 }
 
+/** 단독 메뉴 항목 (대시보드, 공지사항 등) */
 function MenuItem({ item }) {
   return (
-    <li>
-      <NavLink
-        to={item.to}
-        end={item.to === '/admin'}
-        className={({ isActive }) =>
-          `flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm transition-all min-h-[42px] ${
-            isActive
-              ? 'bg-white/20 text-white font-medium'
-              : 'text-white/60 hover:bg-white/10 hover:text-white'
-          }`
-        }
-      >
-        <MenuIcon path={item.icon} />
-        <span>{item.label}</span>
-      </NavLink>
-    </li>
+    <NavLink
+      to={item.to}
+      end={item.to === '/admin'}
+      className={({ isActive }) =>
+        `w-full flex items-center h-14 rounded-2xl px-4 shrink-0 overflow-hidden transition-all ${
+          isActive
+            ? 'bg-white/20 text-white shadow-sm'
+            : 'text-white/50 hover:bg-white/10 hover:text-white'
+        }`
+      }
+    >
+      <MenuIcon path={item.icon} />
+      <span className="ml-4 text-sm font-medium opacity-0 group-hover:opacity-100 whitespace-nowrap transition-opacity duration-300">
+        {item.label}
+      </span>
+    </NavLink>
+  );
+}
+
+/** 카테고리 + 하위 메뉴 (hover 시 펼침) */
+function CategoryMenu({ entry }) {
+  const categoryIcon = entry.items[0]?.icon;
+  return (
+    <div className="w-full overflow-hidden rounded-2xl">
+      {/* 카테고리 헤더 */}
+      <div className="w-full flex items-center h-14 text-white/50 px-4 shrink-0 overflow-hidden">
+        <MenuIcon path={categoryIcon} />
+        <span className="ml-4 flex-1 text-sm font-medium opacity-0 group-hover:opacity-100 whitespace-nowrap transition-opacity duration-300">
+          {entry.label}
+        </span>
+        <svg
+          className="w-4 h-4 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 text-white/40"
+          fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}
+        >
+          <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+        </svg>
+      </div>
+      {/* 하위 항목: 사이드바 hover 시 펼침 */}
+      <div className="max-h-0 group-hover:max-h-[600px] opacity-0 group-hover:opacity-100 flex flex-col pl-[3.25rem] pr-4 transition-all duration-500 whitespace-nowrap overflow-hidden">
+        <div className="py-2 flex flex-col gap-1 border-l border-white/20 ml-2 pl-3">
+          {entry.items.map((item) => (
+            <NavLink
+              key={item.to}
+              to={item.to}
+              end={item.to === '/admin'}
+              className={({ isActive }) =>
+                `block text-left text-sm py-1.5 transition-colors ${
+                  isActive ? 'text-white font-medium' : 'text-indigo-200 hover:text-white'
+                }`
+              }
+            >
+              {item.label}
+            </NavLink>
+          ))}
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -239,34 +281,28 @@ export default function Sidebar() {
   const roleBadge = ROLE_LABELS[currentUser?.role];
 
   return (
-    <nav className="w-60 bg-[#6366F1] min-h-screen py-5 flex-shrink-0 flex flex-col">
-      <div className="px-5 pb-5 mb-3 border-b border-white/20">
-        <div className="text-xl font-heading font-bold text-white tracking-tight">GREF FarmWork</div>
-        {roleBadge && (
-          <span className="inline-block mt-2 px-2 py-0.5 rounded text-xs font-medium bg-white/20 text-white/90">
-            {roleBadge}
-          </span>
-        )}
+    <aside className="hidden md:flex flex-col shrink-0 fixed left-0 top-0 h-screen w-[100px] hover:w-[260px] group bg-[#6366F1] z-40 transition-all duration-300 overflow-y-auto overflow-x-hidden shadow-[4px_0_24px_rgba(0,0,0,0.1)] py-10">
+
+      {/* 프로필 영역 */}
+      <div className="px-6 flex items-center gap-4 mb-10 w-[260px]">
+        <div className="w-12 h-12 shrink-0 bg-white/20 rounded-full flex items-center justify-center text-white font-bold text-lg">
+          {currentUser?.name?.[0] || 'G'}
+        </div>
+        <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-300 whitespace-nowrap">
+          <p className="text-white font-bold text-sm">GREF FarmWork</p>
+          <p className="text-indigo-200 text-xs">{roleBadge || currentUser?.name || ''}</p>
+        </div>
       </div>
-      <ul className="space-y-0.5 px-3 flex-1 overflow-y-auto">
-        {menu.map((entry, idx) => {
+
+      {/* 메뉴 */}
+      <nav className="flex flex-col gap-2 w-full px-4">
+        {menu.map((entry) => {
           if (entry.type === 'category') {
-            return (
-              <li key={entry.label} className={idx > 0 ? 'pt-4' : ''}>
-                <p className="px-3 pb-1.5 text-[11px] font-semibold text-white/40 uppercase tracking-wider">
-                  {entry.label}
-                </p>
-                <ul className="space-y-0.5">
-                  {entry.items.map((item) => (
-                    <MenuItem key={item.to} item={item} />
-                  ))}
-                </ul>
-              </li>
-            );
+            return <CategoryMenu key={entry.label} entry={entry} />;
           }
           return <MenuItem key={entry.to} item={entry} />;
         })}
-      </ul>
-    </nav>
+      </nav>
+    </aside>
   );
 }
