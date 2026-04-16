@@ -14,13 +14,10 @@ Recharts (차트), React Router v6, Zustand (상태), JavaScript (TS 미사용)
 
 ## 디자인 규칙
 - 한국어 전용 UI (영어 표현 금지)
-- Primary: indigo #6366F1 (--color-primary), hover #4F46E5 (--color-primary-dark)
-- 사이드바: bg-[#6366F1], 활성 메뉴: bg-white/20 text-white
-- TopBar: bg-white border-b (콘텐츠 영역 내부, 흰색 유지)
-- 하단 네비 활성 탭: text-indigo-600
-- 카드: rounded-xl shadow-sm, 좌측 border 강조 (border-l-indigo-500)
+- Primary: emerald 계열, 탑바 bg-emerald-950, 하단네비 rgba(5,46,22,.96)
+- 카드: rounded-xl shadow-sm, 좌측 border 강조
 - 모달: 바텀시트 slide-up, 버튼: active:scale-[0.98]
-- 폰트: Pretendard (index.css @theme --font-heading/--font-body)
+- 폰트: Work Sans (제목) + Public Sans (본문)
 
 ## 코딩 컨벤션
 - 함수형 컴포넌트 + Hooks, 파일명 PascalCase(컴포넌트) camelCase(훅)

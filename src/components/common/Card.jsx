@@ -1,5 +1,5 @@
 const accentColors = {
-  blue: 'border-l-indigo-500',
+  blue: 'border-l-blue-500',
   green: 'border-l-green-500',
   amber: 'border-l-amber-500',
   red: 'border-l-red-500',

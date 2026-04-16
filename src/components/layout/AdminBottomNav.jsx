@@ -262,7 +262,7 @@ export default function AdminBottomNav() {
             end={tab.to === '/admin'}
             className={({ isActive }) =>
               `flex flex-col items-center justify-center gap-0.5 flex-1 min-h-[52px] px-1 py-1 rounded-xl transition-colors ${
-                isActive ? 'text-indigo-600' : 'text-gray-400'
+                isActive ? 'text-blue-600' : 'text-gray-400'
               }`
             }
           >
@@ -275,7 +275,7 @@ export default function AdminBottomNav() {
         <button
           onClick={() => setShowMore((v) => !v)}
           className={`flex flex-col items-center justify-center gap-0.5 flex-1 min-h-[52px] px-1 py-1 rounded-xl transition-colors ${
-            showMore ? 'text-indigo-600' : 'text-gray-400'
+            showMore ? 'text-blue-600' : 'text-gray-400'
           }`}
         >
           <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>

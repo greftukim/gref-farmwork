@@ -4,7 +4,7 @@ const typeStyles = {
   task_completed: { bg: 'bg-green-600', icon: '✅' },
   emergency_call: { bg: 'bg-red-600', icon: '🚨' },
   issue_report: { bg: 'bg-amber-600', icon: '⚠️' },
-  info: { bg: 'bg-[#6366F1]', icon: 'ℹ️' },
+  info: { bg: 'bg-blue-600', icon: 'ℹ️' },
   fcm_error: { bg: 'bg-rose-700', icon: '🔕' },
 };
 

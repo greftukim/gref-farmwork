@@ -4,18 +4,10 @@ import useEmployeeStore from '../../stores/employeeStore';
 import useBranchStore from '../../stores/branchStore';
 import useAuthStore from '../../stores/authStore';
 import Button from '../../components/common/Button';
-import {
-  isFarmAdmin,
-  canHrCrud,
-  canWrite,
-  roleLabel,
-  canEditEmployee,
-  canAssignLeader,
-  canViewBirthDate,
-  canViewContractExpiry,
-} from '../../lib/permissions';
+import { isFarmAdmin, canHrCrud, canWrite, roleLabel, canEditEmployee, canAssignLeader, canViewBirthDate, canViewContractExpiry } from '../../lib/permissions';
 import { getContractExpiryStatus, getExpiryColorClass } from '../../utils/contractExpiry';
 import useNotificationStore from '../../stores/notificationStore';
+import Card from '../../components/common/Card';
 import Modal from '../../components/common/Modal';
 import { BRANCH_NULL_FALLBACK } from '../../constants/branchLabels';
 import EmployeeDetailModal from '../../components/employees/EmployeeDetailModal';
@@ -25,23 +17,6 @@ const APP_BASE_URL =
   window.location.hostname === 'localhost'
     ? window.location.origin
     : 'https://gref-farmwork.vercel.app';
-
-// ─── UI 스타일 상수 ────────────────────────────────────────────────────────────
-const AVATAR_COLORS = {
-  worker: 'bg-indigo-100 text-indigo-700',
-  farm_admin: 'bg-emerald-100 text-emerald-700',
-  hr_admin: 'bg-blue-100 text-blue-700',
-  master: 'bg-purple-100 text-purple-700',
-  general: 'bg-amber-100 text-amber-700',
-};
-
-const JOB_TYPE_BADGE = {
-  '재배': 'bg-indigo-100 text-indigo-700',
-  '포장': 'bg-emerald-100 text-emerald-700',
-  '관리': 'bg-blue-100 text-blue-700',
-  '기타': 'bg-gray-100 text-gray-600',
-};
-// ──────────────────────────────────────────────────────────────────────────────
 
 const emptyForm = {
   name: '',
@@ -233,24 +208,17 @@ export default function EmployeesPage() {
     Object.fromEntries(branches.map((b) => [b.code, b.name])),
   [branches]);
 
-  // farm_admin 지점명 (권한 배너용)
-  const currentBranchName = useMemo(() => {
-    if (!isFarmAdmin(currentUser)) return null;
-    return branchNameMap[currentUser.branch] || currentUser.branch || '본인 지점';
-  }, [currentUser, branchNameMap]);
-
-  const [lastLeaderConfirm, setLastLeaderConfirm] = useState(null);
+  const [lastLeaderConfirm, setLastLeaderConfirm] = useState(null); // { emp, branchName }
   const [showModal, setShowModal] = useState(false);
   const [editTarget, setEditTarget] = useState(null);
   const [form, setForm] = useState(emptyForm);
   const [filter, setFilter] = useState('all');
-  const [searchQuery, setSearchQuery] = useState('');
 
-  // 상세 슬라이드 패널
+  // 상세 모달
   const [detailTarget, setDetailTarget] = useState(null);
 
   // QR 모달
-  const [qrEmployee, setQrEmployee] = useState(null);
+  const [qrEmployee, setQrEmployee] = useState(null); // 현재 QR 보고 있는 직원
 
   const filtered = useMemo(() => {
     let list = employees;
@@ -262,15 +230,6 @@ export default function EmployeesPage() {
     if (filter === 'inactive') return list.filter((e) => !e.isActive);
     return list;
   }, [employees, filter, isManagement, currentUser]);
-
-  // 검색어 필터 (이름·연락처)
-  const displayList = useMemo(() => {
-    if (!searchQuery.trim()) return filtered;
-    const q = searchQuery.toLowerCase().trim();
-    return filtered.filter(
-      (e) => e.name?.toLowerCase().includes(q) || e.phone?.toLowerCase().includes(q)
-    );
-  }, [filtered, searchQuery]);
 
   const openAdd = () => {
     setEditTarget(null);
@@ -314,11 +273,13 @@ export default function EmployeesPage() {
   const issueToken = async (emp) => {
     const token = crypto.randomUUID();
     await updateEmployee(emp.id, { deviceToken: token });
+    // 스토어에서 업데이트된 직원 데이터로 모달 갱신
     setQrEmployee({ ...emp, deviceToken: token });
   };
 
   const handleQrOpen = async (emp) => {
     if (!emp.deviceToken) {
+      // 토큰 없으면 즉시 발급 후 모달 오픈
       await issueToken(emp);
     } else {
       setQrEmployee(emp);
@@ -362,244 +323,244 @@ export default function EmployeesPage() {
     setQrEmployee(null);
   };
 
-  // 팀 리더 토글 공통 컴포넌트
-  const LeaderToggle = ({ emp }) => (
-    <div className="flex items-center gap-1.5">
-      <button
-        onClick={(e) => { e.stopPropagation(); handleToggleTeamLeader(emp, !emp.isTeamLeader); }}
-        className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors active:scale-[0.98] ${
-          emp.isTeamLeader ? 'bg-[#6366F1]' : 'bg-gray-200'
-        }`}
-        aria-label={emp.isTeamLeader ? '반장 해제' : '반장 지정'}
-      >
-        <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${
-          emp.isTeamLeader ? 'translate-x-6' : 'translate-x-1'
-        }`} />
-      </button>
-    </div>
-  );
-
   return (
     <div>
-      {/* 헤더 */}
-      <div className="flex items-center justify-between mb-4">
-        <h2 className="text-2xl font-heading font-bold text-gray-900">
-          직원 관리
-          <span className="ml-2 text-sm font-normal text-gray-400 bg-gray-100 px-2.5 py-1 rounded-full">
-            {displayList.length}명
-          </span>
-        </h2>
+      <div className="flex items-center justify-between mb-6">
+        <h2 className="text-xl font-heading font-semibold text-gray-900">직원 관리</h2>
         {isManagement && <Button onClick={openAdd}>+ 직원 등록</Button>}
       </div>
 
-      {/* Farm Admin 권한 배너 */}
-      {isFarmAdmin(currentUser) && (
-        <div className="bg-indigo-50 border border-indigo-100 rounded-2xl px-4 py-3 mb-4 flex items-center gap-3">
-          <span className="text-indigo-400 flex-shrink-0">🔒</span>
-          <span className="text-sm text-indigo-700">
-            <span className="font-semibold">{currentBranchName}</span> 지점 직원만 표시됩니다
-          </span>
-        </div>
-      )}
-
-      {/* 필터 탭 + 검색 */}
-      <div className="flex flex-col sm:flex-row gap-3 mb-5">
-        <div className="flex gap-2">
-          {[
-            { key: 'all', label: '전체' },
-            { key: 'active', label: '재직' },
-            { key: 'inactive', label: '비활성' },
-          ].map((f) => (
-            <button
-              key={f.key}
-              onClick={() => setFilter(f.key)}
-              className={`px-4 py-2 rounded-xl text-sm font-medium transition-colors min-h-[40px] ${
-                filter === f.key
-                  ? 'bg-[#6366F1] text-white shadow-sm shadow-indigo-200'
-                  : 'bg-white border border-gray-200 text-gray-600 hover:bg-gray-50'
-              }`}
-            >
-              {f.label}
-            </button>
-          ))}
-        </div>
-        <div className="relative flex-1">
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="이름 또는 연락처 검색"
-            className="w-full bg-white border border-gray-200 rounded-xl px-4 py-2 pr-9 text-sm min-h-[40px] focus:outline-none focus:ring-2 focus:ring-indigo-200 focus:border-indigo-300"
-          />
-          {searchQuery && (
-            <button
-              onClick={() => setSearchQuery('')}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
-            >
-              ✕
-            </button>
-          )}
-        </div>
+      <div className="flex gap-2 mb-4">
+        {[
+          { key: 'all', label: '전체' },
+          { key: 'active', label: '재직' },
+          { key: 'inactive', label: '비활성' },
+        ].map((f) => (
+          <button
+            key={f.key}
+            onClick={() => setFilter(f.key)}
+            className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors min-h-[36px] ${
+              filter === f.key
+                ? 'bg-blue-600 text-white'
+                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+            }`}
+          >
+            {f.label}
+          </button>
+        ))}
       </div>
 
       {/* 모바일 카드 뷰 */}
       <div className="md:hidden space-y-3">
-        {displayList.length === 0 && (
+        {filtered.length === 0 && (
           <p className="text-center text-gray-400 py-12">등록된 직원이 없습니다</p>
         )}
-        {displayList.map((emp) => (
-          <div
-            key={emp.id}
-            className={`bg-white rounded-[24px] shadow-sm border border-gray-100 p-4 active:scale-[0.99] transition-transform cursor-pointer ${
-              !emp.isActive ? 'opacity-50' : ''
-            }`}
-            onClick={() => setDetailTarget(emp)}
-          >
-            {/* 이름 + 배지 */}
-            <div className="flex items-center gap-3 mb-3">
-              <div className={`w-11 h-11 rounded-full flex items-center justify-center flex-shrink-0 text-base font-bold ${
-                AVATAR_COLORS[emp.role] || 'bg-gray-100 text-gray-600'
-              }`}>
-                {emp.name[0]}
+        {filtered.map((emp) => (
+          <Card key={emp.id} accent="gray" className={`p-4 ${!emp.isActive ? 'opacity-50' : ''}`} onClick={() => setDetailTarget(emp)}>
+            <div className="flex items-start justify-between mb-2">
+              <span className="font-semibold text-gray-900 text-base">{emp.name}</span>
+              <div className="flex items-center gap-1.5">
+                <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
+                  emp.isActive ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'
+                }`}>
+                  {emp.isActive ? '재직' : '비활성'}
+                </span>
+                <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-700">
+                  {roleLabel(emp.role)}
+                </span>
               </div>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <span className="font-semibold text-gray-900">{emp.name}</span>
-                  <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
-                    emp.isActive ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-100 text-gray-500'
-                  }`}>
-                    {emp.isActive ? '재직' : '비활성'}
+            </div>
+            <div className="text-sm text-gray-500 space-y-0.5 mb-3">
+              <div>
+                {emp.jobType}
+                {emp.branch ? (
+                  <span className="ml-1.5 px-1.5 py-0.5 rounded text-xs bg-emerald-100 text-emerald-700">
+                    {branchNameMap[emp.branch] || emp.branch}
                   </span>
-                  {emp.isTeamLeader && (
-                    <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-700">반장</span>
-                  )}
+                ) : (
+                  <span className="ml-1.5 text-gray-400">{BRANCH_NULL_FALLBACK}</span>
+                )}
+              </div>
+              {(emp.workStartTime || emp.workEndTime) && (
+                <div>{emp.workStartTime || BRANCH_NULL_FALLBACK} ~ {emp.workEndTime || BRANCH_NULL_FALLBACK}</div>
+              )}
+              {emp.phone && <div>{emp.phone}</div>}
+              {emp.jobTitle && <div>직책: {emp.jobTitle}</div>}
+              {emp.jobRank && <div>직급: {emp.jobRank}</div>}
+              {emp.hireDate && <div>입사 {emp.hireDate}</div>}
+              {emp.contractEndDate && (
+                <div className={
+                  canViewContractExpiry(currentUser)
+                    ? getExpiryColorClass(getContractExpiryStatus(emp.contractEndDate))
+                    : ''
+                }>
+                  계약 ~ {emp.contractEndDate}
                 </div>
-                <div className="text-xs text-gray-400 mt-0.5">{roleLabel(emp.role)}</div>
-              </div>
-              <span className="text-gray-300 text-lg flex-shrink-0">›</span>
-            </div>
-
-            {/* 직무 + 지점 배지 */}
-            <div className="flex flex-wrap gap-2 text-xs mb-3">
-              {emp.jobType && (
-                <span className={`px-2.5 py-1 rounded-full font-medium ${JOB_TYPE_BADGE[emp.jobType] || 'bg-gray-100 text-gray-600'}`}>
-                  {emp.jobType}
-                </span>
-              )}
-              {emp.branch && (
-                <span className="px-2.5 py-1 rounded-full bg-gray-100 text-gray-600 font-medium">
-                  {branchNameMap[emp.branch] || emp.branch}
-                </span>
               )}
             </div>
-
-            {emp.phone && (
-              <div className="text-xs text-gray-500 mb-3">{emp.phone}</div>
-            )}
-
-            {/* 반장 토글 */}
-            {canAssignLeader(currentUser, emp) && emp.role === 'worker' && (
-              <div className="flex items-center gap-2 border-t border-gray-50 pt-3">
-                <LeaderToggle emp={emp} />
-                <span className="text-xs text-gray-500">반장 지정</span>
-              </div>
-            )}
-          </div>
+            <div className="flex gap-2 justify-end items-center">
+              {emp.role === 'worker' && (
+                <button
+                  onClick={(e) => { e.stopPropagation(); handleQrOpen(emp); }}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors min-h-[36px] ${
+                    emp.deviceToken
+                      ? 'bg-emerald-100 text-emerald-700'
+                      : 'bg-blue-100 text-blue-700'
+                  }`}
+                >
+                  {emp.deviceToken ? 'QR확인' : 'QR발급'}
+                </button>
+              )}
+              {canAssignLeader(currentUser, emp) && emp.role === 'worker' && (
+                <div className="flex items-center gap-1.5">
+                  <button
+                    onClick={(e) => { e.stopPropagation(); handleToggleTeamLeader(emp, !emp.isTeamLeader); }}
+                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors active:scale-[0.98] ${
+                      emp.isTeamLeader ? 'bg-emerald-600' : 'bg-gray-300'
+                    }`}
+                    aria-label={emp.isTeamLeader ? '반장 해제' : '반장 지정'}
+                  >
+                    <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${
+                      emp.isTeamLeader ? 'translate-x-6' : 'translate-x-1'
+                    }`} />
+                  </button>
+                  <span className="text-xs text-gray-500">반장</span>
+                </div>
+              )}
+              {canEditEmployee(currentUser) && (
+                <Button size="sm" variant="ghost" onClick={(e) => { e.stopPropagation(); openEdit(emp); }}>수정</Button>
+              )}
+              {isManagement && (
+                <Button size="sm" variant="ghost" onClick={(e) => { e.stopPropagation(); toggleActive(emp.id); }}>
+                  {emp.isActive ? '비활성' : '활성'}
+                </Button>
+              )}
+            </div>
+          </Card>
         ))}
       </div>
 
       {/* 데스크탑 테이블 뷰 */}
-      <div className="hidden md:block bg-white rounded-[24px] shadow-sm border border-gray-100 overflow-hidden">
+      <Card accent="gray" className="hidden md:block overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-gray-100">
-                <th className="px-5 py-4 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">이름</th>
-                <th className="px-5 py-4 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">직무</th>
-                <th className="px-5 py-4 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">직책·직급</th>
-                <th className="px-5 py-4 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">연락처</th>
-                {canToggleTeamLeader && (
-                  <th className="px-5 py-4 text-center text-xs font-semibold text-gray-400 uppercase tracking-wider">반장</th>
-                )}
-                <th className="px-5 py-4 text-right text-xs font-semibold text-gray-400 uppercase tracking-wider">상세</th>
+              <tr className="bg-gray-50 text-left text-gray-500">
+                <th className="px-4 py-3 font-medium">이름</th>
+                <th className="px-4 py-3 font-medium">역할</th>
+                <th className="px-4 py-3 font-medium">직책</th>
+                <th className="px-4 py-3 font-medium">직급</th>
+                <th className="px-4 py-3 font-medium">직무</th>
+                <th className="px-4 py-3 font-medium">근무 지점</th>
+                <th className="px-4 py-3 font-medium">근무 시간</th>
+                <th className="px-4 py-3 font-medium">연락처</th>
+                {canViewBirthDate(currentUser) && <th className="px-4 py-3 font-medium">생년월일</th>}
+                <th className="px-4 py-3 font-medium">입사일</th>
+                <th className="px-4 py-3 font-medium">계약만료일</th>
+                <th className="px-4 py-3 font-medium">상태</th>
+                <th className="px-4 py-3 font-medium">QR</th>
+                {canToggleTeamLeader && <th className="px-4 py-3 font-medium">반장</th>}
+                <th className="px-4 py-3 font-medium">관리</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-50">
-              {displayList.length === 0 && (
-                <tr>
-                  <td colSpan={canToggleTeamLeader ? 6 : 5} className="text-center text-gray-400 py-12">
-                    등록된 직원이 없습니다
-                  </td>
-                </tr>
-              )}
-              {displayList.map((emp) => (
-                <tr
-                  key={emp.id}
-                  className={`cursor-pointer hover:bg-gray-50 transition-colors ${!emp.isActive ? 'opacity-50' : ''}`}
-                  onClick={() => setDetailTarget(emp)}
-                >
-                  {/* 이름: 아바타 + 이름 + 역할 */}
-                  <td className="px-5 py-4">
-                    <div className="flex items-center gap-3">
-                      <div className={`w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 font-bold ${
-                        AVATAR_COLORS[emp.role] || 'bg-gray-100 text-gray-600'
-                      }`}>
-                        {emp.name[0]}
-                      </div>
-                      <div>
-                        <div className="font-semibold text-gray-900">{emp.name}</div>
-                        <div className="text-xs text-gray-400">{roleLabel(emp.role)}</div>
-                      </div>
-                    </div>
-                  </td>
-
-                  {/* 직무 배지 */}
-                  <td className="px-5 py-4">
-                    <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${
-                      JOB_TYPE_BADGE[emp.jobType] || 'bg-gray-100 text-gray-600'
-                    }`}>
-                      {emp.jobType || '—'}
+            <tbody className="divide-y divide-gray-100">
+              {filtered.map((emp) => (
+                <tr key={emp.id} className={`cursor-pointer hover:bg-gray-50 ${!emp.isActive ? 'opacity-50' : ''}`} onClick={() => setDetailTarget(emp)}>
+                  <td className="px-4 py-3 font-medium text-gray-900">{emp.name}</td>
+                  <td className="px-4 py-3">
+                    <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-700">
+                      {roleLabel(emp.role)}
                     </span>
                   </td>
-
-                  {/* 직책·직급 */}
-                  <td className="px-5 py-4 text-sm text-gray-700">
-                    {[emp.jobTitle, emp.jobRank].filter(Boolean).join(' / ') || (
-                      <span className="text-gray-300">{BRANCH_NULL_FALLBACK}</span>
+                  <td className="px-4 py-3 text-gray-600">{emp.jobTitle || BRANCH_NULL_FALLBACK}</td>
+                  <td className="px-4 py-3 text-gray-600">{emp.jobRank || BRANCH_NULL_FALLBACK}</td>
+                  <td className="px-4 py-3 text-gray-600">{emp.jobType}</td>
+                  <td className="px-4 py-3">
+                    {emp.branch ? (
+                      <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-700">
+                        {branchNameMap[emp.branch] || emp.branch}
+                      </span>
+                    ) : (
+                      <span className="text-gray-400">{BRANCH_NULL_FALLBACK}</span>
                     )}
                   </td>
-
-                  {/* 연락처 */}
-                  <td className="px-5 py-4 text-sm text-gray-600">
-                    {emp.phone || <span className="text-gray-300">{BRANCH_NULL_FALLBACK}</span>}
+                  <td className="px-4 py-3 text-gray-600 whitespace-nowrap">
+                    {emp.workStartTime && emp.workEndTime
+                      ? `${emp.workStartTime} ~ ${emp.workEndTime}`
+                      : BRANCH_NULL_FALLBACK}
                   </td>
-
-                  {/* 반장 토글 */}
-                  {canToggleTeamLeader && (
-                    <td className="px-5 py-4 text-center">
-                      {canAssignLeader(currentUser, emp) && emp.role === 'worker' ? (
-                        <LeaderToggle emp={emp} />
-                      ) : (
-                        <span className="text-gray-200 text-xs">—</span>
+                  <td className="px-4 py-3 text-gray-600">{emp.phone}</td>
+                  {canViewBirthDate(currentUser) && <td className="px-4 py-3 text-gray-600">{emp.birthDate || BRANCH_NULL_FALLBACK}</td>}
+                  <td className="px-4 py-3 text-gray-600">{emp.hireDate}</td>
+                  <td className={`px-4 py-3 ${
+                    canViewContractExpiry(currentUser) && emp.contractEndDate
+                      ? getExpiryColorClass(getContractExpiryStatus(emp.contractEndDate))
+                      : 'text-gray-600'
+                  }`}>
+                    {emp.contractEndDate || BRANCH_NULL_FALLBACK}
+                  </td>
+                  <td className="px-4 py-3">
+                    <span
+                      className={`px-2 py-0.5 rounded-full text-xs font-medium ${
+                        emp.isActive ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'
+                      }`}
+                    >
+                      {emp.isActive ? '재직' : '비활성'}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3">
+                    {emp.role === 'worker' && (
+                      <button
+                        onClick={(e) => { e.stopPropagation(); handleQrOpen(emp); }}
+                        className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-colors min-h-[32px] ${
+                          emp.deviceToken
+                            ? 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200'
+                            : 'bg-blue-100 text-blue-700 hover:bg-blue-200'
+                        }`}
+                      >
+                        {emp.deviceToken ? 'QR확인' : 'QR발급'}
+                      </button>
+                    )}
+                  </td>
+                  {canAssignLeader(currentUser, emp) && (
+                    <td className="px-4 py-3">
+                      {emp.role === 'worker' && (
+                        <div className="flex items-center gap-1.5">
+                          <button
+                            onClick={(e) => { e.stopPropagation(); handleToggleTeamLeader(emp, !emp.isTeamLeader); }}
+                            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors active:scale-[0.98] ${
+                              emp.isTeamLeader ? 'bg-emerald-600' : 'bg-gray-300'
+                            }`}
+                            aria-label={emp.isTeamLeader ? '반장 해제' : '반장 지정'}
+                          >
+                            <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${
+                              emp.isTeamLeader ? 'translate-x-6' : 'translate-x-1'
+                            }`} />
+                          </button>
+                        </div>
                       )}
                     </td>
                   )}
-
-                  {/* 상세 보기 버튼 */}
-                  <td className="px-5 py-4 text-right">
-                    <button
-                      onClick={(e) => { e.stopPropagation(); setDetailTarget(emp); }}
-                      className="px-3 py-1.5 rounded-xl text-xs font-medium bg-gray-100 text-gray-600 hover:bg-indigo-50 hover:text-indigo-600 transition-colors min-h-[32px]"
-                    >
-                      보기
-                    </button>
-                  </td>
+                  {(canEditEmployee(currentUser) || isManagement) && (
+                    <td className="px-4 py-3">
+                      <div className="flex gap-1">
+                        {canEditEmployee(currentUser) && (
+                          <Button size="sm" variant="ghost" onClick={(e) => { e.stopPropagation(); openEdit(emp); }}>수정</Button>
+                        )}
+                        {isManagement && (
+                          <Button size="sm" variant="ghost" onClick={(e) => { e.stopPropagation(); toggleActive(emp.id); }}>
+                            {emp.isActive ? '비활성' : '활성'}
+                          </Button>
+                        )}
+                      </div>
+                    </td>
+                  )}
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
-      </div>
+      </Card>
 
       {/* 직원 등록/수정 모달 */}
       <Modal
@@ -648,17 +609,7 @@ export default function EmployeesPage() {
         </Modal>
       )}
 
-      {/* 직원 상세 슬라이드 패널 (QrModal보다 먼저 렌더 → QrModal이 위에 쌓임) */}
-      <EmployeeDetailModal
-        employee={detailTarget}
-        onClose={() => setDetailTarget(null)}
-        onEdit={openEdit}
-        onQrOpen={handleQrOpen}
-        onToggleActive={(emp) => { toggleActive(emp.id); setDetailTarget(null); }}
-        branchNameMap={branchNameMap}
-      />
-
-      {/* QR 코드 모달 (슬라이드 패널보다 나중에 렌더 → z-50 동일, DOM 순서상 위에 표시) */}
+      {/* QR 코드 모달 */}
       {qrEmployee?.deviceToken && (
         <QrModal
           employee={qrEmployee}
@@ -667,6 +618,14 @@ export default function EmployeesPage() {
           onRevoke={handleRevoke}
         />
       )}
+
+      {/* 직원 상세 모달 */}
+      <EmployeeDetailModal
+        employee={detailTarget}
+        onClose={() => setDetailTarget(null)}
+        onEdit={openEdit}
+        branchNameMap={branchNameMap}
+      />
     </div>
   );
 }

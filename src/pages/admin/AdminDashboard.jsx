@@ -12,74 +12,17 @@ import useNoticeStore from '../../stores/noticeStore';
 import useAuthStore from '../../stores/authStore';
 import useBranchStore from '../../stores/branchStore';
 import useCropStore from '../../stores/cropStore';
+import Card from '../../components/common/Card';
 import { isFarmAdmin } from '../../lib/permissions';
 
 const today = () => new Date().toISOString().split('T')[0];
 
-// ─── 관리팀 전용 더미 데이터 (실 데이터 연동 예정) ───────────────────────────
-const BRANCH_ATTENDANCE_DUMMY = [
-  { code: 'busan', label: '부산LAB', checkedIn: 8, total: 10, leaveCount: 1 },
-  { code: 'jinju', label: '진주HUB', checkedIn: 5, total: 6, leaveCount: 0 },
-  { code: 'hadong', label: '하동HUB', checkedIn: 3, total: 4, leaveCount: 1 },
-];
-
-const BRANCH_TBM_DUMMY = [
-  { code: 'busan', label: '부산LAB', rate: 80 },
-  { code: 'jinju', label: '진주HUB', rate: 100 },
-  { code: 'hadong', label: '하동HUB', rate: 75 },
-];
-
-const TOP_PERFORMERS_DUMMY = [
-  { rank: 1, name: '김민국', branch: '부산LAB', score: 98 },
-  { rank: 2, name: '박민식', branch: '진주HUB', score: 95 },
-  { rank: 3, name: '이성호', branch: '하동HUB', score: 91 },
-];
-
-const RECENT_ISSUES_DUMMY = [
-  { id: 1, dot: 'bg-red-500', branch: '부산LAB', time: '09:14', content: '긴급 호출 — 작업자 부상 (경미)' },
-  { id: 2, dot: 'bg-amber-500', branch: '진주HUB', time: '08:52', content: '이상 신고 — 온실 온도 이상' },
-  { id: 3, dot: 'bg-indigo-400', branch: '하동HUB', time: '07:30', content: '정기 점검 완료 보고' },
-];
-// ─────────────────────────────────────────────────────────────────────────────
-
 function StatCard({ label, value, color, sub }) {
   return (
-    <div className="bg-white p-6 rounded-[24px] shadow-sm border border-gray-100 text-center">
+    <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 text-center">
       <div className="text-sm text-gray-500 mb-1">{label}</div>
       <div className={`text-3xl font-bold ${color}`}>{value}</div>
       {sub && <div className="text-sm text-gray-400 mt-0.5">{sub}</div>}
-    </div>
-  );
-}
-
-// 더미 수확량 바 차트 (실데이터 미연동 시 placeholder)
-function HarvestBarChart({ crops }) {
-  const dummyValues = [280, 145, 390, 210, 165];
-  const data =
-    crops.length > 0
-      ? crops.slice(0, 5).map((c, i) => ({ name: c.name, value: dummyValues[i] ?? 100 }))
-      : [
-          { name: '파프리카', value: 280 },
-          { name: '토마토', value: 145 },
-          { name: '오이', value: 390 },
-          { name: '상추', value: 210 },
-          { name: '딸기', value: 165 },
-        ];
-  const max = Math.max(...data.map((d) => d.value), 1);
-  return (
-    <div className="space-y-3">
-      {data.map((d) => (
-        <div key={d.name} className="flex items-center gap-3">
-          <div className="text-xs text-gray-500 w-14 text-right flex-shrink-0">{d.name}</div>
-          <div className="flex-1 bg-gray-100 rounded-full h-2.5 overflow-hidden">
-            <div
-              className="h-full bg-[#6366F1] rounded-full"
-              style={{ width: `${(d.value / max) * 100}%` }}
-            />
-          </div>
-          <div className="text-xs text-gray-600 font-medium w-12 flex-shrink-0">{d.value}kg</div>
-        </div>
-      ))}
     </div>
   );
 }
@@ -223,403 +166,157 @@ export default function AdminDashboard() {
 
   const donutData = [
     { name: '완료', value: taskCompleted, color: '#10B981' },
-    { name: '진행', value: taskInProgress, color: '#6366F1' },
+    { name: '진행', value: taskInProgress, color: '#2563EB' },
     { name: '대기', value: taskPending, color: '#D1D5DB' },
   ].filter((d) => d.value > 0);
   if (donutData.length === 0) donutData.push({ name: '없음', value: 1, color: '#E5E7EB' });
 
-  // 지점별 출근 현황: branchStore 지점명으로 더미 데이터 라벨 보강
-  const branchAttendanceRows = useMemo(() => {
-    if (branches.length === 0) return BRANCH_ATTENDANCE_DUMMY;
-    return BRANCH_ATTENDANCE_DUMMY.map((d) => ({
-      ...d,
-      label: branches.find((b) => b.code === d.code)?.name || d.label,
-    }));
-  }, [branches]);
-
-  // 지점별 TBM 완료율: branchStore 지점명으로 더미 데이터 라벨 보강
-  const branchTbmRows = useMemo(() => {
-    if (branches.length === 0) return BRANCH_TBM_DUMMY;
-    return BRANCH_TBM_DUMMY.map((d) => ({
-      ...d,
-      label: branches.find((b) => b.code === d.code)?.name || d.label,
-    }));
-  }, [branches]);
-
-  // 출퇴근 누락 카드 (공통 — 재배팀/비재배팀 모두 사용)
-  const MissedCheckoutCard = () => (
-    <div className="bg-white rounded-[24px] shadow-sm border border-gray-100 p-6">
-      <div className="flex items-center justify-between mb-4">
-        <div className="text-sm font-semibold text-gray-500 flex items-center gap-2">
-          출퇴근 누락
-          {missedRecords.length > 0 && (
-            <span className="text-xs bg-amber-100 text-amber-600 font-semibold px-2 py-0.5 rounded-full">
-              {missedRecords.length}건
-            </span>
-          )}
-        </div>
-        <select
-          value={missedDays}
-          onChange={(e) => setMissedDays(Number(e.target.value))}
-          className="border border-gray-200 rounded-xl px-3 py-1.5 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-indigo-200"
-        >
-          <option value={3}>최근 3일</option>
-          <option value={7}>최근 7일</option>
-          <option value={14}>최근 14일</option>
-          <option value={30}>최근 30일</option>
-        </select>
-      </div>
-      {missedRecords.length === 0 ? (
-        <div className="text-center py-4">
-          <div className="text-3xl font-bold text-gray-200 mb-1">0</div>
-          <div className="text-xs text-gray-400">누락 없음</div>
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
-          {missedRecords.map((r) => (
-            <div key={r.id} className="flex items-center justify-between bg-amber-50 rounded-xl px-3 py-2.5">
-              <span className="font-medium text-sm text-gray-900">{empMap[r.employeeId]?.name}</span>
-              <div className="text-right">
-                <div className="text-xs text-gray-400">{r.date}</div>
-                <div className="text-xs text-amber-600 font-medium">퇴근 미등록</div>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-
   return (
     <div>
-      {/* 헤더 */}
       <div className="flex items-baseline gap-3 mb-6 flex-wrap">
         <h2 className="text-2xl font-heading font-bold text-gray-900">대시보드</h2>
         <span className="text-sm text-gray-400">{todayLabel}</span>
-        {currentBranchName && (
-          <span className="text-xs bg-indigo-50 text-indigo-600 font-medium px-2.5 py-1 rounded-full">
-            {currentBranchName}
-          </span>
-        )}
       </div>
 
-      <div className="grid grid-cols-12 gap-6">
+      {/* 1행: 출근 현황 4열 카드 */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+        <StatCard label="출근" value={checkedIn} color="text-blue-600" sub="명" />
+        <StatCard label="지각" value={lateCount} color="text-amber-500" sub="명" />
+        <StatCard label="휴가" value={todayLeaves.length} color="text-green-500" sub="명" />
+        <StatCard label="미출근" value={notCheckedIn} color="text-gray-400" sub="명" />
+      </div>
 
-        {/* 1행: 출근 현황 (공통) */}
-        <div className="col-span-12 grid grid-cols-2 md:grid-cols-4 gap-4">
-          <StatCard label="출근" value={checkedIn} color="text-indigo-600" sub="명" />
-          <StatCard label="지각" value={lateCount} color="text-amber-500" sub="명" />
-          <StatCard label="휴가" value={todayLeaves.length} color="text-emerald-500" sub="명" />
-          <StatCard label="미출근" value={notCheckedIn} color="text-gray-400" sub="명" />
-        </div>
+      {/* TBM 지표 4열 카드 */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+        <StatCard label="오늘 TBM 승인" value={tbmStats.approved} color="text-emerald-600" sub="건" />
+        <StatCard label="오늘 TBM 미승인" value={tbmStats.submitted} color={tbmStats.submitted > 0 ? 'text-red-500' : 'text-gray-400'} sub="건" />
+        <StatCard label="활성 작업자" value={workers.length} color="text-blue-600" sub="명" />
+        <StatCard label="활성 반장" value={teamLeaderCount} color="text-emerald-600" sub="명" />
+      </div>
 
-        {isFarmTeam ? (
-          <>
-            {/* 재배팀 2행: TBM 상태 + 작업 진행 현황 */}
-            <div className="col-span-12 md:col-span-4 bg-white rounded-[24px] shadow-sm border border-gray-100 p-6">
-              <div className="text-sm font-semibold text-gray-500 mb-4">TBM 상태</div>
-              <div className="flex items-end gap-2 mb-5">
-                <span className="text-4xl font-bold text-indigo-600">{tbmStats.approved}</span>
-                <span className="text-sm text-gray-400 mb-1">
-                  / {tbmStats.approved + tbmStats.submitted}건 승인
-                </span>
-              </div>
-              <div className="grid grid-cols-3 gap-3">
-                <div className="bg-indigo-50 rounded-2xl p-3 text-center">
-                  <div className="text-xs text-gray-500 mb-1">승인</div>
-                  <div className="text-2xl font-bold text-indigo-600">{tbmStats.approved}</div>
-                </div>
-                <div className="bg-red-50 rounded-2xl p-3 text-center">
-                  <div className="text-xs text-gray-500 mb-1">미승인</div>
-                  <div className={`text-2xl font-bold ${tbmStats.submitted > 0 ? 'text-red-500' : 'text-gray-300'}`}>
-                    {tbmStats.submitted}
-                  </div>
-                </div>
-                <div className="bg-gray-50 rounded-2xl p-3 text-center">
-                  <div className="text-xs text-gray-500 mb-1">작업자</div>
-                  <div className="text-2xl font-bold text-gray-700">{workers.length}</div>
-                </div>
-              </div>
+      {/* 2행: 작업 도넛(재배팀) + 출퇴근 누락 */}
+      <div className={`grid grid-cols-1 ${isFarmTeam ? 'md:grid-cols-2' : ''} gap-4 mb-4`}>
+        {isFarmTeam && (
+          <Card accent="blue" className="p-6">
+            <div className="flex items-center justify-between mb-4">
+              <div className="text-sm font-medium text-gray-500">작업 진행</div>
+              <span className="text-xs text-gray-400">총 {taskTotal}건</span>
             </div>
-
-            <div className="col-span-12 md:col-span-8 bg-white rounded-[24px] shadow-sm border border-gray-100 p-6">
-              <div className="flex items-center justify-between mb-4">
-                <div className="text-sm font-semibold text-gray-500">작업 진행 현황</div>
-                <span className="text-xs text-gray-400">총 {taskTotal}건</span>
+            <div className="flex items-start gap-4">
+              {/* 도넛 차트 */}
+              <div className="w-24 h-24 flex-shrink-0">
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie data={donutData} cx="50%" cy="50%" innerRadius={25} outerRadius={42} dataKey="value" strokeWidth={0}>
+                      {donutData.map((entry, i) => <Cell key={i} fill={entry.color} />)}
+                    </Pie>
+                  </PieChart>
+                </ResponsiveContainer>
               </div>
-              <div className="flex items-start gap-4">
-                <div className="w-[100px] h-[100px] flex-shrink-0">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <PieChart>
-                      <Pie data={donutData} cx="50%" cy="50%" innerRadius={28} outerRadius={46} dataKey="value" strokeWidth={0}>
-                        {donutData.map((entry, i) => <Cell key={i} fill={entry.color} />)}
-                      </Pie>
-                    </PieChart>
-                  </ResponsiveContainer>
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex flex-wrap gap-4 text-xs text-gray-500 mb-3">
-                    <span className="flex items-center gap-1.5">
-                      <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 flex-shrink-0" />완료 {taskCompleted}
-                    </span>
-                    <span className="flex items-center gap-1.5">
-                      <span className="w-2.5 h-2.5 rounded-full bg-[#6366F1] flex-shrink-0" />진행 {taskInProgress}
-                    </span>
-                    <span className="flex items-center gap-1.5">
-                      <span className="w-2.5 h-2.5 rounded-full bg-gray-300 flex-shrink-0" />대기 {taskPending}
-                    </span>
-                  </div>
-                  <div className="space-y-1.5 max-h-[120px] overflow-y-auto pr-1">
-                    {taskGroups.length === 0 ? (
-                      <p className="text-xs text-gray-400">오늘 배정된 작업 없음</p>
-                    ) : (
-                      taskGroups.map((g, i) => {
-                        const allDone = g.completed === g.total;
-                        const isActive = g.inProgress > 0;
-                        return (
-                          <div
-                            key={i}
-                            className={`flex items-center justify-between text-xs rounded-xl px-3 py-2 ${
-                              allDone ? 'bg-emerald-50 text-emerald-700' : isActive ? 'bg-indigo-50 text-indigo-700' : 'bg-gray-50 text-gray-600'
-                            }`}
-                          >
-                            <span className="font-medium truncate mr-2">
-                              {cropMap[g.cropId]?.name || '—'} {g.taskType}
-                            </span>
-                            <span className="flex-shrink-0">
-                              {allDone ? '완료' : isActive ? '진행중' : '대기'} ({g.completed}/{g.total})
-                            </span>
-                          </div>
-                        );
-                      })
-                    )}
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* 재배팀 3행: 이번 주 수확량 + 오늘 작업 일정 */}
-            <div className="col-span-12 md:col-span-7 bg-white rounded-[24px] shadow-sm border border-gray-100 p-6">
-              <div className="flex items-center justify-between mb-5">
-                <div className="text-sm font-semibold text-gray-500">이번 주 수확량</div>
-                <span className="text-xs text-gray-400 bg-gray-100 px-2.5 py-1 rounded-full">더미 데이터</span>
-              </div>
-              <HarvestBarChart crops={crops} />
-            </div>
-
-            <div className="col-span-12 md:col-span-5 bg-white rounded-[24px] shadow-sm border border-gray-100 p-6">
-              <div className="text-sm font-semibold text-gray-500 mb-4">오늘 작업 일정</div>
-              <div className="space-y-2 max-h-[200px] overflow-y-auto">
+              {/* 작업 그룹 목록 */}
+              <div className="flex-1 min-w-0 space-y-1.5 max-h-[140px] overflow-y-auto">
                 {taskGroups.length === 0 ? (
-                  <p className="text-xs text-gray-400 text-center py-8">배정된 작업 없음</p>
+                  <p className="text-xs text-gray-400 pt-2">오늘 배정된 작업 없음</p>
                 ) : (
                   taskGroups.map((g, i) => {
                     const allDone = g.completed === g.total;
                     const isActive = g.inProgress > 0;
-                    const dotColor = allDone ? 'bg-emerald-500' : isActive ? 'bg-[#6366F1]' : 'bg-gray-300';
                     return (
-                      <div key={i} className="flex items-start gap-3 pb-2 border-b border-gray-50 last:border-0">
-                        <span className={`mt-1.5 flex-shrink-0 block w-2.5 h-2.5 rounded-full ${dotColor}`} />
-                        <div className="flex-1 min-w-0">
-                          <div className="text-sm font-medium text-gray-900">
-                            {cropMap[g.cropId]?.name || '미지정'} — {g.taskType || '기타'}
-                          </div>
-                          <div className="text-xs text-gray-400 mt-0.5">
-                            {g.completed}/{g.total}건 {allDone ? '완료' : isActive ? '진행중' : '대기'}
-                          </div>
-                        </div>
+                      <div key={i} className={`flex items-center justify-between text-xs rounded-lg px-2.5 py-1.5 ${
+                        allDone ? 'bg-green-50 text-green-700' : isActive ? 'bg-blue-50 text-blue-700' : 'bg-gray-50 text-gray-600'
+                      }`}>
+                        <span className="font-medium truncate mr-2">
+                          {cropMap[g.cropId]?.name || '—'} {g.taskType}
+                        </span>
+                        <span className="flex-shrink-0 font-semibold">
+                          {allDone ? '완료' : isActive ? '진행중'  : '대기'} ({g.completed}/{g.total})
+                        </span>
                       </div>
                     );
                   })
                 )}
               </div>
             </div>
-
-            {/* 재배팀 4행: 출퇴근 누락 */}
-            <div className="col-span-12">
-              <MissedCheckoutCard />
+            {/* 범례 */}
+            <div className="flex gap-3 mt-3 pt-3 border-t border-gray-100 text-xs text-gray-500">
+              <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-green-500" />완료 {taskCompleted}</span>
+              <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-blue-600" />진행 {taskInProgress}</span>
+              <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-gray-300" />대기 {taskPending}</span>
             </div>
-          </>
-        ) : (
-          <>
-            {/* 비재배팀 2행: TBM + 인력 지표 */}
-            <div className="col-span-12 grid grid-cols-2 md:grid-cols-4 gap-4">
-              <StatCard label="오늘 TBM 승인" value={tbmStats.approved} color="text-indigo-600" sub="건" />
-              <StatCard
-                label="오늘 TBM 미승인"
-                value={tbmStats.submitted}
-                color={tbmStats.submitted > 0 ? 'text-red-500' : 'text-gray-400'}
-                sub="건"
-              />
-              <StatCard label="활성 작업자" value={workers.length} color="text-indigo-600" sub="명" />
-              <StatCard label="활성 반장" value={teamLeaderCount} color="text-emerald-600" sub="명" />
-            </div>
-
-            {/* 비재배팀: 출퇴근 누락 */}
-            <div className="col-span-12">
-              <MissedCheckoutCard />
-            </div>
-
-            {/* 비재배팀 고유: 지점별 출근 현황 ─ 실 데이터 연동 예정 */}
-            <div className="col-span-12 bg-white rounded-[24px] shadow-sm border border-gray-100 p-6">
-              <div className="flex items-center justify-between mb-5">
-                <div className="text-sm font-semibold text-gray-500">지점별 출근 현황</div>
-                <span className="text-xs text-gray-400 bg-gray-100 px-2.5 py-1 rounded-full">실 데이터 연동 예정</span>
-              </div>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                {branchAttendanceRows.map((b) => {
-                  const pct = b.total > 0 ? Math.round((b.checkedIn / b.total) * 100) : 0;
-                  const badgeColor = pct >= 90 ? 'bg-emerald-100 text-emerald-700' : pct >= 70 ? 'bg-amber-100 text-amber-700' : 'bg-red-100 text-red-600';
-                  return (
-                    <div key={b.code} className="bg-gray-50 rounded-2xl p-4">
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="text-sm font-semibold text-gray-800">{b.label}</span>
-                        <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${badgeColor}`}>{pct}%</span>
-                      </div>
-                      <div className="text-2xl font-bold text-gray-900 mb-1">
-                        {b.checkedIn}
-                        <span className="text-sm font-normal text-gray-400 ml-1">/ {b.total}명</span>
-                      </div>
-                      {/* 출근 진행 바 */}
-                      <div className="bg-gray-200 rounded-full h-1.5 mb-2 overflow-hidden">
-                        <div
-                          className="h-full bg-[#6366F1] rounded-full"
-                          style={{ width: `${pct}%` }}
-                        />
-                      </div>
-                      {b.leaveCount > 0 && (
-                        <div className="text-xs text-gray-400">근태 신청 {b.leaveCount}명 제외됨</div>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* 비재배팀 고유: 지점별 TBM 완료율 + 성과 상위 명단 + 최근 이슈 피드 */}
-            {/* TBM 완료율 (col-span-4) */}
-            <div className="col-span-12 md:col-span-4 bg-white rounded-[24px] shadow-sm border border-gray-100 p-6">
-              <div className="flex items-center justify-between mb-5">
-                <div className="text-sm font-semibold text-gray-500">지점별 TBM 완료율</div>
-                <span className="text-xs text-gray-400 bg-gray-100 px-2.5 py-1 rounded-full">더미 데이터</span>
-              </div>
-              <div className="space-y-4">
-                {branchTbmRows.map((b) => {
-                  const barColor = b.rate === 100 ? 'bg-emerald-500' : b.rate >= 75 ? 'bg-[#6366F1]' : 'bg-amber-500';
-                  const textColor = b.rate === 100 ? 'text-emerald-600' : b.rate >= 75 ? 'text-indigo-600' : 'text-amber-600';
-                  return (
-                    <div key={b.code}>
-                      <div className="flex items-center justify-between mb-1.5">
-                        <span className="text-sm text-gray-700">{b.label}</span>
-                        <span className={`text-sm font-bold ${textColor}`}>{b.rate}%</span>
-                      </div>
-                      <div className="bg-gray-100 rounded-full h-2 overflow-hidden">
-                        <div
-                          className={`h-full ${barColor} rounded-full`}
-                          style={{ width: `${b.rate}%` }}
-                        />
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* 성과 상위 명단 (col-span-4) */}
-            <div className="col-span-12 md:col-span-4 bg-white rounded-[24px] shadow-sm border border-gray-100 p-6">
-              <div className="flex items-center justify-between mb-5">
-                <div className="text-sm font-semibold text-gray-500">성과 상위 명단</div>
-                <span className="text-xs text-gray-400 bg-gray-100 px-2.5 py-1 rounded-full">더미 데이터</span>
-              </div>
-              <div className="space-y-3">
-                {TOP_PERFORMERS_DUMMY.map((p) => {
-                  const rankColors = ['text-amber-500', 'text-gray-400', 'text-orange-400'];
-                  const rankBg = ['bg-amber-50', 'bg-gray-50', 'bg-orange-50'];
-                  return (
-                    <div key={p.rank} className={`flex items-center gap-3 rounded-2xl px-3 py-2.5 ${rankBg[p.rank - 1]}`}>
-                      <span className={`text-lg font-black w-6 text-center flex-shrink-0 ${rankColors[p.rank - 1]}`}>
-                        {p.rank}
-                      </span>
-                      <div className="flex-1 min-w-0">
-                        <div className="text-sm font-semibold text-gray-900">{p.name}</div>
-                        <div className="text-xs text-gray-400">{p.branch}</div>
-                      </div>
-                      <div className="text-sm font-bold text-indigo-600 flex-shrink-0">{p.score}점</div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* 최근 이슈 피드 (col-span-4) */}
-            <div className="col-span-12 md:col-span-4 bg-white rounded-[24px] shadow-sm border border-gray-100 p-6">
-              <div className="flex items-center justify-between mb-5">
-                <div className="text-sm font-semibold text-gray-500">최근 이슈</div>
-                <span className="text-xs text-gray-400 bg-gray-100 px-2.5 py-1 rounded-full">더미 데이터</span>
-              </div>
-              <div className="space-y-3">
-                {RECENT_ISSUES_DUMMY.map((issue) => (
-                  <div key={issue.id} className="flex items-start gap-3 pb-3 border-b border-gray-50 last:border-0">
-                    <span className={`mt-1 flex-shrink-0 block w-2.5 h-2.5 rounded-full ${issue.dot}`} />
-                    <div className="flex-1 min-w-0">
-                      <div className="text-sm text-gray-800 leading-snug">{issue.content}</div>
-                      <div className="flex items-center gap-2 mt-1">
-                        <span className="text-xs text-gray-400">{issue.branch}</span>
-                        <span className="text-xs text-gray-300">·</span>
-                        <span className="text-xs text-gray-400">{issue.time}</span>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </>
+          </Card>
         )}
 
-        {/* 하단 공통: 승인 대기 + 공지사항 */}
-        <div className="col-span-12 md:col-span-6">
-          <Link to="/admin/leave-approval" className="block h-full">
-            <div
-              className={`h-full bg-white rounded-[24px] shadow-sm border p-6 active:scale-[0.98] transition-transform cursor-pointer ${
-                alertCount > 0 ? 'border-red-200' : 'border-gray-100'
-              }`}
+        <Card accent={missedRecords.length > 0 ? 'amber' : 'gray'} className="p-6">
+          <div className="flex items-center justify-between mb-4">
+            <div className="text-sm font-medium text-gray-500">출퇴근 누락</div>
+            <select
+              value={missedDays}
+              onChange={(e) => setMissedDays(Number(e.target.value))}
+              className="border border-gray-200 rounded-lg px-2 py-1 text-xs bg-white"
             >
-              <div className="text-sm font-semibold text-gray-500 mb-3">승인 대기</div>
-              <div className="flex items-end gap-1 mb-3">
-                <span className="text-4xl font-bold text-gray-900">{alertCount}</span>
-                <span className="text-sm text-gray-400 mb-1">건</span>
-              </div>
-              <div className="flex flex-wrap gap-2 text-xs">
-                {pendingLeaves.length > 0 && (
-                  <span className="px-2.5 py-1 rounded-full bg-amber-50 text-amber-600 font-medium">
-                    근태 {pendingLeaves.length}
-                  </span>
-                )}
-                {unresolvedIssues.length > 0 && (
-                  <span className="px-2.5 py-1 rounded-full bg-red-50 text-red-600 font-medium">
-                    신고 {unresolvedIssues.length}
-                  </span>
-                )}
-                {unconfirmedCalls.length > 0 && (
-                  <span className="px-2.5 py-1 rounded-full bg-red-50 text-red-600 font-medium">
-                    호출 {unconfirmedCalls.length}
-                  </span>
-                )}
-                {alertCount === 0 && <span className="text-gray-400">처리할 건이 없습니다</span>}
-              </div>
+              <option value={3}>최근 3일</option>
+              <option value={7}>최근 7일</option>
+              <option value={14}>최근 14일</option>
+              <option value={30}>최근 30일</option>
+            </select>
+          </div>
+          {missedRecords.length === 0 ? (
+            <div className="text-center py-6">
+              <div className="text-3xl font-bold text-gray-300">0</div>
+              <div className="text-xs text-gray-400 mt-1">누락 없음</div>
             </div>
-          </Link>
-        </div>
+          ) : (
+            <div className="space-y-2 max-h-[140px] overflow-y-auto">
+              {missedRecords.map((r) => (
+                <div key={r.id} className="flex items-center justify-between text-sm bg-amber-50 rounded-lg px-3 py-2">
+                  <span className="font-medium text-gray-900">{empMap[r.employeeId]?.name}</span>
+                  <span className="text-gray-400 text-xs">{r.date}</span>
+                  <span className="text-xs text-amber-600 font-medium">퇴근 미등록</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </Card>
+      </div>
 
-        <div className="col-span-12 md:col-span-6 bg-white rounded-[24px] shadow-sm border border-gray-100 p-6">
+      {/* 3행: 승인 대기 + 공지사항 */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+        <Link to="/admin/leave-approval">
+          <Card accent={alertCount > 0 ? 'red' : 'gray'} className="p-6 active:scale-[0.98] transition-transform">
+            <div className="text-sm font-medium text-gray-500 mb-3">승인 대기</div>
+            <div className="text-3xl font-bold text-gray-900 mb-3">
+              {alertCount}<span className="text-sm text-gray-400 ml-1">건</span>
+            </div>
+            <div className="flex flex-wrap gap-2 text-xs">
+              {pendingLeaves.length > 0 && (
+                <span className="px-2.5 py-1 rounded-full bg-amber-50 text-amber-600 font-medium">
+                  근태 {pendingLeaves.length}
+                </span>
+              )}
+              {unresolvedIssues.length > 0 && (
+                <span className="px-2.5 py-1 rounded-full bg-red-50 text-red-600 font-medium">
+                  신고 {unresolvedIssues.length}
+                </span>
+              )}
+              {unconfirmedCalls.length > 0 && (
+                <span className="px-2.5 py-1 rounded-full bg-red-50 text-red-600 font-medium">
+                  호출 {unconfirmedCalls.length}
+                </span>
+              )}
+              {alertCount === 0 && <span className="text-gray-400">처리할 건이 없습니다</span>}
+            </div>
+          </Card>
+        </Link>
+
+        <Card accent="gray" className="p-6">
           <div className="flex items-center justify-between mb-3">
-            <div className="text-sm font-semibold text-gray-500">공지사항</div>
-            <Link to="/admin/notices" className="text-xs text-indigo-600 hover:underline">더보기</Link>
+            <div className="text-sm font-medium text-gray-500">공지사항</div>
+            <Link to="/admin/notices" className="text-xs text-blue-600 hover:underline">더보기</Link>
           </div>
           {recentNotices.length === 0 ? (
             <p className="text-gray-400 text-sm text-center py-6">등록된 공지 없음</p>
           ) : (
-            <div className="space-y-3">
+            <div className="space-y-2.5">
               {recentNotices.map((n) => (
                 <div key={n.id} className="flex items-center justify-between text-sm">
                   <span className="text-gray-900 truncate flex-1 mr-3">{n.title}</span>
@@ -628,9 +325,10 @@ export default function AdminDashboard() {
               ))}
             </div>
           )}
-        </div>
-
+        </Card>
       </div>
+
+
     </div>
   );
 }

@@ -203,22 +203,15 @@ function getMenuForUser(user) {
   return mgmtCategorizedMenu;
 }
 
-// ─── 아이콘 컴포넌트 ──────────────────────────────────────────────────────────
+// ─── 컴포넌트 ────────────────────────────────────────────────────────────────
 function MenuIcon({ path }) {
   return (
-    <svg
-      className="w-5 h-5 flex-shrink-0"
-      fill="none"
-      viewBox="0 0 24 24"
-      stroke="currentColor"
-      strokeWidth={2}
-    >
+    <svg className="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
       <path strokeLinecap="round" strokeLinejoin="round" d={path} />
     </svg>
   );
 }
 
-// ─── 메뉴 항목 ────────────────────────────────────────────────────────────────
 function MenuItem({ item }) {
   return (
     <li>
@@ -226,72 +219,41 @@ function MenuItem({ item }) {
         to={item.to}
         end={item.to === '/admin'}
         className={({ isActive }) =>
-          `flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all min-h-[44px] ${
+          `flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm transition-all min-h-[42px] ${
             isActive
-              ? 'bg-white/20 text-white font-medium'
-              : 'text-white/60 hover:bg-white/10 hover:text-white'
+              ? 'bg-blue-600 text-white font-medium shadow-lg shadow-blue-600/20'
+              : 'text-slate-400 hover:bg-slate-800 hover:text-white'
           }`
         }
       >
         <MenuIcon path={item.icon} />
-        <span className="text-sm whitespace-nowrap overflow-hidden opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-          {item.label}
-        </span>
+        <span>{item.label}</span>
       </NavLink>
     </li>
   );
 }
 
-// ─── 사이드바 ────────────────────────────────────────────────────────────────
 export default function Sidebar() {
   const currentUser = useAuthStore((s) => s.currentUser);
   const menu = getMenuForUser(currentUser);
   const roleBadge = ROLE_LABELS[currentUser?.role];
 
   return (
-    <nav
-      className="
-        group
-        hidden md:flex flex-col
-        fixed left-0 top-0 h-screen
-        bg-[#6366F1]
-        w-[72px] hover:w-[240px]
-        transition-all duration-300
-        overflow-x-hidden overflow-y-auto
-        z-20
-      "
-    >
-      {/* ── 프로필/로고 영역 ── */}
-      <div className="flex items-center gap-3 px-[18px] py-5 border-b border-white/20 min-h-[72px] flex-shrink-0">
-        {/* 아바타 (항상 표시) */}
-        <div className="w-9 h-9 rounded-xl bg-white/20 flex items-center justify-center flex-shrink-0">
-          <span className="text-white font-bold text-base leading-none">G</span>
-        </div>
-        {/* 텍스트: hover 시 표시 */}
-        <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 overflow-hidden">
-          <div className="text-white font-bold text-sm leading-tight whitespace-nowrap">GREF FarmWork</div>
-          {roleBadge && (
-            <div className="text-white/60 text-xs leading-tight whitespace-nowrap mt-0.5">{roleBadge}</div>
-          )}
-        </div>
+    <nav className="w-60 bg-slate-900 min-h-screen py-5 flex-shrink-0 flex flex-col">
+      <div className="px-5 pb-5 mb-3 border-b border-slate-700/50">
+        <div className="text-xl font-heading font-bold text-white tracking-tight">GREF FarmWork</div>
+        {roleBadge && (
+          <span className="inline-block mt-2 px-2 py-0.5 rounded text-xs font-medium bg-blue-600/20 text-blue-300">
+            {roleBadge}
+          </span>
+        )}
       </div>
-
-      {/* ── 메뉴 목록 ── */}
-      <ul className="flex-1 py-3 px-2 space-y-0.5">
+      <ul className="space-y-0.5 px-3 flex-1 overflow-y-auto">
         {menu.map((entry, idx) => {
           if (entry.type === 'category') {
             return (
-              <li key={entry.label} className={idx > 0 ? 'mt-3' : ''}>
-                {/* 구분선: hover 시 카테고리 라벨로 교체 */}
-                <div className="mx-2 mb-1 h-px bg-white/15 group-hover:opacity-0 transition-opacity duration-150" />
-                <p className="
-                  px-3 text-[10px] font-semibold text-white/40 uppercase tracking-wider
-                  whitespace-nowrap overflow-hidden
-                  max-h-0 group-hover:max-h-[20px]
-                  opacity-0 group-hover:opacity-100
-                  transition-all duration-200
-                  group-hover:pb-1
-                ">
+              <li key={entry.label} className={idx > 0 ? 'pt-4' : ''}>
+                <p className="px-3 pb-1.5 text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
                   {entry.label}
                 </p>
                 <ul className="space-y-0.5">
