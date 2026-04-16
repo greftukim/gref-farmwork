@@ -4,7 +4,7 @@ import useEmployeeStore from '../../stores/employeeStore';
 import useBranchStore from '../../stores/branchStore';
 import useAuthStore from '../../stores/authStore';
 import Button from '../../components/common/Button';
-import { isFarmAdmin, canHrCrud, canWrite, roleLabel } from '../../lib/permissions';
+import { isFarmAdmin, canHrCrud, canWrite, roleLabel, canEditEmployee, canAssignLeader, canViewBirthDate } from '../../lib/permissions';
 import useNotificationStore from '../../stores/notificationStore';
 import Card from '../../components/common/Card';
 import Modal from '../../components/common/Modal';
@@ -402,7 +402,7 @@ export default function EmployeesPage() {
                   {emp.deviceToken ? 'QR확인' : 'QR발급'}
                 </button>
               )}
-              {canToggleTeamLeader && emp.role === 'worker' && (
+              {canAssignLeader(currentUser, emp) && emp.role === 'worker' && (
                 <div className="flex items-center gap-1.5">
                   <button
                     onClick={(e) => { e.stopPropagation(); handleToggleTeamLeader(emp, !emp.isTeamLeader); }}
@@ -418,13 +418,13 @@ export default function EmployeesPage() {
                   <span className="text-xs text-gray-500">반장</span>
                 </div>
               )}
+              {canEditEmployee(currentUser) && (
+                <Button size="sm" variant="ghost" onClick={(e) => { e.stopPropagation(); openEdit(emp); }}>수정</Button>
+              )}
               {isManagement && (
-                <>
-                  <Button size="sm" variant="ghost" onClick={(e) => { e.stopPropagation(); openEdit(emp); }}>수정</Button>
-                  <Button size="sm" variant="ghost" onClick={(e) => { e.stopPropagation(); toggleActive(emp.id); }}>
-                    {emp.isActive ? '비활성' : '활성'}
-                  </Button>
-                </>
+                <Button size="sm" variant="ghost" onClick={(e) => { e.stopPropagation(); toggleActive(emp.id); }}>
+                  {emp.isActive ? '비활성' : '활성'}
+                </Button>
               )}
             </div>
           </Card>
@@ -445,7 +445,7 @@ export default function EmployeesPage() {
                 <th className="px-4 py-3 font-medium">근무 지점</th>
                 <th className="px-4 py-3 font-medium">근무 시간</th>
                 <th className="px-4 py-3 font-medium">연락처</th>
-                <th className="px-4 py-3 font-medium">생년월일</th>
+                {canViewBirthDate(currentUser) && <th className="px-4 py-3 font-medium">생년월일</th>}
                 <th className="px-4 py-3 font-medium">입사일</th>
                 <th className="px-4 py-3 font-medium">계약만료일</th>
                 <th className="px-4 py-3 font-medium">상태</th>
@@ -481,7 +481,7 @@ export default function EmployeesPage() {
                       : BRANCH_NULL_FALLBACK}
                   </td>
                   <td className="px-4 py-3 text-gray-600">{emp.phone}</td>
-                  <td className="px-4 py-3 text-gray-600">{emp.birthDate || BRANCH_NULL_FALLBACK}</td>
+                  {canViewBirthDate(currentUser) && <td className="px-4 py-3 text-gray-600">{emp.birthDate || BRANCH_NULL_FALLBACK}</td>}
                   <td className="px-4 py-3 text-gray-600">{emp.hireDate}</td>
                   <td className="px-4 py-3 text-gray-600">{emp.contractEndDate || BRANCH_NULL_FALLBACK}</td>
                   <td className="px-4 py-3">
@@ -507,7 +507,7 @@ export default function EmployeesPage() {
                       </button>
                     )}
                   </td>
-                  {canToggleTeamLeader && (
+                  {canAssignLeader(currentUser, emp) && (
                     <td className="px-4 py-3">
                       {emp.role === 'worker' && (
                         <div className="flex items-center gap-1.5">
@@ -526,16 +526,20 @@ export default function EmployeesPage() {
                       )}
                     </td>
                   )}
-                  <td className="px-4 py-3">
-                    {isManagement && (
+                  {(canEditEmployee(currentUser) || isManagement) && (
+                    <td className="px-4 py-3">
                       <div className="flex gap-1">
-                        <Button size="sm" variant="ghost" onClick={(e) => { e.stopPropagation(); openEdit(emp); }}>수정</Button>
-                        <Button size="sm" variant="ghost" onClick={(e) => { e.stopPropagation(); toggleActive(emp.id); }}>
-                          {emp.isActive ? '비활성' : '활성'}
-                        </Button>
+                        {canEditEmployee(currentUser) && (
+                          <Button size="sm" variant="ghost" onClick={(e) => { e.stopPropagation(); openEdit(emp); }}>수정</Button>
+                        )}
+                        {isManagement && (
+                          <Button size="sm" variant="ghost" onClick={(e) => { e.stopPropagation(); toggleActive(emp.id); }}>
+                            {emp.isActive ? '비활성' : '활성'}
+                          </Button>
+                        )}
                       </div>
-                    )}
-                  </td>
+                    </td>
+                  )}
                 </tr>
               ))}
             </tbody>

@@ -3,7 +3,7 @@ import { supabase } from '../../lib/supabase';
 import useAuthStore from '../../stores/authStore';
 import useEmployeeStore from '../../stores/employeeStore';
 import useNotificationStore from '../../stores/notificationStore';
-import { canViewResidentId, canEditEmployee } from '../../lib/permissions';
+import { canViewResidentId, canEditEmployee, canViewBirthDate } from '../../lib/permissions';
 import { BRANCH_NULL_FALLBACK } from '../../constants/branchLabels';
 import Modal from '../common/Modal';
 import Button from '../common/Button';
@@ -141,10 +141,12 @@ export default function EmployeeDetailModal({ employee, onClose, onEdit, branchN
               <dt className="w-20 text-gray-500 flex-shrink-0">연락처</dt>
               <dd>{employee.phone || BRANCH_NULL_FALLBACK}</dd>
             </div>
-            <div className="flex gap-2">
-              <dt className="w-20 text-gray-500 flex-shrink-0">생년월일</dt>
-              <dd>{employee.birthDate || BRANCH_NULL_FALLBACK}</dd>
-            </div>
+            {canViewBirthDate(currentUser) && (
+              <div className="flex gap-2">
+                <dt className="w-20 text-gray-500 flex-shrink-0">생년월일</dt>
+                <dd>{employee.birthDate || BRANCH_NULL_FALLBACK}</dd>
+              </div>
+            )}
             <div className="flex gap-2">
               <dt className="w-20 text-gray-500 flex-shrink-0">입사일</dt>
               <dd>{employee.hireDate || BRANCH_NULL_FALLBACK}</dd>
