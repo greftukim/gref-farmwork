@@ -8,6 +8,7 @@ import { isFarmAdmin, canHrCrud, canWrite, roleLabel } from '../../lib/permissio
 import useNotificationStore from '../../stores/notificationStore';
 import Card from '../../components/common/Card';
 import Modal from '../../components/common/Modal';
+import { BRANCH_NULL_FALLBACK } from '../../constants/branchLabels';
 
 // 본 앱의 기본 URL (배포 환경 우선, 로컬에서는 현재 origin)
 const APP_BASE_URL =
@@ -68,8 +69,11 @@ function EmployeeForm({ form, setForm, branchOptions }) {
       {field('이름', 'name')}
       {field('연락처', 'phone', 'tel')}
       {field('역할', 'role', 'text', [
-        { value: 'admin', label: '관리자' },
         { value: 'worker', label: '작업자' },
+        { value: 'farm_admin', label: '지점 관리자' },
+        { value: 'hr_admin', label: '인사 관리자' },
+        { value: 'general', label: '총괄' },
+        { value: 'master', label: '최고 관리자' },
       ])}
       {field('직무', 'jobType', 'text', [
         { value: '재배', label: '재배' },
@@ -101,6 +105,11 @@ function EmployeeForm({ form, setForm, branchOptions }) {
       {field('입사일', 'hireDate', 'date')}
       {field('주당 근무시간', 'workHoursPerWeek', 'number')}
       {field('연차 일수', 'annualLeaveDays', 'number')}
+      {/* 세션 17 UI-B 추가 (4필드, residentId는 UI-C에서 처리) */}
+      {field('직책', 'jobTitle')}
+      {field('직급', 'jobRank')}
+      {field('생년월일', 'birthDate', 'date')}
+      {field('계약만료일', 'contractEndDate', 'date')}
     </div>
   );
 }
@@ -236,6 +245,11 @@ export default function EmployeesPage() {
       branch: emp.branch || '',
       workStartTime: emp.workStartTime || '',
       workEndTime: emp.workEndTime || '',
+      // 세션 17 UI-B 추가 (4필드, residentId는 UI-C에서)
+      jobTitle: emp.jobTitle || '',
+      jobRank: emp.jobRank || '',
+      birthDate: emp.birthDate || '',
+      contractEndDate: emp.contractEndDate || '',
     });
     setShowModal(true);
   };
@@ -354,17 +368,22 @@ export default function EmployeesPage() {
             <div className="text-sm text-gray-500 space-y-0.5 mb-3">
               <div>
                 {emp.jobType}
-                {emp.branch && (
+                {emp.branch ? (
                   <span className="ml-1.5 px-1.5 py-0.5 rounded text-xs bg-emerald-100 text-emerald-700">
                     {branchNameMap[emp.branch] || emp.branch}
                   </span>
+                ) : (
+                  <span className="ml-1.5 text-gray-400">{BRANCH_NULL_FALLBACK}</span>
                 )}
               </div>
               {(emp.workStartTime || emp.workEndTime) && (
-                <div>{emp.workStartTime || '—'} ~ {emp.workEndTime || '—'}</div>
+                <div>{emp.workStartTime || BRANCH_NULL_FALLBACK} ~ {emp.workEndTime || BRANCH_NULL_FALLBACK}</div>
               )}
               {emp.phone && <div>{emp.phone}</div>}
+              {emp.jobTitle && <div>직책: {emp.jobTitle}</div>}
+              {emp.jobRank && <div>직급: {emp.jobRank}</div>}
               {emp.hireDate && <div>입사 {emp.hireDate}</div>}
+              {emp.contractEndDate && <div>계약 ~ {emp.contractEndDate}</div>}
             </div>
             <div className="flex gap-2 justify-end items-center">
               {emp.role === 'worker' && (
@@ -416,11 +435,15 @@ export default function EmployeesPage() {
               <tr className="bg-gray-50 text-left text-gray-500">
                 <th className="px-4 py-3 font-medium">이름</th>
                 <th className="px-4 py-3 font-medium">역할</th>
+                <th className="px-4 py-3 font-medium">직책</th>
+                <th className="px-4 py-3 font-medium">직급</th>
                 <th className="px-4 py-3 font-medium">직무</th>
                 <th className="px-4 py-3 font-medium">근무 지점</th>
                 <th className="px-4 py-3 font-medium">근무 시간</th>
                 <th className="px-4 py-3 font-medium">연락처</th>
+                <th className="px-4 py-3 font-medium">생년월일</th>
                 <th className="px-4 py-3 font-medium">입사일</th>
+                <th className="px-4 py-3 font-medium">계약만료일</th>
                 <th className="px-4 py-3 font-medium">상태</th>
                 <th className="px-4 py-3 font-medium">QR</th>
                 {canToggleTeamLeader && <th className="px-4 py-3 font-medium">반장</th>}
@@ -436,6 +459,8 @@ export default function EmployeesPage() {
                       {roleLabel(emp.role)}
                     </span>
                   </td>
+                  <td className="px-4 py-3 text-gray-600">{emp.jobTitle || BRANCH_NULL_FALLBACK}</td>
+                  <td className="px-4 py-3 text-gray-600">{emp.jobRank || BRANCH_NULL_FALLBACK}</td>
                   <td className="px-4 py-3 text-gray-600">{emp.jobType}</td>
                   <td className="px-4 py-3">
                     {emp.branch ? (
@@ -443,16 +468,18 @@ export default function EmployeesPage() {
                         {branchNameMap[emp.branch] || emp.branch}
                       </span>
                     ) : (
-                      <span className="text-gray-400">—</span>
+                      <span className="text-gray-400">{BRANCH_NULL_FALLBACK}</span>
                     )}
                   </td>
                   <td className="px-4 py-3 text-gray-600 whitespace-nowrap">
                     {emp.workStartTime && emp.workEndTime
                       ? `${emp.workStartTime} ~ ${emp.workEndTime}`
-                      : '—'}
+                      : BRANCH_NULL_FALLBACK}
                   </td>
                   <td className="px-4 py-3 text-gray-600">{emp.phone}</td>
+                  <td className="px-4 py-3 text-gray-600">{emp.birthDate || BRANCH_NULL_FALLBACK}</td>
                   <td className="px-4 py-3 text-gray-600">{emp.hireDate}</td>
+                  <td className="px-4 py-3 text-gray-600">{emp.contractEndDate || BRANCH_NULL_FALLBACK}</td>
                   <td className="px-4 py-3">
                     <span
                       className={`px-2 py-0.5 rounded-full text-xs font-medium ${

@@ -117,6 +117,7 @@
 | BRANCHES-LOCATION-001 | 데이터 보완 | open | 세션 17 (2026-04-16) | 중간 | branches 테이블 4개 신규 row (hadong/headquarters/management/seedlab) 위치 정보 placeholder (NULL) 상태. 출퇴근 GPS 기능 사용 시점에 박민식·김민국 답변 후 실 위치(latitude/longitude/radius_meters) UPDATE 필요. 연관 마이그레이션: 20260416_track_j_branches_seed_fix.sql. 회고 사례: 박제 후보 #16 (Claude Code 추정 생성 패턴). | docs/BACKLOG.md |
 | EMPLOYEE-BRANCH-NULL-001 | 데이터 정합 | open | 세션 17 (2026-04-16) | 낮음 | employees 테이블 최수진 (worker, 비활성, username NULL, branch NULL). worker는 지점 소속 필수(운영 모델), branch NULL = 비정상 상태. 비활성으로 운영 무영향이나 정합성 결함. 향후: branch 값 보완 UPDATE 또는 row 삭제 결정. 회고 사례: UI-A 단계 1.5+ NULL 6건 진단 (세션 17). | docs/BACKLOG.md |
 | EMPLOYEE-DUPLICATE-NAME-001 | 운영 혼선 가능성 | open | 세션 17 (2026-04-16) | 낮음 | employees 테이블 동명이인 2건 (김지현·김현도) — 신규 admin 활성(jhkim/hdkim) + 구 시드 비활성 공존. 비활성 기본 숨김으로 운영 무영향이나 비활성 표시 모드 진입 시 동명이인 구분 처리 필요. 향후: username/is_active 기반 구분 UI 또는 구 시드 row 삭제 검토. 회고 사례: UI-A 단계 1.5++ 모순 진단 (세션 17). | docs/BACKLOG.md |
+| JOB-RANK-SELECT-DECISION-001 | UI 결정 | open | 세션 17 (2026-04-16) | 낮음 | EmployeeForm jobRank 필드 UI 패턴 결정 — 현재 text input 사용 중, 박민식·김민국 답변 또는 운영 중 실 데이터 축적 후 select 전환 여부 결정 필요. 판정 기준: jobRank 값 패턴 확인 후 (반장/대표/부장/과장/사원 등 고정 옵션 필요 시) select with options 전환. 연관: UI-B 단계 1 조사 (세션 17), 8788bb8 (UI-A emptyForm) + UI-B 커밋. | docs/BACKLOG.md |
 
 ---
 
