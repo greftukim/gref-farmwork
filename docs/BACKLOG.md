@@ -114,6 +114,9 @@
 | BRANCH-LABEL-MAPPING-001 | UI | open | 세션 16 (2026-04-15) | - | UI 라벨 매핑 — busan→부산LAB, jinju→진주HUB, hadong→하동HUB, headquarters→총괄본사, management→관리팀, seedlab→Seed LAB. J-4-UI 진입 시 구현 대상. | docs/handoff/2026-04-15_session16.md |
 | RESIDENT-ID-ENCRYPTION-001 | 보안 | in-progress | 세션 16 (2026-04-15) | 운영 critical | resident_id 컬럼 평문 저장 상태. 실 운영 전 암호화(Supabase Vault 또는 pgcrypto) 검토 필요. 개인정보 보호법 준수. J-4-UI 진입 전 또는 J-4-UI와 병행 처리 권장. 세션 17: encrypt_resident_id + decrypt_resident_id RPC 구현 완료 (b425e87 + UI-0-B-2 fix). UI-C 모달 신설 + round-trip 검증 후 resolved 처리 예정. | docs/handoff/2026-04-15_session16.md |
 | RESIDENT-ID-DECRYPT-RUNTIME-VERIFY-001 | 검증 공백 | open | 세션 17 (2026-04-15) | - | decrypt_resident_id round-trip 검증 보류 — UI-0-B-2-F CTE 가시성 한계로 시뮬레이션 불가. UI-C 모달 신설 후 평문 입력→DB 저장→모달 재진입→평문 표시 일치 확인 필수. 판정 기준: 저장 후 모달 재진입 시 평문 표시 일치. 연관: b425e87 (UI-0-B) + UI-0-B-2 fix. | docs/BACKLOG.md |
+| BRANCHES-LOCATION-001 | 데이터 보완 | open | 세션 17 (2026-04-16) | 중간 | branches 테이블 4개 신규 row (hadong/headquarters/management/seedlab) 위치 정보 placeholder (NULL) 상태. 출퇴근 GPS 기능 사용 시점에 박민식·김민국 답변 후 실 위치(latitude/longitude/radius_meters) UPDATE 필요. 연관 마이그레이션: 20260416_track_j_branches_seed_fix.sql. 회고 사례: 박제 후보 #16 (Claude Code 추정 생성 패턴). | docs/BACKLOG.md |
+| EMPLOYEE-BRANCH-NULL-001 | 데이터 정합 | open | 세션 17 (2026-04-16) | 낮음 | employees 테이블 최수진 (worker, 비활성, username NULL, branch NULL). worker는 지점 소속 필수(운영 모델), branch NULL = 비정상 상태. 비활성으로 운영 무영향이나 정합성 결함. 향후: branch 값 보완 UPDATE 또는 row 삭제 결정. 회고 사례: UI-A 단계 1.5+ NULL 6건 진단 (세션 17). | docs/BACKLOG.md |
+| EMPLOYEE-DUPLICATE-NAME-001 | 운영 혼선 가능성 | open | 세션 17 (2026-04-16) | 낮음 | employees 테이블 동명이인 2건 (김지현·김현도) — 신규 admin 활성(jhkim/hdkim) + 구 시드 비활성 공존. 비활성 기본 숨김으로 운영 무영향이나 비활성 표시 모드 진입 시 동명이인 구분 처리 필요. 향후: username/is_active 기반 구분 UI 또는 구 시드 row 삭제 검토. 회고 사례: UI-A 단계 1.5++ 모순 진단 (세션 17). | docs/BACKLOG.md |
 
 ---
 
