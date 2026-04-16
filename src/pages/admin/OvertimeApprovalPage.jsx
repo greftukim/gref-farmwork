@@ -194,7 +194,7 @@ export default function OvertimeApprovalPage() {
             key={opt.value}
             onClick={() => changeFilterStatus(opt.value)}
             className={`px-3 py-1.5 rounded-lg text-sm font-medium min-h-[36px] transition-colors ${
-              filterStatus === opt.value ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+              filterStatus === opt.value ? 'bg-[#6366F1] text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
             }`}
           >
             {opt.label}
@@ -211,12 +211,12 @@ export default function OvertimeApprovalPage() {
 
       {/* 일괄 승인 액션 바 */}
       {canApprove && selectedIds.size > 0 && (
-        <div className="flex items-center gap-3 mb-4 p-3 bg-blue-50 rounded-xl">
-          <span className="text-sm font-medium text-blue-700">선택된 {selectedIds.size}건</span>
+        <div className="flex items-center gap-3 mb-4 p-3 bg-indigo-50 rounded-xl">
+          <span className="text-sm font-medium text-indigo-700">선택된 {selectedIds.size}건</span>
           <button
             onClick={handleBulkApprove}
             disabled={processing === 'bulk'}
-            className="px-4 py-1.5 rounded-lg text-sm font-medium bg-blue-600 text-white hover:bg-blue-700 disabled:bg-blue-300 transition-colors min-h-[36px]"
+            className="px-4 py-1.5 rounded-lg text-sm font-medium bg-[#6366F1] text-white hover:bg-[#4F46E5] disabled:opacity-50 transition-colors min-h-[36px]"
           >
             {processing === 'bulk' ? '처리 중...' : '일괄 승인'}
           </button>
@@ -237,7 +237,7 @@ export default function OvertimeApprovalPage() {
               type="checkbox"
               checked={allPendingSelected}
               onChange={toggleSelectAll}
-              className="w-4 h-4 rounded border-gray-300 text-blue-600"
+              className="w-4 h-4 rounded border-gray-300 text-indigo-600"
             />
             <span className="text-sm text-gray-600">대기 항목 전체 선택</span>
           </label>
@@ -258,7 +258,7 @@ export default function OvertimeApprovalPage() {
                       type="checkbox"
                       checked={selectedIds.has(req.id)}
                       onChange={() => toggleSelect(req.id)}
-                      className="w-4 h-4 rounded border-gray-300 text-blue-600"
+                      className="w-4 h-4 rounded border-gray-300 text-indigo-600"
                     />
                   )}
                   <span className="font-semibold text-gray-900">{emp?.name || '—'}</span>
@@ -281,7 +281,7 @@ export default function OvertimeApprovalPage() {
                   </Button>
                   <button
                     onClick={() => openAdjust(req, 'adjustAndApprove')}
-                    className="px-3 py-1.5 rounded-lg text-sm font-medium bg-blue-50 text-blue-600 active:scale-[0.98]"
+                    className="px-3 py-1.5 rounded-lg text-sm font-medium bg-indigo-50 text-indigo-600 active:scale-[0.98]"
                   >
                     시간 조정
                   </button>
@@ -317,7 +317,7 @@ export default function OvertimeApprovalPage() {
                       checked={allPendingSelected}
                       onChange={toggleSelectAll}
                       disabled={pendingCount === 0}
-                      className="w-4 h-4 rounded border-gray-300 text-blue-600"
+                      className="w-4 h-4 rounded border-gray-300 text-indigo-600"
                     />
                   </th>
                 )}
@@ -349,7 +349,7 @@ export default function OvertimeApprovalPage() {
                             type="checkbox"
                             checked={selectedIds.has(req.id)}
                             onChange={() => toggleSelect(req.id)}
-                            className="w-4 h-4 rounded border-gray-300 text-blue-600"
+                            className="w-4 h-4 rounded border-gray-300 text-indigo-600"
                           />
                         ) : null}
                       </td>
@@ -378,7 +378,7 @@ export default function OvertimeApprovalPage() {
                           </Button>
                           <button
                             onClick={() => openAdjust(req, 'adjustAndApprove')}
-                            className="px-3 py-1.5 rounded-lg text-sm font-medium bg-blue-50 text-blue-600 active:scale-[0.98]"
+                            className="px-3 py-1.5 rounded-lg text-sm font-medium bg-indigo-50 text-indigo-600 active:scale-[0.98]"
                           >
                             시간 조정
                           </button>

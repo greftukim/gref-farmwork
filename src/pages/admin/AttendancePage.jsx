@@ -369,7 +369,7 @@ export default function AttendancePage() {
             onClick={() => setView(v.key)}
             className={`px-3 py-1.5 rounded-lg text-sm font-medium min-h-[36px] transition-colors ${
               view === v.key
-                ? v.key === 'reset' ? 'bg-red-500 text-white' : 'bg-blue-600 text-white'
+                ? v.key === 'reset' ? 'bg-red-500 text-white' : 'bg-[#6366F1] text-white'
                 : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
             }`}
           >{v.label}</button>
@@ -461,7 +461,7 @@ export default function AttendancePage() {
                           ) : (
                             <button
                               onClick={() => openProxyModal(w, selectedDate)}
-                              className="w-full py-2 rounded-lg text-sm font-medium bg-blue-50 text-blue-600 hover:bg-blue-100 active:scale-[0.98] transition-all"
+                              className="w-full py-2 rounded-lg text-sm font-medium bg-indigo-50 text-indigo-600 hover:bg-indigo-100 active:scale-[0.98] transition-all"
                             >
                               대리 입력
                             </button>
@@ -546,7 +546,7 @@ export default function AttendancePage() {
                                   ) : (
                                     <button
                                       onClick={() => openProxyModal(w, selectedDate)}
-                                      className="px-2 py-1 text-xs text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded transition-colors"
+                                      className="px-2 py-1 text-xs text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50 rounded transition-colors"
                                     >
                                       대리 입력
                                     </button>
