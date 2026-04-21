@@ -17,13 +17,6 @@ const BRANCH_ACCENT = { busan: T.primary, jinju: T.success, hadong: T.warning };
 const BRANCH_ACCENT_SOFT = { busan: T.primarySoft, jinju: T.successSoft, hadong: T.warningSoft };
 const BRANCH_NAMES = { busan: '부산LAB', jinju: '진주HUB', hadong: '하동HUB', headquarters: '총괄본사', management: '관리팀', seedlab: 'Seed LAB' };
 
-// harvest/TBM은 harvest_records 테이블 없음 (Phase 3) — fallback 하드코딩 유지
-const HARVEST_FALLBACK = {
-  busan: { harvest: 1240, harvestT: 1200, tbm: 100 },
-  jinju:  { harvest: 980,  harvestT: 1100, tbm: 92 },
-  hadong: { harvest: 760,  harvestT: 950,  tbm: 75 },
-};
-
 const LEAVE_TYPE_KO = {
   annual: '연차 신청', half_am: '오전 반차', half_pm: '오후 반차',
   special: '특별휴가', sick: '병가',
@@ -49,14 +42,6 @@ function formatDate(dateStr) {
   const days = ['일', '월', '화', '수', '목', '금', '토'];
   return `${d.getMonth() + 1}/${d.getDate()} (${days[d.getDay()]})`;
 }
-
-// ─── 이슈 피드 fallback (issues 실데이터 부족 시 표시) ───
-const ISSUE_FEED_FALLBACK = [
-  { branch: '부산LAB', bc: T.primary, severity: 'critical', type: '병해충', place: 'B동 3열 · 딸기', who: '최수진', time: '8분 전', note: '잎 하면 흰색 반점 다수 확인' },
-  { branch: '하동HUB', bc: T.warning, severity: 'critical', type: '설비 고장', place: '환기창 2번', who: '이강모', time: '32분 전', note: '자동 개폐 반응 없음' },
-  { branch: '진주HUB', bc: T.success, severity: 'warning', type: 'EC 이상', place: 'C동 2열 · 파프리카', who: '자동감지', time: '1시간 전', note: 'EC 3.2 → 기준 초과' },
-  { branch: '부산LAB', bc: T.primary, severity: 'info', type: '작물 이상', place: 'A동 7열 · 토마토', who: '김수확', time: '2시간 전', note: '과실 일부 열과 발생' },
-];
 
 // ─── 메인 컴포넌트 ───────────────────────────────────────
 function HQDashboardScreen() {
@@ -97,8 +82,6 @@ function HQDashboardScreen() {
       // 지점 관리자: farm_admin이면서 '팀' 이름이 아닌 첫 번째
       const mgr = branchEmps.filter((e) => e.role === 'farm_admin' && !e.name.includes('팀'))[0]?.name ?? '-';
 
-      const fb = HARVEST_FALLBACK[code] ?? { harvest: 0, harvestT: 0, tbm: 0 };
-
       return {
         code,
         name: branch?.name ?? BRANCH_NAMES[code] ?? code,
@@ -107,9 +90,9 @@ function HQDashboardScreen() {
         checkedIn,
         late,
         rate,
-        harvest: fb.harvest,
-        harvestT: fb.harvestT,
-        tbm: fb.tbm,
+        harvest: 0,
+        harvestT: 0,
+        tbm: 0,
         issues: openIssuesCount,
         accent: BRANCH_ACCENT[code] ?? T.muted,
         accentSoft: BRANCH_ACCENT_SOFT[code] ?? T.bg,
@@ -223,7 +206,7 @@ function HQDashboardScreen() {
           note: i.comment ?? '',
         };
       });
-    return real.length >= 2 ? real : ISSUE_FEED_FALLBACK;
+    return real;
   }, [issues, empMap]);
 
   const resolvedTodayCount = issues.filter(
@@ -243,14 +226,7 @@ function HQDashboardScreen() {
         branches: 'ALL',
       };
     });
-    if (real.length > 0) return real;
-    // fallback
-    return [
-      { tag: '전사 · 중요', tone: 'danger', title: '5월 안전교육 이수 필참 안내', meta: '전 직원 · 읽음 42/60 (70%)', pinned: true, branches: 'ALL' },
-      { tag: '정책', tone: 'info', title: '2026년 연차 사용 가이드라인 개정', meta: '전 직원 · 읽음 58/60 (97%)', branches: 'ALL' },
-      { tag: '부산LAB', tone: 'primary', title: '금주 토요일 출근조 편성', meta: '부산LAB · 읽음 18/20', branches: 'busan' },
-      { tag: '하동HUB', tone: 'warning', title: '설비 점검일 연기', meta: '하동HUB · 읽음 8/12', branches: 'hadong' },
-    ];
+    return real;
   }, [notices]);
 
   return (
@@ -603,7 +579,9 @@ function HQDashboardScreen() {
               <span style={{ fontSize: 11, color: HQ.accent, fontWeight: 600, cursor: 'pointer' }}>전체 →</span>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              {issueFeed.map((it, i) => {
+              {issueFeed.length === 0 ? (
+                <div style={{ padding: 24, textAlign: 'center', color: T.mutedSoft, fontSize: 13 }}>데이터가 없습니다</div>
+              ) : issueFeed.map((it, i) => {
                 const sevTone = { critical: 'danger', warning: 'warning', info: 'info' }[it.severity];
                 const sevBg = { critical: T.dangerSoft, warning: T.warningSoft, info: T.infoSoft }[it.severity];
                 const sevBorder = { critical: T.danger, warning: T.warning, info: T.info }[it.severity];
@@ -638,7 +616,9 @@ function HQDashboardScreen() {
               <span style={{ fontSize: 11, color: HQ.accent, fontWeight: 600, cursor: 'pointer' }}>+ 새 공지</span>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              {noticeItems.map((n, i) => {
+              {noticeItems.length === 0 ? (
+                <div style={{ padding: 24, textAlign: 'center', color: T.mutedSoft, fontSize: 13 }}>데이터가 없습니다</div>
+              ) : noticeItems.map((n, i) => {
                 const tones = { danger: T.danger, primary: T.primary, success: T.success, warning: T.warning, info: HQ.accent, muted: T.mutedSoft };
                 const softs = { danger: T.dangerSoft, primary: T.primarySoft, success: T.successSoft, warning: T.warningSoft, info: HQ.accentSoft, muted: T.bg };
                 return (
@@ -662,7 +642,7 @@ function HQDashboardScreen() {
 
             {/* 하단 요약 */}
             <div style={{ marginTop: 12, paddingTop: 12, borderTop: `1px solid ${T.borderSoft}`, display: 'flex', justifyContent: 'space-between', fontSize: 11 }}>
-              <span style={{ color: T.mutedSoft }}>활성 공지 <span style={{ color: T.text, fontWeight: 700 }}>{notices.length || 8}건</span></span>
+              <span style={{ color: T.mutedSoft }}>활성 공지 <span style={{ color: T.text, fontWeight: 700 }}>{notices.length}건</span></span>
               <span style={{ color: T.mutedSoft }}>평균 열람률 <span style={{ color: T.success, fontWeight: 700 }}>83%</span></span>
             </div>
           </Card>
