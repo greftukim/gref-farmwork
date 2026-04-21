@@ -33,14 +33,32 @@ import AuthCallbackPage from './pages/AuthCallbackPage';
 import AdminLayout from './components/layout/AdminLayout';
 import WorkerLayout from './components/layout/WorkerLayout';
 import AdminDashboard from './pages/admin/AdminDashboard';
+// 구 버전 (현재 활성)
 import EmployeesPage from './pages/admin/EmployeesPage';
+// 신 버전 (디자인 교체 후 주석 스왑)
+// import { EmployeesScreen as EmployeesPage } from './pages/_others';
+
 import AttendancePage from './pages/admin/AttendancePage';
+
+// 구 버전 (현재 활성)
 import LeavePage from './pages/admin/LeavePage';
+// 신 버전 (디자인 교체 후 주석 스왑)
+// import { LeaveScreen as LeavePage } from './pages/_others';
+
 import LeaveApprovalPage from './pages/admin/LeaveApprovalPage';
 import LeaveStatusPage from './pages/admin/LeaveStatusPage';
+
+// 구 버전 (현재 활성)
 import SchedulePage from './pages/admin/SchedulePage';
+// 신 버전 (디자인 교체 후 주석 스왑)
+// import { ScheduleScreen as SchedulePage } from './pages/_others';
+
 import CropZonePage from './pages/admin/CropZonePage';
+
+// 구 버전 (현재 활성)
 import TaskPlanPage from './pages/admin/TaskPlanPage';
+// 신 버전 (디자인 교체 후 주석 스왑) — /admin/tasks 라우트에 연결
+// import { TasksScreen as TaskPlanPage } from './pages/_others';
 import TaskBoardPage from './pages/admin/TaskBoardPage';
 import IssueCallPage from './pages/admin/IssueCallPage';
 import NoticePage from './pages/admin/NoticePage';
