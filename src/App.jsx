@@ -181,6 +181,9 @@ export default function App() {
             <Route path="growth/input" element={<GrowthInputScreen />} />
             <Route path="growth/detail" element={<GrowthMarkerDetailScreen />} />
             <Route path="growth/heatmap" element={<GrowthHeatmapScreen />} />
+            <Route path="growth/markers" element={<PlaceholderPage title="표식주 관리" />} />
+            <Route path="harvest" element={<PlaceholderPage title="수확 기록 관리" />} />
+            <Route path="tasks/new" element={<PlaceholderPage title="작업 생성" />} />
             <Route path="performance" element={<BranchPerformanceScreen />} />
             <Route path="performance/detail" element={<PerformanceDetailScreen />} />
             <Route path="performance/compare" element={<PerformanceCompareScreen />} />
@@ -213,6 +216,7 @@ export default function App() {
             <Route path="m/attendance" element={<MobileAttendanceScreen />} />
             <Route path="m/profile" element={<MobileProfileScreen />} />
             <Route path="m/growth" element={<MobileGrowthScreen />} />
+            <Route path="m/qr-scan" element={<PlaceholderPage title="QR 스캔" />} />
           </Route>
 
           <Route path="*" element={<AppRedirect />} />
