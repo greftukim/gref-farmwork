@@ -1,4 +1,5 @@
 import React, { useState, useContext, createContext } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Card, Pill, T, btnSecondary, icons } from '../design/primitives';
 import { useFloorData } from '../hooks/useFloorData';
 
@@ -322,6 +323,7 @@ function FloorPlanScreen() {
   const [selectedGol, setSelectedGol] = useState(null);
   const [timeMode, setTimeMode] = useState('live');
   const [historyTime, setHistoryTime] = useState(625);
+  const navigate = useNavigate();
 
   if (loading) return <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: T.mutedSoft, fontSize: 14 }}>로딩 중...</div>;
   if (!HOUSE_CONFIG.length) return <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: T.mutedSoft, fontSize: 14 }}>데이터가 없습니다</div>;
@@ -374,7 +376,7 @@ function FloorPlanScreen() {
               <span style={{ color: T.mutedSoft }}>현재 시각</span>{' '}
               <strong style={{ color: T.text, fontFamily: 'ui-monospace, monospace' }}>{FIELD_STATE.timestamp.split(' ')[1]}</strong>
             </div>
-            {btnSecondary('QR 관리', icons.camera)}
+            {btnSecondary('QR 관리', icons.camera, () => alert('QR 관리 기능은 준비 중입니다'))}
           </div>
         </div>
       </div>
@@ -566,6 +568,7 @@ function FloorPlanScreen() {
 
 // ─────── 골 상세 패널 ───────
 function GolDetail({ g, cfg, onClose }) {
+  const navigate = useNavigate();
   const { TASK_TYPES, WORKERS_MAP, WORKER_SPEED_FACTOR, GOL_LENGTH_M } = useContext(FloorCtx);
   const worker = g.currentWorker ? getWorker(g.currentWorker, WORKERS_MAP) : null;
   const task = g.taskType ? TASK_TYPES[g.taskType] : null;
@@ -607,8 +610,8 @@ function GolDetail({ g, cfg, onClose }) {
               작업자가 골 앞 QR을 다시 찍으면 재개됩니다.
             </div>
             <div style={{ display: 'flex', gap: 6, marginTop: 10 }}>
-              <button style={{ flex: 1, padding: '7px 10px', fontSize: 11, fontWeight: 700, background: '#CA8A04', color: '#fff', border: 0, borderRadius: 5, cursor: 'pointer' }}>▶ 강제 재개</button>
-              <button style={{ flex: 1, padding: '7px 10px', fontSize: 11, fontWeight: 700, background: T.surface, color: T.text, border: `1px solid ${T.border}`, borderRadius: 5, cursor: 'pointer' }}>📝 메모 추가</button>
+              <button onClick={() => alert('강제 재개 기능은 준비 중입니다')} style={{ flex: 1, padding: '7px 10px', fontSize: 11, fontWeight: 700, background: '#CA8A04', color: '#fff', border: 0, borderRadius: 5, cursor: 'pointer' }}>▶ 강제 재개</button>
+              <button onClick={() => alert('메모 추가 기능은 준비 중입니다')} style={{ flex: 1, padding: '7px 10px', fontSize: 11, fontWeight: 700, background: T.surface, color: T.text, border: `1px solid ${T.border}`, borderRadius: 5, cursor: 'pointer' }}>📝 메모 추가</button>
             </div>
           </div>
         )}
@@ -691,7 +694,7 @@ function GolDetail({ g, cfg, onClose }) {
           <div style={{ marginBottom: 14, padding: 12, background: `${T.danger}10`, borderRadius: 8, borderLeft: `3px solid ${T.danger}` }}>
             <div style={{ fontSize: 11, fontWeight: 700, color: T.danger, marginBottom: 4 }}>⚠ 이상 신고</div>
             <div style={{ fontSize: 12, color: T.text, lineHeight: 1.5 }}>{g.issueNote}</div>
-            <button style={{ marginTop: 8, padding: '5px 10px', fontSize: 11, fontWeight: 700, background: T.danger, color: '#fff', border: 0, borderRadius: 5, cursor: 'pointer' }}>생육조사 이상 기록으로 연결</button>
+            <button onClick={() => navigate('/admin/growth/input')} style={{ marginTop: 8, padding: '5px 10px', fontSize: 11, fontWeight: 700, background: T.danger, color: '#fff', border: 0, borderRadius: 5, cursor: 'pointer' }}>생육조사 이상 기록으로 연결</button>
           </div>
         )}
 
@@ -717,8 +720,8 @@ function GolDetail({ g, cfg, onClose }) {
         </div>
 
         <div style={{ display: 'flex', gap: 6, marginTop: 14 }}>
-          {btnSecondary('작업자 재배정', icons.users)}
-          {btnSecondary('생육 상세', icons.sprout)}
+          {btnSecondary('작업자 재배정', icons.users, () => alert('작업자 재배정 기능은 준비 중입니다'))}
+          {btnSecondary('생육 상세', icons.sprout, () => navigate('/admin/growth'))}
         </div>
 
         {/* QR 스캔 규칙 안내 */}

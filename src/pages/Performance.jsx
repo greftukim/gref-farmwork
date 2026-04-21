@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { HQ } from '../design/hq-shell';
 import { usePerformanceData } from '../hooks/usePerformanceData';
 import { Avatar, Card, Dot, Icon, Pill, T, btnSecondary, icons } from '../design/primitives';
@@ -26,8 +27,8 @@ const PerfHeader = ({ subtitle, title, level, period, setPeriod, crop, setCrop, 
         <h1 style={{ fontSize: 22, fontWeight: 700, color: T.text, letterSpacing: -0.4, margin: 0 }}>{title}</h1>
       </div>
       <div style={{ display: 'flex', gap: 8 }}>
-        {btnSecondary('CSV', icons.chart)}
-        {btnSecondary('월간 리포트 PDF', icons.clipboard)}
+        {btnSecondary('CSV', icons.chart, () => alert('CSV 내보내기 기능은 준비 중입니다'))}
+        {btnSecondary('월간 리포트 PDF', icons.clipboard, () => alert('PDF 내보내기 기능은 준비 중입니다'))}
       </div>
     </div>
     <div style={{ padding: '10px 32px', display: 'flex', alignItems: 'center', gap: 14, borderTop: `1px solid ${T.borderSoft}`, flexWrap: 'wrap' }}>
@@ -263,6 +264,7 @@ const SpeedMatrix = ({ selectedCrop, sam: samTable = {} }) => {
 
 // ─────── 전체 순위 테이블 ───────
 const PerfTable = ({ workers, onSelect, selected, compareMode }) => {
+  const navigate = useNavigate();
   return (
     <Card pad={0}>
       <div style={{ padding: '12px 16px', borderBottom: `1px solid ${T.borderSoft}`, display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -271,7 +273,7 @@ const PerfTable = ({ workers, onSelect, selected, compareMode }) => {
         {compareMode && selected.length > 0 && (
           <span style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 6 }}>
             <span style={{ fontSize: 11, fontWeight: 600, color: T.text }}>{selected.length}명 선택됨</span>
-            <button style={{ padding: '5px 12px', borderRadius: 6, border: 0, background: T.text, color: '#fff', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>나란히 비교 →</button>
+            <button onClick={() => navigate('/admin/performance/compare')} style={{ padding: '5px 12px', borderRadius: 6, border: 0, background: T.text, color: '#fff', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>나란히 비교 →</button>
           </span>
         )}
       </div>
@@ -347,7 +349,7 @@ const PerfTable = ({ workers, onSelect, selected, compareMode }) => {
                   {w.attendance}%
                 </td>
                 <td style={{ padding: '10px 16px', textAlign: 'right' }}>
-                  <button style={{ padding: '4px 10px', borderRadius: 6, border: `1px solid ${T.border}`, background: T.surface, color: T.muted, fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>상세 →</button>
+                  <button onClick={() => navigate('/admin/performance/detail')} style={{ padding: '4px 10px', borderRadius: 6, border: `1px solid ${T.border}`, background: T.surface, color: T.muted, fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>상세 →</button>
                 </td>
               </tr>
             );
@@ -368,7 +370,7 @@ const AlertBanner = ({ workers }) => {
         <div style={{ fontSize: 12, fontWeight: 700, color: T.danger }}>연속 미달 경고 · {alerts.length}명</div>
         <div style={{ fontSize: 11, color: T.muted, marginTop: 2 }}>2주 이상 효율 80% 미만: {alerts.map(w => w.name).join(', ')}</div>
       </div>
-      <button style={{ padding: '5px 12px', borderRadius: 6, border: 0, background: T.danger, color: '#fff', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>1:1 리뷰 예약</button>
+      <button onClick={() => alert('1:1 리뷰 예약 기능은 준비 중입니다')} style={{ padding: '5px 12px', borderRadius: 6, border: 0, background: T.danger, color: '#fff', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>1:1 리뷰 예약</button>
     </Card>
   );
 };
