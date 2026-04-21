@@ -1,17 +1,17 @@
 // 표식주 관리 — 관리자
 // 경로: /admin/growth/markers
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
-  Card, Icon, Pill, T, TopBar, icons,
+  Card, Icon, T, TopBar, icons,
 } from '../../design/primitives';
+import { supabase } from '../../lib/supabase';
+import useCropStore from '../../stores/cropStore';
 
-const CROPS = ['토마토', '딸기', '파프리카', '오이', '가지'];
-const GREENHOUSES = ['1cmp', '2cmp', '3cmp', '4cmp'];
 const HEALTH = {
-  good: { l: '양호', tone: 'success', fg: T.success, soft: T.successSoft },
-  warn: { l: '주의', tone: 'warning', fg: T.warning, soft: T.warningSoft },
-  risk: { l: '위험', tone: 'danger', fg: T.danger, soft: T.dangerSoft },
+  good: { l: '양호', fg: T.success, soft: T.successSoft },
+  warn: { l: '주의', fg: T.warning, soft: T.warningSoft },
+  risk: { l: '위험', fg: T.danger, soft: T.dangerSoft },
 };
 
 const inputStyle = {
@@ -28,24 +28,60 @@ const Label = ({ children, required }) => (
 );
 
 export default function MarkerPlantManagePage() {
+  const crops = useCropStore((s) => s.crops);
+  const [greenhouses, setGreenhouses] = useState([]);
+  const [markers, setMarkers] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
+
   const [form, setForm] = useState({
-    crop: '', greenhouse: '', bed: '', row: '',
+    cropId: '', greenhouseId: '', bed: '', row: '',
     plantNo: '', startDate: new Date().toISOString().split('T')[0],
   });
-  const [markers, setMarkers] = useState([
-    { id: 'MK-0001', crop: '토마토', greenhouse: '1cmp', bed: 'A-01', row: 'N-1', plantNo: 3, startDate: '2026-02-10', health: 'good' },
-    { id: 'MK-0002', crop: '토마토', greenhouse: '1cmp', bed: 'A-02', row: 'N-5', plantNo: 12, startDate: '2026-02-10', health: 'warn' },
-    { id: 'MK-0003', crop: '딸기', greenhouse: '2cmp', bed: 'B-04', row: 'S-2', plantNo: 7, startDate: '2026-03-01', health: 'good' },
-    { id: 'MK-0004', crop: '파프리카', greenhouse: '3cmp', bed: 'C-08', row: 'E-3', plantNo: 22, startDate: '2026-01-15', health: 'risk' },
-  ]);
+
+  useEffect(() => {
+    const load = async () => {
+      setLoading(true);
+      const [ghRes, mpRes] = await Promise.all([
+        supabase.from('greenhouses').select('id, name').order('name'),
+        supabase.from('marker_plants')
+          .select('*, crops(name), greenhouses(name)')
+          .eq('is_active', true)
+          .order('created_at', { ascending: false }),
+      ]);
+      if (ghRes.data) setGreenhouses(ghRes.data);
+      if (mpRes.data) setMarkers(mpRes.data);
+      setLoading(false);
+    };
+    load();
+  }, []);
 
   const set = (k) => (e) => setForm({ ...form, [k]: e.target.value });
 
-  const add = () => {
-    if (!form.crop || !form.greenhouse || !form.bed) return;
-    const nextId = `MK-${String(markers.length + 1).padStart(4, '0')}`;
-    setMarkers([{ id: nextId, ...form, plantNo: Number(form.plantNo) || 0, health: 'good' }, ...markers]);
-    setForm({ crop: '', greenhouse: '', bed: '', row: '', plantNo: '', startDate: new Date().toISOString().split('T')[0] });
+  const add = async () => {
+    if (!form.cropId || !form.greenhouseId || !form.bed || submitting) return;
+    setSubmitting(true);
+    const { data, error } = await supabase.from('marker_plants').insert({
+      crop_id: form.cropId,
+      branch: 'busan',
+      greenhouse_id: form.greenhouseId,
+      bed: form.bed,
+      row_label: form.row || null,
+      plant_no: form.plantNo ? Number(form.plantNo) : null,
+      start_date: form.startDate,
+      health: 'good',
+      is_active: true,
+    }).select('*, crops(name), greenhouses(name)').single();
+    if (!error && data) {
+      setMarkers([data, ...markers]);
+      setForm({ cropId: '', greenhouseId: '', bed: '', row: '', plantNo: '', startDate: new Date().toISOString().split('T')[0] });
+    }
+    setSubmitting(false);
+  };
+
+  const deactivate = async (id) => {
+    const { error } = await supabase.from('marker_plants').update({ is_active: false }).eq('id', id);
+    if (!error) setMarkers((prev) => prev.filter((m) => m.id !== id));
   };
 
   const counts = {
@@ -55,6 +91,8 @@ export default function MarkerPlantManagePage() {
     risk: markers.filter((m) => m.health === 'risk').length,
   };
 
+  const canAdd = form.cropId && form.greenhouseId && form.bed && !submitting;
+
   return (
     <div style={{ flex: 1, overflow: 'auto', background: T.bg, minWidth: 0 }}>
       <TopBar subtitle="생육조사" title="표식주 관리" />
@@ -63,10 +101,10 @@ export default function MarkerPlantManagePage() {
         {/* KPI */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12 }}>
           {[
-            { l: '전체 표식주', v: counts.total, tone: T.primary, soft: T.primarySoft },
-            { l: '양호', v: counts.good, tone: T.success, soft: T.successSoft },
-            { l: '주의', v: counts.warn, tone: T.warning, soft: T.warningSoft },
-            { l: '위험', v: counts.risk, tone: T.danger, soft: T.dangerSoft },
+            { l: '전체 표식주', v: counts.total, tone: T.primary },
+            { l: '양호', v: counts.good, tone: T.success },
+            { l: '주의', v: counts.warn, tone: T.warning },
+            { l: '위험', v: counts.risk, tone: T.danger },
           ].map((k, i) => (
             <Card key={i} pad={18} style={{ position: 'relative', overflow: 'hidden' }}>
               <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 3, background: k.tone }} />
@@ -92,16 +130,16 @@ export default function MarkerPlantManagePage() {
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: 10, alignItems: 'end' }}>
             <div>
               <Label required>작물</Label>
-              <select value={form.crop} onChange={set('crop')} style={inputStyle}>
+              <select value={form.cropId} onChange={set('cropId')} style={inputStyle}>
                 <option value="">선택</option>
-                {CROPS.map((c) => <option key={c} value={c}>{c}</option>)}
+                {crops.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
               </select>
             </div>
             <div>
               <Label required>온실</Label>
-              <select value={form.greenhouse} onChange={set('greenhouse')} style={inputStyle}>
+              <select value={form.greenhouseId} onChange={set('greenhouseId')} style={inputStyle}>
                 <option value="">선택</option>
-                {GREENHOUSES.map((g) => <option key={g} value={g}>{g}</option>)}
+                {greenhouses.map((g) => <option key={g.id} value={g.id}>{g.name}</option>)}
               </select>
             </div>
             <div>
@@ -123,18 +161,17 @@ export default function MarkerPlantManagePage() {
           </div>
 
           <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 14 }}>
-            <button onClick={add}
-              disabled={!form.crop || !form.greenhouse || !form.bed}
+            <button onClick={add} disabled={!canAdd}
               style={{
                 height: 38, padding: '0 18px', borderRadius: 8, border: 0,
                 background: T.primary, color: '#fff',
                 fontSize: 13, fontWeight: 700, cursor: 'pointer',
-                opacity: (!form.crop || !form.greenhouse || !form.bed) ? 0.5 : 1,
+                opacity: canAdd ? 1 : 0.5,
                 display: 'inline-flex', alignItems: 'center', gap: 6,
                 boxShadow: '0 1px 2px rgba(79,70,229,0.25)',
               }}>
               <Icon d={icons.plus} size={13} c="#fff" sw={2.4} />
-              표식주 등록
+              {submitting ? '등록 중...' : '표식주 등록'}
             </button>
           </div>
         </Card>
@@ -146,24 +183,28 @@ export default function MarkerPlantManagePage() {
             <span style={{ fontSize: 11, color: T.mutedSoft }}>{markers.length}주</span>
           </div>
 
-          {markers.length === 0 ? (
+          {loading ? (
+            <Card pad={40} style={{ textAlign: 'center' }}>
+              <div style={{ fontSize: 13, color: T.mutedSoft }}>불러오는 중...</div>
+            </Card>
+          ) : markers.length === 0 ? (
             <Card pad={40} style={{ textAlign: 'center' }}>
               <div style={{ fontSize: 13, color: T.mutedSoft }}>등록된 표식주가 없습니다</div>
             </Card>
           ) : (
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 12 }}>
               {markers.map((m) => {
-                const h = HEALTH[m.health];
+                const h = HEALTH[m.health] || HEALTH.good;
+                const shortId = m.id.slice(0, 8).toUpperCase();
+                const cropName = m.crops?.name || '—';
+                const ghName = m.greenhouses?.name || '—';
                 return (
                   <Card key={m.id} pad={0} style={{ overflow: 'hidden' }}>
                     <div style={{ height: 3, background: h.fg }} />
                     <div style={{ padding: 14 }}>
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
-                        <span style={{ fontSize: 11, fontWeight: 700, color: T.mutedSoft, fontFamily: 'ui-monospace,monospace', letterSpacing: 0.3 }}>{m.id}</span>
-                        <span style={{
-                          fontSize: 10, fontWeight: 700, padding: '2px 7px', borderRadius: 4,
-                          background: h.soft, color: h.fg,
-                        }}>{h.l}</span>
+                        <span style={{ fontSize: 11, fontWeight: 700, color: T.mutedSoft, fontFamily: 'ui-monospace,monospace', letterSpacing: 0.3 }}>{shortId}</span>
+                        <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 7px', borderRadius: 4, background: h.soft, color: h.fg }}>{h.l}</span>
                       </div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
                         <div style={{
@@ -173,15 +214,15 @@ export default function MarkerPlantManagePage() {
                           <Icon d={icons.sprout} size={16} c={T.success} sw={2} />
                         </div>
                         <div>
-                          <div style={{ fontSize: 14, fontWeight: 700, color: T.text }}>{m.crop}</div>
-                          <div style={{ fontSize: 11, color: T.mutedSoft }}>{m.greenhouse}</div>
+                          <div style={{ fontSize: 14, fontWeight: 700, color: T.text }}>{cropName}</div>
+                          <div style={{ fontSize: 11, color: T.mutedSoft }}>{ghName}</div>
                         </div>
                       </div>
                       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 6, padding: 10, background: T.bg, borderRadius: 7, marginBottom: 10 }}>
                         {[
-                          { l: 'Bed', v: m.bed },
-                          { l: 'Row', v: m.row || '—' },
-                          { l: 'No.', v: m.plantNo || '—' },
+                          { l: 'Bed', v: m.bed || '—' },
+                          { l: 'Row', v: m.row_label || '—' },
+                          { l: 'No.', v: m.plant_no ?? '—' },
                         ].map((f) => (
                           <div key={f.l} style={{ textAlign: 'center' }}>
                             <div style={{ fontSize: 9, color: T.mutedSoft, fontWeight: 700, marginBottom: 2 }}>{f.l}</div>
@@ -192,12 +233,12 @@ export default function MarkerPlantManagePage() {
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: 10, color: T.mutedSoft }}>
                         <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
                           <Icon d={icons.calendar} size={10} c={T.mutedSoft} sw={2} />
-                          {m.startDate}
+                          {m.start_date || '—'}
                         </span>
-                        <button style={{
-                          fontSize: 11, fontWeight: 600, color: T.primary,
-                          background: 'transparent', border: 0, cursor: 'pointer',
-                        }}>상세 →</button>
+                        <button onClick={() => deactivate(m.id)} style={{
+                          fontSize: 11, fontWeight: 600, color: T.danger,
+                          background: 'transparent', border: 0, cursor: 'pointer', padding: 0,
+                        }}>비활성화</button>
                       </div>
                     </div>
                   </Card>

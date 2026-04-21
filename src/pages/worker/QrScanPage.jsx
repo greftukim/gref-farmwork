@@ -1,19 +1,100 @@
 // QR 스캔 (모바일) — 작업자
 // 경로: /worker/m/qr-scan
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { Html5Qrcode } from 'html5-qrcode';
 import {
-  Card, Dot, Icon, Pill, T, icons,
+  Card, Dot, Icon, T, icons,
 } from '../../design/primitives';
+import { supabase } from '../../lib/supabase';
+import useAuthStore from '../../stores/authStore';
 
-const RECENT = [
-  { time: '10:42', zone: '1cmp · A-01', result: '출근 완료', tone: 'success' },
-  { time: '09:15', zone: '1cmp · B-03', result: '작업 시작', tone: 'primary' },
-  { time: '08:50', zone: '정문', result: '출입 확인', tone: 'info' },
-];
+export default function QrScanPage() {
+  const navigate = useNavigate();
+  const currentUser = useAuthStore((s) => s.currentUser);
+  const [scanning, setScanning] = useState(false);
+  const [scanResult, setScanResult] = useState(null); // { success, message }
+  const [recentScans, setRecentScans] = useState([]);
+  const scannerRef = useRef(null);
 
-export default function QrScanPage({ onBack }) {
-  const [scanning, setScanning] = useState(true);
+  useEffect(() => {
+    const today = new Date().toISOString().split('T')[0];
+    supabase
+      .from('qr_scans')
+      .select('id, scanned_at, scan_type, qr_code_id')
+      .gte('scanned_at', today + 'T00:00:00')
+      .eq('employee_id', currentUser?.id)
+      .order('scanned_at', { ascending: false })
+      .limit(20)
+      .then(({ data }) => { if (data) setRecentScans(data); });
+
+    return () => {
+      if (scannerRef.current) scannerRef.current.stop().catch(() => {});
+    };
+  }, [currentUser?.id]);
+
+  const stopScan = useCallback(async () => {
+    if (scannerRef.current) {
+      await scannerRef.current.stop().catch(() => {});
+      scannerRef.current = null;
+    }
+    setScanning(false);
+  }, []);
+
+  const onScanSuccess = useCallback(async (decodedText) => {
+    await stopScan();
+
+    const { data: qrCode } = await supabase
+      .from('qr_codes')
+      .select('id, greenhouses(name)')
+      .eq('id', decodedText.trim())
+      .single();
+
+    if (!qrCode) {
+      setScanResult({ success: false, message: '등록되지 않은 QR 코드입니다' });
+      return;
+    }
+
+    const { data: scan, error } = await supabase.from('qr_scans').insert({
+      qr_code_id: qrCode.id,
+      employee_id: currentUser?.id,
+      scanned_at: new Date().toISOString(),
+      scan_type: 'task_start',
+    }).select('id, scanned_at, scan_type, qr_code_id').single();
+
+    if (error) {
+      setScanResult({ success: false, message: '스캔 기록 저장에 실패했습니다' });
+      return;
+    }
+
+    const ghName = qrCode.greenhouses?.name || '구역';
+    setScanResult({ success: true, message: `${ghName} 스캔 완료` });
+    if (scan) setRecentScans((prev) => [scan, ...prev]);
+  }, [currentUser?.id, stopScan]);
+
+  const startScan = async () => {
+    setScanResult(null);
+    try {
+      const scanner = new Html5Qrcode('qr-reader');
+      await scanner.start(
+        { facingMode: 'environment' },
+        { fps: 10, qrbox: { width: 220, height: 220 } },
+        onScanSuccess,
+        () => {}
+      );
+      scannerRef.current = scanner;
+      setScanning(true);
+    } catch {
+      setScanResult({ success: false, message: '카메라 접근 권한이 필요합니다' });
+    }
+  };
+
+  const fmtTime = (iso) => {
+    if (!iso) return '';
+    const d = new Date(iso);
+    return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+  };
 
   return (
     <div style={{ flex: 1, overflow: 'auto', background: T.bg, display: 'flex', flexDirection: 'column', minHeight: '100%' }}>
@@ -23,7 +104,7 @@ export default function QrScanPage({ onBack }) {
         color: '#fff', padding: '14px 16px 20px',
       }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <button onClick={onBack} style={{
+          <button onClick={() => navigate(-1)} style={{
             width: 34, height: 34, borderRadius: 9, border: 0,
             background: 'rgba(255,255,255,0.15)', color: '#fff', cursor: 'pointer',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -31,115 +112,129 @@ export default function QrScanPage({ onBack }) {
             <Icon d={<polyline points="15 18 9 12 15 6" />} size={16} c="#fff" sw={2.2} />
           </button>
           <h1 style={{ fontSize: 15, fontWeight: 700, color: '#fff', margin: 0 }}>QR 스캔</h1>
-          <button style={{
-            width: 34, height: 34, borderRadius: 9, border: 0,
-            background: 'rgba(255,255,255,0.15)', color: '#fff', cursor: 'pointer',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-          }}>
-            <Icon d={<><line x1="9" y1="18" x2="15" y2="12" /><line x1="15" y1="12" x2="9" y2="6" /></>} size={14} c="#fff" sw={2} />
-          </button>
+          <div style={{ width: 34 }} />
         </div>
         <div style={{ marginTop: 14, display: 'flex', alignItems: 'center', gap: 8, fontSize: 11, opacity: 0.9 }}>
-          <Dot c="#fff" />
-          <span style={{ fontWeight: 600 }}>{scanning ? '스캔 대기 중' : '스캐너 일시 정지'}</span>
+          <Dot c={scanning ? '#fff' : 'rgba(255,255,255,0.5)'} />
+          <span style={{ fontWeight: 600 }}>{scanning ? '스캔 대기 중' : '스캐너 대기'}</span>
         </div>
       </div>
 
-      {/* 뷰파인더 */}
+      {/* 뷰파인더 / 카메라 */}
       <div style={{ padding: 16 }}>
-        <div style={{
-          position: 'relative', aspectRatio: '1',
-          background: '#0A0F1C',
-          borderRadius: 16, overflow: 'hidden',
-          boxShadow: '0 4px 16px rgba(0,0,0,0.12)',
-        }}>
-          {/* 배경 격자 효과 */}
-          <div style={{
-            position: 'absolute', inset: 0,
-            background: `
-              radial-gradient(circle at 50% 50%, rgba(79,70,229,0.12) 0%, transparent 60%),
-              repeating-linear-gradient(0deg, transparent 0, transparent 19px, rgba(255,255,255,0.03) 19px, rgba(255,255,255,0.03) 20px),
-              repeating-linear-gradient(90deg, transparent 0, transparent 19px, rgba(255,255,255,0.03) 19px, rgba(255,255,255,0.03) 20px)
-            `,
-          }} />
+        {/* html5-qrcode 마운트 영역 — 항상 DOM에 존재, 스캔 시 카메라 피드 주입됨 */}
+        <div
+          id="qr-reader"
+          style={{
+            display: scanning ? 'block' : 'none',
+            borderRadius: 16, overflow: 'hidden',
+            boxShadow: '0 4px 16px rgba(0,0,0,0.12)',
+          }}
+        />
 
-          {/* 스캔 영역 */}
+        {/* 정적 뷰파인더 — 스캔 전 또는 완료 후 */}
+        {!scanning && (
           <div style={{
-            position: 'absolute', top: '18%', left: '18%', right: '18%', bottom: '18%',
-            border: '2px solid rgba(255,255,255,0.08)', borderRadius: 12,
+            position: 'relative', aspectRatio: '1',
+            background: '#0A0F1C',
+            borderRadius: 16, overflow: 'hidden',
+            boxShadow: '0 4px 16px rgba(0,0,0,0.12)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
           }}>
-            {/* 4개 모서리 */}
-            {[
-              { t: -2, l: -2, bT: `3px solid ${T.primary}`, bL: `3px solid ${T.primary}`, br: '12px 0 0 0' },
-              { t: -2, r: -2, bT: `3px solid ${T.primary}`, bR: `3px solid ${T.primary}`, br: '0 12px 0 0' },
-              { b: -2, l: -2, bB: `3px solid ${T.primary}`, bL: `3px solid ${T.primary}`, br: '0 0 0 12px' },
-              { b: -2, r: -2, bB: `3px solid ${T.primary}`, bR: `3px solid ${T.primary}`, br: '0 0 12px 0' },
-            ].map((c, i) => (
-              <div key={i} style={{
-                position: 'absolute', width: 32, height: 32,
-                top: c.t, bottom: c.b, left: c.l, right: c.r,
-                borderTop: c.bT, borderBottom: c.bB, borderLeft: c.bL, borderRight: c.bR,
-                borderRadius: c.br,
-              }} />
-            ))}
-
-            {/* 스캔 라인 */}
-            {scanning && (
-              <div style={{
-                position: 'absolute', left: 8, right: 8, top: '50%',
-                height: 2,
-                background: `linear-gradient(90deg, transparent, ${T.primary}, transparent)`,
-                boxShadow: `0 0 12px ${T.primary}`,
-                animation: 'scanLine 2s ease-in-out infinite',
-              }} />
+            {scanResult ? (
+              <div style={{ textAlign: 'center', padding: 24 }}>
+                <div style={{
+                  width: 56, height: 56, borderRadius: 16, margin: '0 auto 12px',
+                  background: scanResult.success ? 'rgba(16,185,129,0.2)' : 'rgba(239,68,68,0.2)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                }}>
+                  <Icon
+                    d={scanResult.success ? icons.check : icons.x}
+                    size={28}
+                    c={scanResult.success ? T.success : T.danger}
+                    sw={2.4}
+                  />
+                </div>
+                <div style={{ fontSize: 15, fontWeight: 700, color: '#fff', marginBottom: 4 }}>
+                  {scanResult.success ? '스캔 성공' : '스캔 실패'}
+                </div>
+                <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.6)' }}>{scanResult.message}</div>
+              </div>
+            ) : (
+              <>
+                <div style={{
+                  position: 'absolute', inset: 0,
+                  background: `
+                    radial-gradient(circle at 50% 50%, rgba(79,70,229,0.12) 0%, transparent 60%),
+                    repeating-linear-gradient(0deg, transparent 0, transparent 19px, rgba(255,255,255,0.03) 19px, rgba(255,255,255,0.03) 20px),
+                    repeating-linear-gradient(90deg, transparent 0, transparent 19px, rgba(255,255,255,0.03) 19px, rgba(255,255,255,0.03) 20px)
+                  `,
+                }} />
+                <div style={{
+                  position: 'absolute', top: '18%', left: '18%', right: '18%', bottom: '18%',
+                  border: '2px solid rgba(255,255,255,0.08)', borderRadius: 12,
+                }}>
+                  {[
+                    { t: -2, l: -2, bT: `3px solid ${T.primary}`, bL: `3px solid ${T.primary}`, br: '12px 0 0 0' },
+                    { t: -2, r: -2, bT: `3px solid ${T.primary}`, bR: `3px solid ${T.primary}`, br: '0 12px 0 0' },
+                    { b: -2, l: -2, bB: `3px solid ${T.primary}`, bL: `3px solid ${T.primary}`, br: '0 0 0 12px' },
+                    { b: -2, r: -2, bB: `3px solid ${T.primary}`, bR: `3px solid ${T.primary}`, br: '0 0 12px 0' },
+                  ].map((c, i) => (
+                    <div key={i} style={{
+                      position: 'absolute', width: 32, height: 32,
+                      top: c.t, bottom: c.b, left: c.l, right: c.r,
+                      borderTop: c.bT, borderBottom: c.bB, borderLeft: c.bL, borderRight: c.bR,
+                      borderRadius: c.br,
+                    }} />
+                  ))}
+                  <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: 0.12 }}>
+                    <svg width="80" height="80" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="1.5">
+                      <rect x="3" y="3" width="7" height="7" />
+                      <rect x="14" y="3" width="7" height="7" />
+                      <rect x="3" y="14" width="7" height="7" />
+                      <line x1="14" y1="14" x2="14" y2="21" />
+                      <line x1="17" y1="14" x2="17" y2="17" />
+                      <line x1="20" y1="17" x2="20" y2="21" />
+                    </svg>
+                  </div>
+                </div>
+              </>
             )}
-
-            {/* 중앙 QR 아이콘 힌트 */}
-            <div style={{
-              position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center',
-              opacity: 0.12,
-            }}>
-              <svg width="80" height="80" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="1.5">
-                <rect x="3" y="3" width="7" height="7" />
-                <rect x="14" y="3" width="7" height="7" />
-                <rect x="3" y="14" width="7" height="7" />
-                <line x1="14" y1="14" x2="14" y2="21" />
-                <line x1="17" y1="14" x2="17" y2="17" />
-                <line x1="20" y1="17" x2="20" y2="21" />
-              </svg>
-            </div>
           </div>
-
-          <style>{`@keyframes scanLine { 0%,100% { top: 14%; } 50% { top: 86%; } }`}</style>
-        </div>
+        )}
 
         <div style={{ marginTop: 14, textAlign: 'center' }}>
-          <div style={{ fontSize: 14, fontWeight: 700, color: T.text, marginBottom: 4 }}>QR 코드를 스캔해 주세요</div>
+          <div style={{ fontSize: 14, fontWeight: 700, color: T.text, marginBottom: 4 }}>
+            {scanning ? '카메라를 QR 코드에 맞추세요' : 'QR 코드를 스캔해 주세요'}
+          </div>
           <div style={{ fontSize: 12, color: T.mutedSoft, lineHeight: 1.5 }}>
-            카메라를 스캔 영역에 맞추면 자동으로 인식됩니다
+            {scanning ? '자동으로 인식됩니다' : '스캔 시작 버튼을 눌러 카메라를 활성화하세요'}
           </div>
         </div>
 
         <div style={{ display: 'flex', gap: 8, marginTop: 16 }}>
-          <button onClick={() => setScanning(!scanning)} style={{
-            flex: 1, height: 44, borderRadius: 10, border: `1px solid ${T.border}`,
-            background: T.surface, color: T.text,
-            fontSize: 13, fontWeight: 600, cursor: 'pointer',
-            display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-          }}>
-            <Icon d={scanning ? icons.stop : icons.play} size={14} c={T.muted} sw={2} />
-            {scanning ? '일시 정지' : '스캔 시작'}
-          </button>
-          <button style={{
-            flex: 1, height: 44, borderRadius: 10, border: 0,
-            background: T.primary, color: '#fff',
-            fontSize: 13, fontWeight: 700, cursor: 'pointer',
-            display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-            boxShadow: '0 2px 6px rgba(79,70,229,0.28)',
-          }}>
-            <Icon d={icons.camera} size={14} c="#fff" sw={2} />
-            수동 입력
-          </button>
+          {scanning ? (
+            <button onClick={stopScan} style={{
+              flex: 1, height: 44, borderRadius: 10, border: `1px solid ${T.border}`,
+              background: T.surface, color: T.text,
+              fontSize: 13, fontWeight: 600, cursor: 'pointer',
+              display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+            }}>
+              <Icon d={icons.stop} size={14} c={T.muted} sw={2} />
+              중지
+            </button>
+          ) : (
+            <button onClick={startScan} style={{
+              flex: 1, height: 44, borderRadius: 10, border: 0,
+              background: T.primary, color: '#fff',
+              fontSize: 13, fontWeight: 700, cursor: 'pointer',
+              display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+              boxShadow: '0 2px 6px rgba(79,70,229,0.28)',
+            }}>
+              <Icon d={icons.camera} size={14} c="#fff" sw={2} />
+              스캔 시작
+            </button>
+          )}
         </div>
       </div>
 
@@ -149,7 +244,7 @@ export default function QrScanPage({ onBack }) {
           <h3 style={{ fontSize: 13, fontWeight: 700, color: T.text, margin: 0 }}>최근 스캔 기록</h3>
           <span style={{ fontSize: 10, color: T.mutedSoft, fontWeight: 600 }}>오늘</span>
         </div>
-        {RECENT.length === 0 ? (
+        {recentScans.length === 0 ? (
           <Card pad={24} style={{ textAlign: 'center' }}>
             <div style={{
               width: 40, height: 40, borderRadius: 10, background: T.bg,
@@ -161,31 +256,26 @@ export default function QrScanPage({ onBack }) {
           </Card>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            {RECENT.map((r, i) => (
-              <Card key={i} pad={12} style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            {recentScans.map((r) => (
+              <Card key={r.id} pad={12} style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                 <div style={{
                   width: 38, height: 38, borderRadius: 9,
-                  background: r.tone === 'success' ? T.successSoft : r.tone === 'primary' ? T.primarySoft : T.infoSoft,
+                  background: T.primarySoft,
                   display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
                 }}>
-                  <Icon d={icons.check}
-                    size={16}
-                    c={r.tone === 'success' ? T.success : r.tone === 'primary' ? T.primary : T.info}
-                    sw={2.4} />
+                  <Icon d={icons.check} size={16} c={T.primary} sw={2.4} />
                 </div>
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 13, fontWeight: 700, color: T.text, marginBottom: 2 }}>{r.result}</div>
-                  <div style={{ fontSize: 11, color: T.mutedSoft, display: 'flex', alignItems: 'center', gap: 6 }}>
-                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3 }}>
-                      <Icon d={icons.location} size={10} c={T.mutedSoft} sw={2} />
-                      {r.zone}
-                    </span>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: T.text, marginBottom: 2 }}>
+                    {r.scan_type === 'task_start' ? '작업 시작' : r.scan_type === 'task_end' ? '작업 종료' : '스캔 완료'}
+                  </div>
+                  <div style={{ fontSize: 11, color: T.mutedSoft }}>
+                    {r.qr_code_id?.slice(0, 8).toUpperCase()}
                   </div>
                 </div>
-                <div style={{
-                  fontSize: 13, fontWeight: 700, color: T.mutedSoft,
-                  fontFamily: 'ui-monospace,monospace',
-                }}>{r.time}</div>
+                <div style={{ fontSize: 13, fontWeight: 700, color: T.mutedSoft, fontFamily: 'ui-monospace,monospace' }}>
+                  {fmtTime(r.scanned_at)}
+                </div>
               </Card>
             ))}
           </div>

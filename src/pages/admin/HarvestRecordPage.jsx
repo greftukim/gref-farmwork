@@ -1,13 +1,13 @@
 // 수확 기록 관리 — 관리자
 // 경로: /admin/harvest
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Avatar, Card, Icon, Pill, T, TopBar, icons,
 } from '../../design/primitives';
-
-const CROPS = ['토마토', '딸기', '파프리카', '오이', '가지'];
-const WORKERS = ['김작업', '이성실', '박정연', '최민호', '정다영'];
+import { supabase } from '../../lib/supabase';
+import useEmployeeStore from '../../stores/employeeStore';
+import useCropStore from '../../stores/cropStore';
 
 const inputStyle = {
   height: 40, padding: '0 12px',
@@ -21,26 +21,47 @@ const Label = ({ children }) => (
 );
 
 export default function HarvestRecordPage() {
+  const employees = useEmployeeStore((s) => s.employees);
+  const crops = useCropStore((s) => s.crops);
+
   const [form, setForm] = useState({
-    worker: '', crop: '', date: new Date().toISOString().split('T')[0], quantity: '',
+    employeeId: '', cropId: '', date: new Date().toISOString().split('T')[0], quantity: '',
   });
-  const [records, setRecords] = useState([
-    { id: 1, date: '2026-04-20', worker: '김작업', crop: '토마토', quantity: 48.5, createdAt: '2026-04-20T09:12:00' },
-    { id: 2, date: '2026-04-20', worker: '이성실', crop: '딸기', quantity: 22.0, createdAt: '2026-04-20T10:45:00' },
-    { id: 3, date: '2026-04-19', worker: '박정연', crop: '파프리카', quantity: 31.2, createdAt: '2026-04-19T14:20:00' },
-  ]);
+  const [records, setRecords] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    const load = async () => {
+      setLoading(true);
+      const { data } = await supabase
+        .from('harvest_records')
+        .select('*, employees(name), crops(name)')
+        .order('created_at', { ascending: false })
+        .limit(100);
+      if (data) setRecords(data);
+      setLoading(false);
+    };
+    load();
+  }, []);
 
   const set = (k) => (e) => setForm({ ...form, [k]: e.target.value });
 
-  const add = () => {
-    if (!form.worker || !form.crop || !form.quantity) return;
-    setRecords([{
-      id: Date.now(),
-      ...form,
+  const add = async () => {
+    if (!form.employeeId || !form.cropId || !form.quantity || submitting) return;
+    setSubmitting(true);
+    const { data, error } = await supabase.from('harvest_records').insert({
+      employee_id: form.employeeId,
+      crop_id: form.cropId,
+      date: form.date,
       quantity: Number(form.quantity),
-      createdAt: new Date().toISOString(),
-    }, ...records]);
-    setForm({ worker: '', crop: '', date: new Date().toISOString().split('T')[0], quantity: '' });
+      unit: 'kg',
+    }).select('*, employees(name), crops(name)').single();
+    if (!error && data) {
+      setRecords([data, ...records]);
+      setForm({ employeeId: '', cropId: '', date: new Date().toISOString().split('T')[0], quantity: '' });
+    }
+    setSubmitting(false);
   };
 
   const totalKg = records.reduce((s, r) => s + (Number(r.quantity) || 0), 0);
@@ -54,6 +75,9 @@ export default function HarvestRecordPage() {
     if (m < 1440) return `${Math.floor(m / 60)}시간 전`;
     return `${Math.floor(m / 1440)}일 전`;
   };
+
+  const activeWorkers = employees.filter((e) => e.isActive !== false);
+  const canAdd = form.employeeId && form.cropId && form.quantity && !submitting;
 
   return (
     <div style={{ flex: 1, overflow: 'auto', background: T.bg, minWidth: 0 }}>
@@ -90,16 +114,16 @@ export default function HarvestRecordPage() {
           <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr 1fr 1.3fr auto', gap: 10, alignItems: 'end' }}>
             <div>
               <Label>작업자</Label>
-              <select value={form.worker} onChange={set('worker')} style={inputStyle}>
+              <select value={form.employeeId} onChange={set('employeeId')} style={inputStyle}>
                 <option value="">선택</option>
-                {WORKERS.map((w) => <option key={w} value={w}>{w}</option>)}
+                {activeWorkers.map((w) => <option key={w.id} value={w.id}>{w.name}</option>)}
               </select>
             </div>
             <div>
               <Label>작물</Label>
-              <select value={form.crop} onChange={set('crop')} style={inputStyle}>
+              <select value={form.cropId} onChange={set('cropId')} style={inputStyle}>
                 <option value="">선택</option>
-                {CROPS.map((c) => <option key={c} value={c}>{c}</option>)}
+                {crops.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
               </select>
             </div>
             <div>
@@ -122,13 +146,12 @@ export default function HarvestRecordPage() {
                 }}>kg</span>
               </div>
             </div>
-            <button onClick={add}
-              disabled={!form.worker || !form.crop || !form.quantity}
+            <button onClick={add} disabled={!canAdd}
               style={{
                 height: 44, padding: '0 18px', borderRadius: 8, border: 0,
                 background: T.success, color: '#fff',
                 fontSize: 13, fontWeight: 700, cursor: 'pointer',
-                opacity: (!form.worker || !form.crop || !form.quantity) ? 0.5 : 1,
+                opacity: canAdd ? 1 : 0.5,
                 display: 'inline-flex', alignItems: 'center', gap: 6,
                 boxShadow: '0 1px 2px rgba(5,150,105,0.25)',
               }}>
@@ -143,7 +166,9 @@ export default function HarvestRecordPage() {
           <div style={{ padding: '14px 20px', borderBottom: `1px solid ${T.borderSoft}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <div style={{ fontSize: 13, fontWeight: 700, color: T.text }}>최근 수확 기록 ({records.length})</div>
           </div>
-          {records.length === 0 ? (
+          {loading ? (
+            <div style={{ padding: 40, textAlign: 'center', color: T.mutedSoft, fontSize: 13 }}>불러오는 중...</div>
+          ) : records.length === 0 ? (
             <div style={{ padding: 60, textAlign: 'center', color: T.mutedSoft, fontSize: 13 }}>
               수확 기록이 없습니다
             </div>
@@ -159,27 +184,31 @@ export default function HarvestRecordPage() {
                 </tr>
               </thead>
               <tbody>
-                {records.map((r, i) => (
-                  <tr key={r.id} style={{ borderTop: i ? `1px solid ${T.borderSoft}` : 'none' }}>
-                    <td style={{ padding: '12px 20px', color: T.text, fontWeight: 600, fontFamily: 'ui-monospace,monospace' }}>{r.date}</td>
-                    <td style={{ padding: '12px' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                        <Avatar name={r.worker} color="indigo" size={28} />
-                        <span style={{ fontWeight: 600, color: T.text }}>{r.worker}</span>
-                      </div>
-                    </td>
-                    <td style={{ padding: '12px' }}>
-                      <Pill tone="success">{r.crop}</Pill>
-                    </td>
-                    <td style={{ padding: '12px', textAlign: 'right' }}>
-                      <span style={{ fontSize: 15, fontWeight: 700, color: T.text, fontFamily: 'ui-monospace,monospace' }}>
-                        {Number(r.quantity).toFixed(1)}
-                      </span>
-                      <span style={{ fontSize: 11, color: T.mutedSoft, marginLeft: 3 }}>kg</span>
-                    </td>
-                    <td style={{ padding: '12px 20px', textAlign: 'right', color: T.mutedSoft, fontSize: 11 }}>{fmtAgo(r.createdAt)}</td>
-                  </tr>
-                ))}
+                {records.map((r, i) => {
+                  const workerName = r.employees?.name || '—';
+                  const cropName = r.crops?.name || '—';
+                  return (
+                    <tr key={r.id} style={{ borderTop: i ? `1px solid ${T.borderSoft}` : 'none' }}>
+                      <td style={{ padding: '12px 20px', color: T.text, fontWeight: 600, fontFamily: 'ui-monospace,monospace' }}>{r.date}</td>
+                      <td style={{ padding: '12px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                          <Avatar name={workerName} color="indigo" size={28} />
+                          <span style={{ fontWeight: 600, color: T.text }}>{workerName}</span>
+                        </div>
+                      </td>
+                      <td style={{ padding: '12px' }}>
+                        <Pill tone="success">{cropName}</Pill>
+                      </td>
+                      <td style={{ padding: '12px', textAlign: 'right' }}>
+                        <span style={{ fontSize: 15, fontWeight: 700, color: T.text, fontFamily: 'ui-monospace,monospace' }}>
+                          {Number(r.quantity).toFixed(1)}
+                        </span>
+                        <span style={{ fontSize: 11, color: T.mutedSoft, marginLeft: 3 }}>kg</span>
+                      </td>
+                      <td style={{ padding: '12px 20px', textAlign: 'right', color: T.mutedSoft, fontSize: 11 }}>{fmtAgo(r.created_at)}</td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           )}
