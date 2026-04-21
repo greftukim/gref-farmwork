@@ -825,10 +825,6 @@ function MobileAttendanceScreen() {
       .slice(0, 4);
   }, [myLeaveReqs, myOTReqs]);
 
-  const fallbackHistory = historyItems.length === 0 ? [
-    { type: '휴가', detail: '신청 이력이 없습니다', status: 'pending', date: '—' },
-  ] : historyItems;
-
   const stats = [
     { l: '이번 달 근무', v: String(totalHours), u: '시간', sub: `${workedDays}일 출근` },
     { l: '연차 잔여', v: String(remainingLeaveDays), u: '일', sub: `${totalLeaveDays}일 중 ${usedLeaveDays}일 사용` },
@@ -932,7 +928,9 @@ function MobileAttendanceScreen() {
           <span style={{ fontSize: 11, color: T.primary, fontWeight: 600 }}>전체 보기</span>
         </div>
         <div style={{ background: T.surface, borderRadius: 12, overflow: 'hidden' }}>
-          {fallbackHistory.map((r, i) => {
+          {historyItems.length === 0 ? (
+            <div style={{ padding: '16px 14px', fontSize: 12, color: T.mutedSoft }}>신청 이력이 없습니다</div>
+          ) : historyItems.map((r, i) => {
             const sm = {
               pending: { tone: 'warning', l: '승인 대기' },
               approved: { tone: 'success', l: '승인됨' },
@@ -941,7 +939,7 @@ function MobileAttendanceScreen() {
             return (
               <div key={i} style={{
                 padding: '12px 14px',
-                borderBottom: i < fallbackHistory.length - 1 ? `1px solid ${T.borderSoft}` : 'none',
+                borderBottom: i < historyItems.length - 1 ? `1px solid ${T.borderSoft}` : 'none',
                 display: 'flex', alignItems: 'center', gap: 10,
               }}>
                 <div style={{ flex: 1 }}>
