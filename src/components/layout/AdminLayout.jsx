@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { Sidebar, T } from '../../design/primitives';
-import { HQSidebar, HQTopBar } from '../../design/hq-shell';
+import { HQSidebar } from '../../design/hq-shell';
 import AdminBottomNav from './AdminBottomNav';
 import ToastContainer from '../common/ToastContainer';
 import useDataLoader from '../../hooks/useDataLoader';
@@ -20,6 +20,27 @@ import ChatbotFab from '../chatbot/ChatbotFab';
 import ChatbotPanel from '../chatbot/ChatbotPanel';
 
 const SESSION_KEY = 'pwa_guide_shown';
+
+const HQ_ROUTES = {
+  dashboard: '/admin/hq',
+  branches: '/admin/hq/branches',
+  employees: '/admin/hq/employees',
+  performance: '/admin/hq/interactive',
+  growth: '/admin/hq/growth',
+  approvals: '/admin/hq/approvals',
+  finance: '/admin/hq/finance',
+  notice: '/admin/hq/notices',
+  settings: '/admin/hq',
+};
+
+function getHQActiveId(pathname) {
+  if (pathname === '/admin/hq') return 'dashboard';
+  const entries = Object.entries(HQ_ROUTES).filter(([, v]) => v !== '/admin/hq');
+  for (const [id, path] of entries) {
+    if (pathname.startsWith(path)) return id;
+  }
+  return 'dashboard';
+}
 
 const FARM_ROUTES = {
   dashboard: '/admin',
@@ -112,6 +133,11 @@ export default function AdminLayout() {
     if (path) navigate(path);
   };
 
+  const handleHQNavigate = (id) => {
+    const path = HQ_ROUTES[id];
+    if (path) navigate(path);
+  };
+
   return (
     <div style={{ display: 'flex', height: '100vh', overflow: 'hidden', fontFamily: 'Pretendard, system-ui', background: T.bg }}>
       {/* md 미만: 사이드바 숨김 (AdminBottomNav 사용) */}
@@ -119,11 +145,10 @@ export default function AdminLayout() {
         {team === 'farm' ? (
           <Sidebar active={activeId} onNavigate={handleNavigate} />
         ) : (
-          <HQSidebar active={activeId} />
+          <HQSidebar active={getHQActiveId(location.pathname)} onNavigate={handleHQNavigate} />
         )}
       </div>
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0, overflow: 'hidden' }}>
-        {team === 'hq' && <HQTopBar title="본사 대시보드" subtitle="관리팀" />}
         <main style={{ flex: 1, overflow: 'auto' }} className="pb-24 md:pb-0">
           <Outlet />
         </main>

@@ -13,7 +13,7 @@ const HQ = {
 };
 
 // ─────── HQ Shell: 관리팀 전용 사이드바 + 상단바 ───────
-const HQSidebar = ({ active = 'dashboard' }) => {
+const HQSidebar = ({ active = 'dashboard', onNavigate }) => {
   const items = [
     { id: 'dashboard', label: '본사 대시보드', icon: icons.dashboard },
     { id: 'branches', label: '지점 관리', icon: icons.location },
@@ -64,7 +64,7 @@ const HQSidebar = ({ active = 'dashboard' }) => {
         {items.map(i => {
           const on = i.id === active;
           return (
-            <div key={i.id} style={{
+            <div key={i.id} onClick={() => onNavigate?.(i.id)} style={{
               display: 'flex', alignItems: 'center', gap: 10,
               padding: '9px 12px', borderRadius: 8, cursor: 'pointer',
               background: on ? HQ.accentSoft : 'transparent',

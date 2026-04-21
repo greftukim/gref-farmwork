@@ -21,6 +21,10 @@ class ErrorBoundary extends Component {
     return this.props.children;
   }
 }
+import { HQDashboardScreen } from './pages/hq/Dashboard';
+import { HQDashboardInteractive } from './pages/hq/DashboardInteractive';
+import { HQGrowthCompareScreen } from './pages/hq/GrowthCompare';
+import { HQApprovalsScreen, HQBranchesScreen, HQEmployeesScreen, HQFinanceScreen, HQNoticesScreen } from './pages/hq/_pages';
 import LoginPage from './pages/LoginPage';
 import AuthCallbackPage from './pages/AuthCallbackPage';
 import AdminLayout from './components/layout/AdminLayout';
@@ -167,6 +171,14 @@ export default function App() {
             <Route path="safety-checks" element={<SafetyChecksPage />} />
             <Route path="safety-issues" element={<SafetyIssuesPage />} />
             <Route path="daily-work-logs" element={<DailyWorkLogsPage />} />
+            <Route path="hq" element={<HQDashboardScreen />} />
+            <Route path="hq/interactive" element={<HQDashboardInteractive />} />
+            <Route path="hq/growth" element={<HQGrowthCompareScreen />} />
+            <Route path="hq/approvals" element={<HQApprovalsScreen />} />
+            <Route path="hq/branches" element={<HQBranchesScreen />} />
+            <Route path="hq/employees" element={<HQEmployeesScreen />} />
+            <Route path="hq/finance" element={<HQFinanceScreen />} />
+            <Route path="hq/notices" element={<HQNoticesScreen />} />
           </Route>
 
           <Route path="/worker" element={
