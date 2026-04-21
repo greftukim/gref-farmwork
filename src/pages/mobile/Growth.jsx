@@ -1,11 +1,15 @@
 import React, { useState } from 'react';
 import { GROWTH_SCHEMA, GR_DATA, STANDARD_CURVE } from '../../data/growth';
 import { Icon, Pill, T, icons } from '../../design/primitives';
+import { useGrowthData } from '../../hooks/useGrowthData';
 
 // 생육조사 — 모바일 현장 입력 (반장용, 단독 화면)
 // 4탭이 아닌 단독 풀스크린. 헤더 + 표식주 목록 → 입력 폼
 
 function MobileGrowthScreen({ defaultMode = 'list' }) {
+  const { grData, standardCurve } = useGrowthData();
+  // eslint-disable-next-line no-shadow
+  const GR_DATA = grData, STANDARD_CURVE = standardCurve;
   const [mode, setMode] = useState(defaultMode); // list | input
   const crop = '토마토';
   const plants = GR_DATA.markerPlants.filter(p => p.crop === crop);

@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { HQ } from '../design/hq-shell';
+import { usePerformanceData } from '../hooks/usePerformanceData';
 import { Avatar, Card, Dot, Icon, Pill, T, btnSecondary, icons } from '../design/primitives';
 
 // 작업자 성과 관리 페이지 — HQ 전사 / 지점 / 개인 상세 / 비교 뷰
@@ -242,7 +243,7 @@ const PerfKPIs = ({ workers }) => {
 };
 
 // ─────── 작물·작업별 속도 드릴다운 (주/분) ───────
-const SpeedMatrix = ({ selectedCrop }) => {
+const SpeedMatrix = ({ selectedCrop, sam: samTable = SAM }) => {
   const crops = selectedCrop && selectedCrop !== '전체' ? [selectedCrop] : ['토마토', '오이', '방울토마토'];
   const works = ['정식', '유인', '적엽', '수확', '선별·포장'];
   return (
@@ -263,7 +264,7 @@ const SpeedMatrix = ({ selectedCrop }) => {
         </thead>
         <tbody>
           {crops.map(c => {
-            const samCol = SAM[c] || {};
+            const samCol = samTable[c] || {};
             // 랜덤이지만 안정적인 실측값 생성
             const actual = {
               '정식': 1 / (samCol['정식'] || 0.3) * (0.95 + c.length * 0.01),
@@ -416,6 +417,9 @@ const AlertBanner = ({ workers }) => {
 // ① HQ 전사 성과
 // ═══════════════════════════════════════════════════════════
 function HQPerformanceScreen() {
+  const { sam } = usePerformanceData();
+  // eslint-disable-next-line no-shadow
+  const SAM = sam;
   const [period, setPeriod] = useState('이번 주');
   const [crop, setCrop] = useState('전체');
   const [branchFilter, setBranchFilter] = useState('전체');
@@ -473,7 +477,7 @@ function HQPerformanceScreen() {
           </div>
         )}
 
-        <SpeedMatrix selectedCrop={crop} />
+        <SpeedMatrix selectedCrop={crop} sam={SAM} />
 
         <Card>
           <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 14 }}>
@@ -539,6 +543,9 @@ function HQPerformanceScreen() {
 
 // ② 지점 뷰
 function BranchPerformanceScreen() {
+  const { sam } = usePerformanceData();
+  // eslint-disable-next-line no-shadow
+  const SAM = sam;
   const [period, setPeriod] = useState('이번 주');
   const [crop, setCrop] = useState('전체');
   const [showBottom, setShowBottom] = useState(false);
@@ -576,7 +583,7 @@ function BranchPerformanceScreen() {
           </div>
         )}
 
-        <SpeedMatrix selectedCrop={crop} />
+        <SpeedMatrix selectedCrop={crop} sam={SAM} />
         <PerfTable workers={byEff} />
       </div>
     </div>
@@ -585,6 +592,9 @@ function BranchPerformanceScreen() {
 
 // ③ 개인 상세
 function PerformanceDetailScreen() {
+  const { sam } = usePerformanceData();
+  // eslint-disable-next-line no-shadow
+  const SAM = sam;
   const w = PERF_DATA.workers[0];
   const [weekWork, setWeekWork] = useState('전체');
   const WEEK_TYPES = ['전체', '정식', '유인', '적엽', '수확', '선별·포장'];

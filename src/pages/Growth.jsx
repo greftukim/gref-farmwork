@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { GROWTH_SCHEMA, GR_DATA, STANDARD_CURVE } from '../data/growth';
 import { Card, Icon, Pill, T, btnSecondary, icons } from '../design/primitives';
+import { useGrowthData } from '../hooks/useGrowthData';
 
 // 생육조사 화면 — 지점 (재배팀)
 // 4개 화면: 대시보드 / 주별 입력 / 표식주 상세 / 추이·히트맵
@@ -13,6 +14,9 @@ const pct = (actual, target) => target ? Math.round(actual / target * 100) : 0;
 // ① 생육 대시보드
 // ═══════════════════════════════════════════════════════════
 function GrowthDashboardScreen() {
+  const { grData, standardCurve } = useGrowthData();
+  // eslint-disable-next-line no-shadow
+  const GR_DATA = grData, STANDARD_CURVE = standardCurve;
   const [crop, setCrop] = useState('토마토');
   const weekIdx = GR_DATA.currentWeek - 1;
   const current = GR_DATA.crops.find(c => c.name === crop);
@@ -342,6 +346,9 @@ function GrowthDashboardScreen() {
 // ② 주별 입력 폼
 // ═══════════════════════════════════════════════════════════
 function GrowthInputScreen() {
+  const { grData, standardCurve } = useGrowthData();
+  // eslint-disable-next-line no-shadow
+  const GR_DATA = grData, STANDARD_CURVE = standardCurve;
   const [crop, setCrop] = useState('토마토');
   const [selectedWeek, setSelectedWeek] = useState(GR_DATA.currentWeek);
   const schema = GROWTH_SCHEMA[crop];
@@ -552,6 +559,9 @@ function GrowthInputScreen() {
 // ③ 표식주 상세
 // ═══════════════════════════════════════════════════════════
 function GrowthMarkerDetailScreen() {
+  const { grData, standardCurve } = useGrowthData();
+  // eslint-disable-next-line no-shadow
+  const GR_DATA = grData, STANDARD_CURVE = standardCurve;
   const p = GR_DATA.markerPlants[0];
   const schema = GROWTH_SCHEMA[p.crop];
   const curve = STANDARD_CURVE[p.crop];
@@ -690,6 +700,9 @@ function GrowthMarkerDetailScreen() {
 // ④ 추이 · 히트맵
 // ═══════════════════════════════════════════════════════════
 function GrowthHeatmapScreen() {
+  const { grData, standardCurve } = useGrowthData();
+  // eslint-disable-next-line no-shadow
+  const GR_DATA = grData, STANDARD_CURVE = standardCurve;
   const [crop, setCrop] = useState('토마토');
   const schema = GROWTH_SCHEMA[crop].filter(s => s.type !== 'derived');
   const curve = STANDARD_CURVE[crop];
