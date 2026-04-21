@@ -1,9 +1,40 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { HQ } from '../../design/hq-shell';
 import { Avatar, Card, Dot, Icon, Pill, T, btnPrimary, btnSecondary, icons } from '../../design/primitives';
+import useLeaveStore from '../../stores/leaveStore';
+import useOvertimeStore from '../../stores/overtimeStore';
+import useEmployeeStore from '../../stores/employeeStore';
+import useAuthStore from '../../stores/authStore';
 
 // 관리팀(HQ) 나머지 5개 페이지
 // ① 승인 허브  ② 지점 관리  ③ 전사 직원  ④ 공지·정책  ⑤ 경영 지표
+
+// ─────── 공유 상수 / 헬퍼 ───────
+const BRANCH_KO = { busan: '부산LAB', jinju: '진주HUB', hadong: '하동HUB' };
+const BRANCH_COLOR = { busan: T.primary, jinju: T.success, hadong: T.warning };
+const ROLE_SHORT = { farm_admin: '지점장', supervisor: '반장', worker: '작업자', hr_admin: 'HR', master: '총괄', general: '총괄' };
+const LEAVE_TYPE_KO = { 연차: '연차 신청', 오전반차: '오전 반차 신청', 오후반차: '오후 반차 신청', 출장: '출장 신청', 대휴: '대휴 신청' };
+const CONTRACT_KO = { regular: '정규', contract: '계약', temporary: '임시', temp: '임시' };
+const CONTRACT_TONE = { 정규: 'success', 계약: 'info', 임시: 'muted' };
+const FARM_BRANCHES = ['busan', 'jinju', 'hadong'];
+
+function timeAgoHQ(iso) {
+  if (!iso) return '';
+  const diff = (Date.now() - new Date(iso).getTime()) / 1000;
+  if (diff < 3600) return `${Math.floor(diff / 60)}분 전`;
+  if (diff < 86400) return `${Math.floor(diff / 3600)}시간 전`;
+  if (diff < 172800) return '어제';
+  return `${Math.floor(diff / 86400)}일 전`;
+}
+
+const STATIC_PENDING = [
+  { id: 's1', _kind: 'static', status: 'pending', branch: '하동HUB', bc: T.warning, name: '최책임', role: '지점장', tag: '예산', tagTone: 'warning', type: '설비 구매 요청', detail: '환기팬 2대 (B동, C동 각 1대)', amount: '480만원', time: '42분 전', urgent: true },
+  { id: 's2', _kind: 'static', status: 'pending', branch: '진주HUB', bc: T.success, name: '박지점', role: '지점장', tag: '인사', tagTone: 'info', type: '신규 작업자 등록', detail: '임시 3명 · 5/1 ~ 5/31', amount: '', time: '1시간 전', urgent: false },
+  { id: 's3', _kind: 'static', status: 'pending', branch: '부산LAB', bc: T.primary, name: '김재배', role: '지점장', tag: '자재', tagTone: 'success', type: '농약 재고 발주', detail: '토마토 응애용 살충제 10L', amount: '120만원', time: '2시간 전', urgent: false },
+  { id: 's4', _kind: 'static', status: 'pending', branch: '진주HUB', bc: T.success, name: '박지점', role: '지점장', tag: '예산', tagTone: 'warning', type: '비료 추가 발주', detail: '유박비료 500kg', amount: '340만원', time: '4시간 전', urgent: false },
+  { id: 's5', _kind: 'static', status: 'pending', branch: '부산LAB', bc: T.primary, name: '김재배', role: '지점장', tag: '인사', tagTone: 'info', type: '계약직 재계약', detail: '홍길순, 김영수 · 7/1 시행', amount: '', time: '5시간 전', urgent: false },
+  { id: 's6', _kind: 'static', status: 'pending', branch: '하동HUB', bc: T.warning, name: '최책임', role: '지점장', tag: '자재', tagTone: 'success', type: '포장재 발주', detail: '방울토마토용 500g 박스 2000개', amount: '210만원', time: '어제', urgent: false },
+];
 
 // ─────── 공통 페이지 헤더 ───────
 const HQPageHeader = ({ subtitle, title, actions, tabs, activeTab, onTab }) => (
@@ -50,19 +81,67 @@ function HQApprovalsScreen() {
   const [tab, setTab] = useState('pending');
   const [selected, setSelected] = useState(new Set());
   const [filter, setFilter] = useState({ branch: 'all', type: 'all' });
+  const [approvalError, setApprovalError] = useState(null);
 
-  const items = [
-    { id: 1, branch: '부산LAB', bc: T.primary, name: '김재배', role: '지점장', tag: '근태', tagTone: 'primary', type: '연차 신청', detail: '4/23 (수) 1일 · 본인 사용', amount: '', time: '10분 전', urgent: false },
-    { id: 2, branch: '하동HUB', bc: T.warning, name: '최책임', role: '지점장', tag: '예산', tagTone: 'warning', type: '설비 구매 요청', detail: '환기팬 2대 (B동, C동 각 1대)', amount: '480만원', time: '42분 전', urgent: true },
-    { id: 3, branch: '진주HUB', bc: T.success, name: '박지점', role: '지점장', tag: '인사', tagTone: 'info', type: '신규 작업자 등록', detail: '임시 3명 · 5/1 ~ 5/31', amount: '', time: '1시간 전', urgent: false },
-    { id: 4, branch: '부산LAB', bc: T.primary, name: '김재배', role: '지점장', tag: '자재', tagTone: 'success', type: '농약 재고 발주', detail: '토마토 응애용 살충제 10L', amount: '120만원', time: '2시간 전', urgent: false },
-    { id: 5, branch: '하동HUB', bc: T.warning, name: '최책임', role: '지점장', tag: '근태', tagTone: 'primary', type: '연장근무 승인', detail: '오늘 2명 · 각 2시간', amount: '18만원', time: '3시간 전', urgent: false },
-    { id: 6, branch: '진주HUB', bc: T.success, name: '박지점', role: '지점장', tag: '예산', tagTone: 'warning', type: '비료 추가 발주', detail: '유박비료 500kg', amount: '340만원', time: '4시간 전', urgent: false },
-    { id: 7, branch: '부산LAB', bc: T.primary, name: '김재배', role: '지점장', tag: '인사', tagTone: 'info', type: '계약직 재계약', detail: '홍길순, 김영수 · 7/1 시행', amount: '', time: '5시간 전', urgent: false },
-    { id: 8, branch: '하동HUB', bc: T.warning, name: '최책임', role: '지점장', tag: '자재', tagTone: 'success', type: '포장재 발주', detail: '방울토마토용 500g 박스 2000개', amount: '210만원', time: '어제', urgent: false },
-  ];
+  const currentUser = useAuthStore(s => s.currentUser);
+  const leaveRequests = useLeaveStore(s => s.requests);
+  const farmReview = useLeaveStore(s => s.farmReview);
+  const otRequests = useOvertimeStore(s => s.requests);
+  const approveOT = useOvertimeStore(s => s.approveRequest);
+  const rejectOT = useOvertimeStore(s => s.rejectRequest);
+  const employees = useEmployeeStore(s => s.employees);
 
-  let filtered = items;
+  const empMap = useMemo(() => Object.fromEntries(employees.map(e => [e.id, e])), [employees]);
+
+  const realItems = useMemo(() => {
+    const leaveItems = leaveRequests.map(r => {
+      const emp = empMap[r.employeeId] || {};
+      return {
+        id: `leave_${r.id}`, _id: r.id, _kind: 'leave',
+        status: r.status,
+        branch: BRANCH_KO[emp.branch] || '—',
+        bc: BRANCH_COLOR[emp.branch] || T.text,
+        name: emp.name || '—',
+        role: ROLE_SHORT[emp.role] || '직원',
+        tag: '근태', tagTone: 'primary',
+        type: LEAVE_TYPE_KO[r.type] || '휴가 신청',
+        detail: r.date ? `${r.date.slice(5).replace('-', '/')} · ${r.reason || r.type || ''}` : '',
+        amount: '',
+        time: timeAgoHQ(r.createdAt),
+        urgent: false,
+      };
+    });
+    const otItems = otRequests.map(r => {
+      const emp = empMap[r.employeeId] || {};
+      const totalMin = (r.hours || 0) * 60 + (r.minutes || 0);
+      const hStr = totalMin >= 60 ? `${Math.floor(totalMin / 60)}시간` : '';
+      const mStr = totalMin % 60 ? ` ${totalMin % 60}분` : '';
+      return {
+        id: `ot_${r.id}`, _id: r.id, _kind: 'ot',
+        status: r.status,
+        branch: BRANCH_KO[emp.branch] || '—',
+        bc: BRANCH_COLOR[emp.branch] || T.text,
+        name: emp.name || '—',
+        role: ROLE_SHORT[emp.role] || '직원',
+        tag: '근태', tagTone: 'primary',
+        type: '연장근무 승인',
+        detail: r.date ? `${r.date.slice(5).replace('-', '/')} · ${hStr}${mStr}` : '',
+        amount: '',
+        time: timeAgoHQ(r.createdAt),
+        urgent: false,
+      };
+    });
+    return [...leaveItems, ...otItems];
+  }, [leaveRequests, otRequests, empMap]);
+
+  const pendingItems = [...realItems.filter(i => i.status === 'pending'), ...STATIC_PENDING];
+  const approvedItems = realItems.filter(i => i.status === 'approved');
+  const rejectedItems = realItems.filter(i => i.status === 'rejected');
+  const urgentCount = pendingItems.filter(i => i.urgent).length;
+
+  const tabItems = tab === 'pending' ? pendingItems : tab === 'approved' ? approvedItems : tab === 'rejected' ? rejectedItems : [];
+
+  let filtered = tabItems;
   if (filter.branch !== 'all') filtered = filtered.filter(i => i.branch === filter.branch);
   if (filter.type !== 'all') filtered = filtered.filter(i => i.tag === filter.type);
 
@@ -73,6 +152,30 @@ function HQApprovalsScreen() {
   };
   const toggleAll = () => setSelected(selected.size === filtered.length ? new Set() : new Set(filtered.map(i => i.id)));
 
+  const handleApprove = async (item) => {
+    if (item._kind === 'static') return;
+    setApprovalError(null);
+    if (item._kind === 'leave') {
+      const ok = await farmReview(item._id, true, currentUser?.id);
+      if (!ok) setApprovalError('권한 없음 또는 서버 오류. 마스터 계정으로 로그인하세요.');
+    } else if (item._kind === 'ot') {
+      const { error } = await approveOT(item._id, currentUser?.id);
+      if (error) setApprovalError('권한 없음 또는 서버 오류. 마스터 계정으로 로그인하세요.');
+    }
+  };
+
+  const handleReject = async (item) => {
+    if (item._kind === 'static') return;
+    setApprovalError(null);
+    if (item._kind === 'leave') {
+      const ok = await farmReview(item._id, false, currentUser?.id);
+      if (!ok) setApprovalError('권한 없음 또는 서버 오류. 마스터 계정으로 로그인하세요.');
+    } else if (item._kind === 'ot') {
+      const { error } = await rejectOT(item._id, currentUser?.id);
+      if (error) setApprovalError('권한 없음 또는 서버 오류. 마스터 계정으로 로그인하세요.');
+    }
+  };
+
   return (
     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
       <HQPageHeader
@@ -80,9 +183,9 @@ function HQApprovalsScreen() {
         title="승인 허브"
         actions={<>{btnSecondary('내보내기', icons.chart)}{btnPrimary('규칙 설정', icons.settings)}</>}
         tabs={[
-          { id: 'pending', label: '대기 중', count: 12 },
-          { id: 'approved', label: '승인됨', count: 47 },
-          { id: 'rejected', label: '반려', count: 3 },
+          { id: 'pending', label: '대기 중', count: pendingItems.length },
+          { id: 'approved', label: '승인됨', count: approvedItems.length },
+          { id: 'rejected', label: '반려', count: rejectedItems.length },
           { id: 'rules', label: '승인 규칙' },
         ]}
         activeTab={tab}
@@ -93,8 +196,8 @@ function HQApprovalsScreen() {
         {/* 요약 KPI */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12 }}>
           {[
-            { l: '대기 중', v: 12, sub: '평균 응답 2.4h', tone: T.warning, bg: T.warningSoft },
-            { l: '긴급', v: 2, sub: '3시간 이상 경과 1건', tone: T.danger, bg: T.dangerSoft },
+            { l: '대기 중', v: pendingItems.length, sub: `긴급 ${urgentCount}건 포함`, tone: T.warning, bg: T.warningSoft },
+            { l: '긴급', v: urgentCount, sub: urgentCount > 0 ? '즉시 처리 필요' : '없음', tone: T.danger, bg: T.dangerSoft },
             { l: '이번 주 승인액', v: '1,840만원', sub: '예산 대비 22%', tone: HQ.accent, bg: HQ.accentSoft },
             { l: '평균 처리 시간', v: '3.2h', sub: '▼ 전주 대비 -0.4h', tone: T.success, bg: T.successSoft },
           ].map((k, i) => (
@@ -110,6 +213,12 @@ function HQApprovalsScreen() {
             </Card>
           ))}
         </div>
+
+        {approvalError && (
+          <div style={{ padding: '10px 14px', background: T.dangerSoft, borderRadius: 8, fontSize: 12, color: T.danger, fontWeight: 600 }}>
+            {approvalError}
+          </div>
+        )}
 
         {/* 필터 + 선택 액션 */}
         <Card pad={0}>
@@ -196,8 +305,8 @@ function HQApprovalsScreen() {
                   <td style={{ padding: '12px 8px', fontSize: 11, color: T.mutedSoft }}>{r.time}</td>
                   <td style={{ padding: '12px 16px', textAlign: 'right' }}>
                     <div style={{ display: 'inline-flex', gap: 6 }}>
-                      <button style={{ padding: '5px 12px', borderRadius: 6, border: `1px solid ${T.border}`, background: T.surface, color: T.muted, fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>반려</button>
-                      <button style={{ padding: '5px 12px', borderRadius: 6, border: 0, background: HQ.accent, color: '#fff', fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>승인</button>
+                      <button onClick={() => handleReject(r)} style={{ padding: '5px 12px', borderRadius: 6, border: `1px solid ${T.border}`, background: T.surface, color: T.muted, fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>반려</button>
+                      <button onClick={() => handleApprove(r)} style={{ padding: '5px 12px', borderRadius: 6, border: 0, background: HQ.accent, color: '#fff', fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>승인</button>
                       <button style={{ padding: '5px 8px', borderRadius: 6, border: `1px solid ${T.border}`, background: T.surface, color: T.mutedSoft, fontSize: 11, cursor: 'pointer' }}>⋯</button>
                     </div>
                   </td>
@@ -351,19 +460,34 @@ function HQBranchesScreen() {
 // ═══════════════════════════════════════════════════════════
 function HQEmployeesScreen() {
   const [tab, setTab] = useState('all');
+  const employees = useEmployeeStore(s => s.employees);
 
-  const employees = [
-    { name: '김재배', role: '지점장', branch: '부산LAB', bc: T.primary, status: 'active', joined: '2021.03', type: '정규', avatar: 'blue' },
-    { name: '박지점', role: '지점장', branch: '진주HUB', bc: T.success, status: 'active', joined: '2023.05', type: '정규', avatar: 'emerald' },
-    { name: '최책임', role: '지점장', branch: '하동HUB', bc: T.warning, status: 'active', joined: '2024.02', type: '정규', avatar: 'amber' },
-    { name: '이대한', role: '총괄', branch: '본사', bc: T.text, status: 'active', joined: '2020.01', type: '정규', avatar: 'slate' },
-    { name: '홍수진', role: '작업반장', branch: '부산LAB', bc: T.primary, status: 'active', joined: '2022.08', type: '정규', avatar: 'rose' },
-    { name: '김영수', role: '작업자', branch: '부산LAB', bc: T.primary, status: 'active', joined: '2023.02', type: '정규', avatar: 'blue' },
-    { name: '이강모', role: '작업자', branch: '하동HUB', bc: T.warning, status: 'leave', joined: '2023.09', type: '정규', avatar: 'amber' },
-    { name: '정태민', role: '작업자', branch: '진주HUB', bc: T.success, status: 'active', joined: '2024.01', type: '계약', avatar: 'emerald' },
-    { name: '윤서연', role: '작업자', branch: '부산LAB', bc: T.primary, status: 'active', joined: '2024.03', type: '계약', avatar: 'rose' },
-    { name: '장민호', role: '작업자', branch: '하동HUB', bc: T.warning, status: 'active', joined: '2025.02', type: '임시', avatar: 'amber' },
-  ];
+  const ROLE_KO_FULL = { farm_admin: '지점장', supervisor: '반장', worker: '작업자', hr_admin: 'HR 관리', master: '총괄', general: '총괄' };
+  const AVATAR_COLOR = { busan: 'blue', jinju: 'emerald', hadong: 'amber' };
+
+  const busanCount = employees.filter(e => e.branch === 'busan').length;
+  const jinjuCount = employees.filter(e => e.branch === 'jinju').length;
+  const hadongCount = employees.filter(e => e.branch === 'hadong').length;
+  const hqCount = employees.filter(e => !FARM_BRANCHES.includes(e.branch)).length;
+
+  const tabFiltered = employees.filter(e => {
+    if (tab === 'all') return true;
+    if (tab === 'hq') return !FARM_BRANCHES.includes(e.branch);
+    return e.branch === tab;
+  });
+
+  const activeCount = employees.filter(e => e.isActive !== false).length;
+  const leaveCount = employees.filter(e => e.isActive === false).length;
+  const regularCount = employees.filter(e => e.contractType === 'regular').length;
+  const nonRegularCount = employees.length - regularCount;
+
+  const fmtJoined = (d) => {
+    if (!d) return '—';
+    const s = String(d);
+    return s.length >= 7 ? s.slice(0, 7).replace('-', '.') : s;
+  };
+
+  const page = tabFiltered.slice(0, 10);
 
   return (
     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
@@ -372,11 +496,11 @@ function HQEmployeesScreen() {
         title="전사 직원"
         actions={<>{btnSecondary('CSV 내보내기', icons.chart)}{btnPrimary('직원 추가', icons.plus)}</>}
         tabs={[
-          { id: 'all', label: '전체', count: 60 },
-          { id: 'busan', label: '부산LAB', count: 20 },
-          { id: 'jinju', label: '진주HUB', count: 14 },
-          { id: 'hadong', label: '하동HUB', count: 12 },
-          { id: 'hq', label: '본사', count: 14 },
+          { id: 'all', label: '전체', count: employees.length },
+          { id: 'busan', label: '부산LAB', count: busanCount },
+          { id: 'jinju', label: '진주HUB', count: jinjuCount },
+          { id: 'hadong', label: '하동HUB', count: hadongCount },
+          { id: 'hq', label: '본사', count: hqCount },
         ]}
         activeTab={tab}
         onTab={setTab}
@@ -385,9 +509,9 @@ function HQEmployeesScreen() {
         {/* KPI */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12 }}>
           {[
-            { l: '총 인원', v: 60, u: '명', sub: '활성 58 · 휴직 2' },
-            { l: '정규직', v: 42, u: '명', sub: '70%' },
-            { l: '계약/임시', v: 18, u: '명', sub: '30%' },
+            { l: '총 인원', v: employees.length, u: '명', sub: `활성 ${activeCount} · 비활성 ${leaveCount}` },
+            { l: '정규직', v: regularCount, u: '명', sub: employees.length > 0 ? `${Math.round(regularCount / employees.length * 100)}%` : '—' },
+            { l: '계약/임시', v: nonRegularCount, u: '명', sub: employees.length > 0 ? `${Math.round(nonRegularCount / employees.length * 100)}%` : '—' },
             { l: '이번 달 입사', v: 4, u: '명', sub: '퇴사 1건' },
           ].map((k, i) => (
             <Card key={i} pad={16}>
@@ -433,38 +557,47 @@ function HQEmployeesScreen() {
               </tr>
             </thead>
             <tbody>
-              {employees.map((e, i) => (
-                <tr key={i} style={{ borderBottom: `1px solid ${T.borderSoft}` }}>
-                  <td style={{ padding: '10px 16px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                      <Avatar name={e.name[0]} size={32} c={e.avatar} />
-                      <div style={{ fontSize: 13, fontWeight: 600, color: T.text }}>{e.name}</div>
-                    </div>
-                  </td>
-                  <td style={{ padding: '10px 8px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: T.text, fontWeight: 500 }}>
-                      <Dot c={e.bc} />{e.branch}
-                    </div>
-                  </td>
-                  <td style={{ padding: '10px 8px', fontSize: 12, color: T.muted }}>
-                    {e.role === '총괄' || e.role === '지점장' ? <Pill tone="primary" size="sm">{e.role}</Pill> : e.role}
-                  </td>
-                  <td style={{ padding: '10px 8px', fontSize: 12, color: T.muted }}>
-                    <Pill tone={e.type === '정규' ? 'success' : e.type === '계약' ? 'info' : 'muted'} size="sm">{e.type}</Pill>
-                  </td>
-                  <td style={{ padding: '10px 8px', fontSize: 12, color: T.muted }}>{e.joined}</td>
-                  <td style={{ padding: '10px 8px' }}>
-                    {e.status === 'active' ? <Pill tone="success" size="sm">재직</Pill> : <Pill tone="warning" size="sm">휴직</Pill>}
-                  </td>
-                  <td style={{ padding: '10px 16px', textAlign: 'right' }}>
-                    <button style={{ padding: '4px 10px', borderRadius: 6, border: `1px solid ${T.border}`, background: T.surface, color: T.muted, fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>상세</button>
-                  </td>
-                </tr>
-              ))}
+              {page.map((e, i) => {
+                const branchKo = BRANCH_KO[e.branch] || (e.branch ? e.branch : '본사');
+                const bc = BRANCH_COLOR[e.branch] || T.text;
+                const roleKo = ROLE_KO_FULL[e.role] || e.role || '직원';
+                const contractKo = CONTRACT_KO[e.contractType] || e.contractType || '—';
+                const contractTone = CONTRACT_TONE[contractKo] || 'muted';
+                const avatarColor = AVATAR_COLOR[e.branch] || 'slate';
+                const isActive = e.isActive !== false;
+                return (
+                  <tr key={e.id || i} style={{ borderBottom: `1px solid ${T.borderSoft}` }}>
+                    <td style={{ padding: '10px 16px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                        <Avatar name={(e.name || '?')[0]} size={32} c={avatarColor} />
+                        <div style={{ fontSize: 13, fontWeight: 600, color: T.text }}>{e.name}</div>
+                      </div>
+                    </td>
+                    <td style={{ padding: '10px 8px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: T.text, fontWeight: 500 }}>
+                        <Dot c={bc} />{branchKo}
+                      </div>
+                    </td>
+                    <td style={{ padding: '10px 8px', fontSize: 12, color: T.muted }}>
+                      {e.role === 'master' || e.role === 'farm_admin' ? <Pill tone="primary" size="sm">{roleKo}</Pill> : roleKo}
+                    </td>
+                    <td style={{ padding: '10px 8px', fontSize: 12, color: T.muted }}>
+                      <Pill tone={contractTone} size="sm">{contractKo}</Pill>
+                    </td>
+                    <td style={{ padding: '10px 8px', fontSize: 12, color: T.muted }}>{fmtJoined(e.hireDate)}</td>
+                    <td style={{ padding: '10px 8px' }}>
+                      {isActive ? <Pill tone="success" size="sm">재직</Pill> : <Pill tone="warning" size="sm">휴직</Pill>}
+                    </td>
+                    <td style={{ padding: '10px 16px', textAlign: 'right' }}>
+                      <button style={{ padding: '4px 10px', borderRadius: 6, border: `1px solid ${T.border}`, background: T.surface, color: T.muted, fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>상세</button>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
           <div style={{ padding: '12px 16px', borderTop: `1px solid ${T.borderSoft}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 11, color: T.mutedSoft }}>
-            <span>총 60명 중 1-10</span>
+            <span>총 {tabFiltered.length}명 중 1-{Math.min(10, tabFiltered.length)}</span>
             <div style={{ display: 'flex', gap: 4 }}>
               {['←', '1', '2', '3', '4', '5', '6', '→'].map((p, i) => (
                 <span key={i} style={{
