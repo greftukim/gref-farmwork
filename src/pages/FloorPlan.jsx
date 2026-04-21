@@ -1,10 +1,8 @@
 import React, { useState, useContext, createContext } from 'react';
-import { ACTIVE_ASSIGNMENTS, FIELD_STATE, GOL_LENGTH_M, HOUSE_CONFIG, TASK_TYPES, WORKERS_MAP, WORKER_SPEED_FACTOR } from '../data/floor';
 import { Card, Pill, T, btnSecondary, icons } from '../design/primitives';
 import { useFloorData } from '../hooks/useFloorData';
 
-const FLOOR_FALLBACK = { ACTIVE_ASSIGNMENTS, FIELD_STATE, GOL_LENGTH_M, HOUSE_CONFIG, TASK_TYPES, WORKERS_MAP, WORKER_SPEED_FACTOR };
-const FloorCtx = createContext(FLOOR_FALLBACK);
+const FloorCtx = createContext({ HOUSE_CONFIG: [], FIELD_STATE: { timestamp: '-', gols: [] }, TASK_TYPES: {}, WORKERS_MAP: [], WORKER_SPEED_FACTOR: {}, GOL_LENGTH_M: 20, ACTIVE_ASSIGNMENTS: [] });
 
 // ═══════════════════════════════════════════════════════════
 // 온실 평면도 + QR 추적 + 작업속도 기반 위치 예측
@@ -318,14 +316,17 @@ function GreenhousePlan({ house, onSelectGol, selectedGol }) {
 
 // ─────── 메인 화면 ───────
 function FloorPlanScreen() {
-  const { data: floorData } = useFloorData();
+  const { data: floorData, loading } = useFloorData();
   const { HOUSE_CONFIG, FIELD_STATE, TASK_TYPES, ACTIVE_ASSIGNMENTS, WORKERS_MAP, WORKER_SPEED_FACTOR, GOL_LENGTH_M } = floorData;
   const [house, setHouse] = useState('1cmp');
   const [selectedGol, setSelectedGol] = useState(null);
   const [timeMode, setTimeMode] = useState('live');
   const [historyTime, setHistoryTime] = useState(625);
 
-  const cfg = HOUSE_CONFIG.find(h => h.id === house);
+  if (loading) return <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: T.mutedSoft, fontSize: 14 }}>로딩 중...</div>;
+  if (!HOUSE_CONFIG.length) return <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: T.mutedSoft, fontSize: 14 }}>데이터가 없습니다</div>;
+
+  const cfg = HOUSE_CONFIG.find(h => h.id === house) ?? HOUSE_CONFIG[0];
   const gols = FIELD_STATE.gols.filter(g => g.house === house);
   const workingCount = gols.filter(g => g.currentWorker).length;
   const completedCount = gols.filter(g => g.progress === 100).length;
