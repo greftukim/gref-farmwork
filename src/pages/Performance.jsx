@@ -506,7 +506,7 @@ function BranchPerformanceScreen() {
   const [showBottom, setShowBottom] = useState(false);
   return <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: T.mutedSoft, fontSize: 14 }}>데이터가 없습니다</div>;
   // eslint-disable-next-line no-unreachable
-  const workers = PERF_DATA.workers.filter(w => w.branch === 'busan');
+  let workers = PERF_DATA.workers.filter(w => w.branch === 'busan');
   if (crop !== '전체') workers = workers.filter(w => w.crop === crop);
 
   const byEff = [...workers].sort((a, b) => b.efficiency - a.efficiency);
