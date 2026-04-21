@@ -106,7 +106,7 @@ const Avatar = ({ name = '김', size = 32, c = 'indigo' }) => {
 };
 
 // ─────── 관리자 레이아웃 (공용) ───────
-const Sidebar = ({ active = 'dashboard' }) => {
+const Sidebar = ({ active = 'dashboard', onNavigate }) => {
   const items = [
     { id: 'dashboard', label: '대시보드', icon: icons.dashboard },
     { id: 'employees', label: '직원 관리', icon: icons.users },
@@ -144,7 +144,7 @@ const Sidebar = ({ active = 'dashboard' }) => {
         {items.map(i => {
           const on = i.id === active;
           return (
-            <div key={i.id} style={{
+            <div key={i.id} onClick={() => onNavigate?.(i.id)} style={{
               display: 'flex', alignItems: 'center', gap: 10,
               padding: '9px 12px', borderRadius: 8, cursor: 'pointer',
               background: on ? T.primarySoft : 'transparent',

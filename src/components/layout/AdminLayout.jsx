@@ -1,13 +1,14 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Outlet } from 'react-router-dom';
-import Sidebar from './Sidebar';
-import TopBar from './TopBar';
+import { Outlet, useNavigate, useLocation } from 'react-router-dom';
+import { Sidebar, T } from '../../design/primitives';
+import { HQSidebar, HQTopBar } from '../../design/hq-shell';
 import AdminBottomNav from './AdminBottomNav';
 import ToastContainer from '../common/ToastContainer';
 import useDataLoader from '../../hooks/useDataLoader';
 import useRealtimeSubscriptions from '../../hooks/useRealtimeSubscriptions';
 import useNotificationStore from '../../stores/notificationStore';
 import useAuthStore from '../../stores/authStore';
+import { useTeamStore } from '../../stores/team';
 import {
   ensureFCMServiceWorker,
   requestNotificationPermission,
@@ -20,12 +21,38 @@ import ChatbotPanel from '../chatbot/ChatbotPanel';
 
 const SESSION_KEY = 'pwa_guide_shown';
 
+const FARM_ROUTES = {
+  dashboard: '/admin',
+  employees: '/admin/employees',
+  schedule: '/admin/schedule',
+  leave: '/admin/leave',
+  tasks: '/admin/tasks',
+  floor: '/admin',
+  growth: '/admin/survey',
+  performance: '/admin/work-stats',
+  stats: '/admin/stats',
+  notice: '/admin/notices',
+};
+
+function getActiveId(pathname) {
+  if (pathname === '/admin') return 'dashboard';
+  const entries = Object.entries(FARM_ROUTES).filter(([, v]) => v !== '/admin');
+  for (const [id, path] of entries) {
+    if (pathname.startsWith(path)) return id;
+  }
+  return 'dashboard';
+}
+
 export default function AdminLayout() {
   useDataLoader();
 
+  const team = useTeamStore((s) => s.team);
   const addNotification = useNotificationStore((s) => s.addNotification);
   const currentUser = useAuthStore((s) => s.currentUser);
   const [guideType, setGuideType] = useState(null);
+  const navigate = useNavigate();
+  const location = useLocation();
+  const activeId = getActiveId(location.pathname);
 
   const handleNotification = useCallback((n) => {
     addNotification(n);
@@ -80,15 +107,24 @@ export default function AdminLayout() {
     return unsub;
   }, [addNotification]);
 
+  const handleNavigate = (id) => {
+    const path = FARM_ROUTES[id];
+    if (path) navigate(path);
+  };
+
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* 사이드바: 내부에서 hidden md:flex 처리, fixed 포지셔닝 */}
-      <Sidebar />
-      {/* 메인 콘텐츠: md 이상에서 사이드바 100px 오프셋 */}
-      <div className="flex flex-col min-h-screen md:ml-[100px]">
-        <TopBar />
-        {/* 모바일: 하단 네비 여백, 데스크탑: 기본 패딩 */}
-        <main className="flex-1 p-4 md:p-6 pb-24 md:pb-6">
+    <div style={{ display: 'flex', height: '100vh', overflow: 'hidden', fontFamily: 'Pretendard, system-ui', background: T.bg }}>
+      {/* md 미만: 사이드바 숨김 (AdminBottomNav 사용) */}
+      <div className="hidden md:flex">
+        {team === 'farm' ? (
+          <Sidebar active={activeId} onNavigate={handleNavigate} />
+        ) : (
+          <HQSidebar active={activeId} />
+        )}
+      </div>
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0, overflow: 'hidden' }}>
+        {team === 'hq' && <HQTopBar title="본사 대시보드" subtitle="관리팀" />}
+        <main style={{ flex: 1, overflow: 'auto' }} className="pb-24 md:pb-0">
           <Outlet />
         </main>
       </div>
@@ -99,8 +135,6 @@ export default function AdminLayout() {
       {/*
         챗봇 영역.
         z-index 값으로 레이어 보장: FAB z-[60] < Panel z-[70] < Toast z-[100].
-        DOM append 순서는 일관성 목적일 뿐, z-index 값이 시각 우선순위 결정.
-        렌더 순서: FAB 먼저, Panel 다음 (구조상 의미 없음, 가독성 관례).
       */}
       <ChatbotFab />
       <ChatbotPanel />
