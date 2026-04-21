@@ -1,6 +1,11 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
-import { GR_DATA, GROWTH_SCHEMA, STANDARD_CURVE } from '../data/growth';
+import { GROWTH_SCHEMA } from '../data/growth';
+
+const EMPTY_GR_DATA = {
+  currentWeek: 1, calendarWeek: '-', date: '-',
+  crops: [], timeseries: {}, markerPlants: [], incidents: [],
+};
 
 function buildStandardCurve(rows) {
   const result = {};
@@ -55,9 +60,9 @@ function buildMarkerPlants(plants, surveys) {
 
 export function useGrowthData() {
   const [result, setResult] = useState({
-    grData: GR_DATA,
+    grData: EMPTY_GR_DATA,
     schema: GROWTH_SCHEMA,
-    standardCurve: STANDARD_CURVE,
+    standardCurve: {},
     loading: true,
   });
 
@@ -77,11 +82,9 @@ export function useGrowthData() {
 
         if (scRes.error || mpRes.error) throw scRes.error || mpRes.error;
 
-        const standardCurve = scRes.data.length > 0
-          ? buildStandardCurve(scRes.data)
-          : STANDARD_CURVE;
+        const standardCurve = buildStandardCurve(scRes.data);
 
-        let grData = GR_DATA;
+        let grData = EMPTY_GR_DATA;
         if (mpRes.data.length > 0) {
           const plantIds = mpRes.data.map(p => p.id);
           const gsRes = await supabase
@@ -92,16 +95,13 @@ export function useGrowthData() {
 
           if (!gsRes.error) {
             const markerPlants = buildMarkerPlants(mpRes.data, gsRes.data ?? []);
-            grData = {
-              ...GR_DATA,
-              markerPlants: markerPlants.length > 0 ? markerPlants : GR_DATA.markerPlants,
-            };
+            grData = { ...EMPTY_GR_DATA, markerPlants };
           }
         }
 
         setResult({ grData, schema: GROWTH_SCHEMA, standardCurve, loading: false });
       } catch {
-        setResult({ grData: GR_DATA, schema: GROWTH_SCHEMA, standardCurve: STANDARD_CURVE, loading: false });
+        setResult({ grData: EMPTY_GR_DATA, schema: GROWTH_SCHEMA, standardCurve: {}, loading: false });
       }
     }
     load();

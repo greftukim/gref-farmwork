@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { GROWTH_SCHEMA, GR_DATA, STANDARD_CURVE } from '../data/growth';
+import { GROWTH_SCHEMA } from '../data/growth';
 import { Card, Icon, Pill, T, btnSecondary, icons } from '../design/primitives';
 import { useGrowthData } from '../hooks/useGrowthData';
 
@@ -15,10 +15,10 @@ const pct = (actual, target) => target ? Math.round(actual / target * 100) : 0;
 // ① 생육 대시보드
 // ═══════════════════════════════════════════════════════════
 function GrowthDashboardScreen() {
-  const { grData, standardCurve } = useGrowthData();
-  // eslint-disable-next-line no-shadow
-  const GR_DATA = grData, STANDARD_CURVE = standardCurve;
+  const { grData: GR_DATA, standardCurve: STANDARD_CURVE, loading } = useGrowthData();
   const [crop, setCrop] = useState('토마토');
+  if (loading) return <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: T.mutedSoft, fontSize: 14 }}>로딩 중...</div>;
+  if (!GR_DATA.crops?.length) return <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: T.mutedSoft, fontSize: 14 }}>데이터가 없습니다</div>;
   const navigate = useNavigate();
   const weekIdx = GR_DATA.currentWeek - 1;
   const current = GR_DATA.crops.find(c => c.name === crop);
@@ -348,11 +348,11 @@ function GrowthDashboardScreen() {
 // ② 주별 입력 폼
 // ═══════════════════════════════════════════════════════════
 function GrowthInputScreen() {
-  const { grData, standardCurve } = useGrowthData();
-  // eslint-disable-next-line no-shadow
-  const GR_DATA = grData, STANDARD_CURVE = standardCurve;
+  const { grData: GR_DATA, standardCurve: STANDARD_CURVE, loading } = useGrowthData();
   const [crop, setCrop] = useState('토마토');
-  const [selectedWeek, setSelectedWeek] = useState(GR_DATA.currentWeek);
+  const [selectedWeek, setSelectedWeek] = useState(1);
+  if (loading) return <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: T.mutedSoft, fontSize: 14 }}>로딩 중...</div>;
+  if (!GR_DATA.markerPlants?.length) return <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: T.mutedSoft, fontSize: 14 }}>데이터가 없습니다</div>;
   const schema = GROWTH_SCHEMA[crop];
   const plants = GR_DATA.markerPlants.filter(p => p.crop === crop);
   const curve = STANDARD_CURVE[crop];
@@ -561,9 +561,9 @@ function GrowthInputScreen() {
 // ③ 표식주 상세
 // ═══════════════════════════════════════════════════════════
 function GrowthMarkerDetailScreen() {
-  const { grData, standardCurve } = useGrowthData();
-  // eslint-disable-next-line no-shadow
-  const GR_DATA = grData, STANDARD_CURVE = standardCurve;
+  const { grData: GR_DATA, standardCurve: STANDARD_CURVE, loading } = useGrowthData();
+  if (loading) return <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: T.mutedSoft, fontSize: 14 }}>로딩 중...</div>;
+  if (!GR_DATA.markerPlants?.length) return <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: T.mutedSoft, fontSize: 14 }}>데이터가 없습니다</div>;
   const p = GR_DATA.markerPlants[0];
   const schema = GROWTH_SCHEMA[p.crop];
   const curve = STANDARD_CURVE[p.crop];
@@ -702,10 +702,10 @@ function GrowthMarkerDetailScreen() {
 // ④ 추이 · 히트맵
 // ═══════════════════════════════════════════════════════════
 function GrowthHeatmapScreen() {
-  const { grData, standardCurve } = useGrowthData();
-  // eslint-disable-next-line no-shadow
-  const GR_DATA = grData, STANDARD_CURVE = standardCurve;
+  const { grData: GR_DATA, standardCurve: STANDARD_CURVE, loading } = useGrowthData();
   const [crop, setCrop] = useState('토마토');
+  if (loading) return <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: T.mutedSoft, fontSize: 14 }}>로딩 중...</div>;
+  if (!GR_DATA.markerPlants?.length) return <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: T.mutedSoft, fontSize: 14 }}>데이터가 없습니다</div>;
   const schema = GROWTH_SCHEMA[crop].filter(s => s.type !== 'derived');
   const curve = STANDARD_CURVE[crop];
   const plants = GR_DATA.markerPlants.filter(p => p.crop === crop);
