@@ -70,6 +70,8 @@ import IssuePage from './pages/worker/IssuePage';
 import EmergencyCallPage from './pages/worker/EmergencyCallPage';
 import WorkerNoticePage from './pages/worker/WorkerNoticePage';
 import WorkerMorePage from './pages/worker/WorkerMorePage';
+import { MobileHomeScreen, MobileCheckInScreen, MobileTasksScreen, MobileAttendanceScreen, MobileProfileScreen } from './pages/mobile/_screens';
+import { MobileGrowthScreen } from './pages/mobile/Growth';
 
 function HydrationGate({ children }) {
   const [hydrated, setHydrated] = useState(useAuthStore.persist.hasHydrated());
@@ -205,6 +207,12 @@ export default function App() {
             <Route path="emergency" element={<EmergencyCallPage />} />
             <Route path="notices" element={<WorkerNoticePage />} />
             <Route path="more" element={<WorkerMorePage />} />
+            <Route path="m/home" element={<MobileHomeScreen />} />
+            <Route path="m/checkin" element={<MobileCheckInScreen />} />
+            <Route path="m/tasks" element={<MobileTasksScreen />} />
+            <Route path="m/attendance" element={<MobileAttendanceScreen />} />
+            <Route path="m/profile" element={<MobileProfileScreen />} />
+            <Route path="m/growth" element={<MobileGrowthScreen />} />
           </Route>
 
           <Route path="*" element={<AppRedirect />} />
