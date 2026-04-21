@@ -14,23 +14,6 @@ const FARM_BRANCHES = ['busan', 'jinju', 'hadong'];
 const BRANCH_ACCENT = { busan: T.primary, jinju: T.success, hadong: T.warning };
 const BRANCH_ACCENT_SOFT = { busan: T.primarySoft, jinju: T.successSoft, hadong: T.warningSoft };
 const BRANCH_NAMES = { busan: '부산LAB', jinju: '진주HUB', hadong: '하동HUB' };
-const HARVEST_FALLBACK = {
-  busan: { harvest: 1240, harvestT: 1200, tbm: 100 },
-  jinju:  { harvest: 980,  harvestT: 1100, tbm: 92 },
-  hadong: { harvest: 760,  harvestT: 950,  tbm: 75 },
-};
-const CROP_FALLBACK = {
-  busan:  [{ name: '토마토', v: 580, t: 560, c: '#E11D48' }, { name: '딸기', v: 360, t: 360, c: '#EC4899' }, { name: '파프리카', v: 300, t: 280, c: '#F59E0B' }],
-  jinju:  [{ name: '오이', v: 620, t: 700, c: '#10B981' }, { name: '애호박', v: 360, t: 400, c: '#84CC16' }],
-  hadong: [{ name: '방울토마토', v: 480, t: 600, c: '#F97316' }, { name: '고추', v: 280, t: 350, c: '#DC2626' }],
-};
-const STATIC_NON_GEUNTAE = [
-  { id: 'sng-1', branch: '하동HUB', bc: T.warning,  name: '최책임', tag: '예산', tagTone: 'warning', type: '설비 구매 요청',  detail: '환기팬 2대 · 480만원',  time: '42분 전',  urgent: true,  _table: null },
-  { id: 'sng-2', branch: '진주HUB', bc: T.success,  name: '박지점', tag: '인사', tagTone: 'info',    type: '신규 작업자 등록', detail: '임시 3명 · 5/1~31',  time: '1시간 전', urgent: false, _table: null },
-  { id: 'sng-3', branch: '부산LAB', bc: T.primary,  name: '김재배', tag: '자재', tagTone: 'success', type: '농약 재고 발주',   detail: '총 120만원',         time: '2시간 전', urgent: false, _table: null },
-  { id: 'sng-4', branch: '진주HUB', bc: T.success,  name: '박지점', tag: '예산', tagTone: 'warning', type: '비료 추가 발주',   detail: '총 340만원',         time: '4시간 전', urgent: false, _table: null },
-  { id: 'sng-5', branch: '부산LAB', bc: T.primary,  name: '김재배', tag: '인사', tagTone: 'info',    type: '계약직 재계약',   detail: '2명 · 7/1 시행',    time: '5시간 전', urgent: false, _table: null },
-];
 const LEAVE_TYPE_KO = {
   annual: '연차 신청', half_am: '오전 반차', half_pm: '오후 반차',
   special: '특별휴가', sick: '병가',
@@ -87,7 +70,6 @@ function HQDashboardInteractive() {
     const late = lateRecs.length;
     const rate = workers ? Math.round((checkedIn / workers) * 100) : 0;
     const mgr = branchEmps.find((e) => e.role === 'farm_admin' && !e.name.includes('팀'))?.name ?? '-';
-    const fb = HARVEST_FALLBACK[code] ?? { harvest: 0, harvestT: 0, tbm: 0 };
     return {
       code,
       name: branch?.name ?? BRANCH_NAMES[code] ?? code,
@@ -96,13 +78,13 @@ function HQDashboardInteractive() {
       checkedIn,
       late,
       rate,
-      harvest: fb.harvest,
-      harvestT: fb.harvestT,
-      tbm: fb.tbm,
+      harvest: 0,
+      harvestT: 0,
+      tbm: 0,
       accent: BRANCH_ACCENT[code] ?? T.muted,
       accentSoft: BRANCH_ACCENT_SOFT[code] ?? T.bg,
       status: workers > 0 && rate < 85 ? 'alert' : 'active',
-      crops: CROP_FALLBACK[code] ?? [],
+      crops: [],
     };
   }), [branchList, employees, todayRecords, empMap]);
 
@@ -154,7 +136,7 @@ function HQDashboardInteractive() {
         };
       });
     const geuntae = [...leaves, ...ots].sort((a, b) => b._sk - a._sk);
-    return [...geuntae, ...STATIC_NON_GEUNTAE];
+    return geuntae;
   }, [leaveRequests, overtimeRequests, empMap]);
 
   const handleApprove = useCallback(async (r) => {

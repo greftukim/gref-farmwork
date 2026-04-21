@@ -5,31 +5,6 @@ import { supabase } from '../../lib/supabase';
 
 // HQ 지점별 생육 비교 위젯 — 3개 지점 × 작물 × 건전도/편차
 
-// 정적 fallback — 실데이터 로드 실패 시 표시
-const HQ_GR_DATA = {
-  branches: [
-    {
-      id: 'b1', name: '부산LAB', crops: [
-        { name: '토마토', health: 92, dev: +2, week: 8, plants: 8, open: 1 },
-        { name: '딸기', health: 88, dev: -4, week: 6, plants: 6, open: 0 },
-        { name: '파프리카', health: 84, dev: -9, week: 10, plants: 6, open: 2 },
-      ],
-    },
-    {
-      id: 'b2', name: '진주HUB', crops: [
-        { name: '오이', health: 94, dev: +3, week: 5, plants: 8, open: 0 },
-        { name: '애호박', health: 91, dev: +1, week: 7, plants: 6, open: 1 },
-      ],
-    },
-    {
-      id: 'b3', name: '하동HUB', crops: [
-        { name: '방울토마토', health: 89, dev: -2, week: 9, plants: 8, open: 1 },
-        { name: '고추', health: 78, dev: -12, week: 11, plants: 6, open: 3 },
-      ],
-    },
-  ],
-};
-
 // ─── 상수 ───────────────────────────────────────────────
 const BRANCH_IDS = ['busan', 'jinju', 'hadong'];
 const BRANCH_NAMES_MAP = { busan: '부산LAB', jinju: '진주HUB', hadong: '하동HUB' };
@@ -43,7 +18,8 @@ function computeWeek(dateStr) {
 }
 
 function HQGrowthCompareScreen() {
-  const [grBranches, setGrBranches] = useState(HQ_GR_DATA.branches);
+  const [grBranches, setGrBranches] = useState([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     async function load() {
@@ -52,7 +28,7 @@ function HQGrowthCompareScreen() {
         supabase.from('growth_surveys').select('id, survey_date, crop_id, worker_id, measurements, crops(id, name)').order('survey_date', { ascending: false }),
         supabase.from('employees').select('id, branch'),
       ]);
-      if (scRes.error || gsRes.error || empRes.error) return;
+      if (scRes.error || gsRes.error || empRes.error) { setLoading(false); return; }
 
       // 직원 ID → 지점 코드
       const empBranch = Object.fromEntries((empRes.data ?? []).map(e => [e.id, e.branch]));
@@ -116,6 +92,7 @@ function HQGrowthCompareScreen() {
       });
 
       setGrBranches(result);
+      setLoading(false);
     }
     load();
   }, []);
@@ -171,6 +148,11 @@ function HQGrowthCompareScreen() {
         </div>
 
         {/* 지점별 카드 */}
+        {loading ? (
+          <div style={{ padding: 32, textAlign: 'center', color: T.mutedSoft, fontSize: 13 }}>로딩 중...</div>
+        ) : grBranches.length === 0 ? (
+          <div style={{ padding: 32, textAlign: 'center', color: T.mutedSoft, fontSize: 13 }}>데이터가 없습니다</div>
+        ) : (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12 }}>
           {grBranches.map(b => {
             const validBCrops = b.crops.filter(c => c.health != null);
@@ -225,6 +207,7 @@ function HQGrowthCompareScreen() {
             );
           })}
         </div>
+        )}
 
         {/* 작물×지점 편차 매트릭스 */}
         <Card>
@@ -316,4 +299,4 @@ function HQGrowthCompareScreen() {
     </div>
   );
 }
-export { HQGrowthCompareScreen, HQ_GR_DATA };
+export { HQGrowthCompareScreen };
