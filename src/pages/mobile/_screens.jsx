@@ -210,7 +210,7 @@ function MobileHomeScreen() {
 
           {/* 출근 / 퇴근 버튼 */}
           <div style={{ display: 'flex', gap: 8 }}>
-            <button style={{
+            <button onClick={() => alert('기능은 준비 중입니다')} style={{
               flex: 1, padding: '14px 0', borderRadius: 12, border: `1px solid ${T.border}`,
               background: T.surface, color: isCheckedIn ? T.mutedSoft : T.text,
               fontSize: 15, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
@@ -218,7 +218,7 @@ function MobileHomeScreen() {
               출근
               {isCheckedIn && <span style={{ fontSize: 11, color: T.success, fontWeight: 600 }}>✓ {checkInTime}</span>}
             </button>
-            <button style={{
+            <button onClick={() => alert('기능은 준비 중입니다')} style={{
               flex: 1, padding: '14px 0', borderRadius: 12, border: 0,
               background: isCheckedOut ? T.bg : T.danger, color: isCheckedOut ? T.mutedSoft : '#fff',
               fontSize: 15, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
@@ -239,7 +239,7 @@ function MobileHomeScreen() {
       <div style={{ padding: '20px 16px 8px' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10, padding: '0 4px' }}>
           <h3 style={{ fontSize: 15, fontWeight: 700, color: T.text, margin: 0 }}>오늘 내 작업</h3>
-          <span style={{ fontSize: 12, color: T.primary, fontWeight: 600 }}>전체 보기</span>
+          <span onClick={() => alert('기능은 준비 중입니다')} style={{ fontSize: 12, color: T.primary, fontWeight: 600, cursor: 'pointer' }}>전체 보기</span>
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           {taskRows.map((w, i) => (
@@ -492,7 +492,7 @@ function MobileCheckInScreen() {
                 <Icon d={icons.check} size={16} c={T.success} sw={2.5} />
               </div>
 
-              <button style={{
+              <button onClick={() => alert('기능은 준비 중입니다')} style={{
                 width: '100%', padding: '16px 0', borderRadius: 12, border: 0,
                 background: `linear-gradient(180deg, ${T.danger} 0%, #B91C1C 100%)`,
                 color: '#fff', fontSize: 16, fontWeight: 700,
@@ -516,7 +516,7 @@ function MobileCheckInScreen() {
         <div style={{ background: T.surface, borderRadius: 14, padding: 16 }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
             <div style={{ fontSize: 13, fontWeight: 700, color: T.text }}>이번 주 근무 기록</div>
-            <span style={{ fontSize: 11, color: T.primary, fontWeight: 600 }}>전체 보기</span>
+            <span onClick={() => alert('기능은 준비 중입니다')} style={{ fontSize: 11, color: T.primary, fontWeight: 600, cursor: 'pointer' }}>전체 보기</span>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 6 }}>
             {weekRows.map((d, i) => (
@@ -678,7 +678,7 @@ function MobileTasksScreen() {
               </div>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 12, paddingTop: 12, borderTop: `1px solid ${T.borderSoft}` }}>
                 <span style={{ fontSize: 11, color: T.mutedSoft }}>진행중</span>
-                <button style={{
+                <button onClick={() => alert('기능은 준비 중입니다')} style={{
                   padding: '8px 16px', borderRadius: 8, border: 0,
                   background: T.primary, color: '#fff', fontSize: 12, fontWeight: 700,
                 }}>보고하기</button>
@@ -879,8 +879,8 @@ function MobileAttendanceScreen() {
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
             <div style={{ fontSize: 13, fontWeight: 700, color: T.text }}>{currentMonth + 1}월 근무 현황</div>
             <div style={{ display: 'flex', gap: 4 }}>
-              <button style={{ width: 24, height: 24, borderRadius: 6, border: `1px solid ${T.border}`, background: T.surface, fontSize: 10 }}>‹</button>
-              <button style={{ width: 24, height: 24, borderRadius: 6, border: `1px solid ${T.border}`, background: T.surface, fontSize: 10 }}>›</button>
+              <button onClick={() => alert('기능은 준비 중입니다')} style={{ width: 24, height: 24, borderRadius: 6, border: `1px solid ${T.border}`, background: T.surface, fontSize: 10 }}>‹</button>
+              <button onClick={() => alert('기능은 준비 중입니다')} style={{ width: 24, height: 24, borderRadius: 6, border: `1px solid ${T.border}`, background: T.surface, fontSize: 10 }}>›</button>
             </div>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 3 }}>
@@ -925,7 +925,7 @@ function MobileAttendanceScreen() {
       <div style={{ padding: '0 16px 24px' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 4px' }}>
           <div style={{ fontSize: 11, fontWeight: 700, color: T.mutedSoft, letterSpacing: 0.3 }}>내 신청 이력</div>
-          <span style={{ fontSize: 11, color: T.primary, fontWeight: 600 }}>전체 보기</span>
+          <span onClick={() => alert('기능은 준비 중입니다')} style={{ fontSize: 11, color: T.primary, fontWeight: 600, cursor: 'pointer' }}>전체 보기</span>
         </div>
         <div style={{ background: T.surface, borderRadius: 12, overflow: 'hidden' }}>
           {historyItems.length === 0 ? (

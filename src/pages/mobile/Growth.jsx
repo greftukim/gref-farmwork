@@ -137,10 +137,10 @@ function MobileGrowthScreen({ defaultMode = 'list' }) {
 
         {/* 하단 고정 액션 */}
         <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, background: T.surface, padding: 14, borderTop: `1px solid ${T.border}`, display: 'flex', gap: 8 }}>
-          <button style={{ flex: 1, padding: '14px 0', borderRadius: 12, background: T.bg, border: `1px solid ${T.border}`, fontSize: 14, fontWeight: 700, color: T.muted }}>
+          <button onClick={() => alert('기능은 준비 중입니다')} style={{ flex: 1, padding: '14px 0', borderRadius: 12, background: T.bg, border: `1px solid ${T.border}`, fontSize: 14, fontWeight: 700, color: T.muted }}>
             임시저장
           </button>
-          <button style={{ flex: 2, padding: '14px 0', borderRadius: 12, background: T.primary, border: 0, fontSize: 14, fontWeight: 700, color: '#fff' }}>
+          <button onClick={() => alert('기능은 준비 중입니다')} style={{ flex: 2, padding: '14px 0', borderRadius: 12, background: T.primary, border: 0, fontSize: 14, fontWeight: 700, color: '#fff' }}>
             다음 표식주 →
           </button>
         </div>
@@ -186,7 +186,7 @@ function MobileGrowthScreen({ defaultMode = 'list' }) {
         {GR_DATA.crops.map(c => {
           const on = c.name === crop;
           return (
-            <button key={c.id} style={{
+            <button key={c.id} onClick={() => alert('기능은 준비 중입니다')} style={{
               padding: '8px 14px', fontSize: 13, fontWeight: 700, borderRadius: 999, whiteSpace: 'nowrap',
               border: `1px solid ${on ? T.primary : T.border}`,
               background: on ? T.primary : T.surface,
@@ -234,7 +234,7 @@ function MobileGrowthScreen({ defaultMode = 'list' }) {
 
       {/* 하단 빠른 기록 */}
       <div style={{ padding: 16 }}>
-        <button style={{
+        <button onClick={() => alert('기능은 준비 중입니다')} style={{
           width: '100%', padding: '14px 0', borderRadius: 14,
           background: T.surface, border: `1.5px dashed ${T.border}`,
           fontSize: 13, fontWeight: 700, color: T.muted,

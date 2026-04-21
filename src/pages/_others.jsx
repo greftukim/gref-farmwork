@@ -1,4 +1,5 @@
 import React, { useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Avatar, Card, Dot, Icon, Pill, T, TopBar, btnPrimary, btnSecondary, icons } from '../design/primitives';
 import useEmployeeStore from '../stores/employeeStore';
 
@@ -27,7 +28,7 @@ function EmployeesScreen() {
 
   return (
     <div style={{ flex: 1, overflow: 'auto', background: T.bg }}>
-      <TopBar subtitle="인사 관리" title="직원 관리" actions={<>{btnSecondary('엑셀 내보내기')}{btnPrimary('직원 등록', icons.plus)}</>} />
+      <TopBar subtitle="인사 관리" title="직원 관리" actions={<>{btnSecondary('엑셀 내보내기', null, () => alert('기능은 준비 중입니다'))}{btnPrimary('직원 등록', icons.plus, () => alert('기능은 준비 중입니다'))}</>} />
       <div style={{ padding: 24 }}>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, marginBottom: 20 }}>
           {[
@@ -52,14 +53,14 @@ function EmployeesScreen() {
               <span>이름, 사번 검색</span>
             </div>
             {['전체', '재배', '관리', '기타'].map((t, i) => (
-              <span key={t} style={{
+              <span key={t} onClick={() => alert('기능은 준비 중입니다')} style={{
                 fontSize: 12, fontWeight: 600, padding: '6px 12px', borderRadius: 6, cursor: 'pointer',
                 background: i === 0 ? T.primarySoft : 'transparent',
                 color: i === 0 ? T.primaryText : T.muted,
               }}>{t}</span>
             ))}
             <div style={{ marginLeft: 'auto', display: 'flex', gap: 6 }}>
-              {btnSecondary('필터', icons.filter)}
+              {btnSecondary('필터', icons.filter, () => alert('기능은 준비 중입니다'))}
             </div>
           </div>
           {/* 테이블 */}
@@ -108,7 +109,7 @@ function EmployeesScreen() {
             <span>총 {employees.length}명 중 1-{rows.length}명</span>
             <div style={{ display: 'flex', gap: 4 }}>
               {['이전', '1', '2', '3', '다음'].map((p, i) => (
-                <span key={i} style={{
+                <span key={i} onClick={() => alert('기능은 준비 중입니다')} style={{
                   padding: '5px 10px', borderRadius: 5, fontSize: 12, cursor: 'pointer',
                   background: p === '1' ? T.primary : T.surface,
                   color: p === '1' ? '#fff' : T.muted,
@@ -154,15 +155,15 @@ function ScheduleScreen() {
 
   return (
     <div style={{ flex: 1, overflow: 'auto', background: T.bg }}>
-      <TopBar subtitle="근태" title="근무 관리" actions={<>{btnSecondary('출퇴근 기록')}{btnPrimary('스케줄 등록', icons.plus)}</>} />
+      <TopBar subtitle="근태" title="근무 관리" actions={<>{btnSecondary('출퇴근 기록', null, () => alert('기능은 준비 중입니다'))}{btnPrimary('스케줄 등록', icons.plus, () => alert('기능은 준비 중입니다'))}</>} />
       <div style={{ padding: 24 }}>
         {/* 주 선택 바 */}
         <Card pad={16} style={{ marginBottom: 20 }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
               <div style={{ display: 'flex', gap: 4 }}>
-                <button style={{ width: 32, height: 32, borderRadius: 6, border: `1px solid ${T.border}`, background: T.surface, cursor: 'pointer' }}>‹</button>
-                <button style={{ width: 32, height: 32, borderRadius: 6, border: `1px solid ${T.border}`, background: T.surface, cursor: 'pointer' }}>›</button>
+                <button onClick={() => alert('기능은 준비 중입니다')} style={{ width: 32, height: 32, borderRadius: 6, border: `1px solid ${T.border}`, background: T.surface, cursor: 'pointer' }}>‹</button>
+                <button onClick={() => alert('기능은 준비 중입니다')} style={{ width: 32, height: 32, borderRadius: 6, border: `1px solid ${T.border}`, background: T.surface, cursor: 'pointer' }}>›</button>
               </div>
               <div>
                 <div style={{ fontSize: 15, fontWeight: 700, color: T.text }}>4월 20일 — 4월 26일</div>
@@ -171,7 +172,7 @@ function ScheduleScreen() {
             </div>
             <div style={{ display: 'flex', gap: 4, background: T.bg, padding: 3, borderRadius: 6 }}>
               {['일간', '주간', '월간'].map((t, i) => (
-                <span key={t} style={{
+                <span key={t} onClick={() => alert('기능은 준비 중입니다')} style={{
                   padding: '6px 14px', borderRadius: 4, fontSize: 12, fontWeight: 600, cursor: 'pointer',
                   background: i === 1 ? T.surface : 'transparent',
                   color: i === 1 ? T.text : T.mutedSoft,
@@ -267,6 +268,7 @@ function ScheduleScreen() {
 
 // ─────── 휴가 관리 (승인 + 캘린더) ───────
 function LeaveScreen() {
+  const navigate = useNavigate();
   const pending = [
     { name: '김민국', type: '연차', dates: '4/23 (수)', days: 1, reason: '개인 사정', remain: 8, c: 'indigo' },
     { name: '박민식', type: '오전반차', dates: '4/22 (화)', days: 0.5, reason: '병원 방문', remain: 12, c: 'slate' },
@@ -274,7 +276,7 @@ function LeaveScreen() {
   ];
   return (
     <div style={{ flex: 1, overflow: 'auto', background: T.bg }}>
-      <TopBar subtitle="근태" title="휴가 관리" actions={<>{btnSecondary('휴가 현황 엑셀')}{btnPrimary('휴가 등록', icons.plus)}</>} />
+      <TopBar subtitle="근태" title="휴가 관리" actions={<>{btnSecondary('휴가 현황 엑셀', null, () => alert('기능은 준비 중입니다'))}{btnPrimary('휴가 등록', icons.plus, () => alert('기능은 준비 중입니다'))}</>} />
       <div style={{ padding: 24 }}>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, marginBottom: 20 }}>
           {[
@@ -322,8 +324,8 @@ function LeaveScreen() {
                     </div>
                   </div>
                   <div style={{ display: 'flex', gap: 6 }}>
-                    <button style={{ flex: 1, padding: '9px 0', border: `1px solid ${T.border}`, background: T.surface, borderRadius: 7, fontSize: 13, fontWeight: 600, color: T.muted, cursor: 'pointer' }}>반려</button>
-                    <button style={{ flex: 2, padding: '9px 0', border: 0, background: T.primary, borderRadius: 7, fontSize: 13, fontWeight: 600, color: '#fff', cursor: 'pointer' }}>승인</button>
+                    <button onClick={() => alert('기능은 준비 중입니다')} style={{ flex: 1, padding: '9px 0', border: `1px solid ${T.border}`, background: T.surface, borderRadius: 7, fontSize: 13, fontWeight: 600, color: T.muted, cursor: 'pointer' }}>반려</button>
+                    <button onClick={() => alert('기능은 준비 중입니다')} style={{ flex: 2, padding: '9px 0', border: 0, background: T.primary, borderRadius: 7, fontSize: 13, fontWeight: 600, color: '#fff', cursor: 'pointer' }}>승인</button>
                   </div>
                 </div>
               ))}
@@ -338,8 +340,8 @@ function LeaveScreen() {
                 <p style={{ fontSize: 11, color: T.mutedSoft, margin: '2px 0 0' }}>4월 2026</p>
               </div>
               <div style={{ display: 'flex', gap: 4 }}>
-                <button style={{ width: 28, height: 28, borderRadius: 6, border: `1px solid ${T.border}`, background: T.surface, cursor: 'pointer', fontSize: 12 }}>‹</button>
-                <button style={{ width: 28, height: 28, borderRadius: 6, border: `1px solid ${T.border}`, background: T.surface, cursor: 'pointer', fontSize: 12 }}>›</button>
+                <button onClick={() => alert('기능은 준비 중입니다')} style={{ width: 28, height: 28, borderRadius: 6, border: `1px solid ${T.border}`, background: T.surface, cursor: 'pointer', fontSize: 12 }}>‹</button>
+                <button onClick={() => alert('기능은 준비 중입니다')} style={{ width: 28, height: 28, borderRadius: 6, border: `1px solid ${T.border}`, background: T.surface, cursor: 'pointer', fontSize: 12 }}>›</button>
               </div>
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 4 }}>
@@ -381,7 +383,7 @@ function LeaveScreen() {
             </div>
             <div style={{ marginTop: 14, paddingTop: 14, borderTop: `1px solid ${T.borderSoft}`, display: 'flex', justifyContent: 'space-between', fontSize: 11, color: T.mutedSoft }}>
               <span>이번 달 총 <strong style={{ color: T.text }}>12건</strong>의 휴가</span>
-              <span style={{ color: T.primary, cursor: 'pointer', fontWeight: 600 }}>월 리포트 →</span>
+              <span onClick={() => navigate('/admin/performance')} style={{ color: T.primary, cursor: 'pointer', fontWeight: 600 }}>월 리포트 →</span>
             </div>
           </Card>
         </div>
@@ -427,7 +429,7 @@ function TasksScreen() {
 
   return (
     <div style={{ flex: 1, overflow: 'auto', background: T.bg }}>
-      <TopBar subtitle="농작업" title="작업 관리" actions={<>{btnSecondary('작업 계획 달력')}{btnPrimary('새 작업 배정', icons.plus)}</>} />
+      <TopBar subtitle="농작업" title="작업 관리" actions={<>{btnSecondary('작업 계획 달력', null, () => alert('기능은 준비 중입니다'))}{btnPrimary('새 작업 배정', icons.plus, () => alert('기능은 준비 중입니다'))}</>} />
       <div style={{ padding: 24 }}>
         {/* 필터 */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 20 }}>
@@ -435,7 +437,7 @@ function TasksScreen() {
           {[
             { l: '오늘', on: true }, { l: '모든 작물' }, { l: '모든 구역' }, { l: '우선순위: 전체' },
           ].map(f => (
-            <span key={f.l} style={{
+            <span key={f.l} onClick={() => alert('기능은 준비 중입니다')} style={{
               fontSize: 12, fontWeight: 600, padding: '7px 12px', borderRadius: 6, cursor: 'pointer',
               background: f.on ? T.primarySoft : T.surface,
               color: f.on ? T.primaryText : T.muted,
