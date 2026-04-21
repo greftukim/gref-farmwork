@@ -1,28 +1,40 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { Avatar, Card, Dot, Icon, Pill, T, TopBar, btnPrimary, btnSecondary, icons } from '../design/primitives';
+import useEmployeeStore from '../stores/employeeStore';
+
+const ROLE_KO = { farm_admin: '지점장', supervisor: '반장', worker: '작업자', hr_admin: 'HR', master: '총괄', general: '총괄' };
 
 // 직원 관리 + 근무 관리 + 휴가 관리 + 작업 관리 + 로그인
 function EmployeesScreen() {
-  const rows = [
-    { name: '김민국', no: 'GF-001', role: '재배', status: 'active', crop: '토마토', join: '2023.03.15', tel: '010-1234-5678', lead: true },
-    { name: '이강모', no: 'GF-002', role: '재배', status: 'active', crop: '딸기', join: '2023.05.02', tel: '010-2345-6789' },
-    { name: '박민식', no: 'GF-003', role: '관리', status: 'active', crop: '-', join: '2022.11.10', tel: '010-3456-7890' },
-    { name: '최수진', no: 'GF-004', role: '재배', status: 'leave', crop: '파프리카', join: '2024.01.20', tel: '010-4567-8901' },
-    { name: '정하은', no: 'GF-005', role: '재배', status: 'active', crop: '오이', join: '2024.03.05', tel: '010-5678-9012' },
-    { name: '강민준', no: 'GF-006', role: '재배', status: 'active', crop: '토마토', join: '2024.06.12', tel: '010-6789-0123' },
-    { name: '윤서아', no: 'GF-007', role: '재배', status: 'active', crop: '딸기', join: '2025.02.01', tel: '010-7890-1234' },
-    { name: '한지훈', no: 'GF-008', role: '기타', status: 'inactive', crop: '-', join: '2022.08.22', tel: '010-8901-2345' },
-  ];
+  const employees = useEmployeeStore((s) => s.employees);
+
+  const rows = useMemo(() => employees.map((e) => ({
+    name: e.name,
+    no: e.employeeNumber || '-',
+    role: ROLE_KO[e.role] || e.role || '-',
+    status: e.isActive ? 'active' : 'inactive',
+    crop: '-',
+    join: e.hireDate ? e.hireDate.replace(/-/g, '.') : '-',
+    tel: e.phone || '-',
+    lead: e.isTeamLeader || false,
+  })), [employees]);
+
+  const activeCount = employees.filter((e) => e.isActive).length;
+  const inactiveCount = employees.filter((e) => !e.isActive).length;
+  const todayStr = new Date().toISOString().split('T')[0];
+  const in30Str = new Date(Date.now() + 30 * 24 * 3600 * 1000).toISOString().split('T')[0];
+  const expiringCount = employees.filter((e) => e.contractEnd && e.contractEnd >= todayStr && e.contractEnd <= in30Str).length;
+
   return (
     <div style={{ flex: 1, overflow: 'auto', background: T.bg }}>
       <TopBar subtitle="인사 관리" title="직원 관리" actions={<>{btnSecondary('엑셀 내보내기')}{btnPrimary('직원 등록', icons.plus)}</>} />
       <div style={{ padding: 24 }}>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, marginBottom: 20 }}>
           {[
-            { l: '전체 직원', v: 20, sub: '재배 16 · 관리 3 · 기타 1' },
-            { l: '재직중', v: 18, sub: '출근 가능' },
-            { l: '휴직', v: 1, sub: '최수진 (4/18~4/25)' },
-            { l: '계약 만료 임박', v: 2, sub: '30일 이내', tone: 'warning' },
+            { l: '전체 직원', v: employees.length, sub: `재직 ${activeCount}명 · 비활성 ${inactiveCount}명` },
+            { l: '재직중', v: activeCount, sub: '출근 가능' },
+            { l: '비활성', v: inactiveCount, sub: '' },
+            { l: '계약 만료 임박', v: expiringCount, sub: '30일 이내', tone: 'warning' },
           ].map((k, i) => (
             <Card key={i} pad={16}>
               <div style={{ fontSize: 12, color: T.muted, fontWeight: 600, marginBottom: 6 }}>{k.l}</div>
@@ -60,7 +72,9 @@ function EmployeesScreen() {
               </tr>
             </thead>
             <tbody>
-              {rows.map((r, i) => (
+              {rows.length === 0 ? (
+                <tr><td colSpan={8} style={{ padding: 24, textAlign: 'center', color: T.mutedSoft, fontSize: 13 }}>데이터가 없습니다</td></tr>
+              ) : rows.map((r, i) => (
                 <tr key={i} style={{ borderBottom: `1px solid ${T.borderSoft}` }}>
                   <td style={{ padding: '12px 16px' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -91,7 +105,7 @@ function EmployeesScreen() {
             </tbody>
           </table>
           <div style={{ padding: '12px 18px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', color: T.mutedSoft, fontSize: 12 }}>
-            <span>총 20명 중 1-8명</span>
+            <span>총 {employees.length}명 중 1-{rows.length}명</span>
             <div style={{ display: 'flex', gap: 4 }}>
               {['이전', '1', '2', '3', '다음'].map((p, i) => (
                 <span key={i} style={{

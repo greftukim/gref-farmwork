@@ -28,15 +28,6 @@ function timeAgoHQ(iso) {
   return `${Math.floor(diff / 86400)}일 전`;
 }
 
-const STATIC_PENDING = [
-  { id: 's1', _kind: 'static', status: 'pending', branch: '하동HUB', bc: T.warning, name: '최책임', role: '지점장', tag: '예산', tagTone: 'warning', type: '설비 구매 요청', detail: '환기팬 2대 (B동, C동 각 1대)', amount: '480만원', time: '42분 전', urgent: true },
-  { id: 's2', _kind: 'static', status: 'pending', branch: '진주HUB', bc: T.success, name: '박지점', role: '지점장', tag: '인사', tagTone: 'info', type: '신규 작업자 등록', detail: '임시 3명 · 5/1 ~ 5/31', amount: '', time: '1시간 전', urgent: false },
-  { id: 's3', _kind: 'static', status: 'pending', branch: '부산LAB', bc: T.primary, name: '김재배', role: '지점장', tag: '자재', tagTone: 'success', type: '농약 재고 발주', detail: '토마토 응애용 살충제 10L', amount: '120만원', time: '2시간 전', urgent: false },
-  { id: 's4', _kind: 'static', status: 'pending', branch: '진주HUB', bc: T.success, name: '박지점', role: '지점장', tag: '예산', tagTone: 'warning', type: '비료 추가 발주', detail: '유박비료 500kg', amount: '340만원', time: '4시간 전', urgent: false },
-  { id: 's5', _kind: 'static', status: 'pending', branch: '부산LAB', bc: T.primary, name: '김재배', role: '지점장', tag: '인사', tagTone: 'info', type: '계약직 재계약', detail: '홍길순, 김영수 · 7/1 시행', amount: '', time: '5시간 전', urgent: false },
-  { id: 's6', _kind: 'static', status: 'pending', branch: '하동HUB', bc: T.warning, name: '최책임', role: '지점장', tag: '자재', tagTone: 'success', type: '포장재 발주', detail: '방울토마토용 500g 박스 2000개', amount: '210만원', time: '어제', urgent: false },
-];
-
 // ─────── 공통 페이지 헤더 ───────
 const HQPageHeader = ({ subtitle, title, actions, tabs, activeTab, onTab }) => (
   <div style={{ background: T.surface, borderBottom: `1px solid ${T.border}` }}>
@@ -135,7 +126,7 @@ function HQApprovalsScreen() {
     return [...leaveItems, ...otItems];
   }, [leaveRequests, otRequests, empMap]);
 
-  const pendingItems = [...realItems.filter(i => i.status === 'pending'), ...STATIC_PENDING];
+  const pendingItems = realItems.filter(i => i.status === 'pending');
   const approvedItems = realItems.filter(i => i.status === 'approved');
   const rejectedItems = realItems.filter(i => i.status === 'rejected');
   const urgentCount = pendingItems.filter(i => i.urgent).length;
@@ -275,7 +266,9 @@ function HQApprovalsScreen() {
               </tr>
             </thead>
             <tbody>
-              {filtered.map(r => (
+              {filtered.length === 0 ? (
+                <tr><td colSpan={7} style={{ padding: 24, textAlign: 'center', color: T.mutedSoft, fontSize: 13 }}>데이터가 없습니다</td></tr>
+              ) : filtered.map(r => (
                 <tr key={r.id} style={{
                   borderBottom: `1px solid ${T.borderSoft}`,
                   background: selected.has(r.id) ? HQ.accentSoft : 'transparent',
