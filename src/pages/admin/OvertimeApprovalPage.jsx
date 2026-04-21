@@ -1,23 +1,43 @@
-import { useMemo, useState, useEffect } from 'react';
+// 연장근무 승인 — 프로 SaaS 리디자인
+// 기존: src/pages/admin/OvertimeApprovalPage.jsx 교체용
+
+import React, { useEffect, useMemo, useState } from 'react';
+import {
+  Avatar, Card, Dot, Icon, Pill, T, TopBar,
+  btnSecondary, icons,
+} from '../../design/primitives';
 import useOvertimeStore from '../../stores/overtimeStore';
 import useEmployeeStore from '../../stores/employeeStore';
 import useAuthStore from '../../stores/authStore';
-import Card from '../../components/common/Card';
-import Button from '../../components/common/Button';
 import BottomSheet from '../../components/common/BottomSheet';
 import { sendPushToEmployee } from '../../lib/pushNotify';
 import { isFarmAdmin, isMaster } from '../../lib/permissions';
 
-const statusConfig = {
-  pending:  { label: '대기', dot: 'bg-amber-400', color: 'text-amber-600' },
-  approved: { label: '승인', dot: 'bg-green-500', color: 'text-green-600' },
-  rejected: { label: '반려', dot: 'bg-red-500',   color: 'text-red-600'   },
+const AVATAR_COLORS = ['indigo', 'emerald', 'amber', 'sky', 'rose', 'violet'];
+const avatarColor = (id) => {
+  const s = (id || '').toString();
+  let h = 0; for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0;
+  return AVATAR_COLORS[h % AVATAR_COLORS.length];
 };
 
-function formatOvertimeTime(hours, minutes) {
-  if (hours > 0 && minutes > 0) return `${hours}시간 ${minutes}분`;
-  if (hours > 0) return `${hours}시간`;
-  return `${minutes}분`;
+const STATUS = {
+  pending: { label: '대기', tone: 'warning', dot: T.warning },
+  approved: { label: '승인', tone: 'success', dot: T.success },
+  rejected: { label: '반려', tone: 'danger', dot: T.danger },
+};
+
+function fmtOT(h, m) {
+  if (h > 0 && m > 0) return `${h}시간 ${m}분`;
+  if (h > 0) return `${h}시간`;
+  return `${m}분`;
+}
+function fmtAgo(iso) {
+  if (!iso) return '';
+  const m = Math.floor((Date.now() - new Date(iso)) / 60000);
+  if (m < 1) return '방금';
+  if (m < 60) return `${m}분 전`;
+  if (m < 1440) return `${Math.floor(m / 60)}시간 전`;
+  return `${Math.floor(m / 1440)}일 전`;
 }
 
 export default function OvertimeApprovalPage() {
@@ -30,20 +50,15 @@ export default function OvertimeApprovalPage() {
   const adjustAndApprove = useOvertimeStore((s) => s.adjustAndApprove);
   const updateOvertimeHours = useOvertimeStore((s) => s.updateOvertimeHours);
   const subscribeRealtime = useOvertimeStore((s) => s.subscribeRealtime);
+  const employees = useEmployeeStore((s) => s.employees);
 
   const canApprove = isFarmAdmin(currentUser) || isMaster(currentUser);
   const canEditHours = currentUser?.role === 'hr_admin' || isMaster(currentUser);
-  const employees = useEmployeeStore((s) => s.employees);
 
   const [processing, setProcessing] = useState(null);
-  const [filterStatus, setFilterStatus] = useState('all');
+  const [filterStatus, setFilterStatus] = useState('pending');
   const [filterName, setFilterName] = useState('');
   const [selectedIds, setSelectedIds] = useState(new Set());
-
-  const changeFilterStatus = (v) => { setFilterStatus(v); setSelectedIds(new Set()); };
-  const changeFilterName = (v) => { setFilterName(v); setSelectedIds(new Set()); };
-
-  // 시간 조정 모달
   const [adjustTarget, setAdjustTarget] = useState(null);
   const [adjustForm, setAdjustForm] = useState({ hours: 0, minutes: 0 });
 
@@ -58,397 +73,319 @@ export default function OvertimeApprovalPage() {
     [employees]
   );
 
-  // 본인 지점 데이터만 필터링
+  const scopedRequests = useMemo(() => {
+    return requests.filter((r) => {
+      const emp = empMap[r.employeeId];
+      if (!emp) return false;
+      if (currentUser?.branch && emp.branch !== currentUser.branch) return false;
+      return true;
+    });
+  }, [requests, empMap, currentUser]);
+
+  const counts = useMemo(() => {
+    const c = { pending: 0, approved: 0, rejected: 0, all: scopedRequests.length };
+    scopedRequests.forEach((r) => { if (c[r.status] != null) c[r.status]++; });
+    return c;
+  }, [scopedRequests]);
+
+  const totalHoursPending = useMemo(() => {
+    let mins = 0;
+    scopedRequests.filter((r) => r.status === 'pending').forEach((r) => {
+      mins += (r.hours || 0) * 60 + (r.minutes || 0);
+    });
+    return mins;
+  }, [scopedRequests]);
+
   const filtered = useMemo(() => {
-    return requests
-      .filter((r) => {
-        const emp = empMap[r.employeeId];
-        if (!emp) return false;
-        // 재배팀 본인 지점만
-        if (currentUser?.branch && emp.branch !== currentUser.branch) return false;
-        if (filterStatus !== 'all' && r.status !== filterStatus) return false;
-        if (filterName && !emp.name.includes(filterName)) return false;
-        return true;
-      })
+    return scopedRequests
+      .filter((r) => filterStatus === 'all' || r.status === filterStatus)
+      .filter((r) => !filterName || (empMap[r.employeeId]?.name || '').includes(filterName))
       .sort((a, b) => {
         if (a.status === 'pending' && b.status !== 'pending') return -1;
         if (a.status !== 'pending' && b.status === 'pending') return 1;
         return (b.createdAt || '').localeCompare(a.createdAt || '');
       });
-  }, [requests, empMap, currentUser, filterStatus, filterName]);
+  }, [scopedRequests, empMap, filterStatus, filterName]);
 
-  const pendingCount = filtered.filter((r) => r.status === 'pending').length;
   const pendingIds = useMemo(() => filtered.filter((r) => r.status === 'pending').map((r) => r.id), [filtered]);
   const allPendingSelected = pendingIds.length > 0 && pendingIds.every((id) => selectedIds.has(id));
 
-  const toggleSelect = (id) => {
-    setSelectedIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id); else next.add(id);
-      return next;
-    });
-  };
-
-  const toggleSelectAll = () => {
-    if (allPendingSelected) {
-      setSelectedIds(new Set());
-    } else {
-      setSelectedIds(new Set(pendingIds));
-    }
-  };
+  const toggleSelect = (id) => setSelectedIds((p) => {
+    const n = new Set(p);
+    n.has(id) ? n.delete(id) : n.add(id);
+    return n;
+  });
+  const toggleSelectAll = () => setSelectedIds(allPendingSelected ? new Set() : new Set(pendingIds));
 
   const handleBulkApprove = async () => {
-    const count = selectedIds.size;
-    if (count === 0) return;
-    if (!window.confirm(`선택한 ${count}건을 일괄 승인하시겠습니까?`)) return;
+    if (selectedIds.size === 0) return;
+    if (!window.confirm(`선택한 ${selectedIds.size}건을 일괄 승인하시겠습니까?`)) return;
     setProcessing('bulk');
-    // 일괄 승인 시 개별 푸시 미전송 (대량 푸시 방지)
     const { error } = await bulkApprove([...selectedIds], currentUser.id);
     setProcessing(null);
-    if (error) {
-      alert('일괄 승인 처리 중 오류가 발생했습니다.');
-    } else {
-      setSelectedIds(new Set());
-      alert(`${count}건 승인 완료`);
-    }
+    if (error) alert('일괄 승인 실패');
+    else setSelectedIds(new Set());
   };
-
   const handleApprove = async (id) => {
     if (processing) return;
     setProcessing(id);
     const req = requests.find((r) => r.id === id);
     const { error } = await approveRequest(id, currentUser.id);
     setProcessing(null);
-    if (!error && req) {
-      const emp = empMap[req.employeeId];
-      sendPushToEmployee({
-        employeeId: req.employeeId,
-        title: '연장근무 신청이 승인되었습니다',
-        body: `${req.date} ${formatOvertimeTime(req.hours, req.minutes)} 연장근무가 승인되었습니다`,
-        type: 'overtime_request',
-      }).catch(() => {});
-    }
+    if (!error && req) sendPushToEmployee({
+      employeeId: req.employeeId, title: '연장근무 승인',
+      body: `${req.date} ${fmtOT(req.hours, req.minutes)} 승인`, type: 'overtime_request',
+    }).catch(() => {});
   };
-
   const handleReject = async (id) => {
     if (processing) return;
     setProcessing(id);
     const req = requests.find((r) => r.id === id);
     const { error } = await rejectRequest(id, currentUser.id);
     setProcessing(null);
-    if (!error && req) {
-      sendPushToEmployee({
-        employeeId: req.employeeId,
-        title: '연장근무 신청이 반려되었습니다',
-        body: `${req.date} 연장근무 신청이 반려되었습니다`,
-        type: 'overtime_request',
-      }).catch(() => {});
-    }
+    if (!error && req) sendPushToEmployee({
+      employeeId: req.employeeId, title: '연장근무 반려',
+      body: `${req.date} 연장근무 반려`, type: 'overtime_request',
+    }).catch(() => {});
   };
-
   const openAdjust = (req, mode = 'adjustAndApprove') => {
     setAdjustTarget({ ...req, mode });
     setAdjustForm({ hours: req.hours, minutes: req.minutes });
   };
-
   const handleAdjustConfirm = async () => {
     if (!adjustTarget || processing) return;
     if (adjustForm.hours === 0 && adjustForm.minutes === 0) return;
     setProcessing(adjustTarget.id);
-
     if (adjustTarget.mode === 'editHours') {
       const { error } = await updateOvertimeHours(adjustTarget.id, adjustForm.hours, adjustForm.minutes);
       setProcessing(null);
-      if (error) alert('시간 수정 중 오류가 발생했습니다.');
+      if (error) alert('시간 수정 실패');
     } else {
       const { error } = await adjustAndApprove(adjustTarget.id, currentUser.id, adjustForm.hours, adjustForm.minutes);
       setProcessing(null);
-      if (!error) {
-        sendPushToEmployee({
-          employeeId: adjustTarget.employeeId,
-          title: '연장근무가 시간 조정 후 승인되었습니다',
-          body: `${adjustTarget.date} 연장근무 ${formatOvertimeTime(adjustForm.hours, adjustForm.minutes)}으로 조정 승인되었습니다`,
-          type: 'overtime_request',
-        }).catch(() => {});
-      }
+      if (!error) sendPushToEmployee({
+        employeeId: adjustTarget.employeeId, title: '연장근무 조정 승인',
+        body: `${adjustTarget.date} ${fmtOT(adjustForm.hours, adjustForm.minutes)} 조정 승인`, type: 'overtime_request',
+      }).catch(() => {});
     }
     setAdjustTarget(null);
   };
 
   return (
-    <div>
-      <div className="flex items-center justify-between mb-6">
-        <h2 className="text-2xl font-heading font-bold text-gray-900">{canEditHours ? '연장근무 관리' : '연장근무 승인'}</h2>
-        <span className="text-sm text-gray-400">대기 {pendingCount}건</span>
-      </div>
+    <div style={{ flex: 1, overflow: 'auto', background: T.bg, minWidth: 0 }}>
+      <TopBar
+        subtitle="근태 관리"
+        title={canEditHours ? '연장근무 관리' : '연장근무 승인'}
+        actions={
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <span style={{ fontSize: 12, color: T.mutedSoft }}>실시간 반영</span>
+            <Dot c={T.success} />
+          </div>
+        }
+      />
 
-      {/* 필터 */}
-      <div className="flex flex-wrap gap-2 mb-4">
-        {[
-          { value: 'all', label: '전체' },
-          { value: 'pending', label: '대기' },
-          { value: 'approved', label: '승인' },
-          { value: 'rejected', label: '반려' },
-        ].map((opt) => (
-          <button
-            key={opt.value}
-            onClick={() => changeFilterStatus(opt.value)}
-            className={`px-3 py-1.5 rounded-lg text-sm font-medium min-h-[36px] transition-colors ${
-              filterStatus === opt.value ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-            }`}
-          >
-            {opt.label}
-          </button>
-        ))}
-        <input
-          type="text"
-          value={filterName}
-          onChange={(e) => changeFilterName(e.target.value)}
-          placeholder="작업자명 검색"
-          className="border border-gray-200 rounded-lg px-3 py-1.5 text-sm min-h-[36px] w-32"
-        />
-      </div>
-
-      {/* 일괄 승인 액션 바 */}
-      {canApprove && selectedIds.size > 0 && (
-        <div className="flex items-center gap-3 mb-4 p-3 bg-blue-50 rounded-xl">
-          <span className="text-sm font-medium text-blue-700">선택된 {selectedIds.size}건</span>
-          <button
-            onClick={handleBulkApprove}
-            disabled={processing === 'bulk'}
-            className="px-4 py-1.5 rounded-lg text-sm font-medium bg-blue-600 text-white hover:bg-blue-700 disabled:bg-blue-300 transition-colors min-h-[36px]"
-          >
-            {processing === 'bulk' ? '처리 중...' : '일괄 승인'}
-          </button>
-          <button
-            onClick={() => setSelectedIds(new Set())}
-            className="px-3 py-1.5 rounded-lg text-sm font-medium bg-white text-gray-600 border border-gray-200 hover:bg-gray-50 transition-colors min-h-[36px]"
-          >
-            선택 해제
-          </button>
-        </div>
-      )}
-
-      {/* 모바일 카드 뷰 */}
-      <div className="md:hidden space-y-3">
-        {canApprove && pendingCount > 0 && (
-          <label className="flex items-center gap-2 px-1 py-1">
-            <input
-              type="checkbox"
-              checked={allPendingSelected}
-              onChange={toggleSelectAll}
-              className="w-4 h-4 rounded border-gray-300 text-blue-600"
-            />
-            <span className="text-sm text-gray-600">대기 항목 전체 선택</span>
-          </label>
-        )}
-        {filtered.length === 0 && (
-          <p className="text-center text-gray-400 py-12">연장근무 신청 내역이 없습니다</p>
-        )}
-        {filtered.map((req) => {
-          const emp = empMap[req.employeeId];
-          const st = statusConfig[req.status] || statusConfig.pending;
-          const isPending = req.status === 'pending';
-          return (
-            <Card key={req.id} accent="gray" className={`p-4 ${isPending ? 'border-l-amber-400' : ''}`}>
-              <div className="flex items-start justify-between mb-2">
-                <div className="flex items-center gap-2">
-                  {canApprove && isPending && (
-                    <input
-                      type="checkbox"
-                      checked={selectedIds.has(req.id)}
-                      onChange={() => toggleSelect(req.id)}
-                      className="w-4 h-4 rounded border-gray-300 text-blue-600"
-                    />
-                  )}
-                  <span className="font-semibold text-gray-900">{emp?.name || '—'}</span>
-                  <span className="text-gray-500 text-sm ml-2">{formatOvertimeTime(req.hours, req.minutes)}</span>
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <span className={`w-2 h-2 rounded-full ${st.dot}`} />
-                  <span className={`text-xs font-medium ${st.color}`}>{st.label}</span>
-                </div>
+      <div style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 20 }}>
+        {/* KPI */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12 }}>
+          {[
+            { l: '대기중', v: counts.pending, sub: '건', tone: T.warning, soft: T.warningSoft, trend: counts.pending > 0 ? '처리 필요' : '없음' },
+            { l: '대기 시간 합계', v: Math.floor(totalHoursPending / 60), sub: `${totalHoursPending % 60}분`, unit: 'h', tone: T.primary, soft: T.primarySoft, trend: '누적' },
+            { l: '승인됨', v: counts.approved, sub: '건', tone: T.success, soft: T.successSoft, trend: '완료' },
+            { l: '반려됨', v: counts.rejected, sub: '건', tone: T.danger, soft: T.dangerSoft, trend: '완료' },
+          ].map((k, i) => (
+            <Card key={i} pad={18} style={{ position: 'relative', overflow: 'hidden' }}>
+              <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 3, background: k.tone }} />
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 14 }}>
+                <span style={{ fontSize: 12, color: T.muted, fontWeight: 600 }}>{k.l}</span>
+                <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 6px', background: k.soft, color: k.tone, borderRadius: 4 }}>{k.trend}</span>
               </div>
-              <div className="text-sm text-gray-600 mb-1">{req.date}</div>
-              {req.reason && <div className="text-sm text-gray-500 mb-1">{req.reason}</div>}
-              {req.adjustedByReviewer && (
-                <span className="inline-block px-1.5 py-0.5 rounded text-[10px] font-medium bg-green-100 text-green-700 mb-2">재배팀 조정</span>
-              )}
-              {canApprove && isPending ? (
-                <div className="flex gap-2 justify-end mt-2">
-                  <Button size="sm" onClick={() => handleApprove(req.id)} disabled={processing === req.id}>
-                    {processing === req.id ? '처리 중...' : '승인'}
-                  </Button>
-                  <button
-                    onClick={() => openAdjust(req, 'adjustAndApprove')}
-                    className="px-3 py-1.5 rounded-lg text-sm font-medium bg-blue-50 text-blue-600 active:scale-[0.98]"
-                  >
-                    시간 조정
-                  </button>
-                  <Button size="sm" variant="danger" onClick={() => handleReject(req.id)} disabled={processing === req.id}>반려</Button>
-                </div>
-              ) : canEditHours && req.status === 'approved' ? (
-                <div className="flex gap-2 justify-end mt-2">
-                  <button
-                    onClick={() => openAdjust(req, 'editHours')}
-                    className="px-3 py-1.5 rounded-lg text-sm font-medium bg-violet-50 text-violet-600 active:scale-[0.98]"
-                  >
-                    시간 수정
-                  </button>
-                </div>
-              ) : (
-                <div className="text-right text-xs text-gray-400">처리 완료</div>
-              )}
+              <div style={{ display: 'flex', alignItems: 'baseline', gap: 4 }}>
+                <span style={{ fontSize: 36, fontWeight: 700, color: T.text, letterSpacing: -1, lineHeight: 1 }}>{k.v}</span>
+                {k.unit && <span style={{ fontSize: 14, color: T.mutedSoft, fontWeight: 500 }}>{k.unit}</span>}
+              </div>
+              <div style={{ fontSize: 11, color: T.mutedSoft, marginTop: 8 }}>{k.sub}</div>
             </Card>
-          );
-        })}
-      </div>
+          ))}
+        </div>
 
-      {/* 데스크탑 테이블 뷰 */}
-      <Card accent="gray" className="hidden md:block overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="bg-gray-50 text-left text-gray-500 border-b border-gray-100">
-                {canApprove && (
-                  <th className="px-3 py-3 w-10">
-                    <input
-                      type="checkbox"
-                      checked={allPendingSelected}
-                      onChange={toggleSelectAll}
-                      disabled={pendingCount === 0}
-                      className="w-4 h-4 rounded border-gray-300 text-blue-600"
-                    />
-                  </th>
-                )}
-                <th className="px-5 py-3 font-medium">상태</th>
-                <th className="px-5 py-3 font-medium">이름</th>
-                <th className="px-5 py-3 font-medium">날짜</th>
-                <th className="px-5 py-3 font-medium">신청 시간</th>
-                <th className="px-5 py-3 font-medium">사유</th>
-                <th className="px-5 py-3 font-medium">신청일시</th>
-                <th className="px-5 py-3 font-medium text-right">처리</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-50">
-              {filtered.length === 0 && (
-                <tr>
-                  <td colSpan={canApprove ? 8 : 7} className="text-center text-gray-400 py-12">연장근무 신청 내역이 없습니다</td>
-                </tr>
-              )}
-              {filtered.map((req) => {
-                const emp = empMap[req.employeeId];
-                const st = statusConfig[req.status] || statusConfig.pending;
-                const isPending = req.status === 'pending';
+        {/* 필터 + 일괄 바 */}
+        <Card pad={0}>
+          <div style={{ padding: '14px 18px', borderBottom: `1px solid ${T.borderSoft}`, display: 'flex', alignItems: 'center', gap: 10 }}>
+            <div style={{ display: 'flex', gap: 4, background: T.bg, padding: 3, borderRadius: 7 }}>
+              {[
+                { v: 'pending', l: '대기', n: counts.pending },
+                { v: 'approved', l: '승인', n: counts.approved },
+                { v: 'rejected', l: '반려', n: counts.rejected },
+                { v: 'all', l: '전체', n: counts.all },
+              ].map((t) => {
+                const on = filterStatus === t.v;
                 return (
-                  <tr key={req.id} className={isPending ? 'bg-amber-50/50' : ''}>
-                    {canApprove && (
-                      <td className="px-3 py-3">
-                        {isPending ? (
-                          <input
-                            type="checkbox"
-                            checked={selectedIds.has(req.id)}
-                            onChange={() => toggleSelect(req.id)}
-                            className="w-4 h-4 rounded border-gray-300 text-blue-600"
-                          />
-                        ) : null}
-                      </td>
-                    )}
-                    <td className="px-5 py-3">
-                      <div className="flex items-center gap-2">
-                        <span className={`w-2.5 h-2.5 rounded-full ${st.dot}`} />
-                        <span className={`text-xs font-medium ${st.color}`}>{st.label}</span>
-                        {req.adjustedByReviewer && (
-                          <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-green-100 text-green-700">조정</span>
-                        )}
-                      </div>
-                    </td>
-                    <td className="px-5 py-3 font-medium text-gray-900">{emp?.name || '—'}</td>
-                    <td className="px-5 py-3 text-gray-600">{req.date}</td>
-                    <td className="px-5 py-3 text-gray-600">{formatOvertimeTime(req.hours, req.minutes)}</td>
-                    <td className="px-5 py-3 text-gray-500 max-w-[200px] truncate">{req.reason || '—'}</td>
-                    <td className="px-5 py-3 text-gray-400 text-xs">
-                      {req.createdAt ? new Date(req.createdAt).toLocaleString('ko-KR', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—'}
-                    </td>
-                    <td className="px-5 py-3 text-right">
-                      {canApprove && isPending ? (
-                        <div className="flex gap-2 justify-end">
-                          <Button size="sm" onClick={() => handleApprove(req.id)} disabled={processing === req.id}>
-                            {processing === req.id ? '처리 중...' : '승인'}
-                          </Button>
-                          <button
-                            onClick={() => openAdjust(req, 'adjustAndApprove')}
-                            className="px-3 py-1.5 rounded-lg text-sm font-medium bg-blue-50 text-blue-600 active:scale-[0.98]"
-                          >
-                            시간 조정
-                          </button>
-                          <Button size="sm" variant="danger" onClick={() => handleReject(req.id)} disabled={processing === req.id}>반려</Button>
-                        </div>
-                      ) : canEditHours && req.status === 'approved' ? (
-                        <button
-                          onClick={() => openAdjust(req, 'editHours')}
-                          className="px-3 py-1.5 rounded-lg text-sm font-medium bg-violet-50 text-violet-600 active:scale-[0.98]"
-                        >
-                          시간 수정
-                        </button>
-                      ) : (
-                        <span className="text-xs text-gray-400">처리 완료</span>
-                      )}
-                    </td>
-                  </tr>
+                  <span key={t.v} onClick={() => { setFilterStatus(t.v); setSelectedIds(new Set()); }}
+                    style={{
+                      padding: '6px 12px', borderRadius: 5, fontSize: 12, fontWeight: 600, cursor: 'pointer',
+                      background: on ? T.surface : 'transparent',
+                      color: on ? T.text : T.mutedSoft,
+                      boxShadow: on ? '0 1px 2px rgba(0,0,0,0.06)' : 'none',
+                      display: 'inline-flex', alignItems: 'center', gap: 6,
+                    }}>
+                    {t.l}
+                    {t.n > 0 && <span style={{ fontSize: 10, fontWeight: 700, padding: '0 5px', borderRadius: 3, background: on ? T.bg : 'transparent', color: on ? T.muted : T.mutedSoft }}>{t.n}</span>}
+                  </span>
                 );
               })}
-            </tbody>
-          </table>
-        </div>
-      </Card>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '7px 10px', background: T.bg, border: `1px solid ${T.border}`, borderRadius: 7, flex: 1, maxWidth: 260, marginLeft: 'auto', fontSize: 13, color: T.mutedSoft }}>
+              <Icon d={icons.search} size={14} />
+              <input value={filterName} onChange={(e) => { setFilterName(e.target.value); setSelectedIds(new Set()); }}
+                placeholder="작업자명 검색"
+                style={{ border: 0, background: 'transparent', outline: 'none', flex: 1, fontSize: 13, color: T.text }} />
+            </div>
+          </div>
 
-      {/* 시간 조정 후 승인 모달 */}
+          {/* 일괄 액션 바 */}
+          {canApprove && selectedIds.size > 0 && (
+            <div style={{ padding: '10px 18px', background: T.primarySoft, borderBottom: `1px solid ${T.borderSoft}`, display: 'flex', alignItems: 'center', gap: 10 }}>
+              <span style={{ fontSize: 13, fontWeight: 700, color: T.primaryText }}>
+                <Icon d={icons.check} size={13} c={T.primary} sw={2.4} /> 선택된 {selectedIds.size}건
+              </span>
+              <button onClick={handleBulkApprove} disabled={processing === 'bulk'} style={{
+                marginLeft: 'auto', height: 32, padding: '0 14px', borderRadius: 7, border: 0,
+                background: T.primary, color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer',
+              }}>
+                {processing === 'bulk' ? '처리 중...' : '일괄 승인'}
+              </button>
+              <button onClick={() => setSelectedIds(new Set())} style={{
+                height: 32, padding: '0 12px', borderRadius: 7, border: `1px solid ${T.border}`,
+                background: T.surface, color: T.muted, fontSize: 12, fontWeight: 600, cursor: 'pointer',
+              }}>선택 해제</button>
+            </div>
+          )}
+
+          {filtered.length === 0 ? (
+            <div style={{ padding: 60, textAlign: 'center', color: T.mutedSoft, fontSize: 13 }}>연장근무 신청 내역이 없습니다</div>
+          ) : (
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+              <thead>
+                <tr style={{ background: T.bg, textAlign: 'left', color: T.mutedSoft, fontSize: 11, fontWeight: 700, letterSpacing: 0.3 }}>
+                  {canApprove && (
+                    <th style={{ padding: '10px 14px', width: 34 }}>
+                      <input type="checkbox" checked={allPendingSelected} onChange={toggleSelectAll} disabled={pendingIds.length === 0} />
+                    </th>
+                  )}
+                  <th style={{ padding: '10px 12px' }}>작업자</th>
+                  <th style={{ padding: '10px 12px' }}>날짜</th>
+                  <th style={{ padding: '10px 12px' }}>신청 시간</th>
+                  <th style={{ padding: '10px 12px' }}>사유</th>
+                  <th style={{ padding: '10px 12px' }}>신청</th>
+                  <th style={{ padding: '10px 12px' }}>상태</th>
+                  <th style={{ padding: '10px 18px', textAlign: 'right' }}>처리</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filtered.map((req, i) => {
+                  const emp = empMap[req.employeeId];
+                  const st = STATUS[req.status] || STATUS.pending;
+                  const isPending = req.status === 'pending';
+                  return (
+                    <tr key={req.id} style={{
+                      borderTop: i ? `1px solid ${T.borderSoft}` : 'none',
+                      background: isPending ? 'rgba(245,158,11,0.04)' : T.surface,
+                    }}>
+                      {canApprove && (
+                        <td style={{ padding: '12px 14px' }}>
+                          {isPending && <input type="checkbox" checked={selectedIds.has(req.id)} onChange={() => toggleSelect(req.id)} />}
+                        </td>
+                      )}
+                      <td style={{ padding: '12px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                          <Avatar name={emp?.name || '?'} color={avatarColor(req.employeeId)} size={32} />
+                          <div>
+                            <div style={{ fontWeight: 600, color: T.text }}>{emp?.name || '—'}</div>
+                            <div style={{ fontSize: 10, color: T.mutedSoft }}>{emp?.jobType || ''}</div>
+                          </div>
+                        </div>
+                      </td>
+                      <td style={{ padding: '12px', color: T.text, fontFamily: 'ui-monospace,monospace' }}>{req.date}</td>
+                      <td style={{ padding: '12px' }}>
+                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '3px 9px', background: T.primarySoft, color: T.primaryText, borderRadius: 999, fontSize: 12, fontWeight: 700 }}>
+                          <Icon d={icons.clock} size={11} c={T.primary} sw={2} />
+                          {fmtOT(req.hours, req.minutes)}
+                        </span>
+                      </td>
+                      <td style={{ padding: '12px', color: T.muted, maxWidth: 220, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {req.reason || '—'}
+                      </td>
+                      <td style={{ padding: '12px', color: T.mutedSoft, fontSize: 11 }}>{fmtAgo(req.createdAt)}</td>
+                      <td style={{ padding: '12px' }}>
+                        <Pill tone={st.tone}><Dot c={st.dot} />{st.label}</Pill>
+                        {req.adjustedByReviewer && (
+                          <span style={{ marginLeft: 6, fontSize: 10, fontWeight: 700, padding: '1px 5px', background: T.successSoft, color: T.success, borderRadius: 3 }}>조정</span>
+                        )}
+                      </td>
+                      <td style={{ padding: '12px 18px', textAlign: 'right' }}>
+                        {canApprove && isPending ? (
+                          <div style={{ display: 'inline-flex', gap: 6 }}>
+                            <button onClick={() => handleReject(req.id)} disabled={processing === req.id}
+                              style={{ height: 30, padding: '0 10px', borderRadius: 6, border: `1px solid ${T.border}`, background: T.surface, color: T.danger, fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>반려</button>
+                            <button onClick={() => openAdjust(req, 'adjustAndApprove')}
+                              style={{ height: 30, padding: '0 10px', borderRadius: 6, border: `1px solid ${T.border}`, background: T.surface, color: T.primary, fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>시간 조정</button>
+                            <button onClick={() => handleApprove(req.id)} disabled={processing === req.id}
+                              style={{ height: 30, padding: '0 12px', borderRadius: 6, border: 0, background: T.success, color: '#fff', fontSize: 11, fontWeight: 700, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                              <Icon d={icons.check} size={11} c="#fff" sw={2.5} />
+                              {processing === req.id ? '...' : '승인'}
+                            </button>
+                          </div>
+                        ) : canEditHours && req.status === 'approved' ? (
+                          <button onClick={() => openAdjust(req, 'editHours')}
+                            style={{ height: 30, padding: '0 10px', borderRadius: 6, border: `1px solid ${T.border}`, background: T.surface, color: '#7C3AED', fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>시간 수정</button>
+                        ) : (
+                          <span style={{ fontSize: 11, color: T.mutedSoft }}>처리 완료</span>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          )}
+        </Card>
+      </div>
+
       <BottomSheet
         isOpen={!!adjustTarget}
         onClose={() => setAdjustTarget(null)}
         title={adjustTarget?.mode === 'editHours' ? '시간 수정' : '시간 조정 후 승인'}
       >
         {adjustTarget && (
-          <div className="space-y-4">
-            <div className="bg-gray-50 rounded-xl px-4 py-3 text-sm">
-              <span className="text-gray-500">원래 신청: </span>
-              <span className="font-medium text-gray-900">{formatOvertimeTime(adjustTarget.hours, adjustTarget.minutes)}</span>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+            <div style={{ padding: 12, background: T.bg, borderRadius: 8, fontSize: 13 }}>
+              <span style={{ color: T.mutedSoft }}>원래 신청: </span>
+              <strong style={{ color: T.text }}>{fmtOT(adjustTarget.hours, adjustTarget.minutes)}</strong>
             </div>
-            <div className="grid grid-cols-2 gap-3">
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">시간</label>
-                <select
-                  value={adjustForm.hours}
-                  onChange={(e) => setAdjustForm({ ...adjustForm, hours: Number(e.target.value) })}
-                  className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm min-h-[44px]"
-                >
-                  {Array.from({ length: 13 }, (_, i) => (
-                    <option key={i} value={i}>{i}시간</option>
-                  ))}
+                <label style={{ fontSize: 11, fontWeight: 700, color: T.muted, display: 'block', marginBottom: 5 }}>시간</label>
+                <select value={adjustForm.hours} onChange={(e) => setAdjustForm({ ...adjustForm, hours: Number(e.target.value) })}
+                  style={{ width: '100%', height: 40, padding: '0 10px', border: `1px solid ${T.border}`, borderRadius: 7, fontSize: 13 }}>
+                  {Array.from({ length: 13 }, (_, i) => <option key={i} value={i}>{i}시간</option>)}
                 </select>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">분</label>
-                <select
-                  value={adjustForm.minutes}
-                  onChange={(e) => setAdjustForm({ ...adjustForm, minutes: Number(e.target.value) })}
-                  className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm min-h-[44px]"
-                >
-                  {[0, 15, 30, 45].map((m) => (
-                    <option key={m} value={m}>{m}분</option>
-                  ))}
+                <label style={{ fontSize: 11, fontWeight: 700, color: T.muted, display: 'block', marginBottom: 5 }}>분</label>
+                <select value={adjustForm.minutes} onChange={(e) => setAdjustForm({ ...adjustForm, minutes: Number(e.target.value) })}
+                  style={{ width: '100%', height: 40, padding: '0 10px', border: `1px solid ${T.border}`, borderRadius: 7, fontSize: 13 }}>
+                  {[0, 15, 30, 45].map((m) => <option key={m} value={m}>{m}분</option>)}
                 </select>
               </div>
             </div>
-            <Button
-              size="lg"
-              className="w-full"
-              onClick={handleAdjustConfirm}
+            <button onClick={handleAdjustConfirm}
               disabled={processing || (adjustForm.hours === 0 && adjustForm.minutes === 0)}
-            >
+              style={{
+                width: '100%', height: 44, borderRadius: 10, border: 0,
+                background: T.primary, color: '#fff', fontSize: 14, fontWeight: 700, cursor: 'pointer',
+              }}>
               {processing ? '처리 중...' : adjustTarget?.mode === 'editHours' ? '시간 수정' : '조정하여 승인'}
-            </Button>
+            </button>
           </div>
         )}
       </BottomSheet>

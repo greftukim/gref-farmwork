@@ -1,184 +1,94 @@
-import { useState, useMemo } from 'react';
+// 휴가 현황 (인사팀) — /admin/leave-status
+import React, { useMemo, useState } from 'react';
+import { Avatar, Card, Dot, Icon, Pill, T, TopBar, icons } from '../../design/primitives';
 import useLeaveStore from '../../stores/leaveStore';
 import useEmployeeStore from '../../stores/employeeStore';
-import useBranchStore from '../../stores/branchStore';
-import Card from '../../components/common/Card';
 
-const statusConfig = {
-  pending:       { label: '재배팀 승인 대기', badge: 'bg-amber-100 text-amber-700' },
-  approved:      { label: '승인',             badge: 'bg-green-100 text-green-700'  },
-  rejected:      { label: '반려',             badge: 'bg-red-100 text-red-700'      },
+const STATUS = {
+  pending: { l: '대기', tone: 'warning' },
+  approved: { l: '승인', tone: 'success' },
+  rejected: { l: '반려', tone: 'danger' },
 };
 
 export default function LeaveStatusPage() {
   const requests = useLeaveStore((s) => s.requests);
   const employees = useEmployeeStore((s) => s.employees);
-  const branches = useBranchStore((s) => s.branches);
+  const empMap = useMemo(() => Object.fromEntries(employees.map((e) => [e.id, e])), [employees]);
+  const [q, setQ] = useState('');
 
-  const [filterBranch, setFilterBranch] = useState('all');
-  const [filterStatus, setFilterStatus] = useState('all');
-  const [filterStart, setFilterStart] = useState('');
-  const [filterEnd, setFilterEnd] = useState('');
-  const [filterName, setFilterName] = useState('');
+  const year = new Date().getFullYear();
+  const approved = useMemo(() => (requests || []).filter((r) => r.status === 'approved' && (r.date || '').startsWith(String(year))), [requests, year]);
 
-  const empMap = useMemo(
-    () => Object.fromEntries(employees.map((e) => [e.id, e])),
-    [employees]
-  );
-  const branchMap = useMemo(
-    () => Object.fromEntries(branches.map((b) => [b.code, b.name])),
-    [branches]
-  );
-
-  const filtered = useMemo(() => {
-    return requests
-      .filter((r) => {
-        const emp = empMap[r.employeeId];
-        if (!emp) return false;
-        if (filterBranch !== 'all' && emp.branch !== filterBranch) return false;
-        if (filterStatus !== 'all') {
-          if (r.status !== filterStatus) return false;
-        }
-        if (filterStart && r.date < filterStart) return false;
-        if (filterEnd && r.date > filterEnd) return false;
-        if (filterName && !emp.name.includes(filterName)) return false;
-        return true;
-      })
-      .sort((a, b) => b.date.localeCompare(a.date));
-  }, [requests, empMap, filterBranch, filterStatus, filterStart, filterEnd, filterName]);
+  const perEmp = useMemo(() => {
+    const m = {};
+    employees.filter((e) => e.role === 'worker').forEach((e) => {
+      m[e.id] = { emp: e, used: 0, pending: 0 };
+    });
+    approved.forEach((r) => { if (m[r.employeeId]) m[r.employeeId].used += 1; });
+    (requests || []).filter((r) => r.status === 'pending').forEach((r) => { if (m[r.employeeId]) m[r.employeeId].pending += 1; });
+    return Object.values(m).filter((x) => !q.trim() || x.emp.name.includes(q.trim())).sort((a, b) => b.used - a.used);
+  }, [employees, approved, requests, q]);
 
   return (
-    <div>
-      <h2 className="text-2xl font-heading font-bold text-gray-900 mb-6">근태 현황</h2>
-
-      {/* 필터 */}
-      <div className="flex flex-wrap gap-2 mb-4">
-        <select
-          value={filterBranch}
-          onChange={(e) => setFilterBranch(e.target.value)}
-          className="border border-gray-200 rounded-xl px-3 py-2 text-sm min-h-[44px] bg-white"
-        >
-          <option value="all">전체 지점</option>
-          {branches.map((b) => (
-            <option key={b.code} value={b.code}>{b.name}</option>
-          ))}
-        </select>
-
-        <select
-          value={filterStatus}
-          onChange={(e) => setFilterStatus(e.target.value)}
-          className="border border-gray-200 rounded-xl px-3 py-2 text-sm min-h-[44px] bg-white"
-        >
-          <option value="all">전체 상태</option>
-          <option value="pending">대기</option>
-          <option value="approved">승인</option>
-          <option value="rejected">반려</option>
-        </select>
-
-        <input
-          type="date"
-          value={filterStart}
-          onChange={(e) => setFilterStart(e.target.value)}
-          placeholder="시작일"
-          className="border border-gray-200 rounded-xl px-3 py-2 text-sm min-h-[44px]"
-        />
-        <input
-          type="date"
-          value={filterEnd}
-          onChange={(e) => setFilterEnd(e.target.value)}
-          placeholder="종료일"
-          className="border border-gray-200 rounded-xl px-3 py-2 text-sm min-h-[44px]"
-        />
-        <input
-          type="text"
-          value={filterName}
-          onChange={(e) => setFilterName(e.target.value)}
-          placeholder="작업자 검색"
-          className="border border-gray-200 rounded-xl px-3 py-2 text-sm min-h-[44px] w-32"
-        />
-        {(filterBranch !== 'all' || filterStatus !== 'all' || filterStart || filterEnd || filterName) && (
-          <button
-            onClick={() => { setFilterBranch('all'); setFilterStatus('all'); setFilterStart(''); setFilterEnd(''); setFilterName(''); }}
-            className="px-3 py-2 text-sm text-gray-500 border border-gray-200 rounded-xl hover:bg-gray-50 min-h-[44px]"
-          >초기화</button>
-        )}
-      </div>
-
-      <div className="text-xs text-gray-400 mb-3">{filtered.length}건</div>
-
-      {/* 모바일 카드 뷰 */}
-      <div className="md:hidden space-y-3">
-        {filtered.length === 0 && (
-          <p className="text-center text-gray-400 py-12">해당 조건의 근태 신청이 없습니다</p>
-        )}
-        {filtered.map((req) => {
-          const emp = empMap[req.employeeId];
-          const st = statusConfig[req.status] || statusConfig.pending;
-          const reviewer = req.farmReviewedBy ? empMap[req.farmReviewedBy] : null;
-          return (
-            <Card key={req.id} accent="gray" className="p-4">
-              <div className="flex items-start justify-between mb-2">
-                <div>
-                  <span className="font-semibold text-gray-900">{emp?.name || '—'}</span>
-                  <span className="text-xs text-gray-400 ml-2">{branchMap[emp?.branch] || emp?.branch || ''}</span>
-                </div>
-                <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${st.badge}`}>{st.label}</span>
-              </div>
-              <div className="text-sm text-gray-600 mb-0.5">{req.type} · {req.date}</div>
-              {req.reason && <div className="text-sm text-gray-500 mb-0.5 truncate">{req.reason}</div>}
-              {reviewer && (
-                <div className="text-xs text-gray-400 mt-1">승인자: {reviewer.name}</div>
-              )}
+    <div style={{ flex: 1, overflow: 'auto', background: T.bg, minWidth: 0 }}>
+      <TopBar subtitle="인사 관리" title={`${year}년 휴가 사용 현황`} />
+      <div style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 20 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12 }}>
+          {[
+            { l: '총 사용', v: approved.length, tone: T.success },
+            { l: '대기', v: (requests || []).filter((r) => r.status === 'pending').length, tone: T.warning },
+            { l: '대상 인원', v: perEmp.length, tone: T.primary },
+          ].map((k, i) => (
+            <Card key={i} pad={18} style={{ position: 'relative', overflow: 'hidden' }}>
+              <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 3, background: k.tone }} />
+              <div style={{ fontSize: 12, color: T.muted, fontWeight: 600, marginBottom: 14 }}>{k.l}</div>
+              <div style={{ fontSize: 36, fontWeight: 700, color: T.text, letterSpacing: -1, lineHeight: 1 }}>{k.v}</div>
+              <div style={{ fontSize: 11, color: T.mutedSoft, marginTop: 8 }}>건</div>
             </Card>
-          );
-        })}
-      </div>
+          ))}
+        </div>
 
-      {/* 데스크탑 테이블 뷰 */}
-      <Card accent="gray" className="hidden md:block overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
+        <Card pad={0}>
+          <div style={{ padding: '14px 20px', borderBottom: `1px solid ${T.borderSoft}`, display: 'flex', alignItems: 'center', gap: 10 }}>
+            <div style={{ fontSize: 13, fontWeight: 700, color: T.text }}>직원별 현황 ({perEmp.length})</div>
+            <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 6, padding: '7px 10px', background: T.bg, border: `1px solid ${T.border}`, borderRadius: 7, maxWidth: 240 }}>
+              <Icon d={icons.search} size={14} c={T.mutedSoft} />
+              <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="이름 검색" style={{ border: 0, background: 'transparent', outline: 'none', flex: 1, fontSize: 13 }} />
+            </div>
+          </div>
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
             <thead>
-              <tr className="bg-gray-50 text-left text-gray-500 border-b border-gray-100">
-                <th className="px-4 py-3 font-medium">지점</th>
-                <th className="px-4 py-3 font-medium">작업자</th>
-                <th className="px-4 py-3 font-medium">근태 유형</th>
-                <th className="px-4 py-3 font-medium">날짜</th>
-                <th className="px-4 py-3 font-medium">사유</th>
-                <th className="px-4 py-3 font-medium">신청일</th>
-                <th className="px-4 py-3 font-medium">승인자</th>
-                <th className="px-4 py-3 font-medium">상태</th>
+              <tr style={{ background: T.bg, textAlign: 'left', color: T.mutedSoft, fontSize: 11, fontWeight: 700, letterSpacing: 0.3 }}>
+                <th style={{ padding: '10px 20px' }}>직원</th>
+                <th style={{ padding: '10px 12px' }}>직군</th>
+                <th style={{ padding: '10px 12px', textAlign: 'right' }}>사용</th>
+                <th style={{ padding: '10px 12px', textAlign: 'right' }}>대기</th>
+                <th style={{ padding: '10px 20px', textAlign: 'right' }}>잔여</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-50">
-              {filtered.length === 0 && (
-                <tr>
-                  <td colSpan={8} className="text-center text-gray-400 py-12">해당 조건의 근태 신청이 없습니다</td>
-                </tr>
-              )}
-              {filtered.map((req) => {
-                const emp = empMap[req.employeeId];
-                const st = statusConfig[req.status] || statusConfig.pending;
-                const reviewer = req.farmReviewedBy ? empMap[req.farmReviewedBy] : null;
+            <tbody>
+              {perEmp.map((r, i) => {
+                const annual = r.emp.annualLeave || 15;
+                const remain = Math.max(0, annual - r.used);
                 return (
-                  <tr key={req.id}>
-                    <td className="px-4 py-3 text-gray-600">{branchMap[emp?.branch] || emp?.branch || '—'}</td>
-                    <td className="px-4 py-3 font-medium text-gray-900">{emp?.name || '—'}</td>
-                    <td className="px-4 py-3 text-gray-600">{req.type}</td>
-                    <td className="px-4 py-3 text-gray-600">{req.date}</td>
-                    <td className="px-4 py-3 text-gray-500 max-w-[180px] truncate">{req.reason}</td>
-                    <td className="px-4 py-3 text-gray-500">{req.createdAt ? req.createdAt.slice(0, 10) : '—'}</td>
-                    <td className="px-4 py-3 text-gray-500">{reviewer?.name || '—'}</td>
-                    <td className="px-4 py-3">
-                      <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${st.badge}`}>{st.label}</span>
+                  <tr key={r.emp.id} style={{ borderTop: i ? `1px solid ${T.borderSoft}` : 'none' }}>
+                    <td style={{ padding: '12px 20px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                        <Avatar name={r.emp.name} color="indigo" size={30} />
+                        <span style={{ fontWeight: 600, color: T.text }}>{r.emp.name}</span>
+                      </div>
                     </td>
+                    <td style={{ padding: '12px', color: T.muted }}>{r.emp.jobType || '—'}</td>
+                    <td style={{ padding: '12px', textAlign: 'right', fontFamily: 'ui-monospace,monospace', fontWeight: 700, color: T.text }}>{r.used}일</td>
+                    <td style={{ padding: '12px', textAlign: 'right' }}>{r.pending > 0 ? <Pill tone="warning">{r.pending}</Pill> : <span style={{ color: T.mutedSoft }}>—</span>}</td>
+                    <td style={{ padding: '12px 20px', textAlign: 'right', fontFamily: 'ui-monospace,monospace', fontWeight: 700, color: remain > 0 ? T.success : T.danger }}>{remain}일</td>
                   </tr>
                 );
               })}
             </tbody>
           </table>
-        </div>
-      </Card>
+        </Card>
+      </div>
     </div>
   );
 }

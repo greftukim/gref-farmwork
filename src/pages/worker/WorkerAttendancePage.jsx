@@ -1,457 +1,241 @@
-import { useState, useMemo } from 'react';
+// 작업자 - 내 출퇴근 (모바일) — 프로 SaaS 리디자인
+// 기존: src/pages/worker/WorkerAttendancePage.jsx 교체용
+
+import React, { useMemo, useState } from 'react';
+import {
+  Card, Dot, Icon, Pill, T, icons,
+} from '../../design/primitives';
 import useAuthStore from '../../stores/authStore';
 import useAttendanceStore from '../../stores/attendanceStore';
-import useTaskStore from '../../stores/taskStore';
-import useLeaveStore from '../../stores/leaveStore';
-import Card from '../../components/common/Card';
-import Button from '../../components/common/Button';
-import BottomSheet from '../../components/common/BottomSheet';
 
-const leaveTypes = ['연차', '오전반차', '오후반차', '출장', '대휴'];
-
-const KOREAN_HOLIDAYS = new Set([
-  // 2025
-  '2025-01-01','2025-01-28','2025-01-29','2025-01-30',
-  '2025-03-01','2025-05-05','2025-05-06','2025-06-06',
-  '2025-08-15','2025-10-03','2025-10-05','2025-10-06',
-  '2025-10-07','2025-10-09','2025-12-25',
-  // 2026
-  '2026-01-01','2026-02-16','2026-02-17','2026-02-18',
-  '2026-03-01','2026-03-02','2026-05-05','2026-05-24',
-  '2026-06-06','2026-08-15','2026-08-17',
-  '2026-09-23','2026-09-24','2026-09-25',
-  '2026-10-03','2026-10-05','2026-10-09','2026-12-25',
-]);
-
-const statusMap = {
-  pending:       { label: '대기',   color: 'bg-amber-100 text-amber-700' },
-  approved:      { label: '승인',   color: 'bg-green-100 text-green-700' },
-  rejected:      { label: '반려',   color: 'bg-red-100 text-red-700'    },
-};
-
-const DAYS = ['일', '월', '화', '수', '목', '금', '토'];
-
-function formatHHMM(iso) {
+const fmtTime = (iso) => {
   if (!iso) return '—';
   const d = new Date(iso);
   return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
-}
+};
+const pad2 = (n) => String(n).padStart(2, '0');
+const ymd = (y, m, d) => `${y}-${pad2(m + 1)}-${pad2(d)}`;
 
-export default function WorkerAttendancePage() {
+const STATE_COLOR = {
+  normal: T.success,
+  late: T.warning,
+  early: T.warning,
+  absent: T.danger,
+  holiday: T.mutedSoft,
+  leave: T.info,
+};
+
+export default function WorkerAttendancePage({ onNavigate }) {
   const currentUser = useAuthStore((s) => s.currentUser);
   const records = useAttendanceStore((s) => s.records);
-  const tasks = useTaskStore((s) => s.tasks);
-  const requests = useLeaveStore((s) => s.requests);
-  const balances = useLeaveStore((s) => s.balances);
-  const addRequest = useLeaveStore((s) => s.addRequest);
 
-  const today = new Date().toISOString().split('T')[0];
+  const now = new Date();
+  const [ym, setYm] = useState({ y: now.getFullYear(), m: now.getMonth() });
+  const [selected, setSelected] = useState(now.toISOString().split('T')[0]);
 
-  const [viewDate, setViewDate] = useState(() => {
-    const d = new Date();
-    return { year: d.getFullYear(), month: d.getMonth() };
-  });
-  const [selectedDate, setSelectedDate] = useState(null);
-  const [showLeaveSheet, setShowLeaveSheet] = useState(false);
-  const [leaveForm, setLeaveForm] = useState({ startDate: '', endDate: '', type: '연차', reason: '' });
+  const monthRecords = useMemo(() => {
+    const prefix = `${ym.y}-${pad2(ym.m + 1)}`;
+    return records.filter((r) =>
+      r.employeeId === currentUser?.id && r.date && r.date.startsWith(prefix)
+    );
+  }, [records, currentUser, ym]);
 
-  const { year, month } = viewDate;
-
-  // 캘린더에 표시되는 월 기준 통계
-  const viewMonth = `${year}-${String(month + 1).padStart(2, '0')}`;
-  const monthRecords = useMemo(
-    () => records.filter((r) => r.employeeId === currentUser?.id && r.date.startsWith(viewMonth)),
-    [records, currentUser, viewMonth]
-  );
-  const totalMinutes = useMemo(
-    () => monthRecords.reduce((sum, r) => sum + (r.workMinutes || 0), 0),
+  const recordMap = useMemo(
+    () => Object.fromEntries(monthRecords.map((r) => [r.date, r])),
     [monthRecords]
   );
-  const workDays = monthRecords.filter((r) => r.workMinutes).length;
-  const lateDays = monthRecords.filter((r) => r.status === 'late').length;
 
-  // 캘린더 셀 날짜 목록
-  const calendarDays = useMemo(() => {
-    const firstDay = new Date(year, month, 1).getDay();
-    const daysInMonth = new Date(year, month + 1, 0).getDate();
-    const cells = [];
-    for (let i = 0; i < firstDay; i++) cells.push(null);
-    for (let d = 1; d <= daysInMonth; d++) {
-      const pad = String(d).padStart(2, '0');
-      const mPad = String(month + 1).padStart(2, '0');
-      cells.push(`${year}-${mPad}-${pad}`);
-    }
-    return cells;
-  }, [year, month]);
-
-  const myRecords = useMemo(
-    () => records.filter((r) => r.employeeId === currentUser?.id),
-    [records, currentUser]
-  );
-  const myTasks = useMemo(
-    () => tasks.filter((t) => t.workerId === currentUser?.id),
-    [tasks, currentUser]
-  );
-  const myRequests = useMemo(
-    () => requests.filter((r) => r.employeeId === currentUser?.id),
-    [requests, currentUser]
-  );
-
-  const recordByDate = useMemo(
-    () => Object.fromEntries(myRecords.map((r) => [r.date, r])),
-    [myRecords]
-  );
-  const tasksByDate = useMemo(() => {
-    const map = {};
-    myTasks.forEach((t) => {
-      if (!map[t.date]) map[t.date] = [];
-      map[t.date].push(t);
+  const stats = useMemo(() => {
+    const s = { worked: 0, late: 0, minutes: 0 };
+    monthRecords.forEach((r) => {
+      if (r.checkIn) s.worked++;
+      if (r.status === 'late') s.late++;
+      if (r.checkIn && r.checkOut) {
+        s.minutes += Math.round((new Date(r.checkOut) - new Date(r.checkIn)) / 60000);
+      }
     });
-    return map;
-  }, [myTasks]);
-  const leaveByDate = useMemo(() => {
-    const map = {};
-    myRequests.filter((r) => r.status !== 'rejected').forEach((r) => {
-      if (!map[r.date]) map[r.date] = [];
-      map[r.date].push(r);
-    });
-    return map;
-  }, [myRequests]);
+    return s;
+  }, [monthRecords]);
 
-  const selRecord = selectedDate ? recordByDate[selectedDate] : null;
-  const selTasks = selectedDate ? (tasksByDate[selectedDate] || []) : [];
-  const selLeaves = selectedDate ? (leaveByDate[selectedDate] || []) : [];
+  // 달력
+  const firstDay = new Date(ym.y, ym.m, 1);
+  const daysInMonth = new Date(ym.y, ym.m + 1, 0).getDate();
+  const startWeek = firstDay.getDay(); // 0=Sun
+  const todayStr = now.toISOString().split('T')[0];
 
-  const prevMonth = () =>
-    setViewDate(({ year, month }) =>
-      month === 0 ? { year: year - 1, month: 11 } : { year, month: month - 1 }
-    );
-  const nextMonth = () =>
-    setViewDate(({ year, month }) =>
-      month === 11 ? { year: year + 1, month: 0 } : { year, month: month + 1 }
-    );
+  const cells = [];
+  for (let i = 0; i < startWeek; i++) cells.push(null);
+  for (let d = 1; d <= daysInMonth; d++) cells.push(d);
+  while (cells.length % 7 !== 0) cells.push(null);
 
-  const openLeaveForm = (date) => {
-    setSelectedDate(null);
-    setLeaveForm({ startDate: date || today, endDate: date || today, type: '연차', reason: '' });
-    setShowLeaveSheet(true);
+  const shiftMonth = (delta) => {
+    const d = new Date(ym.y, ym.m + delta, 1);
+    setYm({ y: d.getFullYear(), m: d.getMonth() });
   };
 
-  const handleLeaveSubmit = () => {
-    if (!leaveForm.startDate || !leaveForm.endDate || !leaveForm.reason.trim()) return;
-    const dates = [];
-    const cur = new Date(leaveForm.startDate + 'T00:00:00');
-    const end = new Date(leaveForm.endDate + 'T00:00:00');
-    while (cur <= end) {
-      dates.push(cur.toISOString().split('T')[0]);
-      cur.setDate(cur.getDate() + 1);
-    }
-    dates.forEach((date) =>
-      addRequest({ employeeId: currentUser.id, date, type: leaveForm.type, reason: leaveForm.reason })
-    );
-    setLeaveForm({ startDate: '', endDate: '', type: '연차', reason: '' });
-    setShowLeaveSheet(false);
-  };
-
-  const monthLabel = `${year}년 ${month + 1}월`;
-  const selDateLabel = selectedDate
-    ? new Date(selectedDate + 'T00:00:00').toLocaleDateString('ko-KR', {
-        month: 'long', day: 'numeric', weekday: 'short',
-      })
-    : '';
-
-  const myBalance = useMemo(
-    () => balances.find((b) => b.employeeId === currentUser?.id && b.year === new Date().getFullYear()),
-    [balances, currentUser]
-  );
+  const selRecord = recordMap[selected];
+  const selDate = new Date(selected);
 
   return (
-    <div>
-      {/* 통계 카드 (캘린더 월 기준) */}
-      <div className="grid grid-cols-3 gap-3 mb-4">
-        <Card accent="blue" className="p-3 text-center">
-          <div className="text-xs text-gray-400">출근일</div>
-          <div className="text-lg font-bold text-gray-900">{workDays}일</div>
-        </Card>
-        <Card accent="blue" className="p-3 text-center">
-          <div className="text-xs text-gray-400">총 근무</div>
-          <div className="text-lg font-bold text-gray-900">{Math.floor(totalMinutes / 60)}h</div>
-        </Card>
-        <Card accent={lateDays > 0 ? 'amber' : 'gray'} className="p-3 text-center">
-          <div className="text-xs text-gray-400">지각</div>
-          <div className="text-lg font-bold text-gray-900">{lateDays}회</div>
-        </Card>
-      </div>
-
-      {/* 캘린더 월 네비게이션 */}
-      <div className="flex items-center gap-2 mb-2">
-        <button
-          onClick={prevMonth}
-          className="p-1.5 rounded-lg text-gray-500 hover:bg-gray-100 active:scale-95 transition-transform"
-        >
-          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
-          </svg>
-        </button>
-        <span className="text-base font-semibold text-gray-900">{monthLabel}</span>
-        <button
-          onClick={nextMonth}
-          className="p-1.5 rounded-lg text-gray-500 hover:bg-gray-100 active:scale-95 transition-transform"
-        >
-          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-          </svg>
-        </button>
-      </div>
-
-      {/* 캘린더 */}
-      <div className="bg-white rounded-xl border border-gray-100 overflow-hidden mb-3">
-        {/* 요일 헤더 */}
-        <div className="grid grid-cols-7 border-b border-gray-100">
-          {DAYS.map((d, i) => (
-            <div
-              key={d}
-              className={`text-center text-xs font-medium py-2 ${
-                i === 0 ? 'text-red-400' : i === 6 ? 'text-blue-400' : 'text-gray-500'
-              }`}
-            >
-              {d}
-            </div>
-          ))}
+    <div style={{ flex: 1, overflow: 'auto', background: T.bg, paddingBottom: 80 }}>
+      {/* 헤더 */}
+      <div style={{ background: T.surface, borderBottom: `1px solid ${T.border}`, padding: 16 }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <button onClick={() => onNavigate?.('home')} style={{
+            width: 32, height: 32, borderRadius: 8, border: `1px solid ${T.border}`,
+            background: T.bg, color: T.muted, cursor: 'pointer',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }}>
+            <Icon d={<polyline points="15 18 9 12 15 6" />} size={14} sw={2.2} />
+          </button>
+          <h1 style={{ fontSize: 15, fontWeight: 700, color: T.text, margin: 0 }}>내 출퇴근</h1>
+          <div style={{ width: 32 }} />
         </div>
-        {/* 날짜 셀 */}
-        <div className="grid grid-cols-7">
-          {calendarDays.map((date, idx) => {
-            if (!date) {
-              return <div key={`empty-${idx}`} className="min-h-[56px] border-b border-gray-50" />;
-            }
-            const rec = recordByDate[date];
-            const tCount = (tasksByDate[date] || []).length;
-            const leaves = leaveByDate[date] || [];
-            const isToday = date === today;
-            const isSelected = date === selectedDate;
-            const dayOfWeek = new Date(date + 'T00:00:00').getDay();
-            const isHoliday = KOREAN_HOLIDAYS.has(date);
+      </div>
 
-            return (
-              <button
-                key={date}
-                onClick={() => setSelectedDate(date)}
-                className={`min-h-[56px] p-1 flex flex-col items-center gap-0.5 transition-colors
-                  border-b border-gray-50
-                  ${idx % 7 !== 6 ? 'border-r border-gray-50' : ''}
-                  ${isSelected ? 'bg-blue-50' : 'active:bg-gray-50'}`}
-              >
-                <span
-                  className={`w-6 h-6 flex items-center justify-center rounded-full text-xs font-medium
-                    ${isToday
-                      ? 'bg-blue-600 text-white'
-                      : isHoliday || dayOfWeek === 0 ? 'text-red-400'
-                      : dayOfWeek === 6 ? 'text-blue-400'
-                      : 'text-gray-700'
-                    }`}
-                >
-                  {new Date(date + 'T00:00:00').getDate()}
-                </span>
-                <div className="flex gap-0.5 flex-wrap justify-center min-h-[10px]">
-                  {rec?.checkIn && (
-                    <span className={`w-1.5 h-1.5 rounded-full ${rec.checkOut ? 'bg-green-400' : 'bg-blue-400'}`} />
-                  )}
-                  {leaves.length > 0 && (
-                    <span className="w-1.5 h-1.5 rounded-full bg-amber-400" />
-                  )}
-                  {tCount > 0 && (
-                    <span className="text-[9px] leading-3 text-gray-400 font-medium">{tCount}</span>
-                  )}
+      {/* 월별 통계 */}
+      <div style={{ padding: 16 }}>
+        <Card pad={16}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
+            <button onClick={() => shiftMonth(-1)} style={{
+              width: 28, height: 28, borderRadius: 6, border: `1px solid ${T.border}`, background: T.surface,
+              color: T.muted, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+            }}>
+              <Icon d={<polyline points="15 18 9 12 15 6" />} size={13} sw={2} />
+            </button>
+            <div style={{ fontSize: 15, fontWeight: 700, color: T.text, letterSpacing: -0.3 }}>
+              {ym.y}년 {ym.m + 1}월
+            </div>
+            <button onClick={() => shiftMonth(1)} style={{
+              width: 28, height: 28, borderRadius: 6, border: `1px solid ${T.border}`, background: T.surface,
+              color: T.muted, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+            }}>
+              <Icon d={<polyline points="9 18 15 12 9 6" />} size={13} sw={2} />
+            </button>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
+            {[
+              { l: '출근', v: stats.worked, sub: '일', c: T.success },
+              { l: '지각', v: stats.late, sub: '일', c: T.warning },
+              { l: '근무 시간', v: Math.floor(stats.minutes / 60), sub: `${stats.minutes % 60}분`, unit: 'h', c: T.primary },
+            ].map((k, i) => (
+              <div key={i} style={{ padding: 10, background: T.bg, borderRadius: 8, textAlign: 'center' }}>
+                <div style={{ fontSize: 10, color: T.mutedSoft, fontWeight: 700, marginBottom: 4 }}>{k.l}</div>
+                <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'center', gap: 3 }}>
+                  <span style={{ fontSize: 22, fontWeight: 700, color: k.c, letterSpacing: -0.5, fontFamily: 'ui-monospace,monospace', lineHeight: 1 }}>{k.v}</span>
+                  {k.unit && <span style={{ fontSize: 11, color: T.mutedSoft, fontWeight: 600 }}>{k.unit}</span>}
                 </div>
-              </button>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* 범례 */}
-      <div className="flex gap-3 px-1 mb-4 text-xs text-gray-400">
-        <span className="flex items-center gap-1">
-          <span className="w-2 h-2 rounded-full bg-green-400 flex-shrink-0" />출퇴근 완료
-        </span>
-        <span className="flex items-center gap-1">
-          <span className="w-2 h-2 rounded-full bg-blue-400 flex-shrink-0" />출근 중
-        </span>
-        <span className="flex items-center gap-1">
-          <span className="w-2 h-2 rounded-full bg-amber-400 flex-shrink-0" />근태 신청
-        </span>
-      </div>
-
-      {/* 잔여 연차 */}
-      {myBalance && (
-        <Card accent="gray" className="p-4 mb-4">
-          <div className="text-sm font-medium text-gray-700 mb-2">잔여 연차</div>
-          <div className="flex gap-6">
-            <div>
-              <span className="text-xs text-gray-400">총 </span>
-              <span className="font-bold text-gray-900">{myBalance.totalDays}일</span>
-            </div>
-            <div>
-              <span className="text-xs text-gray-400">사용 </span>
-              <span className="font-bold text-gray-900">{myBalance.usedDays}일</span>
-            </div>
-            <div>
-              <span className="text-xs text-gray-400">잔여 </span>
-              <span className="font-bold text-blue-600">{myBalance.totalDays - myBalance.usedDays}일</span>
-            </div>
+                <div style={{ fontSize: 10, color: T.mutedSoft, marginTop: 3 }}>{k.sub}</div>
+              </div>
+            ))}
           </div>
         </Card>
-      )}
+      </div>
 
-      {/* 날짜 상세 바텀시트 */}
-      <BottomSheet
-        isOpen={!!selectedDate}
-        onClose={() => setSelectedDate(null)}
-        title={selDateLabel}
-      >
-        {selectedDate && (
-          <div className="space-y-4">
-            {/* 출퇴근 */}
-            <div>
-              <div className="text-xs font-semibold text-gray-400 mb-2">출퇴근 기록</div>
-              {selRecord ? (
-                <div className="flex gap-4 bg-gray-50 rounded-xl px-4 py-3 flex-wrap">
-                  <div className="text-center">
-                    <div className="text-xs text-gray-400">출근</div>
-                    <div className="text-lg font-bold text-gray-900">{formatHHMM(selRecord.checkIn)}</div>
-                  </div>
-                  <div className="text-center">
-                    <div className="text-xs text-gray-400">퇴근</div>
-                    <div className="text-lg font-bold text-gray-900">{formatHHMM(selRecord.checkOut)}</div>
-                  </div>
-                  {selRecord.workMinutes ? (
-                    <div className="text-center">
-                      <div className="text-xs text-gray-400">근무</div>
-                      <div className="text-lg font-bold text-gray-900">
-                        {Math.floor(selRecord.workMinutes / 60)}h {selRecord.workMinutes % 60}m
-                      </div>
-                    </div>
-                  ) : null}
-                  {selRecord.status === 'late' && (
-                    <span className="self-center px-2 py-0.5 rounded-full text-xs bg-amber-100 text-amber-700">지각</span>
+      {/* 달력 */}
+      <div style={{ padding: '0 16px' }}>
+        <Card pad={14}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 4, marginBottom: 6 }}>
+            {['일', '월', '화', '수', '목', '금', '토'].map((d, i) => (
+              <div key={d} style={{
+                textAlign: 'center', fontSize: 11, fontWeight: 700,
+                color: i === 0 ? T.danger : i === 6 ? T.primary : T.mutedSoft,
+                padding: 4,
+              }}>{d}</div>
+            ))}
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 4 }}>
+            {cells.map((d, i) => {
+              if (d == null) return <div key={i} />;
+              const dateStr = ymd(ym.y, ym.m, d);
+              const r = recordMap[dateStr];
+              const isToday = dateStr === todayStr;
+              const isSel = dateStr === selected;
+              const dow = new Date(ym.y, ym.m, d).getDay();
+              const state = r?.status || (r?.checkIn ? 'normal' : null);
+              const dotC = STATE_COLOR[state];
+              return (
+                <button key={i} onClick={() => setSelected(dateStr)} style={{
+                  aspectRatio: '1', border: isSel ? `1.5px solid ${T.primary}` : '1.5px solid transparent',
+                  borderRadius: 8, background: isSel ? T.primarySoft : isToday ? T.bg : 'transparent',
+                  cursor: 'pointer',
+                  display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 2,
+                  padding: 2, position: 'relative',
+                }}>
+                  <span style={{
+                    fontSize: 13, fontWeight: isSel || isToday ? 700 : 500,
+                    color: isSel ? T.primaryText : dow === 0 ? T.danger : dow === 6 ? T.primary : T.text,
+                    fontFamily: 'ui-monospace,monospace',
+                  }}>{d}</span>
+                  {dotC ? (
+                    <Dot c={dotC} />
+                  ) : (
+                    <span style={{ width: 6, height: 6 }} />
                   )}
+                </button>
+              );
+            })}
+          </div>
+
+          {/* 범례 */}
+          <div style={{ display: 'flex', gap: 12, justifyContent: 'center', marginTop: 12, paddingTop: 10, borderTop: `1px solid ${T.borderSoft}`, fontSize: 10, color: T.mutedSoft }}>
+            <span><Dot c={T.success} /> 정상</span>
+            <span><Dot c={T.warning} /> 지각</span>
+            <span><Dot c={T.danger} /> 결근</span>
+            <span><Dot c={T.info} /> 휴가</span>
+          </div>
+        </Card>
+      </div>
+
+      {/* 선택일 상세 */}
+      <div style={{ padding: 16 }}>
+        <div style={{ fontSize: 12, fontWeight: 700, color: T.muted, marginBottom: 8, letterSpacing: 0.3 }}>
+          {selDate.getMonth() + 1}월 {selDate.getDate()}일 ({['일','월','화','수','목','금','토'][selDate.getDay()]}) 기록
+        </div>
+        <Card pad={16}>
+          {selRecord?.checkIn ? (
+            <>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 12 }}>
+                <div style={{ padding: 12, background: T.bg, borderRadius: 8 }}>
+                  <div style={{ fontSize: 10, color: T.mutedSoft, fontWeight: 700, marginBottom: 4 }}>출근</div>
+                  <div style={{ fontSize: 20, fontWeight: 700, color: T.text, fontFamily: 'ui-monospace,monospace' }}>{fmtTime(selRecord.checkIn)}</div>
                 </div>
-              ) : (
-                <div className="text-sm text-gray-400 text-center py-3 bg-gray-50 rounded-xl">
-                  출퇴근 기록 없음
+                <div style={{ padding: 12, background: T.bg, borderRadius: 8 }}>
+                  <div style={{ fontSize: 10, color: T.mutedSoft, fontWeight: 700, marginBottom: 4 }}>퇴근</div>
+                  <div style={{ fontSize: 20, fontWeight: 700, color: selRecord.checkOut ? T.text : T.mutedSoft, fontFamily: 'ui-monospace,monospace' }}>{fmtTime(selRecord.checkOut)}</div>
+                </div>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: 10, background: T.bg, borderRadius: 8 }}>
+                <Icon d={icons.clock} size={14} c={T.muted} />
+                <span style={{ fontSize: 12, color: T.muted, fontWeight: 600, flex: 1 }}>근무 시간</span>
+                <span style={{ fontSize: 13, fontWeight: 700, color: T.text, fontFamily: 'ui-monospace,monospace' }}>
+                  {selRecord.checkOut
+                    ? (() => {
+                        const m = Math.round((new Date(selRecord.checkOut) - new Date(selRecord.checkIn)) / 60000);
+                        return `${Math.floor(m / 60)}h ${m % 60}m`;
+                      })()
+                    : '—'}
+                </span>
+              </div>
+              {selRecord.status && selRecord.status !== 'normal' && (
+                <div style={{ marginTop: 10, padding: 10, background: T.warningSoft, borderRadius: 8, display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <Icon d={icons.alert} size={14} c={T.warning} />
+                  <span style={{ fontSize: 12, color: T.warning, fontWeight: 600 }}>
+                    {selRecord.status === 'late' ? `${selRecord.lateMinutes || ''}분 지각` : selRecord.status === 'early' ? '조퇴' : selRecord.status}
+                  </span>
                 </div>
               )}
-            </div>
-
-            {/* 작업 */}
-            {selTasks.length > 0 && (
-              <div>
-                <div className="text-xs font-semibold text-gray-400 mb-2">작업 ({selTasks.length}건)</div>
-                <div className="space-y-1.5">
-                  {selTasks.map((t) => (
-                    <div key={t.id} className="flex items-center justify-between bg-gray-50 rounded-lg px-3 py-2.5">
-                      <span className="text-sm text-gray-800">{t.title}</span>
-                      <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
-                        t.status === 'completed' ? 'bg-green-100 text-green-700'
-                        : t.status === 'in_progress' ? 'bg-blue-100 text-blue-700'
-                        : 'bg-gray-200 text-gray-500'
-                      }`}>
-                        {t.status === 'completed' ? '완료' : t.status === 'in_progress' ? '진행' : '대기'}
-                      </span>
-                    </div>
-                  ))}
-                </div>
+            </>
+          ) : (
+            <div style={{ padding: '24px 0', textAlign: 'center' }}>
+              <div style={{ fontSize: 13, fontWeight: 600, color: T.mutedSoft }}>
+                {selected > todayStr ? '예정일입니다' : '기록이 없습니다'}
               </div>
-            )}
-
-            {/* 근태 신청 내역 */}
-            {selLeaves.length > 0 && (
-              <div>
-                <div className="text-xs font-semibold text-gray-400 mb-2">근태 신청</div>
-                <div className="space-y-1.5">
-                  {selLeaves.map((req) => {
-                    const st = statusMap[req.status] || { label: req.status, color: 'bg-gray-100 text-gray-500' };
-                    return (
-                      <div key={req.id} className="flex items-center justify-between bg-gray-50 rounded-lg px-3 py-2.5">
-                        <div>
-                          <span className="text-sm text-gray-800">{req.type}</span>
-                          {req.reason && (
-                            <span className="text-xs text-gray-400 ml-2">{req.reason}</span>
-                          )}
-                        </div>
-                        <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${st.color}`}>
-                          {st.label}
-                        </span>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-
-            <Button className="w-full" onClick={() => openLeaveForm(selectedDate)}>
-              근태 신청하기
-            </Button>
-          </div>
-        )}
-      </BottomSheet>
-
-      {/* 근태 신청 바텀시트 */}
-      <BottomSheet isOpen={showLeaveSheet} onClose={() => setShowLeaveSheet(false)} title="근태 신청">
-        <div className="space-y-3">
-          <div className="grid grid-cols-2 gap-2">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">시작일</label>
-              <input
-                type="date"
-                value={leaveForm.startDate}
-                onChange={(e) => setLeaveForm({ ...leaveForm, startDate: e.target.value, endDate: leaveForm.endDate < e.target.value ? e.target.value : leaveForm.endDate })}
-                className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm min-h-[44px]"
-              />
             </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">종료일</label>
-              <input
-                type="date"
-                value={leaveForm.endDate}
-                min={leaveForm.startDate}
-                onChange={(e) => setLeaveForm({ ...leaveForm, endDate: e.target.value })}
-                className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm min-h-[44px]"
-              />
-            </div>
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">유형</label>
-            <div className="flex flex-wrap gap-2">
-              {leaveTypes.map((t) => (
-                <button
-                  key={t}
-                  onClick={() => setLeaveForm({ ...leaveForm, type: t })}
-                  className={`px-3 py-2 rounded-lg text-sm font-medium min-h-[44px] transition-colors ${
-                    leaveForm.type === t ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600'
-                  }`}
-                >
-                  {t}
-                </button>
-              ))}
-            </div>
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">사유</label>
-            <textarea
-              value={leaveForm.reason}
-              onChange={(e) => setLeaveForm({ ...leaveForm, reason: e.target.value })}
-              rows={3}
-              className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm"
-              placeholder="신청 사유를 입력하세요"
-            />
-          </div>
-          <Button className="w-full" size="lg" onClick={handleLeaveSubmit}>
-            신청하기
-          </Button>
-        </div>
-      </BottomSheet>
+          )}
+        </Card>
+      </div>
     </div>
   );
 }

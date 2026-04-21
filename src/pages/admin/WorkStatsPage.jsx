@@ -1,227 +1,97 @@
-import { useState, useMemo } from 'react';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
+// 근무 통계 — /admin/work-stats
+import React, { useMemo, useState } from 'react';
+import { Avatar, Card, Icon, T, TopBar, icons } from '../../design/primitives';
 import useAttendanceStore from '../../stores/attendanceStore';
 import useEmployeeStore from '../../stores/employeeStore';
-import useAuthStore from '../../stores/authStore';
-import useBranchStore from '../../stores/branchStore';
-import Card from '../../components/common/Card';
-import { isFarmAdmin } from '../../lib/permissions';
-import Button from '../../components/common/Button';
-import { downloadAttendanceExcel } from '../../lib/excelExport';
-
-const COLORS = ['#059669', '#3b82f6', '#f59e0b', '#ef4444', '#8b5cf6'];
 
 export default function WorkStatsPage() {
-  const attendance = useAttendanceStore((s) => s.records);
+  const records = useAttendanceStore((s) => s.records);
   const employees = useEmployeeStore((s) => s.employees);
-  const currentUser = useAuthStore((s) => s.currentUser);
-  const branches = useBranchStore((s) => s.branches);
+  const today = new Date().toISOString().split('T')[0];
+  const first = today.slice(0, 8) + '01';
+  const [from, setFrom] = useState(first);
+  const [to, setTo] = useState(today);
 
-  const [downloading, setDownloading] = useState(false);
+  const empMap = useMemo(() => Object.fromEntries(employees.map((e) => [e.id, e])), [employees]);
+  const workers = employees.filter((e) => e.role === 'worker');
 
-  // 엑셀 다운로드 월 선택 (기본: 이번 달)
-  const now = new Date();
-  const [excelYear, setExcelYear] = useState(now.getFullYear());
-  const [excelMonth, setExcelMonth] = useState(now.getMonth() + 1);
-  const [excelBranch, setExcelBranch] = useState('all');
-
-  const workers = useMemo(() => employees.filter((e) => e.role === 'worker' && e.isActive), [employees]);
-
-  const isFarmTeam = isFarmAdmin(currentUser);
-  const branchNameMap = useMemo(
-    () => Object.fromEntries(branches.map((b) => [b.code, b.name])),
-    [branches]
-  );
-
-  // 작업자별 일별 근무시간
-  const hoursByWorker = useMemo(() => {
-    const dates = [...new Set(attendance.map((r) => r.date))].sort();
-    return dates.map((date) => {
-      const row = { date: date.slice(5).replace('-', '/') };
-      workers.forEach((w) => {
-        const rec = attendance.find((r) => r.employeeId === w.id && r.date === date);
-        row[w.name] = rec?.workMinutes ? Math.round(rec.workMinutes / 60 * 10) / 10 : 0;
-      });
-      return row;
-    });
-  }, [attendance, workers]);
-
-  // 작업자별 총 근무시간 요약
-  const hoursSummary = useMemo(() => {
+  const perWorker = useMemo(() => {
     return workers.map((w) => {
-      const recs = attendance.filter((r) => r.employeeId === w.id && r.workMinutes);
-      const totalMin = recs.reduce((s, r) => s + r.workMinutes, 0);
-      const days = recs.length;
-      return {
-        name: w.name,
-        totalHours: Math.round(totalMin / 60 * 10) / 10,
-        days,
-        avgHours: days > 0 ? Math.round(totalMin / days / 60 * 10) / 10 : 0,
-      };
-    });
-  }, [attendance, workers]);
-
-  const handleExcelDownload = async () => {
-    if (downloading) return;
-    setDownloading(true);
-    try {
-      let branchCodes = [];
-      if (isFarmTeam) {
-        branchCodes = [currentUser.branch];
-      } else if (excelBranch === 'all') {
-        branchCodes = branches.map((b) => b.code);
-      } else {
-        branchCodes = [excelBranch];
-      }
-
-      await downloadAttendanceExcel({
-        year: excelYear,
-        month: excelMonth,
-        branches: branchCodes,
-        branchNameMap,
-        currentUser,
+      const recs = (records || []).filter((r) => r.employeeId === w.id && r.date >= from && r.date <= to);
+      let minutes = 0, late = 0;
+      recs.forEach((r) => {
+        if (r.checkIn && r.checkOut) minutes += Math.round((new Date(r.checkOut) - new Date(r.checkIn)) / 60000);
+        if (r.status === 'late') late++;
       });
-    } catch (e) {
-      console.error('엑셀 다운로드 실패:', e);
-      alert('엑셀 다운로드에 실패했습니다.');
-    } finally {
-      setDownloading(false);
-    }
-  };
+      return { emp: w, days: recs.filter((r) => r.checkIn).length, minutes, late };
+    }).sort((a, b) => b.minutes - a.minutes);
+  }, [workers, records, from, to]);
+
+  const totalMin = perWorker.reduce((s, r) => s + r.minutes, 0);
+  const totalDays = perWorker.reduce((s, r) => s + r.days, 0);
+  const topMin = perWorker[0]?.minutes || 1;
 
   return (
-    <div>
-      <h2 className="text-xl font-heading font-semibold text-gray-900 mb-6">근무 시간 통계</h2>
-
-      {/* 엑셀 다운로드 영역 */}
-      <Card accent="gray" className="p-4 mb-6">
-        <div className="text-sm font-semibold text-gray-700 mb-3">월별 근태기록부 다운로드</div>
-        <div className="flex flex-wrap items-end gap-3">
-          <div>
-            <label className="block text-xs text-gray-500 mb-1">연도</label>
-            <select
-              value={excelYear}
-              onChange={(e) => setExcelYear(Number(e.target.value))}
-              className="border border-gray-200 rounded-lg px-3 py-2 text-sm min-h-[40px]"
-            >
-              {[now.getFullYear() - 1, now.getFullYear(), now.getFullYear() + 1].map((y) => (
-                <option key={y} value={y}>{y}년</option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <label className="block text-xs text-gray-500 mb-1">월</label>
-            <select
-              value={excelMonth}
-              onChange={(e) => setExcelMonth(Number(e.target.value))}
-              className="border border-gray-200 rounded-lg px-3 py-2 text-sm min-h-[40px]"
-            >
-              {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => (
-                <option key={m} value={m}>{m}월</option>
-              ))}
-            </select>
-          </div>
-          {!isFarmTeam && (
-            <div>
-              <label className="block text-xs text-gray-500 mb-1">지점</label>
-              <select
-                value={excelBranch}
-                onChange={(e) => setExcelBranch(e.target.value)}
-                className="border border-gray-200 rounded-lg px-3 py-2 text-sm min-h-[40px]"
-              >
-                <option value="all">전체 지점</option>
-                {branches.map((b) => (
-                  <option key={b.code} value={b.code}>{b.name}</option>
-                ))}
-              </select>
-            </div>
-          )}
-          <Button onClick={handleExcelDownload} disabled={downloading}>
-            {downloading ? '생성 중...' : '엑셀 다운로드'}
-          </Button>
+    <div style={{ flex: 1, overflow: 'auto', background: T.bg, minWidth: 0 }}>
+      <TopBar subtitle="분석" title="근무 통계" />
+      <div style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 20 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12 }}>
+          {[
+            { l: '총 근무 시간', v: Math.floor(totalMin / 60), unit: 'h', sub: `${totalMin % 60}분`, tone: T.primary },
+            { l: '총 출근 일수', v: totalDays, unit: '일', sub: '누적', tone: T.success },
+            { l: '평가 인원', v: perWorker.length, unit: '명', sub: '활성', tone: T.info },
+          ].map((k, i) => (
+            <Card key={i} pad={18} style={{ position: 'relative', overflow: 'hidden' }}>
+              <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 3, background: k.tone }} />
+              <div style={{ fontSize: 12, color: T.muted, fontWeight: 600, marginBottom: 14 }}>{k.l}</div>
+              <div style={{ display: 'flex', alignItems: 'baseline', gap: 4 }}>
+                <span style={{ fontSize: 36, fontWeight: 700, color: T.text, letterSpacing: -1, lineHeight: 1, fontFamily: 'ui-monospace,monospace' }}>{k.v}</span>
+                <span style={{ fontSize: 14, color: T.mutedSoft, fontWeight: 500 }}>{k.unit}</span>
+              </div>
+              <div style={{ fontSize: 11, color: T.mutedSoft, marginTop: 8 }}>{k.sub}</div>
+            </Card>
+          ))}
         </div>
-      </Card>
 
-      <div className="space-y-6">
-        <Card accent="blue" className="p-5">
-          <h3 className="text-sm font-semibold text-gray-500 mb-4">일별 근무 시간 (시간)</h3>
-          <div className="h-72">
-            {hoursByWorker.length === 0 ? (
-              <p className="text-gray-400 text-sm text-center py-12">출퇴근 데이터가 없습니다</p>
-            ) : (
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={hoursByWorker}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                  <XAxis dataKey="date" tick={{ fontSize: 11 }} />
-                  <YAxis tick={{ fontSize: 12 }} />
-                  <Tooltip />
-                  <Legend />
-                  {workers.map((w, i) => (
-                    <Bar key={w.id} dataKey={w.name} fill={COLORS[i % COLORS.length]} radius={[2, 2, 0, 0]} />
-                  ))}
-                </BarChart>
-              </ResponsiveContainer>
-            )}
-          </div>
+        <Card pad={14} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <span style={{ fontSize: 12, fontWeight: 600, color: T.muted }}>기간</span>
+          <input type="date" value={from} onChange={(e) => setFrom(e.target.value)}
+            style={{ height: 34, padding: '0 10px', border: `1px solid ${T.border}`, borderRadius: 7, fontSize: 13 }} />
+          <span style={{ color: T.mutedSoft }}>~</span>
+          <input type="date" value={to} onChange={(e) => setTo(e.target.value)}
+            style={{ height: 34, padding: '0 10px', border: `1px solid ${T.border}`, borderRadius: 7, fontSize: 13 }} />
         </Card>
 
-        {/* 모바일 카드 뷰 */}
-        <div className="md:hidden space-y-3">
-          {hoursSummary.length === 0 ? (
-            <p className="text-center text-gray-400 py-8">데이터 없음</p>
-          ) : (
-            hoursSummary.map((s) => (
-              <Card key={s.name} accent="gray" className="p-4">
-                <div className="font-semibold text-gray-900 mb-3">{s.name}</div>
-                <div className="grid grid-cols-3 gap-2 text-center">
+        <Card pad={0}>
+          <div style={{ padding: '14px 20px', borderBottom: `1px solid ${T.borderSoft}`, fontSize: 13, fontWeight: 700, color: T.text }}>직원별 근무 시간</div>
+          {perWorker.map((r, i) => {
+            const pct = topMin ? Math.round((r.minutes / topMin) * 100) : 0;
+            return (
+              <div key={r.emp.id} style={{
+                padding: '12px 20px', borderTop: i ? `1px solid ${T.borderSoft}` : 'none',
+                display: 'grid', gridTemplateColumns: '1.5fr 2fr 100px 80px', gap: 14, alignItems: 'center',
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <Avatar name={r.emp.name} color="indigo" size={30} />
                   <div>
-                    <div className="text-xs text-gray-400 mb-0.5">출근일</div>
-                    <div className="font-bold text-gray-900">{s.days}일</div>
-                  </div>
-                  <div>
-                    <div className="text-xs text-gray-400 mb-0.5">총 근무</div>
-                    <div className="font-bold text-gray-900">{s.totalHours}시간</div>
-                  </div>
-                  <div>
-                    <div className="text-xs text-gray-400 mb-0.5">일평균</div>
-                    <div className="font-bold text-gray-900">{s.avgHours}시간</div>
+                    <div style={{ fontSize: 13, fontWeight: 600, color: T.text }}>{r.emp.name}</div>
+                    <div style={{ fontSize: 10, color: T.mutedSoft }}>{r.emp.jobType}</div>
                   </div>
                 </div>
-              </Card>
-            ))
-          )}
-        </div>
-
-        {/* 데스크탑 테이블 뷰 */}
-        <Card accent="gray" className="hidden md:block overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="bg-gray-50 text-left text-gray-500">
-                  <th className="px-4 py-3 font-medium">작업자</th>
-                  <th className="px-4 py-3 font-medium">출근일</th>
-                  <th className="px-4 py-3 font-medium">총 근무</th>
-                  <th className="px-4 py-3 font-medium">일평균</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100">
-                {hoursSummary.length === 0 ? (
-                  <tr>
-                    <td colSpan={4} className="px-4 py-8 text-center text-gray-400">데이터 없음</td>
-                  </tr>
-                ) : (
-                  hoursSummary.map((s) => (
-                    <tr key={s.name}>
-                      <td className="px-4 py-3 font-medium text-gray-900">{s.name}</td>
-                      <td className="px-4 py-3 text-gray-600">{s.days}일</td>
-                      <td className="px-4 py-3 text-gray-600">{s.totalHours}시간</td>
-                      <td className="px-4 py-3 text-gray-600">{s.avgHours}시간</td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
+                <div>
+                  <div style={{ height: 6, background: T.bg, borderRadius: 3, overflow: 'hidden' }}>
+                    <div style={{ width: `${pct}%`, height: '100%', background: T.primary }} />
+                  </div>
+                </div>
+                <div style={{ fontSize: 13, fontWeight: 700, color: T.text, fontFamily: 'ui-monospace,monospace' }}>
+                  {Math.floor(r.minutes / 60)}h {r.minutes % 60}m
+                </div>
+                <div style={{ fontSize: 11, color: T.mutedSoft, textAlign: 'right' }}>
+                  {r.days}일 / 지각 {r.late}
+                </div>
+              </div>
+            );
+          })}
         </Card>
       </div>
     </div>

@@ -1,295 +1,102 @@
-import { useState, useMemo } from 'react';
+// 작업 계획 — /admin/task-plan
+import React, { useMemo, useState } from 'react';
+import { Avatar, Card, Icon, Pill, T, TopBar, icons } from '../../design/primitives';
 import useTaskStore from '../../stores/taskStore';
 import useEmployeeStore from '../../stores/employeeStore';
-import useCropStore from '../../stores/cropStore';
-import useBranchFilter from '../../hooks/useBranchFilter';
-import Button from '../../components/common/Button';
-import Card from '../../components/common/Card';
-import Modal from '../../components/common/Modal';
 
-const statusMap = {
-  pending: { label: '대기', color: 'bg-amber-100 text-amber-700' },
-  in_progress: { label: '진행', color: 'bg-blue-100 text-blue-700' },
-  completed: { label: '완료', color: 'bg-green-100 text-green-700' },
-};
+const WEEKDAYS = ['일', '월', '화', '수', '목', '금', '토'];
 
-const emptyForm = {
-  cropId: '',
-  taskType: '',
-  workerIds: [],
-  title: '',
-  memo: '',
-};
+function weekStart(d) {
+  const x = new Date(d);
+  x.setDate(x.getDate() - x.getDay());
+  x.setHours(0, 0, 0, 0);
+  return x;
+}
 
 export default function TaskPlanPage() {
   const tasks = useTaskStore((s) => s.tasks);
-  const addTask = useTaskStore((s) => s.addTask);
-  const deleteTask = useTaskStore((s) => s.deleteTask);
   const employees = useEmployeeStore((s) => s.employees);
-  const crops = useCropStore((s) => s.crops);
-  const { branchFilter } = useBranchFilter();
 
-  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
-  const [showModal, setShowModal] = useState(false);
-  const [form, setForm] = useState(emptyForm);
-  const [submitting, setSubmitting] = useState(false);
-
-  // 지점 필터 적용한 작업자 목록
-  const workers = useMemo(() =>
-    employees.filter((e) =>
-      e.role === 'worker' &&
-      e.isActive &&
-      (!branchFilter || e.branch === branchFilter)
-    ),
-    [employees, branchFilter]
-  );
-
-  const activeCrops = useMemo(() => crops.filter((c) => c.isActive), [crops]);
-
-  const selectedCrop = useMemo(() => crops.find((c) => c.id === form.cropId), [crops, form.cropId]);
-  // 등록된 작업 유형에 "생육 조사"를 항상 포함
-  const taskTypes = useMemo(() => {
-    const base = selectedCrop?.taskTypes || [];
-    return base.includes('생육 조사') ? base : [...base, '생육 조사'];
-  }, [selectedCrop]);
-
+  const [anchor, setAnchor] = useState(weekStart(new Date()));
   const empMap = useMemo(() => Object.fromEntries(employees.map((e) => [e.id, e])), [employees]);
-  const cropMap = useMemo(() => Object.fromEntries(crops.map((c) => [c.id, c])), [crops]);
 
-  const dayTasks = useMemo(
-    () => tasks
-      .filter((t) => {
-        if (t.date !== selectedDate) return false;
-        if (branchFilter) {
-          const worker = empMap[t.workerId];
-          if (worker && worker.branch !== branchFilter) return false;
-        }
-        return true;
-      })
-      .sort((a, b) => {
-        const order = { pending: 0, in_progress: 1, completed: 2 };
-        return (order[a.status] ?? 3) - (order[b.status] ?? 3);
-      }),
-    [tasks, selectedDate, branchFilter, empMap]
-  );
+  const days = useMemo(() => Array.from({ length: 7 }, (_, i) => {
+    const d = new Date(anchor); d.setDate(anchor.getDate() + i);
+    return d.toISOString().split('T')[0];
+  }), [anchor]);
 
-  // 작업자 선택 토글
-  const toggleWorker = (workerId) => {
-    setForm((f) => ({
-      ...f,
-      workerIds: f.workerIds.includes(workerId)
-        ? f.workerIds.filter((id) => id !== workerId)
-        : [...f.workerIds, workerId],
-    }));
+  const byDay = useMemo(() => {
+    const m = {};
+    days.forEach((d) => { m[d] = []; });
+    (tasks || []).forEach((t) => { if (t.dueDate && m[t.dueDate]) m[t.dueDate].push(t); });
+    return m;
+  }, [tasks, days]);
+
+  const shift = (n) => {
+    const d = new Date(anchor); d.setDate(anchor.getDate() + n * 7);
+    setAnchor(d);
   };
 
-  const resetForm = () => setForm(emptyForm);
-
-  const handleCropChange = (cropId) => {
-    setForm((f) => ({
-      ...f,
-      cropId,
-      taskType: '',
-      title: '',
-    }));
-  };
-
-  const handleTaskTypeChange = (taskType) => {
-    const crop = cropMap[form.cropId];
-    const autoTitle = crop ? `${crop.name} ${taskType}` : taskType;
-    setForm((f) => ({ ...f, taskType, title: autoTitle }));
-  };
-
-  const handleAdd = async () => {
-    if (!form.cropId || !form.taskType || form.workerIds.length === 0) return;
-    if (submitting) return;
-    setSubmitting(true);
-
-    const crop = cropMap[form.cropId];
-    const title = form.title.trim() || `${crop?.name || ''} ${form.taskType}`;
-
-    await Promise.all(
-      form.workerIds.map((workerId) =>
-        addTask({
-          workerId,
-          cropId: form.cropId,
-          taskType: form.taskType,
-          title,
-          description: form.memo || null,
-          date: selectedDate,
-          zoneId: null,
-          rowRange: null,
-          estimatedMinutes: null,
-          quantityUnit: null,
-        })
-      )
-    );
-
-    setSubmitting(false);
-    resetForm();
-    setShowModal(false);
-  };
+  const rangeLabel = `${anchor.getMonth() + 1}.${anchor.getDate()} - ${new Date(new Date(anchor).setDate(anchor.getDate() + 6)).getMonth() + 1}.${new Date(new Date(anchor).setDate(anchor.getDate() + 6)).getDate()}`;
+  const today = new Date().toISOString().split('T')[0];
 
   return (
-    <div>
-      <div className="flex items-center justify-between mb-6">
-        <h2 className="text-xl font-heading font-semibold text-gray-900">작업 배정</h2>
-        <Button onClick={() => { resetForm(); setShowModal(true); }}>+ 작업 배정</Button>
-      </div>
+    <div style={{ flex: 1, overflow: 'auto', background: T.bg, minWidth: 0 }}>
+      <TopBar subtitle="작업 관리" title="작업 주간 계획" />
+      <div style={{ padding: 24 }}>
+        <Card pad={14} style={{ marginBottom: 16, display: 'flex', alignItems: 'center', gap: 10 }}>
+          <button onClick={() => shift(-1)} style={{ width: 30, height: 30, borderRadius: 7, border: `1px solid ${T.border}`, background: T.surface, cursor: 'pointer', color: T.muted, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <Icon d={<polyline points="15 18 9 12 15 6" />} size={13} sw={2} />
+          </button>
+          <span style={{ fontSize: 14, fontWeight: 700, color: T.text, minWidth: 140, textAlign: 'center' }}>{anchor.getFullYear()} · {rangeLabel}</span>
+          <button onClick={() => shift(1)} style={{ width: 30, height: 30, borderRadius: 7, border: `1px solid ${T.border}`, background: T.surface, cursor: 'pointer', color: T.muted, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <Icon d={<polyline points="9 18 15 12 9 6" />} size={13} sw={2} />
+          </button>
+          <button onClick={() => setAnchor(weekStart(new Date()))} style={{ marginLeft: 'auto', height: 30, padding: '0 12px', borderRadius: 7, border: `1px solid ${T.border}`, background: T.surface, cursor: 'pointer', fontSize: 12, fontWeight: 600, color: T.muted }}>오늘</button>
+        </Card>
 
-      <div className="mb-4">
-        <input
-          type="date"
-          value={selectedDate}
-          onChange={(e) => setSelectedDate(e.target.value)}
-          className="border border-gray-200 rounded-lg px-3 py-2 text-sm min-h-[44px]"
-        />
-      </div>
-
-      <div className="space-y-3">
-        {dayTasks.length === 0 && (
-          <p className="text-gray-400 text-sm text-center py-8">해당 날짜에 배정된 작업이 없습니다</p>
-        )}
-        {dayTasks.map((task) => {
-          const st = statusMap[task.status] || statusMap.pending;
-          return (
-            <Card
-              key={task.id}
-              accent={task.status === 'completed' ? 'emerald' : task.status === 'in_progress' ? 'blue' : 'amber'}
-              className="p-4"
-            >
-              <div className="flex items-center justify-between mb-1">
-                <span className="font-medium text-gray-900">{task.title}</span>
-                <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${st.color}`}>{st.label}</span>
-              </div>
-              <div className="text-sm text-gray-500 mb-1">
-                {empMap[task.workerId]?.name || '미배정'} · {cropMap[task.cropId]?.name || ''} · {task.taskType}
-              </div>
-              {task.description && (
-                <p className="text-xs text-gray-400 mb-2">{task.description}</p>
-              )}
-              {task.status === 'pending' && (
-                <Button size="sm" variant="danger" onClick={() => deleteTask(task.id)}>삭제</Button>
-              )}
-            </Card>
-          );
-        })}
-      </div>
-
-      <Modal isOpen={showModal} onClose={() => setShowModal(false)} title="작업 배정">
-        <div className="space-y-4">
-          {/* 1. 작물 선택 */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">작물</label>
-            <select
-              value={form.cropId}
-              onChange={(e) => handleCropChange(e.target.value)}
-              className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm min-h-[44px]"
-            >
-              <option value="">선택</option>
-              {activeCrops.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-            </select>
-          </div>
-
-          {/* 2. 작업 유형 (작물 선택 후 표시) */}
-          {form.cropId && (
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">작업 유형</label>
-              {taskTypes.length > 0 ? (
-                <div className="flex flex-wrap gap-2">
-                  {taskTypes.map((t) => (
-                    <button
-                      key={t}
-                      onClick={() => handleTaskTypeChange(t)}
-                      className={`px-3 py-1.5 rounded-lg text-sm font-medium min-h-[36px] transition-colors ${
-                        form.taskType === t ? 'bg-emerald-600 text-white' : 'bg-gray-100 text-gray-600'
-                      }`}
-                    >
-                      {t}
-                    </button>
-                  ))}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 10 }}>
+          {days.map((d, i) => {
+            const items = byDay[d] || [];
+            const dDate = new Date(d);
+            const isToday = d === today;
+            const isWeekend = i === 0 || i === 6;
+            return (
+              <Card key={d} pad={0} style={{
+                overflow: 'hidden', border: isToday ? `1.5px solid ${T.primary}` : `1px solid ${T.border}`,
+              }}>
+                <div style={{ padding: '10px 12px', borderBottom: `1px solid ${T.borderSoft}`, background: isToday ? T.primarySoft : T.bg }}>
+                  <div style={{ fontSize: 10, fontWeight: 700, color: isWeekend ? (i === 0 ? T.danger : T.primary) : T.mutedSoft, letterSpacing: 0.3 }}>{WEEKDAYS[i]}</div>
+                  <div style={{ display: 'flex', alignItems: 'baseline', gap: 4, marginTop: 2 }}>
+                    <span style={{ fontSize: 16, fontWeight: 700, color: isToday ? T.primary : T.text, fontFamily: 'ui-monospace,monospace' }}>{dDate.getDate()}</span>
+                    {items.length > 0 && <span style={{ fontSize: 10, color: T.mutedSoft, marginLeft: 'auto' }}>{items.length}건</span>}
+                  </div>
                 </div>
-              ) : (
-                <p className="text-xs text-gray-400">해당 작물에 등록된 작업 유형이 없습니다</p>
-              )}
-            </div>
-          )}
-
-          {/* 3. 작업자 복수 선택 */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              작업자
-              {form.workerIds.length > 0 && (
-                <span className="ml-1.5 text-emerald-600 text-xs">{form.workerIds.length}명 선택</span>
-              )}
-            </label>
-            <div className="border border-gray-200 rounded-lg overflow-hidden max-h-48 overflow-y-auto">
-              {workers.length === 0 ? (
-                <p className="text-gray-400 text-sm text-center py-4">작업자가 없습니다</p>
-              ) : (
-                workers.map((w) => (
-                  <button
-                    key={w.id}
-                    onClick={() => toggleWorker(w.id)}
-                    className={`w-full flex items-center gap-3 px-4 py-2.5 text-sm text-left transition-colors border-b border-gray-50 last:border-0 ${
-                      form.workerIds.includes(w.id)
-                        ? 'bg-emerald-50 text-emerald-700'
-                        : 'hover:bg-gray-50 text-gray-700'
-                    }`}
-                  >
-                    <span className={`w-4 h-4 rounded flex-shrink-0 border-2 flex items-center justify-center ${
-                      form.workerIds.includes(w.id) ? 'bg-emerald-600 border-emerald-600' : 'border-gray-300'
-                    }`}>
-                      {form.workerIds.includes(w.id) && (
-                        <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                        </svg>
-                      )}
-                    </span>
-                    <span className="font-medium">{w.name}</span>
-                    {w.jobType && <span className="text-gray-400 text-xs">{w.jobType}</span>}
-                  </button>
-                ))
-              )}
-            </div>
-          </div>
-
-          {/* 4. 작업 제목 */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">작업 제목</label>
-            <input
-              type="text"
-              value={form.title}
-              onChange={(e) => setForm({ ...form, title: e.target.value })}
-              className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm min-h-[44px]"
-              placeholder="자동 생성 (수정 가능)"
-            />
-          </div>
-
-          {/* 5. 메모 */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">메모 (선택)</label>
-            <textarea
-              value={form.memo}
-              onChange={(e) => setForm({ ...form, memo: e.target.value })}
-              rows={2}
-              className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm"
-              placeholder="작업 관련 메모"
-            />
-          </div>
+                <div style={{ padding: 8, minHeight: 200, display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  {items.length === 0 ? (
+                    <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, color: T.mutedSoft }}>작업 없음</div>
+                  ) : items.map((t) => {
+                    const prioC = t.priority === 'high' ? T.danger : t.priority === 'medium' ? T.warning : T.mutedSoft;
+                    const firstAssignee = empMap[(t.assignees || [])[0]];
+                    return (
+                      <div key={t.id} style={{
+                        padding: 8, background: T.bg, borderRadius: 6,
+                        borderLeft: `3px solid ${prioC}`,
+                      }}>
+                        <div style={{ fontSize: 11, fontWeight: 600, color: T.text, marginBottom: 4, lineHeight: 1.35 }}>{t.title}</div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 9, color: T.mutedSoft }}>
+                          {t.crop && <span>{t.crop}</span>}
+                          {firstAssignee && <>{t.crop && <span>·</span>}<span>{firstAssignee.name}</span></>}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </Card>
+            );
+          })}
         </div>
-
-        <div className="flex gap-2 mt-4">
-          <Button
-            className="flex-1"
-            onClick={handleAdd}
-            disabled={submitting || !form.cropId || !form.taskType || form.workerIds.length === 0}
-          >
-            {submitting ? '배정 중...' : `배정${form.workerIds.length > 1 ? ` (${form.workerIds.length}명)` : ''}`}
-          </Button>
-          <Button className="flex-1" variant="secondary" onClick={() => setShowModal(false)}>취소</Button>
-        </div>
-      </Modal>
+      </div>
     </div>
   );
 }

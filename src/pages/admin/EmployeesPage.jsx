@@ -1,631 +1,155 @@
-import { useState, useMemo, useRef } from 'react';
-import { QRCodeCanvas } from 'qrcode.react';
+// 직원 관리 — /admin/employees
+import React, { useMemo, useState } from 'react';
+import { Avatar, Card, Dot, Icon, Pill, T, TopBar, icons } from '../../design/primitives';
 import useEmployeeStore from '../../stores/employeeStore';
-import useBranchStore from '../../stores/branchStore';
-import useAuthStore from '../../stores/authStore';
-import Button from '../../components/common/Button';
-import { isFarmAdmin, canHrCrud, canWrite, roleLabel, canEditEmployee, canAssignLeader, canViewBirthDate, canViewContractExpiry } from '../../lib/permissions';
-import { getContractExpiryStatus, getExpiryColorClass } from '../../utils/contractExpiry';
-import useNotificationStore from '../../stores/notificationStore';
-import Card from '../../components/common/Card';
-import Modal from '../../components/common/Modal';
-import { BRANCH_NULL_FALLBACK } from '../../constants/branchLabels';
-import EmployeeDetailModal from '../../components/employees/EmployeeDetailModal';
 
-// 본 앱의 기본 URL (배포 환경 우선, 로컬에서는 현재 origin)
-const APP_BASE_URL =
-  window.location.hostname === 'localhost'
-    ? window.location.origin
-    : 'https://gref-farmwork.vercel.app';
-
-const emptyForm = {
-  name: '',
-  phone: '',
-  role: 'worker',
-  jobType: '재배',
-  hireDate: '',
-  workHoursPerWeek: 40,
-  annualLeaveDays: 15,
-  branch: '',
-  workStartTime: '',
-  workEndTime: '',
-  // 세션 17 UI-A 추가 (4필드, residentId는 UI-C에서 처리)
-  jobTitle: '',
-  jobRank: '',
-  birthDate: '',
-  contractEndDate: '',
+const EMPLOYMENT_TYPES = {
+  regular: { l: '정규직', tone: 'success' },
+  contract: { l: '계약직', tone: 'info' },
+  daily: { l: '일용직', tone: 'warning' },
+  hourly: { l: '시급제', tone: 'primary' },
 };
 
-function EmployeeForm({ form, setForm, branchOptions }) {
-  const field = (label, name, type = 'text', options = null) => (
-    <div className="mb-3">
-      <label className="block text-sm font-medium text-gray-700 mb-1">{label}</label>
-      {options ? (
-        <select
-          value={form[name]}
-          onChange={(e) => setForm({ ...form, [name]: e.target.value })}
-          className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm min-h-[44px]"
-        >
-          {options.map((o) => (
-            <option key={o.value} value={o.value}>{o.label}</option>
-          ))}
-        </select>
-      ) : (
-        <input
-          type={type}
-          value={form[name]}
-          onChange={(e) =>
-            setForm({
-              ...form,
-              [name]: type === 'number' ? Number(e.target.value) : e.target.value,
-            })
-          }
-          className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm min-h-[44px]"
-        />
-      )}
-    </div>
-  );
-
-  return (
-    <div>
-      {field('이름', 'name')}
-      {field('연락처', 'phone', 'tel')}
-      {field('역할', 'role', 'text', [
-        { value: 'worker', label: '작업자' },
-        { value: 'farm_admin', label: '지점 관리자' },
-        { value: 'hr_admin', label: '인사 관리자' },
-        { value: 'general', label: '총괄' },
-        { value: 'master', label: '최고 관리자' },
-      ])}
-      {field('직무', 'jobType', 'text', [
-        { value: '재배', label: '재배' },
-        { value: '포장', label: '포장' },
-        { value: '관리', label: '관리' },
-        { value: '기타', label: '기타' },
-      ])}
-      {field('근무 지점', 'branch', 'text', branchOptions)}
-      <div className="grid grid-cols-2 gap-3 mb-3">
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">출근 시간</label>
-          <input
-            type="time"
-            value={form.workStartTime}
-            onChange={(e) => setForm({ ...form, workStartTime: e.target.value })}
-            className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm min-h-[44px]"
-          />
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">퇴근 시간</label>
-          <input
-            type="time"
-            value={form.workEndTime}
-            onChange={(e) => setForm({ ...form, workEndTime: e.target.value })}
-            className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm min-h-[44px]"
-          />
-        </div>
-      </div>
-      {field('입사일', 'hireDate', 'date')}
-      {field('주당 근무시간', 'workHoursPerWeek', 'number')}
-      {field('연차 일수', 'annualLeaveDays', 'number')}
-      {/* 세션 17 UI-B 추가 (4필드, residentId는 UI-C에서 처리) */}
-      {field('직책', 'jobTitle')}
-      {field('직급', 'jobRank')}
-      {field('생년월일', 'birthDate', 'date')}
-      {field('계약만료일', 'contractEndDate', 'date')}
-    </div>
-  );
-}
-
-/** QR 코드 모달 */
-function QrModal({ employee, onClose, onReissue, onRevoke }) {
-  const canvasRef = useRef(null);
-  const qrUrl = `${APP_BASE_URL}/auth?token=${employee.deviceToken}`;
-
-  const handleDownload = () => {
-    if (!canvasRef.current) return;
-    const link = document.createElement('a');
-    link.download = `qr-${employee.name}.png`;
-    link.href = canvasRef.current.toDataURL('image/png');
-    link.click();
-  };
-
-  const handlePrint = () => {
-    if (!canvasRef.current) return;
-    const dataUrl = canvasRef.current.toDataURL('image/png');
-    const win = window.open('', '_blank');
-    win.document.write(`
-      <html>
-        <head><title>QR - ${employee.name}</title></head>
-        <body style="text-align:center;padding:40px;font-family:sans-serif;">
-          <h2 style="font-size:24px;margin-bottom:8px;">${employee.name}</h2>
-          <p style="color:#888;font-size:14px;margin-bottom:24px;">GREF FarmWork 출퇴근 QR</p>
-          <img src="${dataUrl}" style="width:220px;height:220px;" />
-          <p style="color:#aaa;font-size:11px;margin-top:24px;">스캔하여 출퇴근 등록</p>
-          <script>window.onload=function(){ window.print(); setTimeout(function(){ window.close(); }, 500); }</script>
-        </body>
-      </html>
-    `);
-    win.document.close();
-  };
-
-  return (
-    <Modal isOpen onClose={onClose} title={`QR 코드 — ${employee.name}`}>
-      <div className="flex flex-col items-center gap-4">
-        <div className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm">
-          <QRCodeCanvas
-            ref={canvasRef}
-            value={qrUrl}
-            size={200}
-            level="M"
-            includeMargin
-          />
-        </div>
-        <p className="text-xs text-gray-400 text-center break-all px-2">{qrUrl}</p>
-
-        <div className="flex gap-2 w-full">
-          <Button className="flex-1" onClick={handleDownload}>다운로드</Button>
-          <Button className="flex-1" variant="secondary" onClick={handlePrint}>인쇄</Button>
-        </div>
-
-        <div className="w-full border-t border-gray-100 pt-3 flex gap-2">
-          <Button className="flex-1" variant="secondary" onClick={onReissue}>
-            QR 재발급
-          </Button>
-          <button
-            onClick={onRevoke}
-            className="flex-1 px-4 py-2.5 text-sm font-medium text-red-500 border border-red-200 rounded-xl hover:bg-red-50 transition-colors min-h-[44px]"
-          >
-            디바이스 해제
-          </button>
-        </div>
-        <p className="text-xs text-gray-400 text-center">
-          재발급 시 기존 QR은 무효화됩니다. 해제 시 다음 로그인 불가.
-        </p>
-      </div>
-    </Modal>
-  );
-}
-
 export default function EmployeesPage() {
-  const currentUser = useAuthStore((s) => s.currentUser);
-  const isManagement = canHrCrud(currentUser);
-  const canToggleTeamLeader = canWrite(currentUser); // farm_admin, hr_admin, master
-
   const employees = useEmployeeStore((s) => s.employees);
   const addEmployee = useEmployeeStore((s) => s.addEmployee);
   const updateEmployee = useEmployeeStore((s) => s.updateEmployee);
-  const toggleActive = useEmployeeStore((s) => s.toggleActive);
-  const toggleTeamLeader = useEmployeeStore((s) => s.toggleTeamLeader);
-  const branches = useBranchStore((s) => s.branches);
-  const addNotification = useNotificationStore((s) => s.addNotification);
+  const removeEmployee = useEmployeeStore((s) => s.removeEmployee);
 
-  const branchOptions = useMemo(() => [
-    { value: '', label: '선택 안 함' },
-    ...branches.map((b) => ({ value: b.code, label: b.name })),
-  ], [branches]);
-
-  const branchNameMap = useMemo(() =>
-    Object.fromEntries(branches.map((b) => [b.code, b.name])),
-  [branches]);
-
-  const [lastLeaderConfirm, setLastLeaderConfirm] = useState(null); // { emp, branchName }
-  const [showModal, setShowModal] = useState(false);
-  const [editTarget, setEditTarget] = useState(null);
-  const [form, setForm] = useState(emptyForm);
-  const [filter, setFilter] = useState('all');
-
-  // 상세 모달
-  const [detailTarget, setDetailTarget] = useState(null);
-
-  // QR 모달
-  const [qrEmployee, setQrEmployee] = useState(null); // 현재 QR 보고 있는 직원
+  const [q, setQ] = useState('');
+  const [roleFilter, setRoleFilter] = useState('all');
+  const [showAdd, setShowAdd] = useState(false);
+  const [draft, setDraft] = useState({ name: '', role: 'worker', jobType: '', employmentType: 'regular', phone: '' });
 
   const filtered = useMemo(() => {
-    let list = employees;
-    // 재배팀: 본인 지점 직원만 표시
-    if (isFarmAdmin(currentUser) && currentUser?.branch) {
-      list = list.filter((e) => e.branch === currentUser.branch);
-    }
-    if (filter === 'active') return list.filter((e) => e.isActive);
-    if (filter === 'inactive') return list.filter((e) => !e.isActive);
-    return list;
-  }, [employees, filter, isManagement, currentUser]);
+    const s = q.trim();
+    return employees.filter((e) =>
+      (roleFilter === 'all' || e.role === roleFilter) &&
+      (!s || e.name.includes(s) || (e.jobType || '').includes(s))
+    );
+  }, [employees, q, roleFilter]);
 
-  const openAdd = () => {
-    setEditTarget(null);
-    setForm(emptyForm);
-    setShowModal(true);
-  };
+  const counts = useMemo(() => ({
+    all: employees.length,
+    admin: employees.filter((e) => e.role === 'admin' || e.role === 'hq_admin').length,
+    worker: employees.filter((e) => e.role === 'worker').length,
+    active: employees.filter((e) => e.isActive).length,
+  }), [employees]);
 
-  const openEdit = (emp) => {
-    setEditTarget(emp);
-    setForm({
-      name: emp.name,
-      phone: emp.phone || '',
-      role: emp.role,
-      jobType: emp.jobType || '',
-      hireDate: emp.hireDate || '',
-      workHoursPerWeek: emp.workHoursPerWeek || 40,
-      annualLeaveDays: emp.annualLeaveDays || 15,
-      branch: emp.branch || '',
-      workStartTime: emp.workStartTime || '',
-      workEndTime: emp.workEndTime || '',
-      // 세션 17 UI-B 추가 (4필드, residentId는 UI-C에서)
-      jobTitle: emp.jobTitle || '',
-      jobRank: emp.jobRank || '',
-      birthDate: emp.birthDate || '',
-      contractEndDate: emp.contractEndDate || '',
-    });
-    setShowModal(true);
-  };
-
-  const handleSave = () => {
-    if (!form.name.trim()) return;
-    if (editTarget) {
-      updateEmployee(editTarget.id, form);
-    } else {
-      addEmployee(form);
-    }
-    setShowModal(false);
-  };
-
-  // QR 토큰 발급 (신규 또는 재발급)
-  const issueToken = async (emp) => {
-    const token = crypto.randomUUID();
-    await updateEmployee(emp.id, { deviceToken: token });
-    // 스토어에서 업데이트된 직원 데이터로 모달 갱신
-    setQrEmployee({ ...emp, deviceToken: token });
-  };
-
-  const handleQrOpen = async (emp) => {
-    if (!emp.deviceToken) {
-      // 토큰 없으면 즉시 발급 후 모달 오픈
-      await issueToken(emp);
-    } else {
-      setQrEmployee(emp);
-    }
-  };
-
-  const handleReissue = async () => {
-    if (!qrEmployee) return;
-    await issueToken(qrEmployee);
-  };
-
-  const handleToggleTeamLeader = async (emp, nextValue) => {
-    // 반장 해제 시 마지막 반장 여부 확인
-    if (!nextValue) {
-      const othersInBranch = employees.filter(
-        (e) => e.branch === emp.branch && e.isTeamLeader && e.id !== emp.id
-      );
-      if (othersInBranch.length === 0) {
-        const branchName = branchNameMap[emp.branch] || emp.branch;
-        setLastLeaderConfirm({ emp, branchName });
-        return;
-      }
-    }
-    await doToggleTeamLeader(emp, nextValue);
-  };
-
-  const doToggleTeamLeader = async (emp, nextValue) => {
-    const { error } = await toggleTeamLeader(emp.id, nextValue);
-    if (error) {
-      addNotification({
-        type: 'issue_report',
-        title: '반장 변경 실패',
-        message: `${emp.name} 반장 ${nextValue ? '지정' : '해제'}에 실패했습니다. 권한을 확인하세요.`,
-      });
-    }
-  };
-
-  const handleRevoke = async () => {
-    if (!qrEmployee) return;
-    await updateEmployee(qrEmployee.id, { deviceToken: null });
-    setQrEmployee(null);
+  const handleAdd = () => {
+    if (!draft.name.trim()) return;
+    addEmployee?.({ ...draft, id: 'emp_' + Date.now(), isActive: true, joinedAt: new Date().toISOString().split('T')[0] });
+    setDraft({ name: '', role: 'worker', jobType: '', employmentType: 'regular', phone: '' });
+    setShowAdd(false);
   };
 
   return (
-    <div>
-      <div className="flex items-center justify-between mb-6">
-        <h2 className="text-xl font-heading font-semibold text-gray-900">직원 관리</h2>
-        {isManagement && <Button onClick={openAdd}>+ 직원 등록</Button>}
-      </div>
+    <div style={{ flex: 1, overflow: 'auto', background: T.bg, minWidth: 0 }}>
+      <TopBar subtitle="인사 관리" title="직원 관리" actions={
+        <button onClick={() => setShowAdd(true)} style={{ height: 34, padding: '0 14px', borderRadius: 8, border: 0, background: T.text, color: T.surface, fontSize: 12, fontWeight: 700, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+          <Icon d={icons.plus} size={12} sw={2.4} />직원 추가
+        </button>
+      } />
+      <div style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 20 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12 }}>
+          {[
+            { l: '전체', v: counts.all, tone: T.primary },
+            { l: '관리자', v: counts.admin, tone: T.info },
+            { l: '작업자', v: counts.worker, tone: T.success },
+            { l: '활성', v: counts.active, tone: T.warning },
+          ].map((k, i) => (
+            <Card key={i} pad={18} style={{ position: 'relative', overflow: 'hidden' }}>
+              <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 3, background: k.tone }} />
+              <div style={{ fontSize: 12, color: T.muted, fontWeight: 600, marginBottom: 14 }}>{k.l}</div>
+              <div style={{ fontSize: 36, fontWeight: 700, color: T.text, letterSpacing: -1, lineHeight: 1 }}>{k.v}</div>
+              <div style={{ fontSize: 11, color: T.mutedSoft, marginTop: 8 }}>명</div>
+            </Card>
+          ))}
+        </div>
 
-      <div className="flex gap-2 mb-4">
-        {[
-          { key: 'all', label: '전체' },
-          { key: 'active', label: '재직' },
-          { key: 'inactive', label: '비활성' },
-        ].map((f) => (
-          <button
-            key={f.key}
-            onClick={() => setFilter(f.key)}
-            className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors min-h-[36px] ${
-              filter === f.key
-                ? 'bg-blue-600 text-white'
-                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-            }`}
-          >
-            {f.label}
-          </button>
-        ))}
-      </div>
+        <Card pad={14} style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+          <div style={{ display: 'flex', gap: 4, padding: 3, background: T.bg, borderRadius: 8 }}>
+            {[['all', '전체'], ['admin', '관리자'], ['worker', '작업자']].map(([v, l]) => {
+              const on = roleFilter === v;
+              return <span key={v} onClick={() => setRoleFilter(v)} style={{ padding: '6px 12px', borderRadius: 5, fontSize: 12, fontWeight: 600, cursor: 'pointer', background: on ? T.surface : 'transparent', color: on ? T.text : T.mutedSoft, boxShadow: on ? '0 1px 2px rgba(0,0,0,0.06)' : 'none' }}>{l}</span>;
+            })}
+          </div>
+          <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 6, padding: '7px 10px', background: T.bg, border: `1px solid ${T.border}`, borderRadius: 7, maxWidth: 240 }}>
+            <Icon d={icons.search} size={14} c={T.mutedSoft} />
+            <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="이름·직군 검색" style={{ border: 0, background: 'transparent', outline: 'none', flex: 1, fontSize: 13 }} />
+          </div>
+        </Card>
 
-      {/* 모바일 카드 뷰 */}
-      <div className="md:hidden space-y-3">
-        {filtered.length === 0 && (
-          <p className="text-center text-gray-400 py-12">등록된 직원이 없습니다</p>
-        )}
-        {filtered.map((emp) => (
-          <Card key={emp.id} accent="gray" className={`p-4 ${!emp.isActive ? 'opacity-50' : ''}`} onClick={() => setDetailTarget(emp)}>
-            <div className="flex items-start justify-between mb-2">
-              <span className="font-semibold text-gray-900 text-base">{emp.name}</span>
-              <div className="flex items-center gap-1.5">
-                <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
-                  emp.isActive ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'
-                }`}>
-                  {emp.isActive ? '재직' : '비활성'}
-                </span>
-                <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-700">
-                  {roleLabel(emp.role)}
-                </span>
-              </div>
-            </div>
-            <div className="text-sm text-gray-500 space-y-0.5 mb-3">
-              <div>
-                {emp.jobType}
-                {emp.branch ? (
-                  <span className="ml-1.5 px-1.5 py-0.5 rounded text-xs bg-emerald-100 text-emerald-700">
-                    {branchNameMap[emp.branch] || emp.branch}
-                  </span>
-                ) : (
-                  <span className="ml-1.5 text-gray-400">{BRANCH_NULL_FALLBACK}</span>
-                )}
-              </div>
-              {(emp.workStartTime || emp.workEndTime) && (
-                <div>{emp.workStartTime || BRANCH_NULL_FALLBACK} ~ {emp.workEndTime || BRANCH_NULL_FALLBACK}</div>
-              )}
-              {emp.phone && <div>{emp.phone}</div>}
-              {emp.jobTitle && <div>직책: {emp.jobTitle}</div>}
-              {emp.jobRank && <div>직급: {emp.jobRank}</div>}
-              {emp.hireDate && <div>입사 {emp.hireDate}</div>}
-              {emp.contractEndDate && (
-                <div className={
-                  canViewContractExpiry(currentUser)
-                    ? getExpiryColorClass(getContractExpiryStatus(emp.contractEndDate))
-                    : ''
-                }>
-                  계약 ~ {emp.contractEndDate}
-                </div>
-              )}
-            </div>
-            <div className="flex gap-2 justify-end items-center">
-              {emp.role === 'worker' && (
-                <button
-                  onClick={(e) => { e.stopPropagation(); handleQrOpen(emp); }}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors min-h-[36px] ${
-                    emp.deviceToken
-                      ? 'bg-emerald-100 text-emerald-700'
-                      : 'bg-blue-100 text-blue-700'
-                  }`}
-                >
-                  {emp.deviceToken ? 'QR확인' : 'QR발급'}
-                </button>
-              )}
-              {canAssignLeader(currentUser, emp) && emp.role === 'worker' && (
-                <div className="flex items-center gap-1.5">
-                  <button
-                    onClick={(e) => { e.stopPropagation(); handleToggleTeamLeader(emp, !emp.isTeamLeader); }}
-                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors active:scale-[0.98] ${
-                      emp.isTeamLeader ? 'bg-emerald-600' : 'bg-gray-300'
-                    }`}
-                    aria-label={emp.isTeamLeader ? '반장 해제' : '반장 지정'}
-                  >
-                    <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${
-                      emp.isTeamLeader ? 'translate-x-6' : 'translate-x-1'
-                    }`} />
-                  </button>
-                  <span className="text-xs text-gray-500">반장</span>
-                </div>
-              )}
-              {canEditEmployee(currentUser) && (
-                <Button size="sm" variant="ghost" onClick={(e) => { e.stopPropagation(); openEdit(emp); }}>수정</Button>
-              )}
-              {isManagement && (
-                <Button size="sm" variant="ghost" onClick={(e) => { e.stopPropagation(); toggleActive(emp.id); }}>
-                  {emp.isActive ? '비활성' : '활성'}
-                </Button>
-              )}
-            </div>
-          </Card>
-        ))}
-      </div>
-
-      {/* 데스크탑 테이블 뷰 */}
-      <Card accent="gray" className="hidden md:block overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
+        <Card pad={0}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
             <thead>
-              <tr className="bg-gray-50 text-left text-gray-500">
-                <th className="px-4 py-3 font-medium">이름</th>
-                <th className="px-4 py-3 font-medium">역할</th>
-                <th className="px-4 py-3 font-medium">직책</th>
-                <th className="px-4 py-3 font-medium">직급</th>
-                <th className="px-4 py-3 font-medium">직무</th>
-                <th className="px-4 py-3 font-medium">근무 지점</th>
-                <th className="px-4 py-3 font-medium">근무 시간</th>
-                <th className="px-4 py-3 font-medium">연락처</th>
-                {canViewBirthDate(currentUser) && <th className="px-4 py-3 font-medium">생년월일</th>}
-                <th className="px-4 py-3 font-medium">입사일</th>
-                <th className="px-4 py-3 font-medium">계약만료일</th>
-                <th className="px-4 py-3 font-medium">상태</th>
-                <th className="px-4 py-3 font-medium">QR</th>
-                {canToggleTeamLeader && <th className="px-4 py-3 font-medium">반장</th>}
-                <th className="px-4 py-3 font-medium">관리</th>
+              <tr style={{ background: T.bg, textAlign: 'left', color: T.mutedSoft, fontSize: 11, fontWeight: 700, letterSpacing: 0.3 }}>
+                <th style={{ padding: '10px 20px' }}>이름</th>
+                <th style={{ padding: '10px 12px' }}>역할</th>
+                <th style={{ padding: '10px 12px' }}>직군</th>
+                <th style={{ padding: '10px 12px' }}>고용형태</th>
+                <th style={{ padding: '10px 12px' }}>연락처</th>
+                <th style={{ padding: '10px 12px', textAlign: 'right' }}>상태</th>
+                <th style={{ padding: '10px 20px', textAlign: 'right' }} />
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-100">
-              {filtered.map((emp) => (
-                <tr key={emp.id} className={`cursor-pointer hover:bg-gray-50 ${!emp.isActive ? 'opacity-50' : ''}`} onClick={() => setDetailTarget(emp)}>
-                  <td className="px-4 py-3 font-medium text-gray-900">{emp.name}</td>
-                  <td className="px-4 py-3">
-                    <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-700">
-                      {roleLabel(emp.role)}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 text-gray-600">{emp.jobTitle || BRANCH_NULL_FALLBACK}</td>
-                  <td className="px-4 py-3 text-gray-600">{emp.jobRank || BRANCH_NULL_FALLBACK}</td>
-                  <td className="px-4 py-3 text-gray-600">{emp.jobType}</td>
-                  <td className="px-4 py-3">
-                    {emp.branch ? (
-                      <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-700">
-                        {branchNameMap[emp.branch] || emp.branch}
-                      </span>
-                    ) : (
-                      <span className="text-gray-400">{BRANCH_NULL_FALLBACK}</span>
-                    )}
-                  </td>
-                  <td className="px-4 py-3 text-gray-600 whitespace-nowrap">
-                    {emp.workStartTime && emp.workEndTime
-                      ? `${emp.workStartTime} ~ ${emp.workEndTime}`
-                      : BRANCH_NULL_FALLBACK}
-                  </td>
-                  <td className="px-4 py-3 text-gray-600">{emp.phone}</td>
-                  {canViewBirthDate(currentUser) && <td className="px-4 py-3 text-gray-600">{emp.birthDate || BRANCH_NULL_FALLBACK}</td>}
-                  <td className="px-4 py-3 text-gray-600">{emp.hireDate}</td>
-                  <td className={`px-4 py-3 ${
-                    canViewContractExpiry(currentUser) && emp.contractEndDate
-                      ? getExpiryColorClass(getContractExpiryStatus(emp.contractEndDate))
-                      : 'text-gray-600'
-                  }`}>
-                    {emp.contractEndDate || BRANCH_NULL_FALLBACK}
-                  </td>
-                  <td className="px-4 py-3">
-                    <span
-                      className={`px-2 py-0.5 rounded-full text-xs font-medium ${
-                        emp.isActive ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'
-                      }`}
-                    >
-                      {emp.isActive ? '재직' : '비활성'}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3">
-                    {emp.role === 'worker' && (
-                      <button
-                        onClick={(e) => { e.stopPropagation(); handleQrOpen(emp); }}
-                        className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-colors min-h-[32px] ${
-                          emp.deviceToken
-                            ? 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200'
-                            : 'bg-blue-100 text-blue-700 hover:bg-blue-200'
-                        }`}
-                      >
-                        {emp.deviceToken ? 'QR확인' : 'QR발급'}
-                      </button>
-                    )}
-                  </td>
-                  {canAssignLeader(currentUser, emp) && (
-                    <td className="px-4 py-3">
-                      {emp.role === 'worker' && (
-                        <div className="flex items-center gap-1.5">
-                          <button
-                            onClick={(e) => { e.stopPropagation(); handleToggleTeamLeader(emp, !emp.isTeamLeader); }}
-                            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors active:scale-[0.98] ${
-                              emp.isTeamLeader ? 'bg-emerald-600' : 'bg-gray-300'
-                            }`}
-                            aria-label={emp.isTeamLeader ? '반장 해제' : '반장 지정'}
-                          >
-                            <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${
-                              emp.isTeamLeader ? 'translate-x-6' : 'translate-x-1'
-                            }`} />
-                          </button>
-                        </div>
-                      )}
-                    </td>
-                  )}
-                  {(canEditEmployee(currentUser) || isManagement) && (
-                    <td className="px-4 py-3">
-                      <div className="flex gap-1">
-                        {canEditEmployee(currentUser) && (
-                          <Button size="sm" variant="ghost" onClick={(e) => { e.stopPropagation(); openEdit(emp); }}>수정</Button>
-                        )}
-                        {isManagement && (
-                          <Button size="sm" variant="ghost" onClick={(e) => { e.stopPropagation(); toggleActive(emp.id); }}>
-                            {emp.isActive ? '비활성' : '활성'}
-                          </Button>
-                        )}
+            <tbody>
+              {filtered.map((e, i) => {
+                const ec = EMPLOYMENT_TYPES[e.employmentType] || EMPLOYMENT_TYPES.regular;
+                return (
+                  <tr key={e.id} style={{ borderTop: i ? `1px solid ${T.borderSoft}` : 'none' }}>
+                    <td style={{ padding: '12px 20px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                        <Avatar name={e.name} color="indigo" size={30} />
+                        <span style={{ fontWeight: 600, color: T.text }}>{e.name}</span>
                       </div>
                     </td>
-                  )}
-                </tr>
-              ))}
+                    <td style={{ padding: '12px' }}><Pill tone={e.role === 'worker' ? 'primary' : 'info'}>{e.role === 'worker' ? '작업자' : e.role === 'hq_admin' ? '본사' : '관리자'}</Pill></td>
+                    <td style={{ padding: '12px', color: T.muted }}>{e.jobType || '—'}</td>
+                    <td style={{ padding: '12px' }}><Pill tone={ec.tone}>{ec.l}</Pill></td>
+                    <td style={{ padding: '12px', color: T.muted, fontFamily: 'ui-monospace,monospace' }}>{e.phone || '—'}</td>
+                    <td style={{ padding: '12px', textAlign: 'right' }}>
+                      {e.isActive ? <Pill tone="success"><Dot c={T.success} />활성</Pill> : <Pill tone="muted">비활성</Pill>}
+                    </td>
+                    <td style={{ padding: '12px 20px', textAlign: 'right' }}>
+                      <button onClick={() => updateEmployee?.(e.id, { isActive: !e.isActive })}
+                        style={{ height: 26, padding: '0 10px', borderRadius: 6, border: `1px solid ${T.border}`, background: T.surface, fontSize: 11, fontWeight: 600, color: T.muted, cursor: 'pointer' }}>
+                        {e.isActive ? '비활성화' : '활성화'}
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
+        </Card>
+      </div>
+
+      {showAdd && (
+        <div onClick={() => setShowAdd(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(15,23,42,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50 }}>
+          <Card onClick={(e) => e.stopPropagation()} pad={24} style={{ width: 440, maxWidth: '90vw' }}>
+            <div style={{ fontSize: 15, fontWeight: 700, color: T.text, marginBottom: 14 }}>신규 직원 추가</div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              <input placeholder="이름" value={draft.name} onChange={(e) => setDraft({ ...draft, name: e.target.value })} style={{ height: 36, padding: '0 12px', border: `1px solid ${T.border}`, borderRadius: 7, fontSize: 13 }} />
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                <select value={draft.role} onChange={(e) => setDraft({ ...draft, role: e.target.value })} style={{ height: 36, padding: '0 10px', border: `1px solid ${T.border}`, borderRadius: 7, fontSize: 13 }}>
+                  <option value="worker">작업자</option>
+                  <option value="admin">관리자</option>
+                </select>
+                <select value={draft.employmentType} onChange={(e) => setDraft({ ...draft, employmentType: e.target.value })} style={{ height: 36, padding: '0 10px', border: `1px solid ${T.border}`, borderRadius: 7, fontSize: 13 }}>
+                  {Object.entries(EMPLOYMENT_TYPES).map(([v, { l }]) => <option key={v} value={v}>{l}</option>)}
+                </select>
+              </div>
+              <input placeholder="직군" value={draft.jobType} onChange={(e) => setDraft({ ...draft, jobType: e.target.value })} style={{ height: 36, padding: '0 12px', border: `1px solid ${T.border}`, borderRadius: 7, fontSize: 13 }} />
+              <input placeholder="연락처" value={draft.phone} onChange={(e) => setDraft({ ...draft, phone: e.target.value })} style={{ height: 36, padding: '0 12px', border: `1px solid ${T.border}`, borderRadius: 7, fontSize: 13 }} />
+            </div>
+            <div style={{ display: 'flex', gap: 8, marginTop: 16 }}>
+              <button onClick={() => setShowAdd(false)} style={{ flex: 1, height: 36, borderRadius: 7, border: `1px solid ${T.border}`, background: T.surface, color: T.muted, fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>취소</button>
+              <button onClick={handleAdd} style={{ flex: 1, height: 36, borderRadius: 7, border: 0, background: T.text, color: T.surface, fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>추가</button>
+            </div>
+          </Card>
         </div>
-      </Card>
-
-      {/* 직원 등록/수정 모달 */}
-      <Modal
-        isOpen={showModal}
-        onClose={() => setShowModal(false)}
-        title={editTarget ? '직원 수정' : '직원 등록'}
-      >
-        <EmployeeForm form={form} setForm={setForm} branchOptions={branchOptions} />
-        <div className="flex gap-2 mt-4">
-          <Button className="flex-1" onClick={handleSave}>
-            {editTarget ? '수정' : '등록'}
-          </Button>
-          <Button className="flex-1" variant="secondary" onClick={() => setShowModal(false)}>
-            취소
-          </Button>
-        </div>
-      </Modal>
-
-      {/* 마지막 반장 해제 확인 모달 */}
-      {lastLeaderConfirm && (
-        <Modal
-          isOpen
-          onClose={() => setLastLeaderConfirm(null)}
-          title="마지막 반장 해제"
-        >
-          <p className="text-sm text-gray-700 leading-relaxed">
-            <span className="font-semibold">{lastLeaderConfirm.branchName}</span>의 마지막 반장을 해제합니다.
-            반장이 0명이 되면 신규 TBM 승인이 불가능합니다.
-            계속하시겠습니까?
-          </p>
-          <div className="flex gap-2 mt-5">
-            <button
-              onClick={async () => {
-                const { emp } = lastLeaderConfirm;
-                setLastLeaderConfirm(null);
-                await doToggleTeamLeader(emp, false);
-              }}
-              className="flex-1 px-4 py-2.5 text-sm font-medium text-red-600 border border-red-300 rounded-xl hover:bg-red-50 transition-colors active:scale-[0.98] min-h-[44px]"
-            >
-              해제
-            </button>
-            <Button className="flex-1" variant="secondary" onClick={() => setLastLeaderConfirm(null)}>
-              취소
-            </Button>
-          </div>
-        </Modal>
       )}
-
-      {/* QR 코드 모달 */}
-      {qrEmployee?.deviceToken && (
-        <QrModal
-          employee={qrEmployee}
-          onClose={() => setQrEmployee(null)}
-          onReissue={handleReissue}
-          onRevoke={handleRevoke}
-        />
-      )}
-
-      {/* 직원 상세 모달 */}
-      <EmployeeDetailModal
-        employee={detailTarget}
-        onClose={() => setDetailTarget(null)}
-        onEdit={openEdit}
-        branchNameMap={branchNameMap}
-      />
     </div>
   );
 }

@@ -79,6 +79,10 @@ import BranchStatsPage from './pages/admin/BranchStatsPage';
 import SafetyChecksPage from './pages/admin/SafetyChecksPage';
 import SafetyIssuesPage from './pages/admin/SafetyIssuesPage';
 import DailyWorkLogsPage from './pages/admin/DailyWorkLogsPage';
+import TaskCreatePage from './pages/admin/TaskCreatePage';
+import HarvestRecordPage from './pages/admin/HarvestRecordPage';
+import MarkerPlantManagePage from './pages/admin/MarkerPlantManagePage';
+import QrScanPage from './pages/worker/QrScanPage';
 import WorkerHome from './pages/worker/WorkerHome';
 import WorkerTasksPage from './pages/worker/WorkerTasksPage';
 import GrowthSurveyPage from './pages/worker/GrowthSurveyPage';
@@ -199,9 +203,9 @@ export default function App() {
             <Route path="growth/input" element={<GrowthInputScreen />} />
             <Route path="growth/detail" element={<GrowthMarkerDetailScreen />} />
             <Route path="growth/heatmap" element={<GrowthHeatmapScreen />} />
-            <Route path="growth/markers" element={<PlaceholderPage title="표식주 관리" />} />
-            <Route path="harvest" element={<PlaceholderPage title="수확 기록 관리" />} />
-            <Route path="tasks/new" element={<PlaceholderPage title="작업 생성" />} />
+            <Route path="growth/markers" element={<MarkerPlantManagePage />} />
+            <Route path="harvest" element={<HarvestRecordPage />} />
+            <Route path="tasks/new" element={<TaskCreatePage />} />
             <Route path="performance" element={<BranchPerformanceScreen />} />
             <Route path="performance/detail" element={<PerformanceDetailScreen />} />
             <Route path="performance/compare" element={<PerformanceCompareScreen />} />
@@ -234,7 +238,7 @@ export default function App() {
             <Route path="m/attendance" element={<MobileAttendanceScreen />} />
             <Route path="m/profile" element={<MobileProfileScreen />} />
             <Route path="m/growth" element={<MobileGrowthScreen />} />
-            <Route path="m/qr-scan" element={<PlaceholderPage title="QR 스캔" />} />
+            <Route path="m/qr-scan" element={<QrScanPage />} />
           </Route>
 
           <Route path="*" element={<AppRedirect />} />
