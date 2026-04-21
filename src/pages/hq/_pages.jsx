@@ -323,11 +323,6 @@ const BRANCH_STATIC_INFO = {
   jinju:  { short: 'JJ', phone: '055-***-5678', address: '경상남도 진주시 문산읍',         crops: '오이 · 애호박',               area: '8,200㎡',  est: '2023.05', lastVisit: '4/08', accent: T.success, accentSoft: T.successSoft },
   hadong: { short: 'HD', phone: '055-***-9012', address: '경상남도 하동군 악양면',         crops: '방울토마토 · 고추',           area: '6,800㎡',  est: '2024.02', lastVisit: '3/28', accent: T.warning, accentSoft: T.warningSoft },
 };
-const BRANCHES_HARVEST_FB = {
-  busan: { harvest: 1240, harvestT: 1200 },
-  jinju:  { harvest: 980,  harvestT: 1100 },
-  hadong: { harvest: 760,  harvestT: 950  },
-};
 const BRANCHES_TODAY = new Date().toISOString().split('T')[0];
 
 function HQBranchesScreen() {
@@ -339,7 +334,6 @@ function HQBranchesScreen() {
 
   const branches = useMemo(() => FARM_BRANCHES.map(code => {
     const si = BRANCH_STATIC_INFO[code] ?? {};
-    const fb = BRANCHES_HARVEST_FB[code] ?? { harvest: 0, harvestT: 0 };
     const branchEmps = employees.filter(e => e.isActive && e.branch === code);
     const checkedInRecs = todayRecords.filter(r => empMap[r.employeeId]?.branch === code);
     const lateRecs = checkedInRecs.filter(r => r.status === 'late');
@@ -351,7 +345,7 @@ function HQBranchesScreen() {
       code, name: BRANCH_KO[code] ?? code,
       ...si,
       mgr, workers, rate,
-      harvest: fb.harvest, harvestT: fb.harvestT,
+      harvest: 0, harvestT: 0,
       status: workers > 0 && rate < 85 ? 'alert' : 'active',
     };
   }), [employees, todayRecords, empMap]);
