@@ -11,7 +11,7 @@ function buildStandardCurve(rows) {
     if (!result[cropName][row.metric_key]) {
       result[cropName][row.metric_key] = new Array(12).fill(null);
     }
-    result[cropName][row.metric_key][row.week - 1] = Number(row.value);
+    result[cropName][row.metric_key][row.week - 1] = Number(row.target_value);
   }
   return result;
 }
