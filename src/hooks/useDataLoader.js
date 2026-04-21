@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import useEmployeeStore from '../stores/employeeStore';
+import useAuthStore from '../stores/authStore';
 import useAttendanceStore from '../stores/attendanceStore';
 import useLeaveStore from '../stores/leaveStore';
 import useScheduleStore from '../stores/scheduleStore';
@@ -16,6 +17,7 @@ import useOvertimeStore from '../stores/overtimeStore';
 
 export default function useDataLoader() {
   const fetchEmployees = useEmployeeStore((s) => s.fetchEmployees);
+  const currentUser = useAuthStore((s) => s.currentUser);
   const fetchRecords = useAttendanceStore((s) => s.fetchRecords);
   const fetchRequests = useLeaveStore((s) => s.fetchRequests);
   const fetchBalances = useLeaveStore((s) => s.fetchBalances);
@@ -33,7 +35,7 @@ export default function useDataLoader() {
 
   useEffect(() => {
     fetchBranches();
-    fetchEmployees();
+    fetchEmployees(currentUser);
     fetchRecords();
     fetchRequests();
     fetchBalances();

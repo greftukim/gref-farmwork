@@ -6,9 +6,13 @@ const useEmployeeStore = create((set, get) => ({
   employees: [],
   loading: false,
 
-  fetchEmployees: async () => {
+  fetchEmployees: async (currentUser) => {
     set({ loading: true });
-    const { data, error } = await supabase.from('employees').select('*').order('created_at');
+    let query = supabase.from('employees').select('*').order('created_at');
+    if (currentUser?.role === 'farm_admin' && currentUser?.branch) {
+      query = query.eq('branch', currentUser.branch);
+    }
+    const { data, error } = await query;
     if (!error && data) set({ employees: data.map(snakeToCamel) });
     set({ loading: false });
   },
