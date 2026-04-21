@@ -5,6 +5,7 @@ import useLeaveStore from '../../stores/leaveStore';
 import useOvertimeStore from '../../stores/overtimeStore';
 import useEmployeeStore from '../../stores/employeeStore';
 import useAuthStore from '../../stores/authStore';
+import useAttendanceStore from '../../stores/attendanceStore';
 
 // 관리팀(HQ) 나머지 5개 페이지
 // ① 승인 허브  ② 지점 관리  ③ 전사 직원  ④ 공지·정책  ⑤ 경영 지표
@@ -323,12 +324,47 @@ function HQApprovalsScreen() {
 // ═══════════════════════════════════════════════════════════
 // ② 지점 관리
 // ═══════════════════════════════════════════════════════════
+// 지점별 정적 정보 (DB 부재 항목)
+const BRANCH_STATIC_INFO = {
+  busan:  { short: 'BL', phone: '051-***-1234', address: '부산광역시 강서구 녹산산업로', crops: '토마토 · 딸기 · 파프리카', area: '12,400㎡', est: '2021.03', lastVisit: '4/15', accent: T.primary, accentSoft: T.primarySoft },
+  jinju:  { short: 'JJ', phone: '055-***-5678', address: '경상남도 진주시 문산읍',         crops: '오이 · 애호박',               area: '8,200㎡',  est: '2023.05', lastVisit: '4/08', accent: T.success, accentSoft: T.successSoft },
+  hadong: { short: 'HD', phone: '055-***-9012', address: '경상남도 하동군 악양면',         crops: '방울토마토 · 고추',           area: '6,800㎡',  est: '2024.02', lastVisit: '3/28', accent: T.warning, accentSoft: T.warningSoft },
+};
+const BRANCHES_HARVEST_FB = {
+  busan: { harvest: 1240, harvestT: 1200 },
+  jinju:  { harvest: 980,  harvestT: 1100 },
+  hadong: { harvest: 760,  harvestT: 950  },
+};
+const BRANCHES_TODAY = new Date().toISOString().split('T')[0];
+
 function HQBranchesScreen() {
-  const branches = [
-    { code: 'busan', name: '부산LAB', short: 'BL', mgr: '김재배', phone: '051-***-1234', address: '부산광역시 강서구 녹산산업로', workers: 20, rate: 90, harvest: 1240, harvestT: 1200, crops: '토마토 · 딸기 · 파프리카', area: '12,400㎡', accent: T.primary, accentSoft: T.primarySoft, status: 'active', est: '2021.03', lastVisit: '4/15' },
-    { code: 'jinju', name: '진주HUB', short: 'JJ', mgr: '박지점', phone: '055-***-5678', address: '경상남도 진주시 문산읍', workers: 14, rate: 93, harvest: 980, harvestT: 1100, crops: '오이 · 애호박', area: '8,200㎡', accent: T.success, accentSoft: T.successSoft, status: 'active', est: '2023.05', lastVisit: '4/08' },
-    { code: 'hadong', name: '하동HUB', short: 'HD', mgr: '최책임', phone: '055-***-9012', address: '경상남도 하동군 악양면', workers: 12, rate: 83, harvest: 760, harvestT: 950, crops: '방울토마토 · 고추', area: '6,800㎡', accent: T.warning, accentSoft: T.warningSoft, status: 'alert', est: '2024.02', lastVisit: '3/28' },
-  ];
+  const employees = useEmployeeStore(s => s.employees);
+  const records = useAttendanceStore(s => s.records);
+
+  const empMap = useMemo(() => Object.fromEntries(employees.map(e => [e.id, e])), [employees]);
+  const todayRecords = useMemo(() => records.filter(r => r.date === BRANCHES_TODAY && r.checkIn), [records]);
+
+  const branches = useMemo(() => FARM_BRANCHES.map(code => {
+    const si = BRANCH_STATIC_INFO[code] ?? {};
+    const fb = BRANCHES_HARVEST_FB[code] ?? { harvest: 0, harvestT: 0 };
+    const branchEmps = employees.filter(e => e.isActive && e.branch === code);
+    const checkedInRecs = todayRecords.filter(r => empMap[r.employeeId]?.branch === code);
+    const lateRecs = checkedInRecs.filter(r => r.status === 'late');
+    const workers = branchEmps.length;
+    const checkedIn = checkedInRecs.length;
+    const rate = workers ? Math.round((checkedIn / workers) * 100) : 0;
+    const mgr = branchEmps.find(e => e.role === 'farm_admin' && !e.name.includes('팀'))?.name ?? si.mgr ?? '-';
+    return {
+      code, name: BRANCH_KO[code] ?? code,
+      ...si,
+      mgr, workers, rate,
+      harvest: fb.harvest, harvestT: fb.harvestT,
+      status: workers > 0 && rate < 85 ? 'alert' : 'active',
+    };
+  }), [employees, todayRecords, empMap]);
+
+  const totalActive = employees.filter(e => e.isActive && FARM_BRANCHES.includes(e.branch)).length;
+  const totalAdmins = employees.filter(e => e.isActive && FARM_BRANCHES.includes(e.branch) && e.role === 'farm_admin').length;
 
   return (
     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
@@ -343,7 +379,7 @@ function HQBranchesScreen() {
           {[
             { l: '운영 지점', v: 3, u: '개', sub: '본사 1 + 지점 2' },
             { l: '총 재배면적', v: '27,400', u: '㎡', sub: '약 8,300평' },
-            { l: '총 인원', v: 46, u: '명', sub: '지점장 3 + 작업자 43' },
+            { l: '총 인원', v: totalActive, u: '명', sub: `지점장 ${totalAdmins} + 작업자 ${totalActive - totalAdmins}` },
             { l: '월 수확량', v: '2,980', u: 'kg', sub: '목표 3,250kg · 92%' },
           ].map((k, i) => (
             <Card key={i} pad={16}>
@@ -760,6 +796,11 @@ function HQFinanceScreen() {
         }
       />
       <div style={{ flex: 1, overflow: 'auto', padding: 24, background: T.bg, display: 'flex', flexDirection: 'column', gap: 16 }}>
+        {/* 데이터 연동 준비 중 배너 */}
+        <div style={{ padding: '12px 16px', background: T.warningSoft, borderRadius: 8, border: `1px solid ${T.warning}33`, display: 'flex', alignItems: 'center', gap: 10 }}>
+          <Icon d={icons.clock} size={14} c={T.warning} />
+          <span style={{ fontSize: 12, color: T.warning, fontWeight: 600 }}>데이터 연동 준비 중 — 현재 수치는 목업 데이터입니다. 회계 시스템 연동 후 실데이터로 교체됩니다.</span>
+        </div>
         {/* 핵심 KPI */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12 }}>
           {[
