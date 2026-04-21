@@ -25,6 +25,9 @@ import { HQDashboardScreen } from './pages/hq/Dashboard';
 import { HQDashboardInteractive } from './pages/hq/DashboardInteractive';
 import { HQGrowthCompareScreen } from './pages/hq/GrowthCompare';
 import { HQApprovalsScreen, HQBranchesScreen, HQEmployeesScreen, HQFinanceScreen, HQNoticesScreen } from './pages/hq/_pages';
+import { FloorPlanScreen } from './pages/FloorPlan';
+import { GrowthDashboardScreen, GrowthHeatmapScreen, GrowthInputScreen, GrowthMarkerDetailScreen } from './pages/Growth';
+import { BranchPerformanceScreen, HQPerformanceScreen, PerformanceCompareScreen, PerformanceDetailScreen } from './pages/Performance';
 import LoginPage from './pages/LoginPage';
 import AuthCallbackPage from './pages/AuthCallbackPage';
 import AdminLayout from './components/layout/AdminLayout';
@@ -171,9 +174,18 @@ export default function App() {
             <Route path="safety-checks" element={<SafetyChecksPage />} />
             <Route path="safety-issues" element={<SafetyIssuesPage />} />
             <Route path="daily-work-logs" element={<DailyWorkLogsPage />} />
+            <Route path="floor" element={<FloorPlanScreen />} />
+            <Route path="growth" element={<GrowthDashboardScreen />} />
+            <Route path="growth/input" element={<GrowthInputScreen />} />
+            <Route path="growth/detail" element={<GrowthMarkerDetailScreen />} />
+            <Route path="growth/heatmap" element={<GrowthHeatmapScreen />} />
+            <Route path="performance" element={<BranchPerformanceScreen />} />
+            <Route path="performance/detail" element={<PerformanceDetailScreen />} />
+            <Route path="performance/compare" element={<PerformanceCompareScreen />} />
             <Route path="hq" element={<HQDashboardScreen />} />
             <Route path="hq/interactive" element={<HQDashboardInteractive />} />
             <Route path="hq/growth" element={<HQGrowthCompareScreen />} />
+            <Route path="hq/performance" element={<HQPerformanceScreen />} />
             <Route path="hq/approvals" element={<HQApprovalsScreen />} />
             <Route path="hq/branches" element={<HQBranchesScreen />} />
             <Route path="hq/employees" element={<HQEmployeesScreen />} />
