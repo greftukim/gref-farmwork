@@ -1,4 +1,5 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Avatar, Card, Dot, Icon, Pill, T, TopBar, btnPrimary, btnSecondary, icons } from '../../design/primitives';
 import useTaskStore from '../../stores/taskStore';
 import useEmployeeStore from '../../stores/employeeStore';
@@ -10,6 +11,7 @@ import useNoticeStore from '../../stores/noticeStore';
 import useCropStore from '../../stores/cropStore';
 import useZoneStore from '../../stores/zoneStore';
 import useCallStore from '../../stores/callStore';
+import useAuthStore from '../../stores/authStore';
 
 // 기존 코드와 동일한 UTC 기준 (attendanceStore.checkIn과 일치)
 const TODAY = new Date().toISOString().split('T')[0];
@@ -50,6 +52,13 @@ function AdminDashboardScreen() {
   const crops = useCropStore((s) => s.crops);
   const zones = useZoneStore((s) => s.zones);
   const calls = useCallStore((s) => s.calls);
+  const farmReview = useLeaveStore((s) => s.farmReview);
+  const approveOT = useOvertimeStore((s) => s.approveRequest);
+  const rejectOT = useOvertimeStore((s) => s.rejectRequest);
+  const currentUser = useAuthStore((s) => s.currentUser);
+  const navigate = useNavigate();
+  const [periodTab, setPeriodTab] = useState(0);
+  const [processing, setProcessing] = useState(null);
 
   // ─── 룩업 맵 ───
   const empMap = useMemo(() => Object.fromEntries(employees.map((e) => [e.id, e])), [employees]);
@@ -102,11 +111,29 @@ function AdminDashboardScreen() {
     },
   ];
 
+  // ─── 기간별 작업 필터 ───
+  const periodTasks = useMemo(() => {
+    const d = new Date();
+    if (periodTab === 0) return tasks.filter((t) => t.date === TODAY);
+    if (periodTab === 1) {
+      const dow = d.getDay() === 0 ? 7 : d.getDay();
+      const weekStart = new Date(d); weekStart.setDate(d.getDate() - dow + 1);
+      const weekEnd = new Date(weekStart); weekEnd.setDate(weekStart.getDate() + 6);
+      const ws = weekStart.toISOString().split('T')[0];
+      const we = weekEnd.toISOString().split('T')[0];
+      return tasks.filter((t) => t.date >= ws && t.date <= we);
+    }
+    const ms = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-01`;
+    const lastDay = new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate();
+    const me = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
+    return tasks.filter((t) => t.date >= ms && t.date <= me);
+  }, [tasks, periodTab]);
+
   // ─── 오늘 작업 목록 ───
   const taskRows = useMemo(() => {
     const statusConvert = { pending: 'waiting', in_progress: 'active', completed: 'done' };
     const progressConvert = { pending: 0, in_progress: 50, completed: 100 };
-    const items = todayTasks.slice(0, 8).map((t) => {
+    const items = periodTasks.slice(0, 8).map((t) => {
       const worker = empMap[t.workerId];
       const endTime = t.estimatedMinutes && t.assignedAt
         ? fmtTime(new Date(new Date(t.assignedAt).getTime() + t.estimatedMinutes * 60000).toISOString())
@@ -129,7 +156,7 @@ function AdminDashboardScreen() {
       { crop: '오이', zone: 'D동 1-4열', type: 'EC/pH 측정', workers: ['윤', '한'], progress: 0, status: 'waiting', time: '13:00~14:00' },
     ];
     return items;
-  }, [todayTasks, empMap, cropMap, zoneMap]);
+  }, [periodTasks, empMap, cropMap, zoneMap]);
 
   // ─── 이상 신고 + 긴급 호출 ───
   const alertItems = useMemo(() => {
@@ -210,6 +237,22 @@ function AdminDashboardScreen() {
     return items;
   }, [notices]);
 
+  const handleApprove = async (r) => {
+    if (!r.id || processing) return;
+    setProcessing(r.id);
+    if (r.tag === '휴가') await farmReview(r.id, true, currentUser?.id);
+    else await approveOT(r.id, currentUser?.id);
+    setProcessing(null);
+  };
+
+  const handleReject = async (r) => {
+    if (!r.id || processing) return;
+    setProcessing(r.id);
+    if (r.tag === '휴가') await farmReview(r.id, false, currentUser?.id);
+    else await rejectOT(r.id, currentUser?.id);
+    setProcessing(null);
+  };
+
   return (
     <div style={{ flex: 1, overflow: 'auto', background: T.bg }}>
       <TopBar
@@ -251,11 +294,11 @@ function AdminDashboardScreen() {
               </div>
               <div style={{ display: 'flex', gap: 4, background: T.bg, padding: 3, borderRadius: 6, fontSize: 12 }}>
                 {['오늘', '이번 주', '이번 달'].map((t, i) => (
-                  <span key={t} style={{
+                  <span key={t} onClick={() => setPeriodTab(i)} style={{
                     padding: '5px 12px', borderRadius: 4, fontWeight: 600,
-                    background: i === 0 ? T.surface : 'transparent',
-                    color: i === 0 ? T.text : T.mutedSoft,
-                    boxShadow: i === 0 ? '0 1px 2px rgba(0,0,0,0.06)' : 'none',
+                    background: i === periodTab ? T.surface : 'transparent',
+                    color: i === periodTab ? T.text : T.mutedSoft,
+                    boxShadow: i === periodTab ? '0 1px 2px rgba(0,0,0,0.06)' : 'none',
                     cursor: 'pointer',
                   }}>{t}</span>
                 ))}
@@ -373,7 +416,7 @@ function AdminDashboardScreen() {
             </div>
             <div style={{ paddingTop: 14, marginTop: 14, borderTop: `1px solid ${T.borderSoft}`, display: 'flex', justifyContent: 'space-between', fontSize: 11, color: T.mutedSoft }}>
               <span>목표 대비 <span style={{ color: T.text, fontWeight: 700 }}>87%</span></span>
-              <span style={{ color: T.primary, fontWeight: 600, cursor: 'pointer' }}>상세 분석 →</span>
+              <span onClick={() => navigate('/admin/stats')} style={{ color: T.primary, fontWeight: 600, cursor: 'pointer' }}>상세 분석 →</span>
             </div>
           </Card>
 
@@ -384,7 +427,7 @@ function AdminDashboardScreen() {
                 <h3 style={{ fontSize: 14, fontWeight: 700, color: T.text, margin: 0 }}>승인 대기</h3>
                 <Pill tone="danger">{pendingCount}</Pill>
               </div>
-              <span style={{ fontSize: 11, color: T.primary, fontWeight: 600, cursor: 'pointer' }}>모두 보기</span>
+              <span onClick={() => navigate('/admin/leave-approval')} style={{ fontSize: 11, color: T.primary, fontWeight: 600, cursor: 'pointer' }}>모두 보기</span>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               {approvalRows.map((r, i) => (
@@ -397,10 +440,10 @@ function AdminDashboardScreen() {
                     </div>
                     <div style={{ fontSize: 11, color: T.mutedSoft, marginTop: 2 }}>{r.type} · {r.detail}</div>
                   </div>
-                  <button style={{ width: 26, height: 26, borderRadius: 6, background: T.surface, border: `1px solid ${T.border}`, color: T.mutedSoft, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
+                  <button onClick={() => handleReject(r)} disabled={!!processing} style={{ width: 26, height: 26, borderRadius: 6, background: T.surface, border: `1px solid ${T.border}`, color: T.mutedSoft, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: r.id ? 'pointer' : 'default' }}>
                     <Icon d={icons.x} size={12} sw={2.5} />
                   </button>
-                  <button style={{ width: 26, height: 26, borderRadius: 6, background: T.primary, border: 0, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
+                  <button onClick={() => handleApprove(r)} disabled={!!processing} style={{ width: 26, height: 26, borderRadius: 6, background: T.primary, border: 0, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: r.id ? 'pointer' : 'default' }}>
                     <Icon d={icons.check} size={12} sw={2.5} c="#fff" />
                   </button>
                 </div>
@@ -415,7 +458,7 @@ function AdminDashboardScreen() {
                 <h3 style={{ fontSize: 14, fontWeight: 700, color: T.text, margin: 0 }}>공지사항</h3>
                 <Pill tone="primary">{notices.length}</Pill>
               </div>
-              <span style={{ fontSize: 11, color: T.primary, fontWeight: 600, cursor: 'pointer' }}>작성 +</span>
+              <span onClick={() => navigate('/admin/notices')} style={{ fontSize: 11, color: T.primary, fontWeight: 600, cursor: 'pointer' }}>작성 +</span>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
               {noticeRows.map((n, i) => {
@@ -465,7 +508,7 @@ function AdminDashboardScreen() {
           <Card>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
               <h3 style={{ fontSize: 14, fontWeight: 700, color: T.text, margin: 0 }}>이번 주 스케줄</h3>
-              <span style={{ fontSize: 11, color: T.primary, fontWeight: 600, cursor: 'pointer' }}>전체 스케줄 →</span>
+              <span onClick={() => navigate('/admin/attendance-status')} style={{ fontSize: 11, color: T.primary, fontWeight: 600, cursor: 'pointer' }}>전체 스케줄 →</span>
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 6 }}>
               {['월 20', '화 21', '수 22', '목 23', '금 24', '토 25', '일 26'].map((d, i) => {

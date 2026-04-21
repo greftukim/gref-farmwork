@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { GROWTH_SCHEMA, GR_DATA, STANDARD_CURVE } from '../data/growth';
 import { Card, Icon, Pill, T, btnSecondary, icons } from '../design/primitives';
 import { useGrowthData } from '../hooks/useGrowthData';
@@ -18,6 +19,7 @@ function GrowthDashboardScreen() {
   // eslint-disable-next-line no-shadow
   const GR_DATA = grData, STANDARD_CURVE = standardCurve;
   const [crop, setCrop] = useState('토마토');
+  const navigate = useNavigate();
   const weekIdx = GR_DATA.currentWeek - 1;
   const current = GR_DATA.crops.find(c => c.name === crop);
   const schema = GROWTH_SCHEMA[crop] || GROWTH_SCHEMA['토마토'];
@@ -42,7 +44,7 @@ function GrowthDashboardScreen() {
               <span style={{ color: T.mutedSoft, margin: '0 6px' }}>·</span>
               <span style={{ color: T.mutedSoft }}>작기 {GR_DATA.currentWeek}주차</span>
             </div>
-            <button style={{ padding: '8px 14px', borderRadius: 8, border: 0, background: T.primary, color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
+            <button onClick={() => navigate('/admin/growth/input')} style={{ padding: '8px 14px', borderRadius: 8, border: 0, background: T.primary, color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
               <Icon d={icons.plus} size={14} c="#fff" sw={2.2} />금주 조사 입력
             </button>
           </div>
