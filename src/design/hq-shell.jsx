@@ -114,7 +114,7 @@ const HQSidebar = ({ active = 'dashboard', onNavigate }) => {
   );
 };
 
-const HQTopBar = ({ title, subtitle, actions }) => (
+const HQTopBar = ({ title, subtitle, actions, onSearch, onBell }) => (
   <div style={{
     display: 'flex', alignItems: 'center', justifyContent: 'space-between',
     padding: '20px 32px', borderBottom: `1px solid ${T.border}`, background: T.surface,
@@ -145,16 +145,17 @@ const HQTopBar = ({ title, subtitle, actions }) => (
           }}>{p}</span>
         ))}
       </div>
-      <div style={{
+      <div onClick={onSearch} style={{
         display: 'flex', alignItems: 'center', gap: 8,
         padding: '8px 12px', background: T.bg, border: `1px solid ${T.border}`,
         borderRadius: 8, width: 220, color: T.mutedSoft, fontSize: 13,
+        cursor: onSearch ? 'pointer' : 'default',
       }}>
         <Icon d={icons.search} size={14} />
         <span>검색</span>
         <span style={{ marginLeft: 'auto', fontSize: 10, padding: '2px 5px', background: T.surface, border: `1px solid ${T.border}`, borderRadius: 4, fontWeight: 600 }}>⌘K</span>
       </div>
-      <button style={btnGhostStyle}>
+      <button onClick={onBell} style={btnGhostStyle}>
         <Icon d={icons.bell} size={16} />
         <span style={{ position: 'absolute', top: 4, right: 4, width: 7, height: 7, borderRadius: 999, background: T.danger }} />
       </button>

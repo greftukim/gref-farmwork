@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { HQ } from '../../design/hq-shell';
 import { Card, Dot, Icon, Pill, T, btnGhostStyle, btnPrimary, icons } from '../../design/primitives';
 import useAuthStore from '../../stores/authStore';
@@ -40,6 +41,7 @@ function formatDate(dateStr) {
 // 기간 탭 · 지점 막대 → 클릭 시 작물별 분해 드릴다운 · 승인 필터 · 지점 상세 모달
 
 function HQDashboardInteractive() {
+  const navigate = useNavigate();
   const [period, setPeriod] = useState('월');
   const [drillBranch, setDrillBranch] = useState(null); // code or null
   const [approvalFilter, setApprovalFilter] = useState('전체');
@@ -207,7 +209,7 @@ function HQDashboardInteractive() {
               <h3 style={{ fontSize: 13, fontWeight: 700, color: T.text, margin: 0 }}>지점별 운영 현황</h3>
               <span style={{ fontSize: 11, color: T.mutedSoft }}>클릭하여 상세 보기</span>
             </div>
-            <span style={{ fontSize: 11, color: HQ.accent, fontWeight: 600, cursor: 'pointer' }}>지점 관리 →</span>
+            <span onClick={() => navigate('/admin/hq/branches')} style={{ fontSize: 11, color: HQ.accent, fontWeight: 600, cursor: 'pointer' }}>지점 관리 →</span>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12 }}>
             {branches.map((b) => (
@@ -340,7 +342,7 @@ function HQDashboardInteractive() {
                 <h3 style={{ fontSize: 14, fontWeight: 700, color: T.text, margin: 0 }}>승인 허브</h3>
                 <Pill tone="danger">{approvalFiltered.length}</Pill>
               </div>
-              <span style={{ fontSize: 11, color: HQ.accent, fontWeight: 600, cursor: 'pointer' }}>전체 →</span>
+              <span onClick={() => navigate('/admin/hq/approvals')} style={{ fontSize: 11, color: HQ.accent, fontWeight: 600, cursor: 'pointer' }}>전체 →</span>
             </div>
 
             <div style={{ display: 'flex', gap: 6, marginBottom: 12, fontSize: 11, flexWrap: 'wrap' }}>
@@ -421,6 +423,7 @@ function HQDashboardInteractive() {
 
 // ─── 상단바 ───
 function HQTopBarInteractive({ title, subtitle, period, onPeriodChange }) {
+  const navigate = useNavigate();
   return (
     <div style={{
       display: 'flex', alignItems: 'center', justifyContent: 'space-between',
@@ -449,20 +452,20 @@ function HQTopBarInteractive({ title, subtitle, period, onPeriodChange }) {
             );
           })}
         </div>
-        <div style={{
+        <div onClick={() => alert('검색 기능은 준비 중입니다')} style={{
           display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px',
           background: T.bg, border: `1px solid ${T.border}`, borderRadius: 8,
-          width: 200, color: T.mutedSoft, fontSize: 13,
+          width: 200, color: T.mutedSoft, fontSize: 13, cursor: 'pointer',
         }}>
           <Icon d={icons.search} size={14} />
           <span>검색</span>
           <span style={{ marginLeft: 'auto', fontSize: 10, padding: '2px 5px', background: T.surface, border: `1px solid ${T.border}`, borderRadius: 4, fontWeight: 600 }}>⌘K</span>
         </div>
-        <button style={btnGhostStyle}>
+        <button onClick={() => navigate('/admin/hq/notices')} style={btnGhostStyle}>
           <Icon d={icons.bell} size={16} />
           <span style={{ position: 'absolute', top: 4, right: 4, width: 7, height: 7, borderRadius: 999, background: T.danger }} />
         </button>
-        {btnPrimary('전사 공지', icons.plus)}
+        {btnPrimary('전사 공지', icons.plus, () => navigate('/admin/hq/notices'))}
       </div>
     </div>
   );
@@ -710,6 +713,7 @@ function FinanceTrendCard() {
 }
 
 function IssueFeedCard() {
+  const navigate = useNavigate();
   return (
     <Card>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
@@ -717,7 +721,7 @@ function IssueFeedCard() {
           <h3 style={{ fontSize: 14, fontWeight: 700, color: T.text, margin: 0 }}>전 지점 이상 신고</h3>
           <Pill tone="danger">7</Pill>
         </div>
-        <span style={{ fontSize: 11, color: HQ.accent, fontWeight: 600, cursor: 'pointer' }}>전체 →</span>
+        <span onClick={() => navigate('/admin/records')} style={{ fontSize: 11, color: HQ.accent, fontWeight: 600, cursor: 'pointer' }}>전체 →</span>
       </div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
         {[
@@ -748,11 +752,12 @@ function IssueFeedCard() {
 }
 
 function NoticeMgmtCard() {
+  const navigate = useNavigate();
   return (
     <Card>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
         <h3 style={{ fontSize: 14, fontWeight: 700, color: T.text, margin: 0 }}>공지 · 정책 관리</h3>
-        <span style={{ fontSize: 11, color: HQ.accent, fontWeight: 600, cursor: 'pointer' }}>+ 새 공지</span>
+        <span onClick={() => navigate('/admin/hq/notices')} style={{ fontSize: 11, color: HQ.accent, fontWeight: 600, cursor: 'pointer' }}>+ 새 공지</span>
       </div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
         {[
