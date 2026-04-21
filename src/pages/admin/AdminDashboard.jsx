@@ -238,17 +238,27 @@ function AdminDashboardScreen() {
   const handleApprove = async (r) => {
     if (!r.id || processing) return;
     setProcessing(r.id);
-    if (r.tag === '휴가') await farmReview(r.id, true, currentUser?.id);
-    else await approveOT(r.id, currentUser?.id);
+    let ok;
+    if (r.tag === '휴가') ok = await farmReview(r.id, true, currentUser?.id);
+    else {
+      const res = await approveOT(r.id, currentUser?.id);
+      ok = !res?.error;
+    }
     setProcessing(null);
+    if (!ok) alert('승인 처리에 실패했습니다. 권한을 확인하거나 관리자에게 문의하세요.');
   };
 
   const handleReject = async (r) => {
     if (!r.id || processing) return;
     setProcessing(r.id);
-    if (r.tag === '휴가') await farmReview(r.id, false, currentUser?.id);
-    else await rejectOT(r.id, currentUser?.id);
+    let ok;
+    if (r.tag === '휴가') ok = await farmReview(r.id, false, currentUser?.id);
+    else {
+      const res = await rejectOT(r.id, currentUser?.id);
+      ok = !res?.error;
+    }
     setProcessing(null);
+    if (!ok) alert('반려 처리에 실패했습니다. 권한을 확인하거나 관리자에게 문의하세요.');
   };
 
   return (
@@ -433,7 +443,21 @@ function AdminDashboardScreen() {
                 <h3 style={{ fontSize: 14, fontWeight: 700, color: T.text, margin: 0 }}>승인 대기</h3>
                 <Pill tone="danger">{pendingCount}</Pill>
               </div>
-              <span onClick={() => navigate('/admin/leave-approval')} style={{ fontSize: 11, color: T.primary, fontWeight: 600, cursor: 'pointer' }}>모두 보기</span>
+              <div style={{ display: 'flex', gap: 8 }}>
+                {pendingLeave.length > 0 && (
+                  <span onClick={() => navigate('/admin/leave-approval')} style={{ fontSize: 11, color: T.primary, fontWeight: 600, cursor: 'pointer' }}>
+                    휴가 {pendingLeave.length}건 →
+                  </span>
+                )}
+                {pendingOT.length > 0 && (
+                  <span onClick={() => navigate('/admin/overtime-approval')} style={{ fontSize: 11, color: T.info, fontWeight: 600, cursor: 'pointer' }}>
+                    연장 {pendingOT.length}건 →
+                  </span>
+                )}
+                {pendingCount === 0 && (
+                  <span style={{ fontSize: 11, color: T.mutedSoft }}>없음</span>
+                )}
+              </div>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               {approvalRows.length === 0 ? (
