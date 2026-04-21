@@ -1,13 +1,17 @@
-import React, { useState } from 'react';
+import React, { useState, useContext, createContext } from 'react';
 import { ACTIVE_ASSIGNMENTS, FIELD_STATE, GOL_LENGTH_M, HOUSE_CONFIG, TASK_TYPES, WORKERS_MAP, WORKER_SPEED_FACTOR } from '../data/floor';
 import { Card, Pill, T, btnSecondary, icons } from '../design/primitives';
+import { useFloorData } from '../hooks/useFloorData';
+
+const FLOOR_FALLBACK = { ACTIVE_ASSIGNMENTS, FIELD_STATE, GOL_LENGTH_M, HOUSE_CONFIG, TASK_TYPES, WORKERS_MAP, WORKER_SPEED_FACTOR };
+const FloorCtx = createContext(FLOOR_FALLBACK);
 
 // ═══════════════════════════════════════════════════════════
 // 온실 평면도 + QR 추적 + 작업속도 기반 위치 예측
 // 복도: 하단 / 거터+골: 세로 방향 / QR 스캔 → 시간 × 속도로 아이콘 위치 보간
 // ═══════════════════════════════════════════════════════════
 
-const getWorker = (id) => WORKERS_MAP.find(w => w.id === id);
+const getWorker = (id, workersMap) => workersMap.find(w => w.id === id);
 const timeAgo = (hhmm) => {
   if (!hhmm) return '-';
   const [h, m] = hhmm.split(':').map(Number);
@@ -32,34 +36,33 @@ const minSinceScan = (hhmm) => {
 //   lastScan='F' (첫 스캔): 오른쪽 거터를 앞→뒤로 이동 중
 //   lastScan='B' (두번째 스캔): 왼쪽 거터를 뒤→앞으로 이동 중
 //   lastScan='F-again': 완료 (idle)
-function predictPosition(g) {
+function predictPosition(g, fd) {
   if (!g.currentWorker || !g.taskType || !g.startedAt) return null;
-  const task = TASK_TYPES[g.taskType];
-  const factor = WORKER_SPEED_FACTOR[g.currentWorker] || 1.0;
+  const task = fd.TASK_TYPES[g.taskType];
+  const factor = fd.WORKER_SPEED_FACTOR[g.currentWorker] || 1.0;
   const secPerM = task.speedSecPerM * factor;
 
   const lastSide = g.lastScan;
   const rawElapsed = minSinceScan(g.startedAt);
-  // 휴식 시간 차감
   const pauseTotal = g.pauseTotalMin || 0;
-  // 현재 일시정지 중이면, pausedAt부터 지금까지는 계산에서 제외
   const currentPause = g.pausedAt ? minSinceScan(g.pausedAt) : 0;
   const effectiveMin = Math.max(0, rawElapsed - pauseTotal - currentPause);
   const elapsedM = (effectiveMin * 60) / secPerM;
 
   const isPaused = !!g.pausedAt;
+  const GL = fd.GOL_LENGTH_M;
 
   if (lastSide === 'F' && g.progress < 50) {
-    const frac = Math.min(1, elapsedM / GOL_LENGTH_M);
-    return { phase: 'rightDown', frac, elapsedMin: effectiveMin, rawElapsed, pauseTotal: pauseTotal + currentPause, isPaused, estRemaining: Math.max(0, (GOL_LENGTH_M - elapsedM) * secPerM / 60) };
+    const frac = Math.min(1, elapsedM / GL);
+    return { phase: 'rightDown', frac, elapsedMin: effectiveMin, rawElapsed, pauseTotal: pauseTotal + currentPause, isPaused, estRemaining: Math.max(0, (GL - elapsedM) * secPerM / 60) };
   }
   if (lastSide === 'F' && g.progress === 50) {
-    const frac = Math.min(1, elapsedM / GOL_LENGTH_M);
-    return { phase: 'leftUp', frac, elapsedMin: effectiveMin, rawElapsed, pauseTotal: pauseTotal + currentPause, isPaused, estRemaining: Math.max(0, (GOL_LENGTH_M - elapsedM) * secPerM / 60) };
+    const frac = Math.min(1, elapsedM / GL);
+    return { phase: 'leftUp', frac, elapsedMin: effectiveMin, rawElapsed, pauseTotal: pauseTotal + currentPause, isPaused, estRemaining: Math.max(0, (GL - elapsedM) * secPerM / 60) };
   }
   if (lastSide === 'B') {
-    const frac = Math.min(1, elapsedM / GOL_LENGTH_M);
-    return { phase: 'leftUp', frac, elapsedMin: effectiveMin, rawElapsed, pauseTotal: pauseTotal + currentPause, isPaused, estRemaining: Math.max(0, (GOL_LENGTH_M - elapsedM) * secPerM / 60) };
+    const frac = Math.min(1, elapsedM / GL);
+    return { phase: 'leftUp', frac, elapsedMin: effectiveMin, rawElapsed, pauseTotal: pauseTotal + currentPause, isPaused, estRemaining: Math.max(0, (GL - elapsedM) * secPerM / 60) };
   }
   return null;
 }
@@ -77,6 +80,7 @@ const golColor = (g) => {
 
 // ─────── 평면도 SVG (복도=하단) ───────
 function GreenhousePlan({ house, onSelectGol, selectedGol }) {
+  const { HOUSE_CONFIG, FIELD_STATE, TASK_TYPES, WORKERS_MAP, WORKER_SPEED_FACTOR, GOL_LENGTH_M } = useContext(FloorCtx);
   const cfg = HOUSE_CONFIG.find(h => h.id === house);
   const gols = FIELD_STATE.gols.filter(g => g.house === house);
 
@@ -163,9 +167,9 @@ function GreenhousePlan({ house, onSelectGol, selectedGol }) {
         const g = gols.find(x => x.gol === it.n);
         if (!g) return null;
         const colors = golColor(g);
-        const worker = g.currentWorker ? getWorker(g.currentWorker) : null;
+        const worker = g.currentWorker ? getWorker(g.currentWorker, WORKERS_MAP) : null;
         const selected = selectedGol === g.gol;
-        const pos = worker ? predictPosition(g) : null;
+        const pos = worker ? predictPosition(g, { TASK_TYPES, WORKER_SPEED_FACTOR, GOL_LENGTH_M }) : null;
 
         // 작업자 아이콘 y 위치 계산
         let iconY = plantTop + plantH / 2;
@@ -314,6 +318,8 @@ function GreenhousePlan({ house, onSelectGol, selectedGol }) {
 
 // ─────── 메인 화면 ───────
 function FloorPlanScreen() {
+  const { data: floorData } = useFloorData();
+  const { HOUSE_CONFIG, FIELD_STATE, TASK_TYPES, ACTIVE_ASSIGNMENTS, WORKERS_MAP, WORKER_SPEED_FACTOR, GOL_LENGTH_M } = floorData;
   const [house, setHouse] = useState('1cmp');
   const [selectedGol, setSelectedGol] = useState(null);
   const [timeMode, setTimeMode] = useState('live');
@@ -332,6 +338,7 @@ function FloorPlanScreen() {
   const fmtMin = (min) => `${String(Math.floor(min / 60)).padStart(2, '0')}:${String(min % 60).padStart(2, '0')}`;
 
   return (
+    <FloorCtx.Provider value={floorData}>
     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
       {/* 헤더 */}
       <div style={{ background: T.surface, borderBottom: `1px solid ${T.border}`, padding: '18px 32px' }}>
@@ -473,9 +480,9 @@ function FloorPlanScreen() {
                 </div>
                 <div style={{ maxHeight: 360, overflow: 'auto' }}>
                   {allWorking.map(g => {
-                    const w = getWorker(g.currentWorker);
+                    const w = getWorker(g.currentWorker, WORKERS_MAP);
                     const task = TASK_TYPES[g.taskType];
-                    const pos = predictPosition(g);
+                    const pos = predictPosition(g, { TASK_TYPES, WORKER_SPEED_FACTOR, GOL_LENGTH_M });
                     const pct = pos ? Math.round((g.progress === 50 ? 50 : 0) + pos.frac * 50) : 0;
                     return (
                       <div key={`${g.house}-${g.gol}`} onClick={() => { setHouse(g.house); setSelectedGol(g.gol); }} style={{
@@ -552,14 +559,16 @@ function FloorPlanScreen() {
         </div>
       </div>
     </div>
+    </FloorCtx.Provider>
   );
 }
 
 // ─────── 골 상세 패널 ───────
 function GolDetail({ g, cfg, onClose }) {
-  const worker = g.currentWorker ? getWorker(g.currentWorker) : null;
+  const { TASK_TYPES, WORKERS_MAP, WORKER_SPEED_FACTOR, GOL_LENGTH_M } = useContext(FloorCtx);
+  const worker = g.currentWorker ? getWorker(g.currentWorker, WORKERS_MAP) : null;
   const task = g.taskType ? TASK_TYPES[g.taskType] : null;
-  const pos = worker ? predictPosition(g) : null;
+  const pos = worker ? predictPosition(g, { TASK_TYPES, WORKER_SPEED_FACTOR, GOL_LENGTH_M }) : null;
 
   return (
     <Card pad={0}>
@@ -693,7 +702,7 @@ function GolDetail({ g, cfg, onClose }) {
               g.startedAt && { at: g.startedAt, side: 'F', by: g.currentWorker },
               g.completedAt && { at: g.completedAt, side: 'F-again', by: g.completedBy },
             ].filter(Boolean)).map((s, i) => {
-              const w = getWorker(s.by);
+              const w = getWorker(s.by, WORKERS_MAP);
               const label = s.side === 'F' ? '앞 QR (시작)' : s.side === 'B' ? '뒤 QR (반 완료)' : '앞 QR (재스캔 · 완료)';
               return (
                 <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: 6, background: T.bg, borderRadius: 5, fontSize: 11 }}>
