@@ -7,46 +7,6 @@ import { Avatar, Card, Dot, Icon, Pill, T, btnSecondary, icons } from '../design
 // 정규화 설계: 표준공수(SAM) 기반 효율 % + 수확 달성률 % + 드릴다운 실측(주/분)
 // "주(株)" = 한 포기 개체 단위
 
-// ─────── 표준 공수(SAM) 테이블 — 작물 × 작업 ───────
-// 분/주 (표준). TODO: 실제 값으로 교체
-const SAM = {
-  '토마토':     { 정식: 0.30, 유인: 0.24, 적엽: 0.18, 적화: 0.22, 적과: 0.20, 수확: 0.28, '줄 내리기': 0.12, 측지제거: 0.16, '선별·포장': 0.15, 방제: 0.08 },
-  '딸기':       { 정식: 0.28, 유인: 0.20, 적엽: 0.14, 적화: 0.18, 적과: 0.18, 수확: 0.24, '줄 내리기': 0.10, 측지제거: 0.14, '선별·포장': 0.18, 방제: 0.08 },
-  '파프리카':   { 정식: 0.32, 유인: 0.26, 적엽: 0.20, 적화: 0.22, 적과: 0.22, 수확: 0.30, '줄 내리기': 0.14, 측지제거: 0.18, '선별·포장': 0.16, 방제: 0.09 },
-  '오이':       { 정식: 0.30, 유인: 0.28, 적엽: 0.22, 적화: 0.20, 적과: 0.20, 수확: 0.26, '줄 내리기': 0.14, 측지제거: 0.20, '선별·포장': 0.14, 방제: 0.08 },
-  '애호박':     { 정식: 0.32, 유인: 0.26, 적엽: 0.22, 적화: 0.22, 적과: 0.22, 수확: 0.30, '줄 내리기': 0.14, 측지제거: 0.18, '선별·포장': 0.18, 방제: 0.09 },
-  '방울토마토': { 정식: 0.28, 유인: 0.22, 적엽: 0.16, 적화: 0.20, 적과: 0.18, 수확: 0.32, '줄 내리기': 0.11, 측지제거: 0.15, '선별·포장': 0.20, 방제: 0.08 },
-  '고추':       { 정식: 0.26, 유인: 0.20, 적엽: 0.14, 적화: 0.18, 적과: 0.18, 수확: 0.26, '줄 내리기': 0.10, 측지제거: 0.14, '선별·포장': 0.14, 방제: 0.08 },
-};
-
-// ─────── 데이터 ───────
-const PERF_DATA = {
-  harvestGoalPct: 100, // 수확 달성률 목표
-  branches: [
-    { id: 'busan',  name: '부산LAB',  c: T.primary, workers: 20 },
-    { id: 'jinju',  name: '진주HUB',  c: T.success, workers: 14 },
-    { id: 'hadong', name: '하동HUB',  c: T.warning, workers: 12 },
-  ],
-  crops: ['전체', '토마토', '딸기', '파프리카', '오이', '애호박', '방울토마토', '고추'],
-  workTypes: ['정식', '유인', '적엽', '적화', '적과', '수확', '줄 내리기', '측지제거', '선별·포장', '방제'],
-
-  // 개인별 종합 — efficiency(표준 대비 %), harvestPct(수확 달성률 %), speedStem(주/분 주요 작업)
-  workers: [
-    { id: 'w01', name: '홍수진', branch: 'busan', bc: T.primary, role: '작업반장', crop: '토마토', joined: '2022.08', avatar: 'rose', efficiency: 122, harvestPct: 118, speedStem: 4.2, stemsWeek: 1680, attendance: 100, pinned: true },
-    { id: 'w02', name: '김영수', branch: 'busan', bc: T.primary, role: '작업자',   crop: '토마토', joined: '2023.02', avatar: 'blue',  efficiency: 115, harvestPct: 110, speedStem: 3.9, stemsWeek: 1560, attendance: 98 },
-    { id: 'w03', name: '윤서연', branch: 'busan', bc: T.primary, role: '작업자',   crop: '딸기',   joined: '2024.03', avatar: 'rose',  efficiency: 108, harvestPct: 106, speedStem: 4.6, stemsWeek: 1840, attendance: 96 },
-    { id: 'w04', name: '강민철', branch: 'busan', bc: T.primary, role: '작업자',   crop: '토마토', joined: '2023.06', avatar: 'blue',  efficiency: 102, harvestPct: 98,  speedStem: 3.4, stemsWeek: 1360, attendance: 95 },
-    { id: 'w05', name: '이수빈', branch: 'busan', bc: T.primary, role: '작업자',   crop: '파프리카', joined: '2024.01', avatar: 'emerald', efficiency: 96, harvestPct: 94, speedStem: 3.0, stemsWeek: 1200, attendance: 92 },
-    { id: 'w06', name: '박준호', branch: 'busan', bc: T.primary, role: '작업자',   crop: '토마토', joined: '2024.05', avatar: 'slate', efficiency: 82,  harvestPct: 76,  speedStem: 2.7, stemsWeek: 1080, attendance: 88, warn: true },
-    { id: 'w07', name: '정태민', branch: 'jinju', bc: T.success, role: '작업자',   crop: '오이',   joined: '2024.01', avatar: 'emerald', efficiency: 116, harvestPct: 112, speedStem: 3.8, stemsWeek: 1520, attendance: 99 },
-    { id: 'w08', name: '조미영', branch: 'jinju', bc: T.success, role: '작업자',   crop: '애호박', joined: '2023.09', avatar: 'rose',  efficiency: 110, harvestPct: 104, speedStem: 3.6, stemsWeek: 1440, attendance: 97 },
-    { id: 'w09', name: '임대현', branch: 'jinju', bc: T.success, role: '작업자',   crop: '오이',   joined: '2024.06', avatar: 'blue',  efficiency: 98,  harvestPct: 96,  speedStem: 3.2, stemsWeek: 1280, attendance: 94 },
-    { id: 'w10', name: '장민호', branch: 'hadong', bc: T.warning, role: '작업자',  crop: '방울토마토', joined: '2025.02', avatar: 'amber', efficiency: 92,  harvestPct: 88,  speedStem: 3.1, stemsWeek: 1240, attendance: 91 },
-    { id: 'w11', name: '이강모', branch: 'hadong', bc: T.warning, role: '작업자',  crop: '고추',   joined: '2023.09', avatar: 'amber', efficiency: 84,  harvestPct: 82,  speedStem: 2.6, stemsWeek: 1040, attendance: 84, warn: true },
-    { id: 'w12', name: '서지혜', branch: 'hadong', bc: T.warning, role: '작업자',  crop: '방울토마토', joined: '2024.08', avatar: 'rose',  efficiency: 76,  harvestPct: 72,  speedStem: 2.4, stemsWeek: 960,  attendance: 82, warn: true },
-  ],
-};
-
 // ─────── 공통 유틸 ───────
 const toneByPct = (pct) => pct >= 110 ? T.success : pct >= 95 ? T.text : pct >= 80 ? T.warning : T.danger;
 
@@ -243,7 +203,7 @@ const PerfKPIs = ({ workers }) => {
 };
 
 // ─────── 작물·작업별 속도 드릴다운 (주/분) ───────
-const SpeedMatrix = ({ selectedCrop, sam: samTable = SAM }) => {
+const SpeedMatrix = ({ selectedCrop, sam: samTable = {} }) => {
   const crops = selectedCrop && selectedCrop !== '전체' ? [selectedCrop] : ['토마토', '오이', '방울토마토'];
   const works = ['정식', '유인', '적엽', '수확', '선별·포장'];
   return (
@@ -418,16 +378,13 @@ const AlertBanner = ({ workers }) => {
 // ═══════════════════════════════════════════════════════════
 function HQPerformanceScreen() {
   const { sam } = usePerformanceData();
-  // eslint-disable-next-line no-shadow
-  const SAM = sam;
   const [period, setPeriod] = useState('이번 주');
   const [crop, setCrop] = useState('전체');
   const [branchFilter, setBranchFilter] = useState('전체');
   const [showBottom, setShowBottom] = useState(false);
   const [compareMode, setCompareMode] = useState(false);
   const [selected, setSelected] = useState([]);
-
-  let workers = PERF_DATA.workers;
+  return <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: T.mutedSoft, fontSize: 14 }}>데이터가 없습니다</div>;
   if (branchFilter !== '전체') {
     const bid = branchFilter === '부산LAB' ? 'busan' : branchFilter === '진주HUB' ? 'jinju' : 'hadong';
     workers = workers.filter(w => w.branch === bid);
@@ -544,13 +501,12 @@ function HQPerformanceScreen() {
 // ② 지점 뷰
 function BranchPerformanceScreen() {
   const { sam } = usePerformanceData();
-  // eslint-disable-next-line no-shadow
-  const SAM = sam;
   const [period, setPeriod] = useState('이번 주');
   const [crop, setCrop] = useState('전체');
   const [showBottom, setShowBottom] = useState(false);
-
-  let workers = PERF_DATA.workers.filter(w => w.branch === 'busan');
+  return <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: T.mutedSoft, fontSize: 14 }}>데이터가 없습니다</div>;
+  // eslint-disable-next-line no-unreachable
+  const workers = PERF_DATA.workers.filter(w => w.branch === 'busan');
   if (crop !== '전체') workers = workers.filter(w => w.crop === crop);
 
   const byEff = [...workers].sort((a, b) => b.efficiency - a.efficiency);
@@ -593,10 +549,10 @@ function BranchPerformanceScreen() {
 // ③ 개인 상세
 function PerformanceDetailScreen() {
   const { sam } = usePerformanceData();
-  // eslint-disable-next-line no-shadow
-  const SAM = sam;
-  const w = PERF_DATA.workers[0];
   const [weekWork, setWeekWork] = useState('전체');
+  return <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: T.mutedSoft, fontSize: 14 }}>데이터가 없습니다</div>;
+  // eslint-disable-next-line no-unreachable
+  const w = PERF_DATA.workers[0];
   const WEEK_TYPES = ['전체', '정식', '유인', '적엽', '수확', '선별·포장'];
   // 작업별 주별 효율 (없으면 전체 사용)
   const WEEK_BY_WORK = {
@@ -833,6 +789,8 @@ function PerformanceDetailScreen() {
 
 // ④ 비교
 function PerformanceCompareScreen() {
+  return <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: T.mutedSoft, fontSize: 14 }}>데이터가 없습니다</div>;
+  // eslint-disable-next-line no-unreachable
   const picks = ['w01', 'w07', 'w10', 'w12'].map(id => PERF_DATA.workers.find(w => w.id === id));
 
   const rows = [
