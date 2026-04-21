@@ -1316,3 +1316,45 @@ TC39 제안(ES2020)에서 이 조합을 괄호 없이 허용하지 않는 규칙
 - ESLint rule `no-mixed-operators`를 켜두면 사전에 감지 가능.
 
 **관련 커밋:** 50593b4 (feat(P1-d))
+
+---
+
+## 교훈 47 — 지시서 분리 구조(README/PART-A~C/SCRIPTS)가 Claude Code 실행 정확도를 높인다
+
+**맥락:** Phase 1 세션 19 (2026-04-22), 목업 재이식 + 신규 화면 구현.
+
+**관찰:**
+지시서를 단일 문서가 아닌 역할별 파일로 분리했을 때 (README.md, PART-A.md, PART-B-신규.md, PART-C.md, TROUBLESHOOTING.md, SCRIPTS.md) Claude Code가 각 PART를 순서대로 독립 실행하기 쉬웠고, 이전 세션에서 이미 완료된 PART A를 grep 검증으로 빠르게 건너뛸 수 있었다.
+
+**Why:** 단일 장문 지시서는 Claude Code가 "현재 어디까지 왔는가"를 판단하기 어렵다. PART 단위 분리는 완료 여부 판단과 재진입 지점을 명확히 한다.
+
+**How to apply:**
+- 세션 작업이 3개 이상 독립 단위로 나뉠 때는 PART-A/B/C 파일로 분리 작성.
+- 각 PART 첫 줄에 "이미 완료 여부 판단 기준"을 명시해두면 재진입 시 중복 작업 방지.
+
+**관련:** 세션 19 지시서 구조 (c:\Users\김태우\Downloads\ 내 7개 md 파일)
+
+---
+
+## 교훈 48 — PART 완료 여부는 git log만으로 판단 금지, 파일 grep 검증 필수
+
+**맥락:** Phase 1 세션 19 (2026-04-22), 세션 종료 점검.
+
+**문제:**
+git log --oneline 으로는 "어떤 파일이 어느 상태인지"를 알 수 없다. 커밋 메시지가 "PART A 완료"라고 적혀 있어도 실제 파일에 Object.assign(window, ...) 잔존 여부, import React 누락 여부, export 정상 여부를 보장하지 않는다.
+
+**해결:**
+세션 종료 점검 시 다음 3개 grep을 반드시 실행:
+```bash
+grep -rn "Object\.assign(window" src/           # 0건이어야 정상
+grep -rn "React\.use" src/ | grep -v "React\.Fragment"  # 0건이어야 정상
+grep -L "import React" src/design/*.jsx src/pages/**/*.jsx  # 출력 없어야 정상
+```
+
+**Why:** 커밋은 "작업을 시도했다"는 기록이지 "결과가 정확하다"는 증명이 아니다. 파일 상태는 파일 자체를 봐야 알 수 있다.
+
+**How to apply:**
+- PART 완료 선언 전 반드시 파일 grep 검증 실시.
+- git log는 커밋 범위 파악용, 완료 판단은 grep/read 기반으로.
+
+**관련 커밋:** cc41f0c (feat(session19))

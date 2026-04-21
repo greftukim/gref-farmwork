@@ -124,6 +124,7 @@
 | FARM-ADMIN-LEADER-SCOPE-CONFIRM-001 | 운영 확인 | open | 세션 17 (2026-04-16) | 낮음 | farm_admin의 반장 부여 권한 범위 확인 — UI-D에서 canToggleTeamLeader (farm_admin 전체) → canAssignLeader (farm_admin 본인 지점만) 전환 채택. 운영 의도 확인 필요. 판정 기준: 박민식·김민국 답변 후 정합 시 유지, 부정합 시 정정. 연관: UI-A canAssignLeader 신설 (8788bb8), UI-D 단계 2 (예정 커밋). | docs/BACKLOG.md |
 | CONTRACT-EXPIRY-PUSH-NOTIFICATION-001 | 별 트랙 | open | 세션 17 (2026-04-16) | 낮음 | 계약만료 PWA 푸시 알림 별 트랙 신설 — 현 UI-E는 UI 표시만, FCM 통합 미사용. PWA 푸시 알림 시 Edge Function 신설 (send-notification) + FCM 토큰 조회 + 메시지 전송. 실 운영 요구 확인 후 별 트랙 진입. 연관: UI-E 단계 2 (세션 17, 예정 커밋), 기존 FCM 인프라 (src/lib/firebase.js). | docs/BACKLOG.md |
 | J-CLEANUP-DEEP-001 | 데이터 정리 | open | 세션 17 (2026-04-16) | 중간 | J-CLEANUP-001 옵션 C 채택으로 보류된 14명 직원 완전 정리 — 시드_작업자 10명 (~38,700+건 tasks 포함) + 비활성 김민국·박민식 (~940건) + 이강모 (7건) + 최수진 (2건). FK 위반 방지 위해 선행 자식 삭제 필수 (NO ACTION·RESTRICT 16건 + CASCADE 3건 + SET NULL 1건). 처리 방식: 각 직원별 관련 데이터 평가 → 선행 자식 DELETE 또는 UPDATE NULL → employees DELETE 단계적 진행. auth_user_id 자동 NULL 동작 확인 (J-CLEANUP-001 사례, FK delete_rule SET NULL 추정), 세션 18+ 진입 시 delete_rule 전체 재확인 권장. 판정 기준: 운영 중 안정성 확보 후 별 트랙 진입 또는 세션 18+. 연관: J-CLEANUP-001 (세션 17, 옵션 C 커밋 예정), 박제 후보 #13 (FK 조사 방법론). | docs/BACKLOG.md |
+| FLOOR-SCHEMA-SKIP-001 | 설계 메모 | wontfix | 세션 19 (2026-04-22) | - | src/data/floor-schema.js는 의도적으로 생성하지 않음. FloorPlan.jsx가 useFloorData 훅 기반 실데이터로 작동하므로 스키마 상수 import 불필요. 목업(screen-floor-data.jsx)은 참조용으로만 보관. 빌드·런타임 영향 없음 확인 (세션 19 점검). | docs/HANDOVER_PHASE5_SESSION19.md |
 
 ---
 
