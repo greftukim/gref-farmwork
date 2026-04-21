@@ -256,7 +256,12 @@ function AdminDashboardScreen() {
       <TopBar
         subtitle="재배팀"
         title="2026년 4월 21일 화요일"
-        actions={<>{btnSecondary('내보내기')}{btnPrimary('새 작업 등록', icons.plus)}</>}
+        onSearch={() => alert('검색 기능은 준비 중입니다')}
+        onBell={() => navigate('/admin/notices')}
+        actions={<>
+          {btnSecondary('내보내기', null, () => alert('내보내기 기능은 준비 중입니다'))}
+          {btnPrimary('새 작업 등록', icons.plus, () => navigate('/admin/tasks/new'))}
+        </>}
       />
 
       <div style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 20 }}>
@@ -314,9 +319,10 @@ function AdminDashboardScreen() {
                 const s = statusMap[t.status];
                 const barColor = t.status === 'done' ? T.success : t.status === 'active' ? T.primary : T.mutedSoft;
                 return (
-                  <div key={i} style={{
+                  <div key={i} onClick={() => navigate('/admin/tasks')} style={{
                     padding: '14px 16px', background: T.bg, borderRadius: 10,
                     display: 'flex', alignItems: 'center', gap: 16,
+                    cursor: 'pointer',
                   }}>
                     <div style={{ width: 60 }}>
                       <div style={{ fontSize: 11, color: T.mutedSoft, fontWeight: 600 }}>{t.time.split('~')[0]}</div>
@@ -355,7 +361,7 @@ function AdminDashboardScreen() {
                 <h3 style={{ fontSize: 14, fontWeight: 700, color: T.text, margin: 0 }}>긴급 호출 · 이상 신고</h3>
                 <Pill tone="danger">{openIssues.length + unconfirmedCalls.length || 0}</Pill>
               </div>
-              <span style={{ fontSize: 11, color: T.primary, fontWeight: 600, cursor: 'pointer' }}>모두 보기</span>
+              <span onClick={() => navigate('/admin/records')} style={{ fontSize: 11, color: T.primary, fontWeight: 600, cursor: 'pointer' }}>모두 보기</span>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               {alertItems.length > 0 ? alertItems.map((a, i) => (
@@ -504,8 +510,8 @@ function AdminDashboardScreen() {
               B동 딸기 구역 온도가 평년 대비 2.3℃ 높아요. <span style={{ color: T.primary, fontWeight: 600 }}>환기 강도 상향</span>을 권장합니다.
             </div>
             <div style={{ display: 'flex', gap: 6 }}>
-              {btnPrimary('적용하기')}
-              {btnSecondary('자세히')}
+              {btnPrimary('적용하기', null, () => alert('AI 적용 기능은 준비 중입니다'))}
+              {btnSecondary('자세히', null, () => alert('AI 상세 기능은 준비 중입니다'))}
             </div>
           </Card>
 
