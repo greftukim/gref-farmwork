@@ -94,6 +94,8 @@ import WorkerNoticePage from './pages/worker/WorkerNoticePage';
 import WorkerMorePage from './pages/worker/WorkerMorePage';
 import { MobileHomeScreen, MobileCheckInScreen, MobileTasksScreen, MobileAttendanceScreen, MobileProfileScreen } from './pages/mobile/_screens';
 import { MobileGrowthScreen } from './pages/mobile/Growth';
+import { MobileAdminHomeFarm, MobileAdminHomeHQ } from './pages/mobile/AdminMobile';
+import { MobileApprovalScreen, MobileFloorScreen, MobilePerfScreen, MobileMoreScreen, MobileInboxScreen } from './pages/mobile/AdminMobilePages';
 
 function HydrationGate({ children }) {
   const [hydrated, setHydrated] = useState(useAuthStore.persist.hasHydrated());
@@ -131,6 +133,13 @@ function ProtectedRoute({ children, allowedRoles }) {
     return <Navigate to="/login" replace />;
   }
   return children;
+}
+
+function AdminHomeRoute() {
+  const role = useAuthStore((s) => s.currentUser?.role);
+  return (role === 'master' || role === 'hr_admin')
+    ? <MobileAdminHomeHQ />
+    : <MobileAdminHomeFarm />;
 }
 
 function LeaveApprovalRoute() {
@@ -218,6 +227,12 @@ export default function App() {
             <Route path="hq/employees" element={<HQEmployeesScreen />} />
             <Route path="hq/finance" element={<HQFinanceScreen />} />
             <Route path="hq/notices" element={<HQNoticesScreen />} />
+            <Route path="m/home" element={<AdminHomeRoute />} />
+            <Route path="m/approve" element={<MobileApprovalScreen />} />
+            <Route path="m/floor" element={<MobileFloorScreen />} />
+            <Route path="m/perf" element={<MobilePerfScreen />} />
+            <Route path="m/more" element={<MobileMoreScreen />} />
+            <Route path="m/inbox" element={<MobileInboxScreen />} />
           </Route>
 
           <Route path="/worker" element={
