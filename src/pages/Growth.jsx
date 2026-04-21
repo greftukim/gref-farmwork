@@ -17,9 +17,9 @@ const pct = (actual, target) => target ? Math.round(actual / target * 100) : 0;
 function GrowthDashboardScreen() {
   const { grData: GR_DATA, standardCurve: STANDARD_CURVE, loading } = useGrowthData();
   const [crop, setCrop] = useState('토마토');
+  const navigate = useNavigate();
   if (loading) return <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: T.mutedSoft, fontSize: 14 }}>로딩 중...</div>;
   if (!GR_DATA.crops?.length) return <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: T.mutedSoft, fontSize: 14 }}>데이터가 없습니다</div>;
-  const navigate = useNavigate();
   const weekIdx = GR_DATA.currentWeek - 1;
   const current = GR_DATA.crops.find(c => c.name === crop);
   const schema = GROWTH_SCHEMA[crop] || GROWTH_SCHEMA['토마토'];
@@ -258,14 +258,14 @@ function GrowthDashboardScreen() {
                 <h3 style={{ fontSize: 14, fontWeight: 700, color: T.text, margin: 0 }}>이상 개체 기록</h3>
                 <span style={{ fontSize: 10, color: T.mutedSoft }}>최근 7일</span>
               </div>
-              <button style={{ background: 'none', border: 0, fontSize: 11, color: T.primary, cursor: 'pointer', fontWeight: 600 }}>+ 기록</button>
+              <button onClick={() => navigate('/admin/growth/input')} style={{ background: 'none', border: 0, fontSize: 11, color: T.primary, cursor: 'pointer', fontWeight: 600 }}>+ 기록</button>
             </div>
             <div style={{ maxHeight: 240, overflow: 'auto' }}>
               {GR_DATA.incidents.map(inc => {
                 const tone = inc.status === 'open' ? T.danger : inc.status === 'monitoring' ? T.warning : T.success;
                 const statusLabel = inc.status === 'open' ? '미조치' : inc.status === 'monitoring' ? '모니터링' : '조치완료';
                 return (
-                  <div key={inc.id} style={{ padding: '12px 16px', borderBottom: `1px solid ${T.borderSoft}`, cursor: 'pointer' }}>
+                  <div key={inc.id} onClick={() => navigate('/admin/growth/input')} style={{ padding: '12px 16px', borderBottom: `1px solid ${T.borderSoft}`, cursor: 'pointer' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 4 }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                         <span style={{ fontSize: 11, fontWeight: 700, color: T.text, fontFamily: 'ui-monospace, monospace' }}>{inc.plant}</span>
@@ -302,8 +302,8 @@ function GrowthDashboardScreen() {
               <span style={{ fontSize: 11, color: T.mutedSoft }}>{crop} · 8개 표식주 중 전체 표시</span>
             </div>
             <div style={{ display: 'flex', gap: 6 }}>
-              {btnSecondary('CSV', icons.chart)}
-              <button style={{ padding: '6px 12px', borderRadius: 6, border: 0, background: T.primary, color: '#fff', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>+ 표식주 추가</button>
+              {btnSecondary('CSV', icons.chart, () => alert('CSV 내보내기 기능은 준비 중입니다'))}
+              <button onClick={() => navigate('/admin/growth/markers')} style={{ padding: '6px 12px', borderRadius: 6, border: 0, background: T.primary, color: '#fff', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>+ 표식주 추가</button>
             </div>
           </div>
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
@@ -332,7 +332,7 @@ function GrowthDashboardScreen() {
                     {p.health === 'good' ? <Pill tone="success" size="sm">양호</Pill> : <Pill tone="warning" size="sm">주의</Pill>}
                   </td>
                   <td style={{ padding: '10px 16px', textAlign: 'right' }}>
-                    <button style={{ padding: '4px 10px', borderRadius: 6, border: `1px solid ${T.border}`, background: T.surface, color: T.muted, fontSize: 11, cursor: 'pointer' }}>상세 →</button>
+                    <button onClick={() => navigate('/admin/growth/detail')} style={{ padding: '4px 10px', borderRadius: 6, border: `1px solid ${T.border}`, background: T.surface, color: T.muted, fontSize: 11, cursor: 'pointer' }}>상세 →</button>
                   </td>
                 </tr>
               ))}
@@ -351,6 +351,7 @@ function GrowthInputScreen() {
   const { grData: GR_DATA, standardCurve: STANDARD_CURVE, loading } = useGrowthData();
   const [crop, setCrop] = useState('토마토');
   const [selectedWeek, setSelectedWeek] = useState(1);
+  const navigate = useNavigate();
   if (loading) return <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: T.mutedSoft, fontSize: 14 }}>로딩 중...</div>;
   if (!GR_DATA.markerPlants?.length) return <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: T.mutedSoft, fontSize: 14 }}>데이터가 없습니다</div>;
   const schema = GROWTH_SCHEMA[crop];
@@ -367,7 +368,7 @@ function GrowthInputScreen() {
     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
       <div style={{ background: T.surface, borderBottom: `1px solid ${T.border}`, padding: '20px 32px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, color: T.mutedSoft, marginBottom: 6 }}>
-          <span style={{ cursor: 'pointer' }}>생육조사</span><span>›</span>
+          <span onClick={() => navigate('/admin/growth')} style={{ cursor: 'pointer' }}>생육조사</span><span>›</span>
           <span style={{ color: T.text, fontWeight: 600 }}>주별 기록 입력</span>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -376,8 +377,8 @@ function GrowthInputScreen() {
             <div style={{ fontSize: 12, color: T.muted, marginTop: 4 }}>{GR_DATA.calendarWeek} ({GR_DATA.date}) · 작기 {GR_DATA.currentWeek}주차 · {plants.length}개 표식주</div>
           </div>
           <div style={{ display: 'flex', gap: 8 }}>
-            {btnSecondary('지난 주 값 불러오기', icons.clock)}
-            {btnSecondary('임시 저장', icons.check)}
+            {btnSecondary('지난 주 값 불러오기', icons.clock, () => alert('이전 주 값 불러오기 기능은 준비 중입니다'))}
+            {btnSecondary('임시 저장', icons.check, () => alert('임시 저장 기능은 준비 중입니다'))}
             <button disabled={readOnly} style={{
               padding: '8px 16px', borderRadius: 7, border: 0,
               background: readOnly ? T.borderSoft : T.primary,
@@ -546,7 +547,7 @@ function GrowthInputScreen() {
                   <input type="checkbox" defaultChecked={p.health === 'warn'} />
                   <span style={{ fontSize: 12, fontWeight: 600, color: T.text, fontFamily: 'ui-monospace, monospace' }}>{p.id}</span>
                   <span style={{ fontSize: 11, color: T.muted, flex: 1 }}>{p.note || ''}</span>
-                  {p.health === 'warn' && <button style={{ padding: '3px 9px', fontSize: 10, border: 0, background: T.warning, color: '#fff', borderRadius: 4, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}><Icon d={icons.camera} size={10} c="#fff" />사진</button>}
+                  {p.health === 'warn' && <button onClick={() => alert('사진 업로드 기능은 준비 중입니다')} style={{ padding: '3px 9px', fontSize: 10, border: 0, background: T.warning, color: '#fff', borderRadius: 4, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}><Icon d={icons.camera} size={10} c="#fff" />사진</button>}
                 </label>
               ))}
             </div>
@@ -562,6 +563,7 @@ function GrowthInputScreen() {
 // ═══════════════════════════════════════════════════════════
 function GrowthMarkerDetailScreen() {
   const { grData: GR_DATA, standardCurve: STANDARD_CURVE, loading } = useGrowthData();
+  const navigate = useNavigate();
   if (loading) return <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: T.mutedSoft, fontSize: 14 }}>로딩 중...</div>;
   if (!GR_DATA.markerPlants?.length) return <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: T.mutedSoft, fontSize: 14 }}>데이터가 없습니다</div>;
   const p = GR_DATA.markerPlants[0];
@@ -574,8 +576,8 @@ function GrowthMarkerDetailScreen() {
     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
       <div style={{ background: T.surface, borderBottom: `1px solid ${T.border}`, padding: '20px 32px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, color: T.mutedSoft, marginBottom: 8 }}>
-          <span style={{ cursor: 'pointer' }}>생육조사</span><span>›</span>
-          <span style={{ cursor: 'pointer' }}>{p.crop}</span><span>›</span>
+          <span onClick={() => navigate('/admin/growth')} style={{ cursor: 'pointer' }}>생육조사</span><span>›</span>
+          <span onClick={() => navigate('/admin/growth/heatmap')} style={{ cursor: 'pointer' }}>{p.crop}</span><span>›</span>
           <span style={{ color: T.text, fontWeight: 600, fontFamily: 'ui-monospace, monospace' }}>{p.id}</span>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
@@ -595,9 +597,9 @@ function GrowthMarkerDetailScreen() {
             </div>
           </div>
           <div style={{ display: 'flex', gap: 8 }}>
-            {btnSecondary('이전 개체', icons.chevLeft)}
-            {btnSecondary('다음 개체', icons.chevRight)}
-            <button style={{ padding: '8px 14px', borderRadius: 7, border: 0, background: T.primary, color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>이번주 입력</button>
+            {btnSecondary('이전 개체', icons.chevLeft, () => alert('이전 개체 기능은 준비 중입니다'))}
+            {btnSecondary('다음 개체', icons.chevRight, () => alert('다음 개체 기능은 준비 중입니다'))}
+            <button onClick={() => navigate('/admin/growth/input')} style={{ padding: '8px 14px', borderRadius: 7, border: 0, background: T.primary, color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>이번주 입력</button>
           </div>
         </div>
       </div>
@@ -757,7 +759,7 @@ function GrowthHeatmapScreen() {
               <h3 style={{ fontSize: 14, fontWeight: 700, color: T.text, margin: 0 }}>{crop} · 작기 {GR_DATA.currentWeek}주차 편차</h3>
               <span style={{ fontSize: 11, color: T.mutedSoft }}>표식주 {plants.length}개 × 조사항목 {schema.length}개</span>
             </div>
-            {btnSecondary('CSV 내보내기', icons.chart)}
+            {btnSecondary('CSV 내보내기', icons.chart, () => alert('CSV 내보내기 기능은 준비 중입니다'))}
           </div>
           <div style={{ overflow: 'auto', padding: 12 }}>
             <table style={{ borderCollapse: 'collapse' }}>

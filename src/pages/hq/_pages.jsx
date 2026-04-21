@@ -173,7 +173,7 @@ function HQApprovalsScreen() {
       <HQPageHeader
         subtitle="본사 · 지점장 요청 관리"
         title="승인 허브"
-        actions={<>{btnSecondary('내보내기', icons.chart)}{btnPrimary('규칙 설정', icons.settings)}</>}
+        actions={<>{btnSecondary('내보내기', icons.chart, () => alert('내보내기 기능은 준비 중입니다'))}{btnPrimary('규칙 설정', icons.settings, () => alert('규칙 설정 기능은 준비 중입니다'))}</>}
         tabs={[
           { id: 'pending', label: '대기 중', count: pendingItems.length },
           { id: 'approved', label: '승인됨', count: approvedItems.length },
@@ -244,8 +244,8 @@ function HQApprovalsScreen() {
             {selected.size > 0 && (
               <div style={{ marginLeft: 'auto', display: 'flex', gap: 8, alignItems: 'center' }}>
                 <span style={{ fontSize: 12, fontWeight: 600, color: T.text }}>{selected.size}건 선택됨</span>
-                <button style={{ padding: '6px 12px', borderRadius: 6, border: `1px solid ${T.border}`, background: T.surface, color: T.muted, fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>일괄 반려</button>
-                <button style={{ padding: '6px 12px', borderRadius: 6, border: 0, background: HQ.accent, color: '#fff', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>일괄 승인</button>
+                <button onClick={() => alert('일괄 반려 기능은 준비 중입니다')} style={{ padding: '6px 12px', borderRadius: 6, border: `1px solid ${T.border}`, background: T.surface, color: T.muted, fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>일괄 반려</button>
+                <button onClick={() => alert('일괄 승인 기능은 준비 중입니다')} style={{ padding: '6px 12px', borderRadius: 6, border: 0, background: HQ.accent, color: '#fff', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>일괄 승인</button>
               </div>
             )}
           </div>
@@ -301,7 +301,7 @@ function HQApprovalsScreen() {
                     <div style={{ display: 'inline-flex', gap: 6 }}>
                       <button onClick={() => handleReject(r)} style={{ padding: '5px 12px', borderRadius: 6, border: `1px solid ${T.border}`, background: T.surface, color: T.muted, fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>반려</button>
                       <button onClick={() => handleApprove(r)} style={{ padding: '5px 12px', borderRadius: 6, border: 0, background: HQ.accent, color: '#fff', fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>승인</button>
-                      <button style={{ padding: '5px 8px', borderRadius: 6, border: `1px solid ${T.border}`, background: T.surface, color: T.mutedSoft, fontSize: 11, cursor: 'pointer' }}>⋯</button>
+                      <button onClick={() => alert('더 보기 기능은 준비 중입니다')} style={{ padding: '5px 8px', borderRadius: 6, border: `1px solid ${T.border}`, background: T.surface, color: T.mutedSoft, fontSize: 11, cursor: 'pointer' }}>⋯</button>
                     </div>
                   </td>
                 </tr>
@@ -358,7 +358,7 @@ function HQBranchesScreen() {
       <HQPageHeader
         subtitle="본사 · 다지점 운영"
         title="지점 관리"
-        actions={<>{btnSecondary('지도로 보기', icons.location)}{btnPrimary('지점 추가', icons.plus)}</>}
+        actions={<>{btnSecondary('지도로 보기', icons.location, () => alert('지도 보기 기능은 준비 중입니다'))}{btnPrimary('지점 추가', icons.plus, () => alert('지점 추가 기능은 준비 중입니다'))}</>}
       />
       <div style={{ flex: 1, overflow: 'auto', padding: 24, background: T.bg, display: 'flex', flexDirection: 'column', gap: 16 }}>
         {/* 전사 요약 */}
@@ -402,7 +402,7 @@ function HQBranchesScreen() {
                 </div>
                 <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
                   {b.status === 'alert' ? <Pill tone="warning">주의</Pill> : <Pill tone="success">정상</Pill>}
-                  <button style={{ padding: '5px 10px', borderRadius: 6, border: `1px solid ${T.border}`, background: T.surface, color: T.muted, fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>상세 →</button>
+                  <button onClick={() => alert('지점 상세 기능은 준비 중입니다')} style={{ padding: '5px 10px', borderRadius: 6, border: `1px solid ${T.border}`, background: T.surface, color: T.muted, fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>상세 →</button>
                 </div>
               </div>
 
@@ -418,7 +418,7 @@ function HQBranchesScreen() {
                     </div>
                     <div style={{ fontSize: 11, color: T.mutedSoft, marginTop: 2 }}>{b.phone}</div>
                   </div>
-                  <button style={{ padding: '6px 10px', borderRadius: 6, border: 0, background: HQ.accent, color: '#fff', fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>연락</button>
+                  <button onClick={() => alert('연락 기능은 준비 중입니다')} style={{ padding: '6px 10px', borderRadius: 6, border: 0, background: HQ.accent, color: '#fff', fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>연락</button>
                 </div>
 
                 {/* 정보 그리드 */}
@@ -456,7 +456,7 @@ function HQBranchesScreen() {
           ))}
 
           {/* 지점 추가 카드 */}
-          <Card pad={0} style={{
+          <Card pad={0} onClick={() => alert('지점 추가 기능은 준비 중입니다')} style={{
             overflow: 'hidden', border: `2px dashed ${T.border}`, background: 'transparent',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             minHeight: 300, cursor: 'pointer',
@@ -517,7 +517,7 @@ function HQEmployeesScreen() {
       <HQPageHeader
         subtitle="본사 · 전 지점 통합"
         title="전사 직원"
-        actions={<>{btnSecondary('CSV 내보내기', icons.chart)}{btnPrimary('직원 추가', icons.plus)}</>}
+        actions={<>{btnSecondary('CSV 내보내기', icons.chart, () => alert('CSV 내보내기 기능은 준비 중입니다'))}{btnPrimary('직원 추가', icons.plus, () => alert('직원 추가 기능은 준비 중입니다'))}</>}
         tabs={[
           { id: 'all', label: '전체', count: employees.length },
           { id: 'busan', label: '부산LAB', count: busanCount },
@@ -557,7 +557,7 @@ function HQEmployeesScreen() {
             </div>
             <div style={{ display: 'flex', gap: 6 }}>
               {['전체', '정규', '계약', '임시'].map((t, i) => (
-                <button key={t} style={{
+                <button key={t} onClick={() => alert('고용형태 필터는 준비 중입니다')} style={{
                   padding: '6px 12px', borderRadius: 6, fontSize: 11, fontWeight: 600, cursor: 'pointer',
                   border: `1px solid ${i === 0 ? HQ.accent : T.border}`,
                   background: i === 0 ? HQ.accentSoft : T.surface,
@@ -612,7 +612,7 @@ function HQEmployeesScreen() {
                       {isActive ? <Pill tone="success" size="sm">재직</Pill> : <Pill tone="warning" size="sm">휴직</Pill>}
                     </td>
                     <td style={{ padding: '10px 16px', textAlign: 'right' }}>
-                      <button style={{ padding: '4px 10px', borderRadius: 6, border: `1px solid ${T.border}`, background: T.surface, color: T.muted, fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>상세</button>
+                      <button onClick={() => alert('직원 상세 기능은 준비 중입니다')} style={{ padding: '4px 10px', borderRadius: 6, border: `1px solid ${T.border}`, background: T.surface, color: T.muted, fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>상세</button>
                     </td>
                   </tr>
                 );
@@ -623,7 +623,7 @@ function HQEmployeesScreen() {
             <span>총 {tabFiltered.length}명 중 1-{Math.min(10, tabFiltered.length)}</span>
             <div style={{ display: 'flex', gap: 4 }}>
               {['←', '1', '2', '3', '4', '5', '6', '→'].map((p, i) => (
-                <span key={i} style={{
+                <span key={i} onClick={() => alert('페이지 이동 기능은 준비 중입니다')} style={{
                   padding: '4px 10px', borderRadius: 6, fontSize: 11, fontWeight: 600, cursor: 'pointer',
                   background: p === '1' ? HQ.accent : T.surface,
                   color: p === '1' ? '#fff' : T.muted,
@@ -657,7 +657,7 @@ function HQNoticesScreen() {
       <HQPageHeader
         subtitle="본사 · 공지사항 및 사내 정책"
         title="공지 · 정책"
-        actions={<>{btnSecondary('열람 리포트', icons.chart)}{btnPrimary('새 공지 작성', icons.plus)}</>}
+        actions={<>{btnSecondary('열람 리포트', icons.chart, () => alert('열람 리포트 기능은 준비 중입니다'))}{btnPrimary('새 공지 작성', icons.plus, () => alert('공지 작성 기능은 준비 중입니다'))}</>}
         tabs={[
           { id: 'active', label: '활성', count: 8 },
           { id: 'scheduled', label: '예약됨', count: 2 },
@@ -737,8 +737,8 @@ function HQNoticesScreen() {
                     </div>
                     <div style={{ fontSize: 10, color: T.mutedSoft }}>{n.read} / {n.target.match(/\d+/)?.[0]}명 읽음</div>
                     <div style={{ display: 'flex', gap: 6, marginTop: 10 }}>
-                      <button style={{ flex: 1, padding: '5px 0', borderRadius: 6, border: `1px solid ${T.border}`, background: T.surface, color: T.muted, fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>수정</button>
-                      <button style={{ flex: 1, padding: '5px 0', borderRadius: 6, border: 0, background: HQ.accent, color: '#fff', fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>재알림</button>
+                      <button onClick={() => alert('공지 수정 기능은 준비 중입니다')} style={{ flex: 1, padding: '5px 0', borderRadius: 6, border: `1px solid ${T.border}`, background: T.surface, color: T.muted, fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>수정</button>
+                      <button onClick={() => alert('재알림 기능은 준비 중입니다')} style={{ flex: 1, padding: '5px 0', borderRadius: 6, border: 0, background: HQ.accent, color: '#fff', fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>재알림</button>
                     </div>
                   </div>
                 </div>
@@ -778,7 +778,7 @@ function HQFinanceScreen() {
                 );
               })}
             </div>
-            {btnSecondary('PDF 내보내기', icons.chart)}
+            {btnSecondary('PDF 내보내기', icons.chart, () => alert('PDF 내보내기 기능은 준비 중입니다'))}
           </>
         }
       />
