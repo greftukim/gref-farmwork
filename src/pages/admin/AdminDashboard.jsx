@@ -1,277 +1,21 @@
-import React, { useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Avatar, Card, Dot, Icon, Pill, T, TopBar, btnPrimary, btnSecondary, icons } from '../../design/primitives';
-import useTaskStore from '../../stores/taskStore';
-import useEmployeeStore from '../../stores/employeeStore';
-import useAttendanceStore from '../../stores/attendanceStore';
-import useLeaveStore from '../../stores/leaveStore';
-import useOvertimeStore from '../../stores/overtimeStore';
-import useIssueStore from '../../stores/issueStore';
-import useNoticeStore from '../../stores/noticeStore';
-import useCropStore from '../../stores/cropStore';
-import useZoneStore from '../../stores/zoneStore';
-import useCallStore from '../../stores/callStore';
-import useAuthStore from '../../stores/authStore';
-
-// 기존 코드와 동일한 UTC 기준 (attendanceStore.checkIn과 일치)
-const TODAY = new Date().toISOString().split('T')[0];
-
-function fmtTime(iso) {
-  if (!iso) return '—';
-  return new Date(iso).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', hour12: false });
-}
-
-function timeAgo(iso) {
-  if (!iso) return '';
-  const m = Math.floor((Date.now() - new Date(iso)) / 60000);
-  if (m < 1) return '방금';
-  if (m < 60) return `${m}분 전`;
-  if (m < 1440) return `${Math.floor(m / 60)}시간 전`;
-  return `${Math.floor(m / 1440)}일 전`;
-}
-
-function fmtLeaveDate(dateStr) {
-  if (!dateStr) return '—';
-  const d = new Date(dateStr);
-  const days = ['일', '월', '화', '수', '목', '금', '토'];
-  return `${d.getMonth() + 1}/${d.getDate()} (${days[d.getDay()]})`;
-}
-
-const AVATAR_COLORS = ['indigo', 'emerald', 'amber', 'sky', 'rose', 'violet'];
+import React from 'react';
+import { T, Card, Pill, Dot, Icon, icons, Avatar, TopBar, btnPrimary, btnSecondary } from '../../design/primitives';
 
 // 관리자 대시보드 화면 — 프로페셔널 SaaS 스타일
 function AdminDashboardScreen() {
-  // ─── 스토어 구독 ───
-  const tasks = useTaskStore((s) => s.tasks);
-  const employees = useEmployeeStore((s) => s.employees);
-  const records = useAttendanceStore((s) => s.records);
-  const leaveRequests = useLeaveStore((s) => s.requests);
-  const overtimeRequests = useOvertimeStore((s) => s.requests);
-  const issues = useIssueStore((s) => s.issues);
-  const notices = useNoticeStore((s) => s.notices);
-  const crops = useCropStore((s) => s.crops);
-  const zones = useZoneStore((s) => s.zones);
-  const calls = useCallStore((s) => s.calls);
-  const farmReview = useLeaveStore((s) => s.farmReview);
-  const approveOT = useOvertimeStore((s) => s.approveRequest);
-  const rejectOT = useOvertimeStore((s) => s.rejectRequest);
-  const currentUser = useAuthStore((s) => s.currentUser);
-  const navigate = useNavigate();
-  const [periodTab, setPeriodTab] = useState(0);
-  const [processing, setProcessing] = useState(null);
-
-  // ─── 룩업 맵 ───
-  const empMap = useMemo(() => Object.fromEntries(employees.map((e) => [e.id, e])), [employees]);
-  const cropMap = useMemo(() => Object.fromEntries(crops.map((c) => [c.id, c])), [crops]);
-  const zoneMap = useMemo(() => Object.fromEntries(zones.map((z) => [z.id, z])), [zones]);
-
-  // ─── 파생 데이터 ───
-  const todayRecords = useMemo(() => records.filter((r) => r.date === TODAY), [records]);
-  const todayTasks = useMemo(() => tasks.filter((t) => t.date === TODAY), [tasks]);
-  const activeEmp = useMemo(() => employees.filter((e) => e.isActive), [employees]);
-  const pendingLeave = useMemo(() => leaveRequests.filter((r) => r.status === 'pending'), [leaveRequests]);
-  const pendingOT = useMemo(() => overtimeRequests.filter((r) => r.status === 'pending'), [overtimeRequests]);
-  const openIssues = useMemo(() => issues.filter((i) => !i.isResolved), [issues]);
-  const unconfirmedCalls = useMemo(() => calls.filter((c) => !c.isConfirmed), [calls]);
-
-  const checkedInCount = todayRecords.filter((r) => r.checkIn).length;
-  const pendingCount = pendingLeave.length + pendingOT.length;
-
-  // ─── KPI 배열 ───
   const kpis = [
-    {
-      label: '오늘 출근',
-      value: checkedInCount,
-      total: activeEmp.length || undefined,
-      tone: 'success',
-      sub: `출근율 ${activeEmp.length ? Math.round((checkedInCount / activeEmp.length) * 100) : 0}%`,
-      trend: `${checkedInCount}명`,
-    },
-    {
-      label: '진행중 작업',
-      value: todayTasks.filter((t) => t.status === 'in_progress').length,
-      total: todayTasks.length || undefined,
-      tone: 'primary',
-      sub: `완료 ${todayTasks.filter((t) => t.status === 'completed').length} · 대기 ${todayTasks.filter((t) => t.status === 'pending').length}`,
-      trend: `${todayTasks.length ? Math.round((todayTasks.filter((t) => t.status === 'completed').length / todayTasks.length) * 100) : 0}%`,
-    },
-    {
-      label: '승인 대기',
-      value: pendingCount,
-      tone: 'warning',
-      sub: `휴가 ${pendingLeave.length} · 연장 ${pendingOT.length}`,
-      trend: '신규',
-    },
-    {
-      label: '이상 신고',
-      value: openIssues.length,
-      tone: 'danger',
-      sub: '미해결',
-      trend: unconfirmedCalls.length > 0 ? `긴급 ${unconfirmedCalls.length}` : '없음',
-    },
+    { label: '오늘 출근', value: 18, total: 20, tone: 'success', sub: '출근율 90%', trend: '+2' },
+    { label: '진행중 작업', value: 7, total: 12, tone: 'primary', sub: '완료 5 · 대기 0', trend: '58%' },
+    { label: '승인 대기', value: 3, tone: 'warning', sub: '휴가 2 · 연장 1', trend: '신규' },
+    { label: '이상 신고', value: 2, tone: 'danger', sub: '미해결', trend: '긴급 1' },
   ];
-
-  // ─── 기간별 작업 필터 ───
-  const periodTasks = useMemo(() => {
-    const d = new Date();
-    if (periodTab === 0) return tasks.filter((t) => t.date === TODAY);
-    if (periodTab === 1) {
-      const dow = d.getDay() === 0 ? 7 : d.getDay();
-      const weekStart = new Date(d); weekStart.setDate(d.getDate() - dow + 1);
-      const weekEnd = new Date(weekStart); weekEnd.setDate(weekStart.getDate() + 6);
-      const ws = weekStart.toISOString().split('T')[0];
-      const we = weekEnd.toISOString().split('T')[0];
-      return tasks.filter((t) => t.date >= ws && t.date <= we);
-    }
-    const ms = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-01`;
-    const lastDay = new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate();
-    const me = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
-    return tasks.filter((t) => t.date >= ms && t.date <= me);
-  }, [tasks, periodTab]);
-
-  // ─── 오늘 작업 목록 ───
-  const taskRows = useMemo(() => {
-    const statusConvert = { pending: 'waiting', in_progress: 'active', completed: 'done' };
-    const progressConvert = { pending: 0, in_progress: 50, completed: 100 };
-    const items = periodTasks.slice(0, 8).map((t) => {
-      const worker = empMap[t.workerId];
-      const endTime = t.estimatedMinutes && t.assignedAt
-        ? fmtTime(new Date(new Date(t.assignedAt).getTime() + t.estimatedMinutes * 60000).toISOString())
-        : '—';
-      return {
-        crop: cropMap[t.cropId]?.name || '—',
-        zone: [zoneMap[t.zoneId]?.name, t.rowRange].filter(Boolean).join(' ') || '—',
-        type: t.taskType || t.title || '—',
-        workers: worker ? [worker.name[0]] : [],
-        progress: progressConvert[t.status] ?? 0,
-        status: statusConvert[t.status] || 'waiting',
-        time: `${fmtTime(t.assignedAt)}~${endTime}`,
-      };
-    });
-    return items;
-  }, [periodTasks, empMap, cropMap, zoneMap]);
-
-  // ─── 이상 신고 + 긴급 호출 ───
-  const alertItems = useMemo(() => {
-    const issueItems = openIssues.slice(0, 3).map((issue) => ({
-      icon: icons.alert,
-      color: T.danger,
-      bg: T.dangerSoft,
-      borderColor: T.danger,
-      label: issue.type || '이상 신고',
-      place: [zoneMap[issue.zoneId]?.name, empMap[issue.workerId]?.name].filter(Boolean).join(' · ') || '—',
-      note: `${empMap[issue.workerId]?.name || '—'} — ${issue.comment || '이상이 신고되었습니다'}`,
-      time: timeAgo(issue.createdAt),
-    }));
-    const callItems = unconfirmedCalls.slice(0, Math.max(0, 3 - issueItems.length)).map((call) => ({
-      icon: icons.phone,
-      color: T.warning,
-      bg: T.warningSoft,
-      borderColor: T.warning,
-      label: call.type || '긴급 호출',
-      place: empMap[call.workerId]?.name ? `${empMap[call.workerId].name} 호출` : '긴급 호출',
-      note: `${empMap[call.workerId]?.name || '—'} — ${call.memo || '긴급 호출이 접수되었습니다'}`,
-      time: timeAgo(call.createdAt),
-    }));
-    return [...issueItems, ...callItems];
-  }, [openIssues, unconfirmedCalls, zoneMap, empMap]);
-
-  const resolvedTodayCount = useMemo(
-    () => issues.filter((i) => i.isResolved && i.createdAt?.startsWith(TODAY)).length,
-    [issues]
-  );
-
-  // ─── 승인 대기 목록 ───
-  const approvalRows = useMemo(() => {
-    const leaves = pendingLeave.slice(0, 3).map((r, idx) => ({
-      name: empMap[r.employeeId]?.name || '—',
-      type: r.type || '휴가',
-      detail: fmtLeaveDate(r.date),
-      tag: '휴가',
-      c: AVATAR_COLORS[idx % AVATAR_COLORS.length],
-      id: r.id,
-    }));
-    const ots = pendingOT.slice(0, Math.max(0, 3 - leaves.length)).map((r, idx) => ({
-      name: empMap[r.employeeId]?.name || '—',
-      type: '연장근무',
-      detail: `${r.hours}시간${r.minutes > 0 ? ` ${r.minutes}분` : ''}`,
-      tag: '연장',
-      c: AVATAR_COLORS[(leaves.length + idx) % AVATAR_COLORS.length],
-      id: r.id,
-    }));
-    const merged = [...leaves, ...ots].slice(0, 3);
-    return merged;
-  }, [pendingLeave, pendingOT, empMap]);
-
-  // ─── 공지사항 목록 ───
-  const noticeRows = useMemo(() => {
-    const teamLabel = { farm: '재배팀', management: '관리팀' };
-    const priorityMeta = { urgent: { tag: '중요', tone: 'danger' }, normal: { tag: '일반', tone: 'muted' } };
-    const items = notices.slice(0, 4).map((n) => ({
-      tag: priorityMeta[n.priority]?.tag || '일반',
-      tone: priorityMeta[n.priority]?.tone || 'muted',
-      title: n.title,
-      meta: `${n.authorTeam ? (teamLabel[n.authorTeam] || n.authorTeam) : '전체 공지'} · ${timeAgo(n.createdAt)}`,
-      pinned: n.priority === 'urgent',
-    }));
-    return items;
-  }, [notices]);
-
-  // ─── 주간 스케줄 ───
-  const weekDays = useMemo(() => {
-    const d = new Date();
-    const dow = d.getDay() === 0 ? 7 : d.getDay();
-    const weekStart = new Date(d);
-    weekStart.setDate(d.getDate() - dow + 1);
-    const DAY_LABELS = ['월', '화', '수', '목', '금', '토', '일'];
-    return Array.from({ length: 7 }, (_, i) => {
-      const day = new Date(weekStart);
-      day.setDate(weekStart.getDate() + i);
-      const dayStr = day.toISOString().split('T')[0];
-      const isToday = dayStr === TODAY;
-      const dayTasks = tasks.filter((t) => t.date === dayStr);
-      const types = [...new Set(dayTasks.map((t) => t.taskType || t.title).filter(Boolean))].slice(0, 3);
-      return { label: `${DAY_LABELS[i]} ${day.getDate()}`, isToday, types };
-    });
-  }, [tasks]);
-
-  const handleApprove = async (r) => {
-    if (!r.id || processing) return;
-    setProcessing(r.id);
-    let ok;
-    if (r.tag === '휴가') ok = await farmReview(r.id, true, currentUser?.id);
-    else {
-      const res = await approveOT(r.id, currentUser?.id);
-      ok = !res?.error;
-    }
-    setProcessing(null);
-    if (!ok) alert('승인 처리에 실패했습니다. 권한을 확인하거나 관리자에게 문의하세요.');
-  };
-
-  const handleReject = async (r) => {
-    if (!r.id || processing) return;
-    setProcessing(r.id);
-    let ok;
-    if (r.tag === '휴가') ok = await farmReview(r.id, false, currentUser?.id);
-    else {
-      const res = await rejectOT(r.id, currentUser?.id);
-      ok = !res?.error;
-    }
-    setProcessing(null);
-    if (!ok) alert('반려 처리에 실패했습니다. 권한을 확인하거나 관리자에게 문의하세요.');
-  };
 
   return (
     <div style={{ flex: 1, overflow: 'auto', background: T.bg }}>
       <TopBar
         subtitle="재배팀"
         title="2026년 4월 21일 화요일"
-        onSearch={() => alert('검색 기능은 준비 중입니다')}
-        onBell={() => navigate('/admin/notices')}
-        actions={<>
-          {btnSecondary('내보내기', null, () => alert('내보내기 기능은 준비 중입니다'))}
-          {btnPrimary('새 작업 등록', icons.plus, () => navigate('/admin/tasks/new'))}
-        </>}
+        actions={<>{btnSecondary('내보내기')}{btnPrimary('새 작업 등록', icons.plus)}</>}
       />
 
       <div style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 20 }}>
@@ -307,20 +51,23 @@ function AdminDashboardScreen() {
               </div>
               <div style={{ display: 'flex', gap: 4, background: T.bg, padding: 3, borderRadius: 6, fontSize: 12 }}>
                 {['오늘', '이번 주', '이번 달'].map((t, i) => (
-                  <span key={t} onClick={() => setPeriodTab(i)} style={{
+                  <span key={t} style={{
                     padding: '5px 12px', borderRadius: 4, fontWeight: 600,
-                    background: i === periodTab ? T.surface : 'transparent',
-                    color: i === periodTab ? T.text : T.mutedSoft,
-                    boxShadow: i === periodTab ? '0 1px 2px rgba(0,0,0,0.06)' : 'none',
+                    background: i === 0 ? T.surface : 'transparent',
+                    color: i === 0 ? T.text : T.mutedSoft,
+                    boxShadow: i === 0 ? '0 1px 2px rgba(0,0,0,0.06)' : 'none',
                     cursor: 'pointer',
                   }}>{t}</span>
                 ))}
               </div>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-              {taskRows.length === 0 ? (
-                <div style={{ padding: 24, textAlign: 'center', color: T.mutedSoft, fontSize: 13 }}>데이터가 없습니다</div>
-              ) : taskRows.map((t, i) => {
+              {[
+                { crop: '토마토', zone: 'A동 1-8열', type: '수확', workers: ['김', '이', '박'], progress: 85, status: 'active', time: '09:00~11:30' },
+                { crop: '딸기', zone: 'B동 3-5열', type: '러너 정리', workers: ['최', '정'], progress: 60, status: 'active', time: '09:30~12:00' },
+                { crop: '파프리카', zone: 'C동 전체', type: '병해충 예찰', workers: ['강'], progress: 100, status: 'done', time: '08:30~09:30' },
+                { crop: '오이', zone: 'D동 1-4열', type: 'EC/pH 측정', workers: ['윤', '한'], progress: 0, status: 'waiting', time: '13:00~14:00' },
+              ].map((t, i) => {
                 const statusMap = {
                   active: { tone: 'primary', label: '진행중' },
                   done: { tone: 'success', label: '완료' },
@@ -329,10 +76,9 @@ function AdminDashboardScreen() {
                 const s = statusMap[t.status];
                 const barColor = t.status === 'done' ? T.success : t.status === 'active' ? T.primary : T.mutedSoft;
                 return (
-                  <div key={i} onClick={() => navigate('/admin/tasks')} style={{
+                  <div key={i} style={{
                     padding: '14px 16px', background: T.bg, borderRadius: 10,
                     display: 'flex', alignItems: 'center', gap: 16,
-                    cursor: 'pointer',
                   }}>
                     <div style={{ width: 60 }}>
                       <div style={{ fontSize: 11, color: T.mutedSoft, fontWeight: 600 }}>{t.time.split('~')[0]}</div>
@@ -369,30 +115,32 @@ function AdminDashboardScreen() {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                 <h3 style={{ fontSize: 14, fontWeight: 700, color: T.text, margin: 0 }}>긴급 호출 · 이상 신고</h3>
-                <Pill tone="danger">{openIssues.length + unconfirmedCalls.length || 0}</Pill>
+                <Pill tone="danger">2</Pill>
               </div>
-              <span onClick={() => navigate('/admin/records')} style={{ fontSize: 11, color: T.primary, fontWeight: 600, cursor: 'pointer' }}>모두 보기</span>
+              <span style={{ fontSize: 11, color: T.primary, fontWeight: 600, cursor: 'pointer' }}>모두 보기</span>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-              {alertItems.length > 0 ? alertItems.map((a, i) => (
-                <div key={i} style={{ padding: 12, background: a.bg, borderLeft: `3px solid ${a.borderColor}`, borderRadius: 8 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
-                    <Icon d={a.icon} size={12} c={a.color} />
-                    <span style={{ fontSize: 11, fontWeight: 700, color: a.color }}>{a.label}</span>
-                    <span style={{ fontSize: 10, color: T.mutedSoft, marginLeft: 'auto' }}>{a.time}</span>
-                  </div>
-                  <div style={{ fontSize: 13, fontWeight: 600, color: T.text }}>{a.place}</div>
-                  <div style={{ fontSize: 11, color: T.muted, marginTop: 2 }}>{a.note}</div>
+              <div style={{ padding: 12, background: T.dangerSoft, border: `1px solid ${T.dangerSoft}`, borderLeft: `3px solid ${T.danger}`, borderRadius: 8 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
+                  <Icon d={icons.alert} size={12} c={T.danger} />
+                  <span style={{ fontSize: 11, fontWeight: 700, color: T.danger }}>병해충 · 긴급</span>
+                  <span style={{ fontSize: 10, color: T.mutedSoft, marginLeft: 'auto' }}>8분 전</span>
                 </div>
-              )) : (
-                <div style={{ padding: 12, background: T.bg, borderRadius: 8, display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <Dot c={T.success} />
-                  <span style={{ fontSize: 11, color: T.mutedSoft }}>현재 미해결 신고 없음</span>
+                <div style={{ fontSize: 13, fontWeight: 600, color: T.text }}>B동 3열 · 딸기</div>
+                <div style={{ fontSize: 11, color: T.muted, marginTop: 2 }}>최수진 — 잎 하면 흰색 반점 다수 확인</div>
+              </div>
+              <div style={{ padding: 12, background: T.warningSoft, borderLeft: `3px solid ${T.warning}`, borderRadius: 8 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
+                  <Icon d={icons.phone} size={12} c={T.warning} />
+                  <span style={{ fontSize: 11, fontWeight: 700, color: T.warning }}>장비 이상</span>
+                  <span style={{ fontSize: 10, color: T.mutedSoft, marginLeft: 'auto' }}>32분 전</span>
                 </div>
-              )}
+                <div style={{ fontSize: 13, fontWeight: 600, color: T.text }}>A동 환기창 2번</div>
+                <div style={{ fontSize: 11, color: T.muted, marginTop: 2 }}>이강모 — 자동 개폐 반응 없음</div>
+              </div>
               <div style={{ padding: 12, background: T.bg, borderRadius: 8, display: 'flex', alignItems: 'center', gap: 8 }}>
                 <Dot c={T.mutedSoft} />
-                <span style={{ fontSize: 11, color: T.mutedSoft }}>해결됨 · 오늘 {resolvedTodayCount}건</span>
+                <span style={{ fontSize: 11, color: T.mutedSoft }}>해결됨 · 오늘 3건</span>
               </div>
             </div>
           </Card>
@@ -400,7 +148,7 @@ function AdminDashboardScreen() {
 
         {/* 하단 3단 */}
         <div style={{ display: 'grid', gridTemplateColumns: '1.1fr 1fr 0.9fr', gap: 20 }}>
-          {/* 주간 성과 그래프 — Phase 2 연결 예정 */}
+          {/* 주간 성과 그래프 */}
           <Card>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
               <div>
@@ -432,7 +180,7 @@ function AdminDashboardScreen() {
             </div>
             <div style={{ paddingTop: 14, marginTop: 14, borderTop: `1px solid ${T.borderSoft}`, display: 'flex', justifyContent: 'space-between', fontSize: 11, color: T.mutedSoft }}>
               <span>목표 대비 <span style={{ color: T.text, fontWeight: 700 }}>87%</span></span>
-              <span onClick={() => navigate('/admin/stats')} style={{ color: T.primary, fontWeight: 600, cursor: 'pointer' }}>상세 분석 →</span>
+              <span style={{ color: T.primary, fontWeight: 600, cursor: 'pointer' }}>상세 분석 →</span>
             </div>
           </Card>
 
@@ -441,28 +189,16 @@ function AdminDashboardScreen() {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                 <h3 style={{ fontSize: 14, fontWeight: 700, color: T.text, margin: 0 }}>승인 대기</h3>
-                <Pill tone="danger">{pendingCount}</Pill>
+                <Pill tone="danger">3</Pill>
               </div>
-              <div style={{ display: 'flex', gap: 8 }}>
-                {pendingLeave.length > 0 && (
-                  <span onClick={() => navigate('/admin/leave-approval')} style={{ fontSize: 11, color: T.primary, fontWeight: 600, cursor: 'pointer' }}>
-                    휴가 {pendingLeave.length}건 →
-                  </span>
-                )}
-                {pendingOT.length > 0 && (
-                  <span onClick={() => navigate('/admin/overtime-approval')} style={{ fontSize: 11, color: T.info, fontWeight: 600, cursor: 'pointer' }}>
-                    연장 {pendingOT.length}건 →
-                  </span>
-                )}
-                {pendingCount === 0 && (
-                  <span style={{ fontSize: 11, color: T.mutedSoft }}>없음</span>
-                )}
-              </div>
+              <span style={{ fontSize: 11, color: T.primary, fontWeight: 600, cursor: 'pointer' }}>모두 보기</span>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-              {approvalRows.length === 0 ? (
-                <div style={{ padding: 24, textAlign: 'center', color: T.mutedSoft, fontSize: 13 }}>데이터가 없습니다</div>
-              ) : approvalRows.map((r, i) => (
+              {[
+                { name: '김민국', type: '연차', detail: '4/23 (수)', tag: '휴가', c: 'indigo' },
+                { name: '박민식', type: '연장근무', detail: '오늘 2시간', tag: '연장', c: 'amber' },
+                { name: '이강모', type: 'TBM 승인', detail: '반장 제출 대기', tag: 'TBM', c: 'emerald' },
+              ].map((r, i) => (
                 <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', background: T.bg, borderRadius: 8 }}>
                   <Avatar name={r.name} size={32} c={r.c} />
                   <div style={{ flex: 1, minWidth: 0 }}>
@@ -472,10 +208,10 @@ function AdminDashboardScreen() {
                     </div>
                     <div style={{ fontSize: 11, color: T.mutedSoft, marginTop: 2 }}>{r.type} · {r.detail}</div>
                   </div>
-                  <button onClick={() => handleReject(r)} disabled={!!processing} style={{ width: 26, height: 26, borderRadius: 6, background: T.surface, border: `1px solid ${T.border}`, color: T.mutedSoft, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: r.id ? 'pointer' : 'default' }}>
+                  <button style={{ width: 26, height: 26, borderRadius: 6, background: T.surface, border: `1px solid ${T.border}`, color: T.mutedSoft, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
                     <Icon d={icons.x} size={12} sw={2.5} />
                   </button>
-                  <button onClick={() => handleApprove(r)} disabled={!!processing} style={{ width: 26, height: 26, borderRadius: 6, background: T.primary, border: 0, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: r.id ? 'pointer' : 'default' }}>
+                  <button style={{ width: 26, height: 26, borderRadius: 6, background: T.primary, border: 0, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
                     <Icon d={icons.check} size={12} sw={2.5} c="#fff" />
                   </button>
                 </div>
@@ -488,14 +224,17 @@ function AdminDashboardScreen() {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                 <h3 style={{ fontSize: 14, fontWeight: 700, color: T.text, margin: 0 }}>공지사항</h3>
-                <Pill tone="primary">{notices.length}</Pill>
+                <Pill tone="primary">3</Pill>
               </div>
-              <span onClick={() => navigate('/admin/notices')} style={{ fontSize: 11, color: T.primary, fontWeight: 600, cursor: 'pointer' }}>작성 +</span>
+              <span style={{ fontSize: 11, color: T.primary, fontWeight: 600, cursor: 'pointer' }}>작성 +</span>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              {noticeRows.length === 0 ? (
-                <div style={{ padding: 24, textAlign: 'center', color: T.mutedSoft, fontSize: 13 }}>데이터가 없습니다</div>
-              ) : noticeRows.map((n, i) => {
+              {[
+                { tag: '중요', tone: 'danger', title: '4월 23일 정기 안전교육 필참', meta: '전체 공지 · 2시간 전', pinned: true },
+                { tag: '일정', tone: 'primary', title: '금주 토요일 출근조 3명 편성', meta: '재배팀 · 어제' },
+                { tag: '알림', tone: 'success', title: '농약 창고 재고 입고 완료', meta: '자재팀 · 2일 전' },
+                { tag: '일반', tone: 'muted', title: '5월 연차 사용 계획 제출 요청', meta: '인사 · 3일 전' },
+              ].map((n, i) => {
                 const tones = { danger: T.danger, primary: T.primary, success: T.success, muted: T.mutedSoft };
                 const softs = { danger: T.dangerSoft, primary: T.primarySoft, success: T.successSoft, muted: T.bg };
                 return (
@@ -534,38 +273,51 @@ function AdminDashboardScreen() {
               B동 딸기 구역 온도가 평년 대비 2.3℃ 높아요. <span style={{ color: T.primary, fontWeight: 600 }}>환기 강도 상향</span>을 권장합니다.
             </div>
             <div style={{ display: 'flex', gap: 6 }}>
-              {btnPrimary('적용하기', null, () => alert('AI 적용 기능은 준비 중입니다'))}
-              {btnSecondary('자세히', null, () => alert('AI 상세 기능은 준비 중입니다'))}
+              {btnPrimary('적용하기')}
+              {btnSecondary('자세히')}
             </div>
           </Card>
 
           <Card>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
               <h3 style={{ fontSize: 14, fontWeight: 700, color: T.text, margin: 0 }}>이번 주 스케줄</h3>
-              <span onClick={() => navigate('/admin/attendance-status')} style={{ fontSize: 11, color: T.primary, fontWeight: 600, cursor: 'pointer' }}>전체 스케줄 →</span>
+              <span style={{ fontSize: 11, color: T.primary, fontWeight: 600, cursor: 'pointer' }}>전체 스케줄 →</span>
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 6 }}>
-              {weekDays.map(({ label, isToday, types }, i) => (
-                <div key={i} style={{
-                  padding: 8, borderRadius: 8,
-                  background: isToday ? T.primarySoft : T.bg,
-                  border: isToday ? `1px solid ${T.primary}` : `1px solid transparent`,
-                  minHeight: 92,
-                }}>
-                  <div style={{ fontSize: 11, fontWeight: 700, color: isToday ? T.primary : T.muted, marginBottom: 6 }}>
-                    {label}{isToday && <span style={{ marginLeft: 4, fontSize: 9 }}>오늘</span>}
+              {['월 20', '화 21', '수 22', '목 23', '금 24', '토 25', '일 26'].map((d, i) => {
+                const isToday = i === 1;
+                const items = [
+                  ['수확', 'TBM'],
+                  ['수확', 'TBM', '예찰'],
+                  ['수확', '적엽'],
+                  ['수확', 'EC측정'],
+                  ['수확', '방제'],
+                  [],
+                  [],
+                ][i];
+                return (
+                  <div key={i} style={{
+                    padding: 8, borderRadius: 8,
+                    background: isToday ? T.primarySoft : T.bg,
+                    border: isToday ? `1px solid ${T.primary}` : `1px solid transparent`,
+                    minHeight: 92,
+                  }}>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: isToday ? T.primary : T.muted, marginBottom: 6 }}>
+                      {d}{isToday && <span style={{ marginLeft: 4, fontSize: 9 }}>오늘</span>}
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                      {items.map((t, j) => (
+                        <div key={j} style={{
+                          fontSize: 10, fontWeight: 600, padding: '3px 6px', borderRadius: 4,
+                          background: isToday ? T.surface : T.surface,
+                          color: T.text, border: `1px solid ${T.borderSoft}`,
+                        }}>{t}</div>
+                      ))}
+                      {items.length === 0 && <div style={{ fontSize: 10, color: T.mutedSoft, padding: '3px 0' }}>휴무</div>}
+                    </div>
                   </div>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-                    {types.map((t, j) => (
-                      <div key={j} style={{
-                        fontSize: 10, fontWeight: 600, padding: '3px 6px', borderRadius: 4,
-                        background: T.surface, color: T.text, border: `1px solid ${T.borderSoft}`,
-                      }}>{t}</div>
-                    ))}
-                    {types.length === 0 && <div style={{ fontSize: 10, color: T.mutedSoft, padding: '3px 0' }}>휴무</div>}
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </Card>
         </div>
@@ -573,5 +325,7 @@ function AdminDashboardScreen() {
     </div>
   );
 }
+
 export { AdminDashboardScreen };
+
 export default AdminDashboardScreen;
