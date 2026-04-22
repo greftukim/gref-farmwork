@@ -11,6 +11,7 @@ import useNoticeStore from '../../stores/noticeStore';
 import useCropStore from '../../stores/cropStore';
 import useZoneStore from '../../stores/zoneStore';
 import useCallStore from '../../stores/callStore';
+import useAuthStore from '../../stores/authStore';
 
 // 기존 코드와 동일한 UTC 기준 (attendanceStore.checkIn과 일치)
 const TODAY = new Date().toISOString().split('T')[0];
@@ -54,6 +55,7 @@ function AdminDashboardScreen() {
   const farmReview = useLeaveStore((s) => s.farmReview);
   const approveOT = useOvertimeStore((s) => s.approveRequest);
   const rejectOT = useOvertimeStore((s) => s.rejectRequest);
+  const currentUser = useAuthStore((s) => s.currentUser);
   const navigate = useNavigate();
   const [processing, setProcessing] = useState(null);
 
@@ -219,17 +221,27 @@ function AdminDashboardScreen() {
   const handleApprove = async (r) => {
     if (!r.id || processing) return;
     setProcessing(r.id);
-    if (r.tag === '휴가') await farmReview(r.id, true);
-    else await approveOT(r.id);
+    let ok;
+    if (r.tag === '휴가') ok = await farmReview(r.id, true, currentUser?.id);
+    else {
+      const res = await approveOT(r.id, currentUser?.id);
+      ok = !res?.error;
+    }
     setProcessing(null);
+    if (!ok) alert('승인 처리에 실패했습니다. 권한을 확인하거나 관리자에게 문의하세요.');
   };
 
   const handleReject = async (r) => {
     if (!r.id || processing) return;
     setProcessing(r.id);
-    if (r.tag === '휴가') await farmReview(r.id, false);
-    else await rejectOT(r.id);
+    let ok;
+    if (r.tag === '휴가') ok = await farmReview(r.id, false, currentUser?.id);
+    else {
+      const res = await rejectOT(r.id, currentUser?.id);
+      ok = !res?.error;
+    }
     setProcessing(null);
+    if (!ok) alert('반려 처리에 실패했습니다. 권한을 확인하거나 관리자에게 문의하세요.');
   };
 
   return (
