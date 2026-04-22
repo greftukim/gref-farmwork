@@ -583,14 +583,28 @@ function HQEmployeesScreen() {
 // ═══════════════════════════════════════════════════════════
 function HQNoticesScreen() {
   const [tab, setTab] = useState('active');
+  const rawNotices = useNoticeStore((s) => s.notices);
+  const fetchNotices = useNoticeStore((s) => s.fetchNotices);
 
-  const notices = [
-    { id: 1, tag: '전사 · 중요', tone: 'danger', pinned: true, title: '5월 안전교육 이수 필참 안내', body: '5월 1주차 중으로 안전교육을 이수해주세요. 미이수 시...', author: '이대한 · 총괄', target: '전 직원 60명', read: 42, readPct: 70, date: '4/18', expires: '5/07' },
-    { id: 2, tag: '정책', tone: 'info', title: '2026년 연차 사용 가이드라인 개정', body: '연차 사용 정책이 일부 개정되었습니다. 붙임 문서를 확인...', author: '이대한 · 총괄', target: '전 직원 60명', read: 58, readPct: 97, date: '4/10', expires: '상시' },
-    { id: 3, tag: '부산LAB', tone: 'primary', title: '금주 토요일 출근조 편성', body: '4/27(토) 수확 피크 대응을 위해 출근조를 편성합니다.', author: '김재배 · 부산LAB', target: '부산LAB 20명', read: 18, readPct: 90, date: '4/21', expires: '4/27' },
-    { id: 4, tag: '하동HUB', tone: 'warning', title: '설비 점검일 연기', body: '예정되어 있던 환기 설비 점검이 1주일 연기됩니다.', author: '최책임 · 하동HUB', target: '하동HUB 12명', read: 8, readPct: 67, date: '4/19', expires: '5/02' },
-    { id: 5, tag: '정책', tone: 'info', title: '업무용 메신저 사용 수칙', body: '사내 메신저 사용 시 유의사항 안내드립니다.', author: '이대한 · 총괄', target: '전 직원 60명', read: 60, readPct: 100, date: '3/28', expires: '상시' },
-  ];
+  useEffect(() => { fetchNotices(); }, []);
+
+  // notices 테이블: title/body/priority/author_team/created_at만 있음
+  // 열람률/만료일/대상 → DB 미지원, BACKLOG HQ-NOTICES-META-001
+  const noticeMap = { important: { tag: '전사 · 중요', tone: 'danger' }, normal: { tag: '정책', tone: 'info' } };
+
+  const notices = rawNotices.map(n => ({
+    id: n.id,
+    tag: noticeMap[n.priority]?.tag || n.authorTeam || '정책',
+    tone: noticeMap[n.priority]?.tone || 'info',
+    pinned: n.priority === 'important',
+    title: n.title,
+    body: n.body || '—',
+    author: n.authorTeam || '—',
+    target: '전 직원',
+    read: 0, readPct: 0,
+    date: new Date(n.createdAt).toLocaleDateString('ko-KR', { month: 'numeric', day: 'numeric' }),
+    expires: '상시',
+  }));
 
   return (
     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
@@ -599,7 +613,7 @@ function HQNoticesScreen() {
         title="공지 · 정책"
         actions={<>{btnSecondary('열람 리포트', icons.chart)}{btnPrimary('새 공지 작성', icons.plus)}</>}
         tabs={[
-          { id: 'active', label: '활성', count: 8 },
+          { id: 'active', label: '활성', count: notices.length },
           { id: 'scheduled', label: '예약됨', count: 2 },
           { id: 'expired', label: '만료', count: 24 },
           { id: 'templates', label: '템플릿' },
@@ -611,7 +625,7 @@ function HQNoticesScreen() {
         {/* 요약 */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12 }}>
           {[
-            { l: '활성 공지', v: 8, u: '건', tone: HQ.accent, bg: HQ.accentSoft },
+            { l: '활성 공지', v: notices.length, u: '건', tone: HQ.accent, bg: HQ.accentSoft },
             { l: '중요/필참', v: 3, u: '건', tone: T.danger, bg: T.dangerSoft, sub: '미열람 18명' },
             { l: '평균 열람률', v: 83, u: '%', tone: T.success, bg: T.successSoft, sub: '목표 90%' },
             { l: '이달 발행', v: 14, u: '건', tone: T.text, bg: T.bg, sub: '전월 대비 +3' },
