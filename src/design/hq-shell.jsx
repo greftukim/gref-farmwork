@@ -1,5 +1,7 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import { T, Dot, Icon, icons, Avatar, btnGhostStyle } from './primitives';
+import useAuthStore from '../stores/authStore';
 
 // 관리팀(본사) 대시보드 — 다지점 통합 뷰
 // 재배팀(지점) 뷰와 달리, 전 지점 KPI 비교 + 경영지표 + 승인허브 + 지점관리에 집중
@@ -13,7 +15,10 @@ const HQ = {
 };
 
 // ─────── HQ Shell: 관리팀 전용 사이드바 + 상단바 ───────
-const HQSidebar = ({ active = 'dashboard' }) => {
+const HQSidebar = ({ active = 'dashboard', onNavigate }) => {
+  const navigate = useNavigate();
+  const logout = useAuthStore((s) => s.logout);
+  const currentUser = useAuthStore((s) => s.currentUser);
   const items = [
     { id: 'dashboard', label: '본사 대시보드', icon: icons.dashboard },
     { id: 'branches', label: '지점 관리', icon: icons.location },
@@ -64,7 +69,7 @@ const HQSidebar = ({ active = 'dashboard' }) => {
         {items.map(i => {
           const on = i.id === active;
           return (
-            <div key={i.id} style={{
+            <div key={i.id} onClick={() => onNavigate && onNavigate(i.id)} style={{
               display: 'flex', alignItems: 'center', gap: 10,
               padding: '9px 12px', borderRadius: 8, cursor: 'pointer',
               background: on ? HQ.accentSoft : 'transparent',
@@ -101,11 +106,11 @@ const HQSidebar = ({ active = 'dashboard' }) => {
       </nav>
 
       <div style={{ padding: 12, borderTop: `1px solid ${T.borderSoft}` }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 10px' }}>
-          <Avatar name="이" size={32} c="slate" />
+        <div onClick={async () => { await logout(); navigate('/login'); }} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 10px', cursor: 'pointer' }}>
+          <Avatar name={currentUser?.name?.[0] || '관'} size={32} c="slate" />
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontSize: 13, fontWeight: 600, color: T.text }}>이대한</div>
-            <div style={{ fontSize: 11, color: T.mutedSoft }}>총괄 · master</div>
+            <div style={{ fontSize: 13, fontWeight: 600, color: T.text }}>{currentUser?.name || '관리자'}</div>
+            <div style={{ fontSize: 11, color: T.mutedSoft, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{currentUser?.email || 'admin@gref.co.kr'}</div>
           </div>
           <Icon d={icons.logout} size={16} c={T.mutedSoft} />
         </div>

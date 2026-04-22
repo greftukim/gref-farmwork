@@ -115,6 +115,7 @@ const Avatar = ({ name = '김', size = 32, c = 'indigo' }) => {
 const Sidebar = ({ active = 'dashboard', onNavigate }) => {
   const navigate = useNavigate();
   const logout = useAuthStore((s) => s.logout);
+  const currentUser = useAuthStore((s) => s.currentUser);
   const items = [
     { id: 'dashboard', label: '대시보드', icon: icons.dashboard },
     { id: 'employees', label: '직원 관리', icon: icons.users },
@@ -171,10 +172,10 @@ const Sidebar = ({ active = 'dashboard', onNavigate }) => {
       </nav>
       <div style={{ padding: 12, borderTop: `1px solid ${T.borderSoft}` }}>
         <div onClick={async () => { await logout(); navigate('/login'); }} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 10px', cursor: 'pointer' }}>
-          <Avatar name="관" size={32} c="slate" />
+          <Avatar name={currentUser?.name?.[0] || '관'} size={32} c="slate" />
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontSize: 13, fontWeight: 600, color: T.text }}>관리자</div>
-            <div style={{ fontSize: 11, color: T.mutedSoft, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>admin@gref.co.kr</div>
+            <div style={{ fontSize: 13, fontWeight: 600, color: T.text }}>{currentUser?.name || '관리자'}</div>
+            <div style={{ fontSize: 11, color: T.mutedSoft, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{currentUser?.email || 'admin@gref.co.kr'}</div>
           </div>
           <Icon d={icons.logout} size={16} c={T.mutedSoft} />
         </div>

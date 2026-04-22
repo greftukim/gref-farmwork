@@ -1,10 +1,12 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import useAuthStore from '../stores/authStore';
+import { useTeamStore } from '../stores/team';
 
 export default function LoginPage() {
   const navigate = useNavigate();
   const login = useAuthStore((s) => s.login);
+  const setTeam = useTeamStore((s) => s.setTeam);
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -19,11 +21,16 @@ export default function LoginPage() {
     setLoading(false);
     if (result.success) {
       const role = result.role;
+      // eslint-disable-next-line no-console
+      console.log('[DEBUG LOGIN] role:', role, 'result:', result);
       if (role === 'worker') {
+        setTeam('farm');
         navigate('/worker', { replace: true });
       } else if (role === 'master' || role === 'hr_admin') {
+        setTeam('hq');
         navigate('/admin/hq', { replace: true });
       } else {
+        setTeam('farm');
         navigate('/admin', { replace: true });
       }
     } else {
