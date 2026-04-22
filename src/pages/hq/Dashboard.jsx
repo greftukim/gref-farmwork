@@ -34,6 +34,7 @@ function HQDashboardScreen() {
   const fetchRecords = useAttendanceStore((s) => s.fetchRecords);
 
   const [monthlyHarvestByEmp, setMonthlyHarvestByEmp] = useState({});
+  const [approvalFilter, setApprovalFilter] = useState('all');
 
   useEffect(() => {
     fetchEmployees();
@@ -325,33 +326,38 @@ function HQDashboardScreen() {
               <span style={{ fontSize: 11, color: HQ.accent, fontWeight: 600, cursor: 'pointer' }}>전체 →</span>
             </div>
 
-            {/* 필터 탭 — 근태=leave_requests 전체, 예산/인사/자재 테이블 없음→0 */}
+            {/* 필터 탭 — 근태=leave_requests 전체, 예산/인사/자재 테이블 없음→0 (BACKLOG: APPROVAL-CATEGORY-001) */}
             <div style={{ display: 'flex', gap: 6, marginBottom: 12, fontSize: 11 }}>
               {[
-                { l: '전체', n: pendingCount, on: true },
-                { l: '근태', n: pendingCount },
-                { l: '예산', n: 0 },
-                { l: '인사', n: 0 },
-                { l: '자재', n: 0 },
-              ].map((t, i) => (
-                <span key={i} style={{
-                  padding: '4px 9px', borderRadius: 6, fontWeight: 600, cursor: 'pointer',
-                  background: t.on ? T.text : T.bg,
-                  color: t.on ? '#fff' : T.muted,
-                  display: 'flex', alignItems: 'center', gap: 4,
-                }}>
-                  {t.l}
-                  <span style={{
-                    fontSize: 9, padding: '0 5px', borderRadius: 999,
-                    background: t.on ? 'rgba(255,255,255,0.2)' : T.borderSoft,
-                    color: t.on ? '#fff' : T.muted,
-                  }}>{t.n}</span>
-                </span>
-              ))}
+                { k: 'all',        l: '전체', n: pendingCount },
+                { k: 'attendance', l: '근태', n: pendingCount },
+                { k: 'budget',     l: '예산', n: 0 },
+                { k: 'hr',         l: '인사', n: 0 },
+                { k: 'material',   l: '자재', n: 0 },
+              ].map((p) => {
+                const on = approvalFilter === p.k;
+                return (
+                  <span key={p.k} onClick={() => setApprovalFilter(p.k)} style={{
+                    padding: '4px 9px', borderRadius: 6, fontWeight: 600, cursor: 'pointer',
+                    background: on ? T.text : T.bg,
+                    color: on ? '#fff' : T.muted,
+                    display: 'flex', alignItems: 'center', gap: 4,
+                  }}>
+                    {p.l}
+                    <span style={{
+                      fontSize: 9, padding: '0 5px', borderRadius: 999,
+                      background: on ? 'rgba(255,255,255,0.2)' : T.borderSoft,
+                      color: on ? '#fff' : T.muted,
+                    }}>{p.n}</span>
+                  </span>
+                );
+              })}
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8, maxHeight: 340, overflow: 'auto' }}>
-              {pendingLeave.length === 0 ? (
+              {approvalFilter !== 'all' && approvalFilter !== 'attendance' ? (
+                <div style={{ padding: 20, textAlign: 'center', color: T.mutedSoft, fontSize: 12 }}>해당 카테고리 데이터 없음</div>
+              ) : pendingLeave.length === 0 ? (
                 <div style={{ padding: 20, textAlign: 'center', color: T.mutedSoft, fontSize: 12 }}>대기 중인 승인 요청 없음</div>
               ) : pendingLeave.map((r) => (
                 <div key={r.id} style={{
