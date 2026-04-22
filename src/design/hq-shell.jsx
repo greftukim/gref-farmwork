@@ -1,5 +1,5 @@
 import React from 'react';
-import { Avatar, Dot, Icon, T, btnGhostStyle, icons } from './primitives';
+import { T, Dot, Icon, icons, Avatar, btnGhostStyle } from './primitives';
 
 // 관리팀(본사) 대시보드 — 다지점 통합 뷰
 // 재배팀(지점) 뷰와 달리, 전 지점 KPI 비교 + 경영지표 + 승인허브 + 지점관리에 집중
@@ -13,7 +13,7 @@ const HQ = {
 };
 
 // ─────── HQ Shell: 관리팀 전용 사이드바 + 상단바 ───────
-const HQSidebar = ({ active = 'dashboard', onNavigate }) => {
+const HQSidebar = ({ active = 'dashboard' }) => {
   const items = [
     { id: 'dashboard', label: '본사 대시보드', icon: icons.dashboard },
     { id: 'branches', label: '지점 관리', icon: icons.location },
@@ -64,7 +64,7 @@ const HQSidebar = ({ active = 'dashboard', onNavigate }) => {
         {items.map(i => {
           const on = i.id === active;
           return (
-            <div key={i.id} onClick={() => onNavigate?.(i.id)} style={{
+            <div key={i.id} style={{
               display: 'flex', alignItems: 'center', gap: 10,
               padding: '9px 12px', borderRadius: 8, cursor: 'pointer',
               background: on ? HQ.accentSoft : 'transparent',
@@ -114,7 +114,7 @@ const HQSidebar = ({ active = 'dashboard', onNavigate }) => {
   );
 };
 
-const HQTopBar = ({ title, subtitle, actions, onSearch, onBell }) => (
+const HQTopBar = ({ title, subtitle, actions }) => (
   <div style={{
     display: 'flex', alignItems: 'center', justifyContent: 'space-between',
     padding: '20px 32px', borderBottom: `1px solid ${T.border}`, background: T.surface,
@@ -145,17 +145,16 @@ const HQTopBar = ({ title, subtitle, actions, onSearch, onBell }) => (
           }}>{p}</span>
         ))}
       </div>
-      <div onClick={onSearch} style={{
+      <div style={{
         display: 'flex', alignItems: 'center', gap: 8,
         padding: '8px 12px', background: T.bg, border: `1px solid ${T.border}`,
         borderRadius: 8, width: 220, color: T.mutedSoft, fontSize: 13,
-        cursor: onSearch ? 'pointer' : 'default',
       }}>
         <Icon d={icons.search} size={14} />
         <span>검색</span>
         <span style={{ marginLeft: 'auto', fontSize: 10, padding: '2px 5px', background: T.surface, border: `1px solid ${T.border}`, borderRadius: 4, fontWeight: 600 }}>⌘K</span>
       </div>
-      <button onClick={onBell} style={btnGhostStyle}>
+      <button style={btnGhostStyle}>
         <Icon d={icons.bell} size={16} />
         <span style={{ position: 'absolute', top: 4, right: 4, width: 7, height: 7, borderRadius: 999, background: T.danger }} />
       </button>
@@ -172,4 +171,5 @@ const HQShell = ({ active, children }) => (
     </div>
   </div>
 );
-export { HQ, HQShell, HQSidebar, HQTopBar };
+
+export { HQ, HQSidebar, HQTopBar, HQShell };

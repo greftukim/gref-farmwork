@@ -110,7 +110,7 @@ const Avatar = ({ name = '김', size = 32, c = 'indigo' }) => {
 };
 
 // ─────── 관리자 레이아웃 (공용) ───────
-const Sidebar = ({ active = 'dashboard', onNavigate }) => {
+const Sidebar = ({ active = 'dashboard' }) => {
   const items = [
     { id: 'dashboard', label: '대시보드', icon: icons.dashboard },
     { id: 'employees', label: '직원 관리', icon: icons.users },
@@ -148,7 +148,7 @@ const Sidebar = ({ active = 'dashboard', onNavigate }) => {
         {items.map(i => {
           const on = i.id === active;
           return (
-            <div key={i.id} onClick={() => onNavigate?.(i.id)} style={{
+            <div key={i.id} style={{
               display: 'flex', alignItems: 'center', gap: 10,
               padding: '9px 12px', borderRadius: 8, cursor: 'pointer',
               background: on ? T.primarySoft : 'transparent',
@@ -179,7 +179,7 @@ const Sidebar = ({ active = 'dashboard', onNavigate }) => {
   );
 };
 
-const TopBar = ({ title, subtitle, actions, onSearch, onBell }) => (
+const TopBar = ({ title, subtitle, actions }) => (
   <div style={{
     display: 'flex', alignItems: 'center', justifyContent: 'space-between',
     padding: '20px 32px', borderBottom: `1px solid ${T.border}`, background: T.surface,
@@ -193,17 +193,16 @@ const TopBar = ({ title, subtitle, actions, onSearch, onBell }) => (
       <h1 style={{ fontSize: 22, fontWeight: 700, color: T.text, letterSpacing: -0.4, margin: 0 }}>{title}</h1>
     </div>
     <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-      <div onClick={onSearch} style={{
+      <div style={{
         display: 'flex', alignItems: 'center', gap: 8,
         padding: '8px 12px', background: T.bg, border: `1px solid ${T.border}`,
         borderRadius: 8, width: 260, color: T.mutedSoft, fontSize: 13,
-        cursor: onSearch ? 'pointer' : 'default',
       }}>
         <Icon d={icons.search} size={14} />
         <span>검색 (직원, 작업, 구역...)</span>
         <span style={{ marginLeft: 'auto', fontSize: 10, padding: '2px 5px', background: T.surface, border: `1px solid ${T.border}`, borderRadius: 4, fontWeight: 600 }}>⌘K</span>
       </div>
-      <button onClick={onBell} style={btnGhostStyle}>
+      <button style={btnGhostStyle}>
         <Icon d={icons.bell} size={16} />
         <span style={{ position: 'absolute', top: 4, right: 4, width: 7, height: 7, borderRadius: 999, background: T.danger }} />
       </button>
@@ -218,8 +217,8 @@ const btnGhostStyle = {
   display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
 };
 
-const btnPrimary = (label, iconD, onClick) => (
-  <button onClick={onClick} style={{
+const btnPrimary = (label, iconD) => (
+  <button style={{
     display: 'inline-flex', alignItems: 'center', gap: 6,
     height: 36, padding: '0 14px', borderRadius: 8,
     background: T.primary, color: '#fff', border: 0,
@@ -231,8 +230,8 @@ const btnPrimary = (label, iconD, onClick) => (
   </button>
 );
 
-const btnSecondary = (label, iconD, onClick) => (
-  <button onClick={onClick} style={{
+const btnSecondary = (label, iconD) => (
+  <button style={{
     display: 'inline-flex', alignItems: 'center', gap: 6,
     height: 36, padding: '0 14px', borderRadius: 8,
     background: T.surface, color: T.text, border: `1px solid ${T.border}`,
@@ -242,4 +241,5 @@ const btnSecondary = (label, iconD, onClick) => (
     {label}
   </button>
 );
-export { Avatar, Card, Dot, Icon, Pill, Sidebar, T, TopBar, btnGhostStyle, btnPrimary, btnSecondary, icons };
+
+export { T, Card, Pill, Dot, Icon, icons, Avatar, Sidebar, TopBar, btnPrimary, btnSecondary, btnGhostStyle };

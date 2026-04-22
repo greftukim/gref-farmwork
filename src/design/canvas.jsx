@@ -1,5 +1,4 @@
-import React, { useCallback, useEffect, useRef } from 'react';
-
+import React, { useRef, useEffect, useCallback } from 'react';
 
 // DesignCanvas.jsx — Figma-ish design canvas wrapper
 // Warm gray grid bg + Sections + Artboards + PostIt notes.
@@ -250,4 +249,5 @@ function DCPostIt({ children, top, left, right, bottom, rotate = -2, width = 180
     }}>{children}</div>
   );
 }
-export { DCArtboard, DCPostIt, DCSection, DesignCanvas };
+
+export { DesignCanvas, DCSection, DCArtboard, DCPostIt };

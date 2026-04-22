@@ -1,6 +1,4 @@
-import React from 'react';
-import { icons } from './primitives';
-
+import React, { Fragment } from 'react';
 
 // iOS.jsx — Simplified iOS 26 (Liquid Glass) device frame
 // Based on the iOS 26 UI Kit + Figma status bar spec. No assets, no deps.
@@ -241,7 +239,7 @@ function IOSKeyboard({ dark = false }) {
   const keyBg = dark ? 'rgba(255,255,255,0.22)' : 'rgba(255,255,255,0.85)';
 
   // special-key icons
-  const icons = {
+  const kbIcons = {
     shift: <svg width="19" height="17" viewBox="0 0 19 17"><path d="M9.5 1L1 9.5h4.5V16h8V9.5H18L9.5 1z" fill={glyph}/></svg>,
     del: <svg width="23" height="17" viewBox="0 0 23 17"><path d="M7 1h13a2 2 0 012 2v11a2 2 0 01-2 2H7l-6-7.5L7 1z" fill="none" stroke={glyph} strokeWidth="1.6" strokeLinejoin="round"/><path d="M10 5l7 7M17 5l-7 7" stroke={glyph} strokeWidth="1.6" strokeLinecap="round"/></svg>,
     ret: <svg width="20" height="14" viewBox="0 0 20 14"><path d="M18 1v6H4m0 0l4-4M4 7l4 4" fill="none" stroke="#fff" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>,
@@ -297,14 +295,14 @@ function IOSKeyboard({ dark = false }) {
         position: 'relative',
       }}>
         {['"The"', 'the', 'to'].map((w, i) => (
-          <React.Fragment key={i}>
+          <Fragment key={i}>
             {i > 0 && <div style={{ width: 1, height: 25, background: '#ccc', opacity: 0.3 }} />}
             <div style={{
               flex: 1, textAlign: 'center',
               fontFamily: '-apple-system, system-ui', fontSize: 17,
               color: sugg, letterSpacing: -0.43, lineHeight: '22px',
             }}>{w}</div>
-          </React.Fragment>
+          </Fragment>
         ))}
       </div>
 
@@ -317,16 +315,16 @@ function IOSKeyboard({ dark = false }) {
         {row(['q','w','e','r','t','y','u','i','o','p'])}
         {row(['a','s','d','f','g','h','j','k','l'], 20)}
         <div style={{ display: 'flex', gap: 14.25, alignItems: 'center' }}>
-          {key(icons.shift, { w: 45, k: 'shift' })}
+          {key(kbIcons.shift, { w: 45, k: 'shift' })}
           <div style={{ display: 'flex', gap: 6.5, flex: 1 }}>
             {['z','x','c','v','b','n','m'].map(l => key(l, { flex: true, k: l }))}
           </div>
-          {key(icons.del, { w: 45, k: 'del' })}
+          {key(kbIcons.del, { w: 45, k: 'del' })}
         </div>
         <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
           {key('ABC', { w: 92.25, fs: 18, k: 'abc' })}
           {key('', { flex: true, k: 'space' })}
-          {key(icons.ret, { w: 92.25, ret: true, k: 'ret' })}
+          {key(kbIcons.ret, { w: 92.25, ret: true, k: 'ret' })}
         </div>
       </div>
 
@@ -335,4 +333,7 @@ function IOSKeyboard({ dark = false }) {
     </div>
   );
 }
-export { IOSDevice, IOSGlassPill, IOSKeyboard, IOSList, IOSListRow, IOSNavBar, IOSStatusBar };
+
+export {
+  IOSDevice, IOSStatusBar, IOSNavBar, IOSGlassPill, IOSList, IOSListRow, IOSKeyboard,
+};
