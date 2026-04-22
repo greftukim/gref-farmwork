@@ -7,6 +7,7 @@ import useLeaveStore from '../../stores/leaveStore';
 import useAuthStore from '../../stores/authStore';
 import useAttendanceStore from '../../stores/attendanceStore';
 import useNoticeStore from '../../stores/noticeStore';
+import EmployeeDetailModal from '../../components/employees/EmployeeDetailModal';
 
 // ─────── 지점 메타 (코드 → 표시명·색상) ───────
 const BRANCH_META = {
@@ -487,8 +488,11 @@ function HQBranchesScreen() {
 function HQEmployeesScreen() {
   const [tab, setTab] = useState('all');
   const [empTypeFilter, setEmpTypeFilter] = useState('전체');
+  const [selectedEmployee, setSelectedEmployee] = useState(null);
   const employees = useEmployeeStore((s) => s.employees);
   const fetchEmployees = useEmployeeStore((s) => s.fetchEmployees);
+
+  const branchNameMap = Object.fromEntries(Object.entries(BRANCH_META).map(([k, v]) => [k, v.name]));
 
   useEffect(() => { fetchEmployees(); }, []);
 
@@ -616,7 +620,7 @@ function HQEmployeesScreen() {
                       {e.isActive ? <Pill tone="success" size="sm">재직</Pill> : <Pill tone="danger" size="sm">비활성</Pill>}
                     </td>
                     <td style={{ padding: '10px 16px', textAlign: 'right' }}>
-                      <button style={{ padding: '4px 10px', borderRadius: 6, border: `1px solid ${T.border}`, background: T.surface, color: T.muted, fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>상세</button>
+                      <button onClick={() => setSelectedEmployee(e)} style={{ padding: '4px 10px', borderRadius: 6, border: `1px solid ${T.border}`, background: T.surface, color: T.muted, fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>상세</button>
                     </td>
                   </tr>
                 );
@@ -638,6 +642,13 @@ function HQEmployeesScreen() {
           </div>
         </Card>
       </div>
+      {selectedEmployee && (
+        <EmployeeDetailModal
+          employee={selectedEmployee}
+          onClose={() => setSelectedEmployee(null)}
+          branchNameMap={branchNameMap}
+        />
+      )}
     </div>
   );
 }
