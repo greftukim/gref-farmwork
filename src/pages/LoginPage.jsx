@@ -21,8 +21,9 @@ export default function LoginPage() {
       const role = result.role;
       if (role === 'worker') {
         navigate('/worker', { replace: true });
+      } else if (role === 'master' || role === 'hr_admin') {
+        navigate('/admin/hq', { replace: true });
       } else {
-        // farm_admin, hr_admin, supervisor, master → 모두 /admin (라우팅 세분화는 0-4-2에서)
         navigate('/admin', { replace: true });
       }
     } else {
