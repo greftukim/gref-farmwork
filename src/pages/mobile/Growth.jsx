@@ -1,16 +1,12 @@
 import React, { useState } from 'react';
-import { GROWTH_SCHEMA } from '../../data/growth';
-import { Icon, Pill, T, icons } from '../../design/primitives';
-import { useGrowthData } from '../../hooks/useGrowthData';
+import { T, Icon, icons, Pill } from '../../design/primitives';
+import { GR_DATA, GROWTH_SCHEMA, STANDARD_CURVE } from '../../data/growth';
 
 // 생육조사 — 모바일 현장 입력 (반장용, 단독 화면)
 // 4탭이 아닌 단독 풀스크린. 헤더 + 표식주 목록 → 입력 폼
 
 function MobileGrowthScreen({ defaultMode = 'list' }) {
-  const { grData: GR_DATA, standardCurve: STANDARD_CURVE, loading } = useGrowthData();
   const [mode, setMode] = useState(defaultMode); // list | input
-  if (loading) return <div style={{ background: '#F2F2F7', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: T.mutedSoft, fontSize: 14 }}>로딩 중...</div>;
-  if (!GR_DATA.markerPlants?.length) return <div style={{ background: '#F2F2F7', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: T.mutedSoft, fontSize: 14 }}>데이터가 없습니다</div>;
   const crop = '토마토';
   const plants = GR_DATA.markerPlants.filter(p => p.crop === crop);
   const schema = GROWTH_SCHEMA[crop].filter(s => s.type !== 'derived');
@@ -137,10 +133,10 @@ function MobileGrowthScreen({ defaultMode = 'list' }) {
 
         {/* 하단 고정 액션 */}
         <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, background: T.surface, padding: 14, borderTop: `1px solid ${T.border}`, display: 'flex', gap: 8 }}>
-          <button onClick={() => alert('기능은 준비 중입니다')} style={{ flex: 1, padding: '14px 0', borderRadius: 12, background: T.bg, border: `1px solid ${T.border}`, fontSize: 14, fontWeight: 700, color: T.muted }}>
+          <button style={{ flex: 1, padding: '14px 0', borderRadius: 12, background: T.bg, border: `1px solid ${T.border}`, fontSize: 14, fontWeight: 700, color: T.muted }}>
             임시저장
           </button>
-          <button onClick={() => alert('기능은 준비 중입니다')} style={{ flex: 2, padding: '14px 0', borderRadius: 12, background: T.primary, border: 0, fontSize: 14, fontWeight: 700, color: '#fff' }}>
+          <button style={{ flex: 2, padding: '14px 0', borderRadius: 12, background: T.primary, border: 0, fontSize: 14, fontWeight: 700, color: '#fff' }}>
             다음 표식주 →
           </button>
         </div>
@@ -186,7 +182,7 @@ function MobileGrowthScreen({ defaultMode = 'list' }) {
         {GR_DATA.crops.map(c => {
           const on = c.name === crop;
           return (
-            <button key={c.id} onClick={() => alert('기능은 준비 중입니다')} style={{
+            <button key={c.id} style={{
               padding: '8px 14px', fontSize: 13, fontWeight: 700, borderRadius: 999, whiteSpace: 'nowrap',
               border: `1px solid ${on ? T.primary : T.border}`,
               background: on ? T.primary : T.surface,
@@ -234,7 +230,7 @@ function MobileGrowthScreen({ defaultMode = 'list' }) {
 
       {/* 하단 빠른 기록 */}
       <div style={{ padding: 16 }}>
-        <button onClick={() => alert('기능은 준비 중입니다')} style={{
+        <button style={{
           width: '100%', padding: '14px 0', borderRadius: 14,
           background: T.surface, border: `1.5px dashed ${T.border}`,
           fontSize: 13, fontWeight: 700, color: T.muted,
@@ -247,4 +243,5 @@ function MobileGrowthScreen({ defaultMode = 'list' }) {
     </div>
   );
 }
+
 export { MobileGrowthScreen };
