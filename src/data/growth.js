@@ -156,4 +156,5 @@ const GR_DATA = {
     { id: 'i3', d: '2026-04-20', plant: 'T-B-01', crop: '토마토', type: '생리장해', note: '하엽 황변 진행', photos: 1, reporter: '김반장', status: 'monitoring' },
   ],
 };
-export { GROWTH_SCHEMA, GR_DATA, STANDARD_CURVE };
+
+export { GROWTH_SCHEMA, STANDARD_CURVE, GR_DATA };
