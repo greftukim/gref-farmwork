@@ -90,6 +90,12 @@ function HQApprovalsScreen() {
   const approved = requests.filter(r => r.status === 'approved');
   const rejected = requests.filter(r => r.status === 'rejected');
 
+  const urgentCount = pending.filter(r => r.createdAt && Date.now() - new Date(r.createdAt) > 3 * 60 * 60 * 1000).length;
+  const reviewed = requests.filter(r => r.status !== 'pending' && r.farmReviewedAt && r.createdAt);
+  const avgH = reviewed.length > 0
+    ? `${(reviewed.reduce((s, r) => s + (new Date(r.farmReviewedAt) - new Date(r.createdAt)), 0) / reviewed.length / 3600000).toFixed(1)}h`
+    : '—';
+
   const tabItems = useMemo(() => {
     const source = tab === 'approved' ? approved : tab === 'rejected' ? rejected : pending;
     return source.map(r => {
@@ -160,10 +166,10 @@ function HQApprovalsScreen() {
         {/* 요약 KPI */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12 }}>
           {[
-            { l: '대기 중', v: pending.length, sub: '평균 응답 2.4h', tone: T.warning, bg: T.warningSoft },
-            { l: '긴급', v: 2, sub: '3시간 이상 경과 1건', tone: T.danger, bg: T.dangerSoft },
-            { l: '이번 주 승인액', v: '1,840만원', sub: '예산 대비 22%', tone: HQ.accent, bg: HQ.accentSoft },
-            { l: '평균 처리 시간', v: '3.2h', sub: '▼ 전주 대비 -0.4h', tone: T.success, bg: T.successSoft },
+            { l: '대기 중', v: pending.length, sub: `승인됨 ${approved.length} · 반려 ${rejected.length}`, tone: T.warning, bg: T.warningSoft },
+            { l: '긴급', v: urgentCount, sub: '3시간 이상 경과 기준', tone: T.danger, bg: T.dangerSoft },
+            { l: '이번 주 승인액', v: '—', sub: '집계 없음', tone: HQ.accent, bg: HQ.accentSoft },
+            { l: '평균 처리 시간', v: avgH, sub: reviewed.length > 0 ? `${reviewed.length}건 기준` : '데이터 없음', tone: T.success, bg: T.successSoft },
           ].map((k, i) => (
             <Card key={i} pad={16} style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
               <div style={{ width: 42, height: 42, borderRadius: 10, background: k.bg, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -290,19 +296,65 @@ function HQApprovalsScreen() {
 function HQBranchesScreen() {
   const employees = useEmployeeStore((s) => s.employees);
   const fetchEmployees = useEmployeeStore((s) => s.fetchEmployees);
+  const records = useAttendanceStore((s) => s.records);
+  const fetchRecords = useAttendanceStore((s) => s.fetchRecords);
+  const [monthlyHarvestByEmp, setMonthlyHarvestByEmp] = useState({});
+
+  const today = new Date().toISOString().slice(0, 10);
 
   useEffect(() => {
     if (employees.length === 0) fetchEmployees();
+    fetchRecords();
+    const now = new Date();
+    const firstOfMonth = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-01`;
+    supabase.from('harvest_records').select('quantity, employee_id').gte('date', firstOfMonth)
+      .then(({ data }) => {
+        const map = {};
+        data?.forEach(r => { map[r.employee_id] = (map[r.employee_id]||0) + (r.quantity||0); });
+        setMonthlyHarvestByEmp(map);
+      });
   }, []);
 
   const bwc = (code) => employees.filter(e => e.branch === code && e.isActive).length;
 
-  // 지점장/수확/출근률/작물/면적은 DB 미지원 → BACKLOG(HQ-BRANCHES-META-001)
-  const branches = [
-    { code: 'busan', name: '부산LAB', short: 'BL', mgr: '김재배', phone: '051-***-1234', address: '부산광역시 강서구 녹산산업로', workers: bwc('busan'), rate: 90, harvest: 1240, harvestT: 1200, crops: '토마토 · 딸기 · 파프리카', area: '12,400㎡', accent: T.primary, accentSoft: T.primarySoft, status: 'active', est: '2021.03', lastVisit: '4/15' },
-    { code: 'jinju', name: '진주HUB', short: 'JJ', mgr: '박지점', phone: '055-***-5678', address: '경상남도 진주시 문산읍', workers: bwc('jinju'), rate: 93, harvest: 980, harvestT: 1100, crops: '오이 · 애호박', area: '8,200㎡', accent: T.success, accentSoft: T.successSoft, status: 'active', est: '2023.05', lastVisit: '4/08' },
-    { code: 'hadong', name: '하동HUB', short: 'HD', mgr: '최책임', phone: '055-***-9012', address: '경상남도 하동군 악양면', workers: bwc('hadong'), rate: 83, harvest: 760, harvestT: 950, crops: '방울토마토 · 고추', area: '6,800㎡', accent: T.warning, accentSoft: T.warningSoft, status: 'alert', est: '2024.02', lastVisit: '3/28' },
-  ];
+  const branchMgr = (code) =>
+    employees.find(e => e.branch === code && e.role === 'farm_admin' && e.isActive)?.name || '—';
+
+  const branchRate = (code) => {
+    const workers = bwc(code);
+    if (workers === 0) return 0;
+    const empIds = new Set(employees.filter(e => e.branch === code && e.isActive).map(e => e.id));
+    const checkedIn = records.filter(r => r.date === today && empIds.has(r.employeeId) && r.checkIn).length;
+    return Math.round(checkedIn / workers * 100);
+  };
+
+  const branchHarvest = (code) => {
+    const empIds = new Set(employees.filter(e => e.branch === code && e.isActive).map(e => e.id));
+    return [...empIds].reduce((sum, id) => sum + (monthlyHarvestByEmp[id] || 0), 0);
+  };
+
+  const BRANCH_DISPLAY = {
+    busan:  { name: '부산LAB', short: 'BL', accent: T.primary,  accentSoft: T.primarySoft,  avatarC: 'blue' },
+    jinju:  { name: '진주HUB', short: 'JJ', accent: T.success,  accentSoft: T.successSoft,  avatarC: 'emerald' },
+    hadong: { name: '하동HUB', short: 'HD', accent: T.warning,  accentSoft: T.warningSoft,  avatarC: 'amber' },
+  };
+
+  const branches = ['busan', 'jinju', 'hadong'].map(code => {
+    const d = BRANCH_DISPLAY[code];
+    const workers = bwc(code);
+    const mgr = branchMgr(code);
+    const rate = branchRate(code);
+    const harvest = branchHarvest(code);
+    return {
+      code, name: d.name, short: d.short, mgr, phone: '—', address: '—',
+      workers, rate, harvest, harvestT: 0,
+      crops: '—', area: '—',
+      accent: d.accent, accentSoft: d.accentSoft, avatarC: d.avatarC,
+      status: rate < 80 && workers > 0 ? 'alert' : 'active',
+    };
+  });
+
+  const totalHarvest = Object.values(monthlyHarvestByEmp).reduce((s, v) => s + v, 0);
 
   return (
     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
@@ -316,9 +368,9 @@ function HQBranchesScreen() {
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12 }}>
           {[
             { l: '운영 지점', v: branches.length, u: '개', sub: '부산·진주·하동' },
-            { l: '총 재배면적', v: '27,400', u: '㎡', sub: '약 8,300평' },
+            { l: '총 재배면적', v: '—', u: '', sub: '집계 없음' },
             { l: '총 인원', v: branches.reduce((s, b) => s + b.workers, 0), u: '명', sub: `${branches.map(b => `${b.name} ${b.workers}`).join(' · ')}` },
-            { l: '월 수확량', v: '2,980', u: 'kg', sub: '목표 3,250kg · 92%' },
+            { l: '월 수확량', v: totalHarvest.toLocaleString(), u: 'kg', sub: '집계 기준: 이번 달' },
           ].map((k, i) => (
             <Card key={i} pad={16}>
               <div style={{ fontSize: 11, color: T.muted, fontWeight: 600 }}>{k.l}</div>
@@ -348,7 +400,7 @@ function HQBranchesScreen() {
                   }}>{b.short}</div>
                   <div>
                     <div style={{ fontSize: 16, fontWeight: 700, color: T.text, letterSpacing: -0.3 }}>{b.name}</div>
-                    <div style={{ fontSize: 11, color: T.mutedSoft, marginTop: 2 }}>설립 {b.est} · 최근 방문 {b.lastVisit}</div>
+                    <div style={{ fontSize: 11, color: T.mutedSoft, marginTop: 2 }}>직원 {b.workers}명 재직 중</div>
                   </div>
                 </div>
                 <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
@@ -361,7 +413,7 @@ function HQBranchesScreen() {
               <div style={{ padding: 20 }}>
                 {/* 지점장 카드 */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: 12, background: T.bg, borderRadius: 8, marginBottom: 14 }}>
-                  <Avatar name={b.mgr[0]} size={40} c={b.code === 'busan' ? 'blue' : b.code === 'jinju' ? 'emerald' : 'amber'} />
+                  <Avatar name={b.mgr !== '—' ? b.mgr[0] : '?'} size={40} c={b.avatarC} />
                   <div style={{ flex: 1 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                       <span style={{ fontSize: 13, fontWeight: 700, color: T.text }}>{b.mgr}</span>
@@ -392,7 +444,7 @@ function HQBranchesScreen() {
                   {[
                     { l: '출근률', v: b.rate, u: '%' },
                     { l: '수확', v: b.harvest.toLocaleString(), u: 'kg' },
-                    { l: '달성', v: Math.round(b.harvest / b.harvestT * 100), u: '%' },
+                    { l: '달성', v: b.harvestT > 0 ? Math.round(b.harvest / b.harvestT * 100) : '—', u: b.harvestT > 0 ? '%' : '' },
                   ].map((s, i) => (
                     <div key={i} style={{ padding: 10, background: T.bg, borderRadius: 8, textAlign: 'center' }}>
                       <div style={{ fontSize: 10, color: T.mutedSoft, fontWeight: 600 }}>{s.l}</div>
@@ -441,18 +493,27 @@ function HQEmployeesScreen() {
   useEffect(() => { fetchEmployees(); }, []);
 
   const tabFiltered = useMemo(() => {
-    if (tab === 'busan')  return employees.filter(e => e.branch === 'busan');
-    if (tab === 'jinju')  return employees.filter(e => e.branch === 'jinju');
-    if (tab === 'hadong') return employees.filter(e => e.branch === 'hadong');
-    if (tab === 'hq')     return employees.filter(e => HQ_BRANCHES.includes(e.branch));
-    return employees;
-  }, [employees, tab]);
+    let base = employees;
+    if (tab === 'busan')       base = employees.filter(e => e.branch === 'busan');
+    else if (tab === 'jinju')  base = employees.filter(e => e.branch === 'jinju');
+    else if (tab === 'hadong') base = employees.filter(e => e.branch === 'hadong');
+    else if (tab === 'hq')     base = employees.filter(e => HQ_BRANCHES.includes(e.branch));
+    if (empTypeFilter === '정규') return base.filter(e => e.isActive && !e.contractEndDate);
+    if (empTypeFilter === '계약') return base.filter(e => e.isActive && e.contractEndDate);
+    if (empTypeFilter === '임시') return base.filter(e => !e.isActive);
+    return base;
+  }, [employees, tab, empTypeFilter]);
 
-  const totalActive = employees.filter(e => e.isActive).length;
-  const busanCount  = employees.filter(e => e.branch === 'busan').length;
-  const jinjuCount  = employees.filter(e => e.branch === 'jinju').length;
-  const hadongCount = employees.filter(e => e.branch === 'hadong').length;
-  const hqCount     = employees.filter(e => HQ_BRANCHES.includes(e.branch)).length;
+  const totalActive  = employees.filter(e => e.isActive).length;
+  const busanCount   = employees.filter(e => e.branch === 'busan').length;
+  const jinjuCount   = employees.filter(e => e.branch === 'jinju').length;
+  const hadongCount  = employees.filter(e => e.branch === 'hadong').length;
+  const hqCount      = employees.filter(e => HQ_BRANCHES.includes(e.branch)).length;
+  const regularCount = employees.filter(e => e.isActive && !e.contractEndDate).length;
+  const contractCount = employees.filter(e => e.isActive && e.contractEndDate).length;
+  const empNow = new Date();
+  const empThisMonth = `${empNow.getFullYear()}-${String(empNow.getMonth()+1).padStart(2,'0')}`;
+  const newHireCount = employees.filter(e => e.hireDate?.startsWith(empThisMonth)).length;
 
   return (
     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
@@ -475,9 +536,9 @@ function HQEmployeesScreen() {
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12 }}>
           {[
             { l: '총 인원', v: employees.length, u: '명', sub: `활성 ${totalActive} · 비활성 ${employees.length - totalActive}` },
-            { l: '정규직', v: 42, u: '명', sub: '70%' },
-            { l: '계약/임시', v: 18, u: '명', sub: '30%' },
-            { l: '이번 달 입사', v: 4, u: '명', sub: '퇴사 1건' },
+            { l: '정규직', v: regularCount, u: '명', sub: totalActive > 0 ? `${Math.round(regularCount/totalActive*100)}%` : '—' },
+            { l: '계약직', v: contractCount, u: '명', sub: totalActive > 0 ? `${Math.round(contractCount/totalActive*100)}%` : '—' },
+            { l: '이번 달 입사', v: newHireCount, u: '명', sub: '이번 달 기준' },
           ].map((k, i) => (
             <Card key={i} pad={16}>
               <div style={{ fontSize: 11, color: T.muted, fontWeight: 600 }}>{k.l}</div>
@@ -594,6 +655,10 @@ function HQNoticesScreen() {
   // notices 테이블: title/body/priority/author_team/created_at만 있음
   // 열람률/만료일/대상 → DB 미지원, BACKLOG HQ-NOTICES-META-001
   const noticeMap = { important: { tag: '전사 · 중요', tone: 'danger' }, normal: { tag: '정책', tone: 'info' } };
+  const noticeNow = new Date();
+  const noticeThisMonth = `${noticeNow.getFullYear()}-${String(noticeNow.getMonth()+1).padStart(2,'0')}`;
+  const importantCount = rawNotices.filter(n => n.priority === 'important').length;
+  const thisMonthNoticeCount = rawNotices.filter(n => n.createdAt?.startsWith(noticeThisMonth)).length;
 
   const notices = rawNotices.map(n => ({
     id: n.id,
@@ -617,8 +682,8 @@ function HQNoticesScreen() {
         actions={<>{btnSecondary('열람 리포트', icons.chart)}{btnPrimary('새 공지 작성', icons.plus)}</>}
         tabs={[
           { id: 'active', label: '활성', count: notices.length },
-          { id: 'scheduled', label: '예약됨', count: 2 },
-          { id: 'expired', label: '만료', count: 24 },
+          { id: 'scheduled', label: '예약됨', count: 0 },
+          { id: 'expired', label: '만료', count: 0 },
           { id: 'templates', label: '템플릿' },
         ]}
         activeTab={tab}
@@ -629,9 +694,9 @@ function HQNoticesScreen() {
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12 }}>
           {[
             { l: '활성 공지', v: notices.length, u: '건', tone: HQ.accent, bg: HQ.accentSoft },
-            { l: '중요/필참', v: 3, u: '건', tone: T.danger, bg: T.dangerSoft, sub: '미열람 18명' },
-            { l: '평균 열람률', v: 83, u: '%', tone: T.success, bg: T.successSoft, sub: '목표 90%' },
-            { l: '이달 발행', v: 14, u: '건', tone: T.text, bg: T.bg, sub: '전월 대비 +3' },
+            { l: '중요/필참', v: importantCount, u: '건', tone: T.danger, bg: T.dangerSoft },
+            { l: '평균 열람률', v: '—', u: '', tone: T.success, bg: T.successSoft, sub: '집계 없음' },
+            { l: '이달 발행', v: thisMonthNoticeCount, u: '건', tone: T.text, bg: T.bg },
           ].map((k, i) => (
             <Card key={i} pad={16} style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
               <div style={{ width: 42, height: 42, borderRadius: 10, background: k.bg, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -692,7 +757,7 @@ function HQNoticesScreen() {
                         background: n.readPct >= 90 ? T.success : n.readPct >= 70 ? T.warning : T.danger,
                       }} />
                     </div>
-                    <div style={{ fontSize: 10, color: T.mutedSoft }}>{n.read} / {n.target.match(/\d+/)?.[0]}명 읽음</div>
+                    <div style={{ fontSize: 10, color: T.mutedSoft }}>{n.read} / — 명 읽음</div>
                     <div style={{ display: 'flex', gap: 6, marginTop: 10 }}>
                       <button style={{ flex: 1, padding: '5px 0', borderRadius: 6, border: `1px solid ${T.border}`, background: T.surface, color: T.muted, fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>수정</button>
                       <button style={{ flex: 1, padding: '5px 0', borderRadius: 6, border: 0, background: HQ.accent, color: '#fff', fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>재알림</button>
