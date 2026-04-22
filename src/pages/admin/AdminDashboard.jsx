@@ -129,13 +129,6 @@ function AdminDashboardScreen() {
         time: `${fmtTime(t.assignedAt)}~${endTime}`,
       };
     });
-    // 오늘 작업 없으면 fallback
-    if (items.length === 0) return [
-      { crop: '토마토', zone: 'A동 1-8열', type: '수확', workers: ['김', '이', '박'], progress: 85, status: 'active', time: '09:00~11:30' },
-      { crop: '딸기', zone: 'B동 3-5열', type: '러너 정리', workers: ['최', '정'], progress: 60, status: 'active', time: '09:30~12:00' },
-      { crop: '파프리카', zone: 'C동 전체', type: '병해충 예찰', workers: ['강'], progress: 100, status: 'done', time: '08:30~09:30' },
-      { crop: '오이', zone: 'D동 1-4열', type: 'EC/pH 측정', workers: ['윤', '한'], progress: 0, status: 'waiting', time: '13:00~14:00' },
-    ];
     return items;
   }, [todayTasks, empMap, cropMap, zoneMap]);
 
@@ -188,12 +181,6 @@ function AdminDashboardScreen() {
       id: r.id,
     }));
     const merged = [...leaves, ...ots].slice(0, 3);
-    // 승인 대기 없으면 fallback
-    if (merged.length === 0) return [
-      { name: '김민국', type: '연차', detail: '4/23 (수)', tag: '휴가', c: 'indigo' },
-      { name: '박민식', type: '연장근무', detail: '오늘 2시간', tag: '연장', c: 'amber' },
-      { name: '이강모', type: 'TBM 승인', detail: '반장 제출 대기', tag: 'TBM', c: 'emerald' },
-    ];
     return merged;
   }, [pendingLeave, pendingOT, empMap]);
 
@@ -208,13 +195,6 @@ function AdminDashboardScreen() {
       meta: `${n.authorTeam ? (teamLabel[n.authorTeam] || n.authorTeam) : '전체 공지'} · ${timeAgo(n.createdAt)}`,
       pinned: n.priority === 'urgent',
     }));
-    // 공지 없으면 fallback
-    if (items.length === 0) return [
-      { tag: '중요', tone: 'danger', title: '4월 23일 정기 안전교육 필참', meta: '전체 공지 · 2시간 전', pinned: true },
-      { tag: '일정', tone: 'primary', title: '금주 토요일 출근조 3명 편성', meta: '재배팀 · 어제' },
-      { tag: '알림', tone: 'success', title: '농약 창고 재고 입고 완료', meta: '자재팀 · 2일 전' },
-      { tag: '일반', tone: 'muted', title: '5월 연차 사용 계획 제출 요청', meta: '인사 · 3일 전' },
-    ];
     return items;
   }, [notices]);
 
@@ -296,7 +276,9 @@ function AdminDashboardScreen() {
               </div>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-              {taskRows.map((t, i) => {
+              {taskRows.length === 0 ? (
+                <div style={{ padding: 24, textAlign: 'center', color: T.mutedSoft, fontSize: 12 }}>오늘 배정된 작업 없음</div>
+              ) : taskRows.map((t, i) => {
                 const statusMap = {
                   active: { tone: 'primary', label: '진행중' },
                   done: { tone: 'success', label: '완료' },
@@ -422,7 +404,9 @@ function AdminDashboardScreen() {
               <span onClick={() => navigate('/admin/leave-approval')} style={{ fontSize: 11, color: T.primary, fontWeight: 600, cursor: 'pointer' }}>모두 보기</span>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-              {approvalRows.map((r, i) => (
+              {approvalRows.length === 0 ? (
+                <div style={{ padding: 20, textAlign: 'center', color: T.mutedSoft, fontSize: 12 }}>승인 대기 건 없음</div>
+              ) : approvalRows.map((r, i) => (
                 <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', background: T.bg, borderRadius: 8 }}>
                   <Avatar name={r.name} size={32} c={r.c} />
                   <div style={{ flex: 1, minWidth: 0 }}>
@@ -453,7 +437,9 @@ function AdminDashboardScreen() {
               <span onClick={() => navigate('/admin/notices')} style={{ fontSize: 11, color: T.primary, fontWeight: 600, cursor: 'pointer' }}>작성 +</span>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              {noticeRows.map((n, i) => {
+              {noticeRows.length === 0 ? (
+                <div style={{ padding: 20, textAlign: 'center', color: T.mutedSoft, fontSize: 12 }}>공지 없음</div>
+              ) : noticeRows.map((n, i) => {
                 const tones = { danger: T.danger, primary: T.primary, success: T.success, muted: T.mutedSoft };
                 const softs = { danger: T.dangerSoft, primary: T.primarySoft, success: T.successSoft, muted: T.bg };
                 return (
