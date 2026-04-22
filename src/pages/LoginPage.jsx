@@ -21,8 +21,6 @@ export default function LoginPage() {
     setLoading(false);
     if (result.success) {
       const role = result.role;
-      // eslint-disable-next-line no-console
-      console.log('[DEBUG LOGIN] role:', role, 'result:', result);
       if (role === 'worker') {
         setTeam('farm');
         navigate('/worker', { replace: true });

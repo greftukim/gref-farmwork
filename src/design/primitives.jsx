@@ -175,7 +175,7 @@ const Sidebar = ({ active = 'dashboard', onNavigate }) => {
           <Avatar name={currentUser?.name?.[0] || '관'} size={32} c="slate" />
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ fontSize: 13, fontWeight: 600, color: T.text }}>{currentUser?.name || '관리자'}</div>
-            <div style={{ fontSize: 11, color: T.mutedSoft, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{currentUser?.email || 'admin@gref.co.kr'}</div>
+            <div style={{ fontSize: 11, color: T.mutedSoft, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{currentUser?.username ? `@${currentUser.username}` : '관리자'}</div>
           </div>
           <Icon d={icons.logout} size={16} c={T.mutedSoft} />
         </div>
