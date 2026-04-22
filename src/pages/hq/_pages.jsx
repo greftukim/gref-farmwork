@@ -285,10 +285,20 @@ function HQApprovalsScreen() {
 // ② 지점 관리
 // ═══════════════════════════════════════════════════════════
 function HQBranchesScreen() {
+  const employees = useEmployeeStore((s) => s.employees);
+  const fetchEmployees = useEmployeeStore((s) => s.fetchEmployees);
+
+  useEffect(() => {
+    if (employees.length === 0) fetchEmployees();
+  }, []);
+
+  const bwc = (code) => employees.filter(e => e.branch === code && e.isActive).length;
+
+  // 지점장/수확/출근률/작물/면적은 DB 미지원 → BACKLOG(HQ-BRANCHES-META-001)
   const branches = [
-    { code: 'busan', name: '부산LAB', short: 'BL', mgr: '김재배', phone: '051-***-1234', address: '부산광역시 강서구 녹산산업로', workers: 20, rate: 90, harvest: 1240, harvestT: 1200, crops: '토마토 · 딸기 · 파프리카', area: '12,400㎡', accent: T.primary, accentSoft: T.primarySoft, status: 'active', est: '2021.03', lastVisit: '4/15' },
-    { code: 'jinju', name: '진주HUB', short: 'JJ', mgr: '박지점', phone: '055-***-5678', address: '경상남도 진주시 문산읍', workers: 14, rate: 93, harvest: 980, harvestT: 1100, crops: '오이 · 애호박', area: '8,200㎡', accent: T.success, accentSoft: T.successSoft, status: 'active', est: '2023.05', lastVisit: '4/08' },
-    { code: 'hadong', name: '하동HUB', short: 'HD', mgr: '최책임', phone: '055-***-9012', address: '경상남도 하동군 악양면', workers: 12, rate: 83, harvest: 760, harvestT: 950, crops: '방울토마토 · 고추', area: '6,800㎡', accent: T.warning, accentSoft: T.warningSoft, status: 'alert', est: '2024.02', lastVisit: '3/28' },
+    { code: 'busan', name: '부산LAB', short: 'BL', mgr: '김재배', phone: '051-***-1234', address: '부산광역시 강서구 녹산산업로', workers: bwc('busan'), rate: 90, harvest: 1240, harvestT: 1200, crops: '토마토 · 딸기 · 파프리카', area: '12,400㎡', accent: T.primary, accentSoft: T.primarySoft, status: 'active', est: '2021.03', lastVisit: '4/15' },
+    { code: 'jinju', name: '진주HUB', short: 'JJ', mgr: '박지점', phone: '055-***-5678', address: '경상남도 진주시 문산읍', workers: bwc('jinju'), rate: 93, harvest: 980, harvestT: 1100, crops: '오이 · 애호박', area: '8,200㎡', accent: T.success, accentSoft: T.successSoft, status: 'active', est: '2023.05', lastVisit: '4/08' },
+    { code: 'hadong', name: '하동HUB', short: 'HD', mgr: '최책임', phone: '055-***-9012', address: '경상남도 하동군 악양면', workers: bwc('hadong'), rate: 83, harvest: 760, harvestT: 950, crops: '방울토마토 · 고추', area: '6,800㎡', accent: T.warning, accentSoft: T.warningSoft, status: 'alert', est: '2024.02', lastVisit: '3/28' },
   ];
 
   return (
@@ -302,9 +312,9 @@ function HQBranchesScreen() {
         {/* 전사 요약 */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12 }}>
           {[
-            { l: '운영 지점', v: 3, u: '개', sub: '본사 1 + 지점 2' },
+            { l: '운영 지점', v: branches.length, u: '개', sub: '부산·진주·하동' },
             { l: '총 재배면적', v: '27,400', u: '㎡', sub: '약 8,300평' },
-            { l: '총 인원', v: 46, u: '명', sub: '지점장 3 + 작업자 43' },
+            { l: '총 인원', v: branches.reduce((s, b) => s + b.workers, 0), u: '명', sub: `${branches.map(b => `${b.name} ${b.workers}`).join(' · ')}` },
             { l: '월 수확량', v: '2,980', u: 'kg', sub: '목표 3,250kg · 92%' },
           ].map((k, i) => (
             <Card key={i} pad={16}>
