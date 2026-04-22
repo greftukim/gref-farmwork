@@ -1,16 +1,18 @@
-import React, { useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { T, Card, Pill, Dot, Icon, icons, btnPrimary, btnSecondary } from '../../design/primitives';
 import { HQ, HQTopBar } from '../../design/hq-shell';
+import { supabase } from '../../lib/supabase';
 import useEmployeeStore from '../../stores/employeeStore';
 import useLeaveStore from '../../stores/leaveStore';
 import useIssueStore from '../../stores/issueStore';
 import useNoticeStore from '../../stores/noticeStore';
 import useAuthStore from '../../stores/authStore';
+import useAttendanceStore from '../../stores/attendanceStore';
 
 const D_BRANCH_META = {
-  busan:        { name: '부산LAB',  dot: T.primary,   avatar: 'blue' },
-  jinju:        { name: '진주HUB',  dot: T.success,   avatar: 'emerald' },
-  hadong:       { name: '하동HUB',  dot: T.warning,   avatar: 'amber' },
+  busan:        { name: '부산LAB',  dot: T.primary,   avatar: 'blue',    accent: T.primary,   accentSoft: T.primarySoft  },
+  jinju:        { name: '진주HUB',  dot: T.success,   avatar: 'emerald', accent: T.success,   accentSoft: T.successSoft  },
+  hadong:       { name: '하동HUB',  dot: T.warning,   avatar: 'amber',   accent: T.warning,   accentSoft: T.warningSoft  },
   headquarters: { name: '총괄본사', dot: T.text,      avatar: 'slate' },
   management:   { name: '관리팀',   dot: HQ.accent,   avatar: 'slate' },
   seedlab:      { name: 'Seed LAB', dot: T.mutedSoft, avatar: 'slate' },
@@ -28,33 +30,79 @@ function HQDashboardScreen() {
   const notices      = useNoticeStore((s) => s.notices);
   const fetchNotices = useNoticeStore((s) => s.fetchNotices);
   const currentUser  = useAuthStore((s) => s.currentUser);
+  const records      = useAttendanceStore((s) => s.records);
+  const fetchRecords = useAttendanceStore((s) => s.fetchRecords);
+
+  const [monthlyHarvestByEmp, setMonthlyHarvestByEmp] = useState({});
 
   useEffect(() => {
     fetchEmployees();
     fetchRequests();
     fetchIssues();
     fetchNotices();
+    fetchRecords();
+    // harvest_records: employee_id별 이번 달 수확량 집계 (행 없으면 빈 map)
+    const now = new Date();
+    const firstOfMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
+    supabase.from('harvest_records').select('quantity, employee_id').gte('date', firstOfMonth)
+      .then(({ data }) => {
+        if (!data) return;
+        const map = {};
+        data.forEach((r) => { map[r.employee_id] = (map[r.employee_id] || 0) + (r.quantity || 0); });
+        setMonthlyHarvestByEmp(map);
+      });
   }, []);
 
-  const bwc = (code) => employees.filter(e => e.branch === code && e.isActive).length;
+  const today = new Date().toISOString().split('T')[0];
 
-  // 지점 데이터 — workers 실데이터, 출근/수확/TBM 미연결
-  const branches = [
-    { code: 'busan', name: '부산LAB', mgr: '김재배', workers: bwc('busan'), checkedIn: 18, late: 2, rate: 90, harvest: 1240, harvestT: 1200, tbm: 100, accent: T.primary, accentSoft: T.primarySoft, status: 'active' },
-    { code: 'jinju', name: '진주HUB', mgr: '박지점', workers: bwc('jinju'), checkedIn: 13, late: 0, rate: 93, harvest: 980, harvestT: 1100, tbm: 92, accent: T.success, accentSoft: T.successSoft, status: 'active' },
-    { code: 'hadong', name: '하동HUB', mgr: '최책임', workers: bwc('hadong'), checkedIn: 10, late: 1, rate: 83, harvest: 760, harvestT: 950, tbm: 75, accent: T.warning, accentSoft: T.warningSoft, status: 'alert' },
-  ];
+  const bwc = (code) => employees.filter((e) => e.branch === code && e.isActive).length;
 
-  const totalWorkers = branches.reduce((s, b) => s + b.workers, 0);
+  const branchMgr = (code) =>
+    employees.find((e) => e.branch === code && e.role === 'farm_admin' && e.isActive)?.name || '—';
+
+  const branchAttendance = (code) => {
+    const empIds = new Set(employees.filter((e) => e.branch === code && e.isActive).map((e) => e.id));
+    const todayRecs = records.filter((r) => r.date === today && empIds.has(r.employeeId));
+    return {
+      checkedIn: todayRecs.filter((r) => r.checkIn).length,
+      late: todayRecs.filter((r) => r.status === 'late').length,
+    };
+  };
+
+  const branchHarvest = (code) => {
+    const empIds = new Set(employees.filter((e) => e.branch === code && e.isActive).map((e) => e.id));
+    return [...empIds].reduce((sum, id) => sum + (monthlyHarvestByEmp[id] || 0), 0);
+  };
+
+  // 지점 — workers/mgr/checkedIn/late/harvest 실데이터, harvestT/tbm BACKLOG
+  const branches = ['busan', 'jinju', 'hadong'].map((code) => {
+    const m = D_BRANCH_META[code];
+    const workers = bwc(code);
+    const att = branchAttendance(code);
+    const harvest = branchHarvest(code);
+    const rate = workers > 0 ? Math.round(att.checkedIn / workers * 100) : 0;
+    return {
+      code, name: m.name, accent: m.accent, accentSoft: m.accentSoft,
+      mgr: branchMgr(code),
+      workers, checkedIn: att.checkedIn, late: att.late, rate,
+      harvest,
+      harvestT: 0,  // BACKLOG: HARVEST-TABLE-001
+      tbm: 0,       // BACKLOG: TBM-COMPLETION-001
+      status: rate < 80 && workers > 0 ? 'alert' : 'active',
+    };
+  });
+
+  const totalWorkers   = branches.reduce((s, b) => s + b.workers, 0);
   const totalCheckedIn = branches.reduce((s, b) => s + b.checkedIn, 0);
-  const totalHarvest = branches.reduce((s, b) => s + b.harvest, 0);
-  const totalTarget = branches.reduce((s, b) => s + b.harvestT, 0);
+  const totalHarvest   = branches.reduce((s, b) => s + b.harvest, 0);
+  const totalTarget    = branches.reduce((s, b) => s + b.harvestT, 0);
 
-  const openIssues = issues.filter(i => !i.isResolved);
+  const openIssues   = issues.filter((i) => !i.isResolved);
+  const pendingCount = requests.filter((r) => r.status === 'pending').length;
 
   const pendingLeave = useMemo(() =>
-    requests.filter(r => r.status === 'pending').slice(0, 5).map(r => {
-      const emp = employees.find(e => e.id === r.employeeId);
+    requests.filter((r) => r.status === 'pending').slice(0, 5).map((r) => {
+      const emp = employees.find((e) => e.id === r.employeeId);
       const bm = D_BRANCH_META[emp?.branch] || { name: emp?.branch || '—', dot: T.mutedSoft };
       return {
         id: r.id, branch: bm.name, bc: bm.dot, name: emp?.name || '—',
@@ -66,8 +114,8 @@ function HQDashboardScreen() {
     }), [requests, employees]);
 
   const issueFeed = useMemo(() =>
-    openIssues.slice(0, 4).map(i => {
-      const emp = employees.find(e => e.id === i.workerId);
+    openIssues.slice(0, 4).map((i) => {
+      const emp = employees.find((e) => e.id === i.workerId);
       const bm = D_BRANCH_META[emp?.branch] || { name: '—', dot: T.mutedSoft };
       const sevMap = { '병해충': 'critical', '설비고장': 'critical', '작물이상': 'warning' };
       return {
@@ -79,7 +127,7 @@ function HQDashboardScreen() {
     }), [issues, employees]);
 
   const noticeItems = useMemo(() =>
-    notices.slice(0, 4).map(n => ({
+    notices.slice(0, 4).map((n) => ({
       tag: n.priority === 'important' ? '전사 · 중요' : (n.authorTeam || '정책'),
       tone: n.priority === 'important' ? 'danger' : 'info',
       title: n.title,
@@ -87,22 +135,29 @@ function HQDashboardScreen() {
       pinned: n.priority === 'important',
     })), [notices]);
 
+  const now = new Date();
+  const titleStr = `${now.getFullYear()}년 ${now.getMonth() + 1}월 · 월간 운영 리포트`;
+  const gadongyulSub = totalWorkers > 0 ? `${totalCheckedIn} / ${totalWorkers}명 출근` : '출근 데이터 없음';
+  const harvestSub = totalTarget > 0
+    ? `목표 ${totalTarget.toLocaleString()}kg · ${Math.round(totalHarvest / totalTarget * 100)}%`
+    : '수확 목표 없음';
+
   return (
     <div style={{ flex: 1, overflow: 'auto', background: T.bg }}>
       <HQTopBar
         subtitle="본사 · 다지점 통합"
-        title="2026년 4월 · 월간 운영 리포트"
+        title={titleStr}
         actions={<>{btnSecondary('리포트 내보내기', icons.chart)}{btnPrimary('전사 공지 작성', icons.plus)}</>}
       />
 
       <div style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 20 }}>
 
-        {/* ─────── 전사 KPI 4개 (경영 지표) ─────── */}
+        {/* ─────── 전사 KPI 4개 ─────── */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12 }}>
           {[
-            { label: '전사 가동률', value: Math.round(totalCheckedIn / totalWorkers * 100), unit: '%', sub: `${totalCheckedIn} / ${totalWorkers}명 출근`, trend: '+2.1%p', tone: 'success' },
-            { label: '월 수확량', value: (totalHarvest).toLocaleString(), unit: 'kg', sub: `목표 ${totalTarget.toLocaleString()}kg · ${Math.round(totalHarvest / totalTarget * 100)}%`, trend: '▲ 8%', tone: 'primary' },
-            { label: '월 인건비', value: '8,420', unit: '만원', sub: '예산 9,200만원 · 91%', trend: '−3.2%', tone: 'warning' },
+            { label: '전사 가동률', value: totalWorkers > 0 ? Math.round(totalCheckedIn / totalWorkers * 100) : 0, unit: '%', sub: gadongyulSub, trend: '—', tone: 'success' },
+            { label: '월 수확량', value: totalHarvest.toLocaleString(), unit: 'kg', sub: harvestSub, trend: '—', tone: 'primary' },
+            { label: '월 인건비', value: '—', unit: '', sub: '집계 없음', trend: '—', tone: 'warning' },
             { label: '미해결 이슈', value: openIssues.length, unit: '건', sub: '이상 신고 미해결', trend: '긴급', tone: 'danger' },
           ].map((k, i) => {
             const tones = { success: T.success, primary: HQ.accent, warning: T.warning, danger: T.danger };
@@ -129,24 +184,21 @@ function HQDashboardScreen() {
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               <h3 style={{ fontSize: 13, fontWeight: 700, color: T.text, margin: 0 }}>지점별 운영 현황</h3>
-              <span style={{ fontSize: 11, color: T.mutedSoft }}>오늘 09:30 기준</span>
+              <span style={{ fontSize: 11, color: T.mutedSoft }}>오늘 기준</span>
             </div>
             <span style={{ fontSize: 11, color: HQ.accent, fontWeight: 600, cursor: 'pointer' }}>지점 관리 →</span>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12 }}>
             {branches.map((b) => (
               <Card key={b.code} pad={0} style={{ overflow: 'hidden', cursor: 'pointer' }}>
-                {/* 헤더 */}
                 <div style={{
-                  padding: '14px 16px',
-                  background: b.accentSoft,
+                  padding: '14px 16px', background: b.accentSoft,
                   borderBottom: `1px solid ${T.borderSoft}`,
                   display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                     <div style={{
-                      width: 34, height: 34, borderRadius: 8,
-                      background: b.accent, color: '#fff',
+                      width: 34, height: 34, borderRadius: 8, background: b.accent, color: '#fff',
                       display: 'flex', alignItems: 'center', justifyContent: 'center',
                     }}>
                       <Icon d={icons.location} size={16} c="#fff" sw={2} />
@@ -156,16 +208,10 @@ function HQDashboardScreen() {
                       <div style={{ fontSize: 10, color: T.mutedSoft, marginTop: 1 }}>지점장 {b.mgr}</div>
                     </div>
                   </div>
-                  {b.status === 'alert' ? (
-                    <Pill tone="warning">주의</Pill>
-                  ) : (
-                    <Pill tone="success">정상</Pill>
-                  )}
+                  {b.status === 'alert' ? <Pill tone="warning">주의</Pill> : <Pill tone="success">정상</Pill>}
                 </div>
 
-                {/* 바디 */}
                 <div style={{ padding: 16 }}>
-                  {/* 출근 현황 */}
                   <div style={{ marginBottom: 14 }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 6 }}>
                       <span style={{ fontSize: 11, fontWeight: 600, color: T.muted }}>출근 현황</span>
@@ -184,12 +230,11 @@ function HQDashboardScreen() {
                     </div>
                   </div>
 
-                  {/* 지표 */}
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8, paddingTop: 12, borderTop: `1px solid ${T.borderSoft}` }}>
                     {[
-                      { l: '수확', v: b.harvest, u: 'kg' },
-                      { l: '달성', v: Math.round(b.harvest / b.harvestT * 100), u: '%' },
-                      { l: 'TBM', v: b.tbm, u: '%' },
+                      { l: '수확', v: b.harvest > 0 ? b.harvest : '—', u: b.harvest > 0 ? 'kg' : '' },
+                      { l: '달성', v: b.harvestT > 0 ? `${Math.round(b.harvest / b.harvestT * 100)}` : '—', u: b.harvestT > 0 ? '%' : '' },
+                      { l: 'TBM', v: '—', u: '' },
                     ].map((s, i) => (
                       <div key={i}>
                         <div style={{ fontSize: 10, color: T.mutedSoft, fontWeight: 600 }}>{s.l}</div>
@@ -206,9 +251,8 @@ function HQDashboardScreen() {
           </div>
         </div>
 
-        {/* ─────── 중단: 지점별 수확량 비교 + 승인 허브 ─────── */}
+        {/* ─────── 지점별 수확량 비교 + 승인 허브 ─────── */}
         <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 20 }}>
-          {/* 이번 달 수확량 · 지점별 비교 */}
           <Card>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
               <div>
@@ -216,7 +260,7 @@ function HQDashboardScreen() {
                 <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginTop: 6 }}>
                   <span style={{ fontSize: 28, fontWeight: 700, color: T.text, letterSpacing: -0.6, lineHeight: 1 }}>{totalHarvest.toLocaleString()}</span>
                   <span style={{ fontSize: 13, color: T.mutedSoft, fontWeight: 500 }}>kg</span>
-                  <Pill tone="success">목표 대비 {Math.round(totalHarvest / totalTarget * 100)}%</Pill>
+                  {totalTarget > 0 && <Pill tone="success">목표 대비 {Math.round(totalHarvest / totalTarget * 100)}%</Pill>}
                 </div>
               </div>
               <div style={{ display: 'flex', gap: 4, background: T.bg, padding: 3, borderRadius: 6, fontSize: 11 }}>
@@ -232,15 +276,10 @@ function HQDashboardScreen() {
               </div>
             </div>
 
-            {/* 가로 막대 차트 (지점×주차) */}
+            {/* 주별 바 차트 — 주간 집계 없음, 0으로 표시 (BACKLOG: HARVEST-WEEKLY-001) */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: 16, marginTop: 8 }}>
               {branches.map((b) => {
-                const weeks = [
-                  { w: '1주', v: b.code === 'busan' ? 310 : b.code === 'jinju' ? 240 : 190 },
-                  { w: '2주', v: b.code === 'busan' ? 295 : b.code === 'jinju' ? 220 : 175 },
-                  { w: '3주', v: b.code === 'busan' ? 335 : b.code === 'jinju' ? 260 : 200 },
-                  { w: '4주', v: b.code === 'busan' ? 300 : b.code === 'jinju' ? 260 : 195 },
-                ];
+                const weeks = [{ w: '1주', v: 0 }, { w: '2주', v: 0 }, { w: '3주', v: 0 }, { w: '4주', v: 0 }];
                 const max = 360;
                 return (
                   <div key={b.code}>
@@ -250,15 +289,16 @@ function HQDashboardScreen() {
                         <span style={{ fontSize: 12, fontWeight: 600, color: T.text }}>{b.name}</span>
                       </div>
                       <div style={{ fontSize: 11, color: T.mutedSoft }}>
-                        <span style={{ fontSize: 14, fontWeight: 700, color: T.text }}>{b.harvest.toLocaleString()}</span> / {b.harvestT.toLocaleString()}kg
+                        <span style={{ fontSize: 14, fontWeight: 700, color: T.text }}>{b.harvest.toLocaleString()}</span>
+                        {b.harvestT > 0 ? ` / ${b.harvestT.toLocaleString()}kg` : ' kg'}
                       </div>
                     </div>
                     <div style={{ display: 'flex', gap: 3, height: 32, alignItems: 'flex-end' }}>
                       {weeks.map((w, i) => (
                         <div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3 }}>
                           <div style={{
-                            width: '100%', height: `${w.v / max * 100}%`,
-                            background: b.accent, borderRadius: '3px 3px 0 0', minHeight: 4,
+                            width: '100%', height: `${Math.max(w.v / max * 100, 0)}%`,
+                            background: b.accent, borderRadius: '3px 3px 0 0', minHeight: 4, opacity: 0.25,
                           }} />
                           <span style={{ fontSize: 9, color: T.mutedSoft }}>{w.w}</span>
                         </div>
@@ -270,29 +310,29 @@ function HQDashboardScreen() {
             </div>
 
             <div style={{ marginTop: 18, paddingTop: 14, borderTop: `1px solid ${T.borderSoft}`, display: 'flex', justifyContent: 'space-between', fontSize: 11, color: T.mutedSoft }}>
-              <span>전년 동월 대비 <span style={{ color: T.success, fontWeight: 700 }}>▲ 12.4%</span></span>
+              <span>전년 동월 대비 <span style={{ fontWeight: 700 }}>—</span></span>
               <span>작물별 상세 분석 → <span style={{ color: HQ.accent, fontWeight: 600, cursor: 'pointer' }}>보고서 열기</span></span>
             </div>
           </Card>
 
-          {/* 승인 허브 — 지점장 요청 */}
+          {/* 승인 허브 */}
           <Card>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                 <h3 style={{ fontSize: 14, fontWeight: 700, color: T.text, margin: 0 }}>승인 허브</h3>
-                <Pill tone="danger">{requests.filter(r => r.status === 'pending').length}</Pill>
+                <Pill tone="danger">{pendingCount}</Pill>
               </div>
               <span style={{ fontSize: 11, color: HQ.accent, fontWeight: 600, cursor: 'pointer' }}>전체 →</span>
             </div>
 
-            {/* 승인 필터 탭 */}
+            {/* 필터 탭 — 근태=leave_requests 전체, 예산/인사/자재 테이블 없음→0 */}
             <div style={{ display: 'flex', gap: 6, marginBottom: 12, fontSize: 11 }}>
               {[
-                { l: '전체', n: 12, on: true },
-                { l: '근태', n: 5 },
-                { l: '예산', n: 3 },
-                { l: '인사', n: 2 },
-                { l: '자재', n: 2 },
+                { l: '전체', n: pendingCount, on: true },
+                { l: '근태', n: pendingCount },
+                { l: '예산', n: 0 },
+                { l: '인사', n: 0 },
+                { l: '자재', n: 0 },
               ].map((t, i) => (
                 <span key={i} style={{
                   padding: '4px 9px', borderRadius: 6, fontWeight: 600, cursor: 'pointer',
@@ -344,9 +384,9 @@ function HQDashboardScreen() {
           </Card>
         </div>
 
-        {/* ─────── 하단: 경영지표 트렌드 + 지점 이슈 피드 + 공지 ─────── */}
+        {/* ─────── 경영지표 트렌드 + 이슈피드 + 공지 ─────── */}
         <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr 1fr', gap: 20 }}>
-          {/* 경영 지표 트렌드 (인건비 vs 수확액) */}
+          {/* 경영 지표 트렌드 — 재무 집계 없음 (BACKLOG: HQ-FINANCE-001) */}
           <Card>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 14 }}>
               <div>
@@ -357,7 +397,7 @@ function HQDashboardScreen() {
                     <span style={{ color: T.muted, fontWeight: 600 }}>수확액</span>
                   </span>
                   <span style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-                    <span style={{ width: 10, height: 2, background: T.warning, borderStyle: 'dashed' }} />
+                    <span style={{ width: 10, height: 2, background: T.warning }} />
                     <span style={{ color: T.muted, fontWeight: 600 }}>인건비</span>
                   </span>
                 </div>
@@ -365,35 +405,18 @@ function HQDashboardScreen() {
               <span style={{ fontSize: 11, color: HQ.accent, fontWeight: 600, cursor: 'pointer' }}>상세 →</span>
             </div>
 
-            {/* 라인 차트 */}
-            <div style={{ height: 140, position: 'relative', marginBottom: 8 }}>
-              <svg viewBox="0 0 420 140" width="100%" height="140" preserveAspectRatio="none">
-                {/* 그리드 */}
-                {[0, 35, 70, 105, 140].map((y, i) => (
-                  <line key={i} x1="0" y1={y} x2="420" y2={y} stroke={T.borderSoft} strokeWidth="1" />
-                ))}
-                {/* 수확액 (area) */}
-                <path d="M 0,90 L 60,75 L 120,65 L 180,55 L 240,48 L 300,38 L 360,30 L 420,28 L 420,140 L 0,140 Z"
-                  fill={HQ.accentSoft} />
-                <path d="M 0,90 L 60,75 L 120,65 L 180,55 L 240,48 L 300,38 L 360,30 L 420,28"
-                  fill="none" stroke={HQ.accent} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
-                {/* 인건비 (dashed) */}
-                <path d="M 0,95 L 60,92 L 120,88 L 180,82 L 240,78 L 300,70 L 360,62 L 420,58"
-                  fill="none" stroke={T.warning} strokeWidth="2" strokeDasharray="4 3" strokeLinecap="round" />
-                {/* 현재 포인트 */}
-                <circle cx="420" cy="28" r="4" fill={HQ.accent} stroke="#fff" strokeWidth="2" />
-                <circle cx="420" cy="58" r="4" fill={T.warning} stroke="#fff" strokeWidth="2" />
-              </svg>
+            <div style={{ height: 140, display: 'flex', alignItems: 'center', justifyContent: 'center', background: T.bg, borderRadius: 8, marginBottom: 8 }}>
+              <span style={{ fontSize: 12, color: T.mutedSoft }}>재무 데이터 집계 없음</span>
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: T.mutedSoft, padding: '0 2px' }}>
-              {['10월', '11월', '12월', '1월', '2월', '3월', '4월'].map(m => <span key={m}>{m}</span>)}
+              {['10월', '11월', '12월', '1월', '2월', '3월', '4월'].map((m) => <span key={m}>{m}</span>)}
             </div>
 
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8, marginTop: 16, paddingTop: 14, borderTop: `1px solid ${T.borderSoft}` }}>
               {[
-                { l: '수확액', v: '4.2억', sub: '▲ 18%', tone: T.success },
-                { l: '인건비율', v: '20%', sub: '전년比 −2%p', tone: T.success },
-                { l: 'kg당 원가', v: '2,740원', sub: '▼ 6%', tone: T.success },
+                { l: '수확액', v: '—', sub: '집계 없음', tone: T.mutedSoft },
+                { l: '인건비율', v: '—', sub: '집계 없음', tone: T.mutedSoft },
+                { l: 'kg당 원가', v: '—', sub: '집계 없음', tone: T.mutedSoft },
               ].map((s, i) => (
                 <div key={i}>
                   <div style={{ fontSize: 10, color: T.mutedSoft, fontWeight: 600 }}>{s.l}</div>
@@ -421,10 +444,7 @@ function HQDashboardScreen() {
                 const sevBg = { critical: T.dangerSoft, warning: T.warningSoft, info: T.infoSoft }[it.severity];
                 const sevBorder = { critical: T.danger, warning: T.warning, info: T.info }[it.severity];
                 return (
-                  <div key={i} style={{
-                    padding: '10px 12px', background: sevBg, borderRadius: 8,
-                    borderLeft: `3px solid ${sevBorder}`,
-                  }}>
+                  <div key={i} style={{ padding: '10px 12px', background: sevBg, borderRadius: 8, borderLeft: `3px solid ${sevBorder}` }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
                       <Dot c={it.bc} />
                       <span style={{ fontSize: 11, fontWeight: 700, color: T.muted }}>{it.branch}</span>
@@ -437,7 +457,7 @@ function HQDashboardScreen() {
                 );
               })}
               <div style={{ padding: 10, background: T.bg, borderRadius: 8, textAlign: 'center' }}>
-                <span style={{ fontSize: 11, color: T.mutedSoft }}>해결됨 · 총 {issues.filter(i => i.isResolved).length}건</span>
+                <span style={{ fontSize: 11, color: T.mutedSoft }}>해결됨 · 총 {issues.filter((i) => i.isResolved).length}건</span>
               </div>
             </div>
           </Card>
@@ -457,15 +477,9 @@ function HQDashboardScreen() {
                 const tones = { danger: T.danger, primary: T.primary, success: T.success, warning: T.warning, info: HQ.accent, muted: T.mutedSoft };
                 const softs = { danger: T.dangerSoft, primary: T.primarySoft, success: T.successSoft, warning: T.warningSoft, info: HQ.accentSoft, muted: T.bg };
                 return (
-                  <div key={i} style={{
-                    padding: '10px 12px', background: T.bg, borderRadius: 8,
-                    borderLeft: n.pinned ? `3px solid ${T.danger}` : '3px solid transparent',
-                  }}>
+                  <div key={i} style={{ padding: '10px 12px', background: T.bg, borderRadius: 8, borderLeft: n.pinned ? `3px solid ${T.danger}` : '3px solid transparent' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 5 }}>
-                      <span style={{
-                        fontSize: 10, fontWeight: 700, padding: '2px 6px', borderRadius: 4,
-                        background: softs[n.tone], color: tones[n.tone],
-                      }}>{n.tag}</span>
+                      <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 6px', borderRadius: 4, background: softs[n.tone], color: tones[n.tone] }}>{n.tag}</span>
                       {n.pinned && <Icon d="M10 2l2 5 5 1-4 4 1 6-5-3-5 3 1-6-4-4 5-1z" size={11} c={T.danger} />}
                     </div>
                     <div style={{ fontSize: 12, fontWeight: 600, color: T.text, lineHeight: 1.35 }}>{n.title}</div>
@@ -475,10 +489,9 @@ function HQDashboardScreen() {
               })}
             </div>
 
-            {/* 하단 요약 */}
             <div style={{ marginTop: 12, paddingTop: 12, borderTop: `1px solid ${T.borderSoft}`, display: 'flex', justifyContent: 'space-between', fontSize: 11 }}>
               <span style={{ color: T.mutedSoft }}>활성 공지 <span style={{ color: T.text, fontWeight: 700 }}>{notices.length}건</span></span>
-              <span style={{ color: T.mutedSoft }}>평균 열람률 <span style={{ color: T.success, fontWeight: 700 }}>83%</span></span>
+              <span style={{ color: T.mutedSoft }}>평균 열람률 <span style={{ fontWeight: 700 }}>—</span></span>
             </div>
           </Card>
         </div>
