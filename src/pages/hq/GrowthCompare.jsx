@@ -1,113 +1,47 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
+import { T, Card, Pill, icons, btnSecondary } from '../../design/primitives';
 import { HQ } from '../../design/hq-shell';
-import { Card, Pill, T, btnSecondary, icons } from '../../design/primitives';
-import { supabase } from '../../lib/supabase';
 
 // HQ 지점별 생육 비교 위젯 — 3개 지점 × 작물 × 건전도/편차
+// HQ_GR_DATA: 부산LAB / 진주HUB / 하동HUB 각 지점별 작물별 생육 요약
 
-// ─── 상수 ───────────────────────────────────────────────
-const BRANCH_IDS = ['busan', 'jinju', 'hadong'];
-const BRANCH_NAMES_MAP = { busan: '부산LAB', jinju: '진주HUB', hadong: '하동HUB' };
-const SEASON_START = '2026-01-11'; // 생육 조사 시작일
-const PRIMARY_METRIC = '개화 화방 높이'; // standard_curves metric_key: flowerClusterH
-
-function computeWeek(dateStr) {
-  if (!dateStr) return 1;
-  const days = Math.round((new Date(dateStr) - new Date(SEASON_START)) / (7 * 24 * 3600 * 1000));
-  return Math.max(1, days + 1);
-}
+const HQ_GR_DATA = {
+  branches: [
+    {
+      id: 'b1', name: '부산LAB', crops: [
+        { name: '토마토', health: 92, dev: +2, week: 8, plants: 8, open: 1 },
+        { name: '딸기', health: 88, dev: -4, week: 6, plants: 6, open: 0 },
+        { name: '파프리카', health: 84, dev: -9, week: 10, plants: 6, open: 2 },
+      ],
+    },
+    {
+      id: 'b2', name: '진주HUB', crops: [
+        { name: '오이', health: 94, dev: +3, week: 5, plants: 8, open: 0 },
+        { name: '애호박', health: 91, dev: +1, week: 7, plants: 6, open: 1 },
+      ],
+    },
+    {
+      id: 'b3', name: '하동HUB', crops: [
+        { name: '방울토마토', health: 89, dev: -2, week: 9, plants: 8, open: 1 },
+        { name: '고추', health: 78, dev: -12, week: 11, plants: 6, open: 3 },
+      ],
+    },
+  ],
+};
 
 function HQGrowthCompareScreen() {
-  const [grBranches, setGrBranches] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const toneByDev = (d) => Math.abs(d) <= 3 ? T.success : Math.abs(d) <= 8 ? T.warning : T.danger;
+  const toneByHealth = (h) => h >= 90 ? T.success : h >= 80 ? T.warning : T.danger;
 
-  useEffect(() => {
-    async function load() {
-      const [scRes, gsRes, empRes] = await Promise.all([
-        supabase.from('standard_curves').select('*, crops(name)').eq('season', '2026').eq('metric_key', 'flowerClusterH'),
-        supabase.from('growth_surveys').select('id, survey_date, crop_id, worker_id, measurements, crops(id, name)').order('survey_date', { ascending: false }),
-        supabase.from('employees').select('id, branch'),
-      ]);
-      if (scRes.error || gsRes.error || empRes.error) { setLoading(false); return; }
-
-      // 직원 ID → 지점 코드
-      const empBranch = Object.fromEntries((empRes.data ?? []).map(e => [e.id, e.branch]));
-
-      // 표준 곡선: 작물명 → 주차 → 목표값
-      const sc = {};
-      for (const row of scRes.data ?? []) {
-        const cn = row.crops?.name;
-        if (!cn) continue;
-        if (!sc[cn]) sc[cn] = {};
-        sc[cn][row.week] = Number(row.target_value);
-      }
-
-      // 지점 × 작물별 조사 그룹화
-      const byBC = {};
-      for (const s of gsRes.data ?? []) {
-        const branch = empBranch[s.worker_id];
-        const cropName = s.crops?.name;
-        if (!branch || !cropName) continue;
-        const key = `${branch}__${cropName}`;
-        if (!byBC[key]) byBC[key] = { branch, crop: cropName, surveys: [] };
-        byBC[key].surveys.push(s);
-      }
-
-      // 지점별 작물 집계 계산
-      const result = BRANCH_IDS.map((code) => {
-        const branchName = BRANCH_NAMES_MAP[code];
-        const entries = Object.values(byBC).filter(e => e.branch === code);
-
-        if (entries.length === 0) {
-          return {
-            id: code, name: branchName,
-            crops: [{ name: '데이터 없음', health: null, dev: null, week: null, plants: 0, open: 0, noData: true }],
-          };
-        }
-
-        const crops = entries.map(({ crop, surveys }) => {
-          const latestDate = surveys[0]?.survey_date;
-          const weekNum = computeWeek(latestDate);
-          const latestSurveys = surveys.filter(s => s.survey_date === latestDate);
-          const plants = latestSurveys.length;
-
-          const vals = latestSurveys
-            .map(s => { const m = (s.measurements ?? []).find(m => m.name === PRIMARY_METRIC); return m ? Number(m.value) : null; })
-            .filter(v => v !== null);
-          const avg = vals.length > 0 ? vals.reduce((a, b) => a + b, 0) / vals.length : null;
-
-          const targetWeek = Math.min(weekNum, 12);
-          const target = sc[crop]?.[targetWeek] ?? null;
-          const dev = avg !== null && target !== null
-            ? Math.round((avg - target) / target * 100)
-            : null;
-          const health = dev !== null
-            ? Math.min(100, Math.max(60, Math.round(90 - Math.abs(dev) * 1.5)))
-            : null;
-
-          return { name: crop, health, dev, week: weekNum, plants, open: 0, noData: dev === null };
-        });
-
-        return { id: code, name: branchName, crops };
-      });
-
-      setGrBranches(result);
-      setLoading(false);
-    }
-    load();
-  }, []);
-
-  const toneByDev = (d) => d == null ? T.mutedSoft : Math.abs(d) <= 3 ? T.success : Math.abs(d) <= 8 ? T.warning : T.danger;
-  const toneByHealth = (h) => h == null ? T.mutedSoft : h >= 90 ? T.success : h >= 80 ? T.warning : T.danger;
-
-  // 집계 (null 제외)
-  const validCrops = grBranches.flatMap(b => b.crops.filter(c => !c.noData));
-  const totalPlants = validCrops.reduce((s, c) => s + c.plants, 0);
-  const totalOpen = grBranches.reduce((s, b) => s + b.crops.reduce((a, c) => a + (c.open || 0), 0), 0);
-  const avgHealth = validCrops.length > 0
-    ? Math.round(validCrops.reduce((s, c) => s + c.health, 0) / validCrops.length)
-    : 0;
-  const criticalCount = validCrops.filter(c => Math.abs(c.dev) > 8 || c.health < 80).length;
+  // 집계
+  const totalPlants = HQ_GR_DATA.branches.reduce((s, b) => s + b.crops.reduce((a, c) => a + c.plants, 0), 0);
+  const totalOpen = HQ_GR_DATA.branches.reduce((s, b) => s + b.crops.reduce((a, c) => a + c.open, 0), 0);
+  const avgHealth = Math.round(
+    HQ_GR_DATA.branches.reduce((s, b) => s + b.crops.reduce((a, c) => a + c.health, 0), 0) /
+    HQ_GR_DATA.branches.reduce((s, b) => s + b.crops.length, 0)
+  );
+  const criticalCount = HQ_GR_DATA.branches.reduce((s, b) =>
+    s + b.crops.filter(c => Math.abs(c.dev) > 8 || c.health < 80).length, 0);
 
   return (
     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
@@ -132,7 +66,7 @@ function HQGrowthCompareScreen() {
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12 }}>
           {[
             { l: '평균 건전도', v: avgHealth, u: '%', sub: '전사 가중평균', tone: toneByHealth(avgHealth) },
-            { l: '추적 표식주', v: totalPlants, u: '주', sub: `${grBranches.length}개 지점`, tone: T.text },
+            { l: '추적 표식주', v: totalPlants, u: '주', sub: `${HQ_GR_DATA.branches.length}개 지점`, tone: T.text },
             { l: '주의 필요', v: criticalCount, u: '건', sub: '편차 초과 또는 건전도 하락', tone: criticalCount > 0 ? T.warning : T.success },
             { l: '미조치 이상', v: totalOpen, u: '건', sub: '전사 합계', tone: totalOpen > 0 ? T.danger : T.success },
           ].map((k, i) => (
@@ -148,28 +82,18 @@ function HQGrowthCompareScreen() {
         </div>
 
         {/* 지점별 카드 */}
-        {loading ? (
-          <div style={{ padding: 32, textAlign: 'center', color: T.mutedSoft, fontSize: 13 }}>로딩 중...</div>
-        ) : grBranches.length === 0 ? (
-          <div style={{ padding: 32, textAlign: 'center', color: T.mutedSoft, fontSize: 13 }}>데이터가 없습니다</div>
-        ) : (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12 }}>
-          {grBranches.map(b => {
-            const validBCrops = b.crops.filter(c => c.health != null);
-            const bAvg = validBCrops.length > 0
-              ? Math.round(validBCrops.reduce((a, c) => a + c.health, 0) / validBCrops.length)
-              : null;
+          {HQ_GR_DATA.branches.map(b => {
+            const bAvg = Math.round(b.crops.reduce((a, c) => a + c.health, 0) / b.crops.length);
             return (
               <Card key={b.id} pad={0}>
                 <div style={{ padding: '14px 16px', borderBottom: `1px solid ${T.borderSoft}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <div>
                     <h3 style={{ fontSize: 14, fontWeight: 700, color: T.text, margin: 0 }}>{b.name}</h3>
-                    <div style={{ fontSize: 11, color: T.mutedSoft, marginTop: 2 }}>{b.crops.filter(c => !c.noData).length}개 작물 · {b.crops.reduce((a, c) => a + c.plants, 0)}주 추적</div>
+                    <div style={{ fontSize: 11, color: T.mutedSoft, marginTop: 2 }}>{b.crops.length}개 작물 · {b.crops.reduce((a, c) => a + c.plants, 0)}주 추적</div>
                   </div>
                   <div style={{ textAlign: 'right' }}>
-                    <div style={{ fontSize: 22, fontWeight: 700, color: toneByHealth(bAvg), letterSpacing: -0.4, fontVariantNumeric: 'tabular-nums' }}>
-                      {bAvg != null ? bAvg : '—'}<span style={{ fontSize: 11, color: T.mutedSoft, marginLeft: 2 }}>{bAvg != null ? '%' : ''}</span>
-                    </div>
+                    <div style={{ fontSize: 22, fontWeight: 700, color: toneByHealth(bAvg), letterSpacing: -0.4, fontVariantNumeric: 'tabular-nums' }}>{bAvg}<span style={{ fontSize: 11, color: T.mutedSoft, marginLeft: 2 }}>%</span></div>
                     <div style={{ fontSize: 10, color: T.mutedSoft }}>건전도</div>
                   </div>
                 </div>
@@ -179,20 +103,19 @@ function HQGrowthCompareScreen() {
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 6 }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                           <span style={{ fontSize: 12, fontWeight: 700, color: T.text }}>{c.name}</span>
-                          {c.week != null && <span style={{ fontSize: 10, color: T.mutedSoft }}>작기 {c.week}주차</span>}
+                          <span style={{ fontSize: 10, color: T.mutedSoft }}>작기 {c.week}주차</span>
                           {c.open > 0 && <Pill tone="danger" size="sm">이상 {c.open}</Pill>}
-                          {c.noData && <span style={{ fontSize: 10, color: T.mutedSoft }}>· 편차 데이터 없음</span>}
                         </div>
                         <span style={{ fontSize: 12, fontWeight: 700, color: toneByDev(c.dev), fontVariantNumeric: 'tabular-nums' }}>
-                          {c.dev != null ? `${c.dev >= 0 ? '+' : ''}${c.dev}%` : '—'}
+                          {c.dev >= 0 ? '+' : ''}{c.dev}%
                         </span>
                       </div>
                       {/* 건전도 바 */}
                       <div style={{ position: 'relative', height: 4, background: T.borderSoft, borderRadius: 999 }}>
-                        <div style={{ position: 'absolute', left: 0, top: 0, width: `${c.health ?? 0}%`, height: '100%', background: toneByHealth(c.health), borderRadius: 999 }} />
+                        <div style={{ position: 'absolute', left: 0, top: 0, width: `${c.health}%`, height: '100%', background: toneByHealth(c.health), borderRadius: 999 }} />
                       </div>
                       <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: T.mutedSoft, marginTop: 4 }}>
-                        <span>건전도 {c.health != null ? `${c.health}%` : '—'}</span>
+                        <span>건전도 {c.health}%</span>
                         <span>표식주 {c.plants}주</span>
                       </div>
                     </div>
@@ -207,7 +130,6 @@ function HQGrowthCompareScreen() {
             );
           })}
         </div>
-        )}
 
         {/* 작물×지점 편차 매트릭스 */}
         <Card>
@@ -236,35 +158,31 @@ function HQGrowthCompareScreen() {
               </tr>
             </thead>
             <tbody>
-              {grBranches.flatMap(b => b.crops.map(c => ({ b: b.name, ...c }))).map((row, i) => {
-                const devPct = row.dev != null ? Math.min(Math.abs(row.dev) / 15 * 50, 50) : 0;
+              {HQ_GR_DATA.branches.flatMap(b => b.crops.map(c => ({ b: b.name, ...c }))).map((row, i) => {
+                const devPct = Math.min(Math.abs(row.dev) / 15 * 50, 50);
                 const tone = toneByDev(row.dev);
                 return (
                   <tr key={i} style={{ borderBottom: `1px solid ${T.borderSoft}` }}>
                     <td style={{ padding: '10px 14px', fontSize: 12, fontWeight: 700, color: T.text }}>{row.b}</td>
                     <td style={{ padding: '10px 14px', fontSize: 12, color: T.text }}>{row.name}</td>
-                    <td style={{ padding: '10px 10px', textAlign: 'right', fontSize: 12, color: T.muted, fontVariantNumeric: 'tabular-nums' }}>{row.week != null ? `${row.week}주` : '—'}</td>
+                    <td style={{ padding: '10px 10px', textAlign: 'right', fontSize: 12, color: T.muted, fontVariantNumeric: 'tabular-nums' }}>{row.week}주</td>
                     <td style={{ padding: '10px 10px', textAlign: 'right', fontSize: 12, color: T.muted, fontVariantNumeric: 'tabular-nums' }}>{row.plants}</td>
-                    <td style={{ padding: '10px 10px', textAlign: 'right', fontSize: 12, fontWeight: 700, color: toneByHealth(row.health), fontVariantNumeric: 'tabular-nums' }}>{row.health != null ? `${row.health}%` : '—'}</td>
+                    <td style={{ padding: '10px 10px', textAlign: 'right', fontSize: 12, fontWeight: 700, color: toneByHealth(row.health), fontVariantNumeric: 'tabular-nums' }}>{row.health}%</td>
                     <td style={{ padding: '10px 14px' }}>
-                      {row.dev != null ? (
-                        <div style={{ position: 'relative', height: 18, background: T.bg, borderRadius: 4 }}>
-                          <span style={{ position: 'absolute', left: '50%', top: 0, width: 1, height: '100%', background: T.mutedSoft }} />
-                          <div style={{
-                            position: 'absolute', top: 3, height: 12,
-                            left: row.dev >= 0 ? '50%' : `${50 - devPct}%`,
-                            width: `${devPct}%`,
-                            background: tone, borderRadius: 3,
-                          }} />
-                          <span style={{
-                            position: 'absolute', top: '50%', transform: 'translateY(-50%)',
-                            [row.dev >= 0 ? 'right' : 'left']: 6,
-                            fontSize: 10, fontWeight: 700, color: T.text,
-                          }}>{row.dev >= 0 ? '+' : ''}{row.dev}%</span>
-                        </div>
-                      ) : (
-                        <span style={{ fontSize: 11, color: T.mutedSoft }}>데이터 없음</span>
-                      )}
+                      <div style={{ position: 'relative', height: 18, background: T.bg, borderRadius: 4 }}>
+                        <span style={{ position: 'absolute', left: '50%', top: 0, width: 1, height: '100%', background: T.mutedSoft }} />
+                        <div style={{
+                          position: 'absolute', top: 3, height: 12,
+                          left: row.dev >= 0 ? '50%' : `${50 - devPct}%`,
+                          width: `${devPct}%`,
+                          background: tone, borderRadius: 3,
+                        }} />
+                        <span style={{
+                          position: 'absolute', top: '50%', transform: 'translateY(-50%)',
+                          [row.dev >= 0 ? 'right' : 'left']: 6,
+                          fontSize: 10, fontWeight: 700, color: T.text,
+                        }}>{row.dev >= 0 ? '+' : ''}{row.dev}%</span>
+                      </div>
                     </td>
                     <td style={{ padding: '10px 14px', textAlign: 'center' }}>
                       {row.open > 0
@@ -299,4 +217,5 @@ function HQGrowthCompareScreen() {
     </div>
   );
 }
-export { HQGrowthCompareScreen };
+
+export { HQGrowthCompareScreen, HQ_GR_DATA };

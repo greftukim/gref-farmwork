@@ -1,94 +1,41 @@
-import React, { useState, useMemo, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState } from 'react';
+import { T, Card, Pill, Dot, Icon, icons, btnPrimary, btnGhostStyle } from '../../design/primitives';
 import { HQ } from '../../design/hq-shell';
-import { Card, Dot, Icon, Pill, T, btnGhostStyle, btnPrimary, icons } from '../../design/primitives';
-import useAuthStore from '../../stores/authStore';
-import useBranchStore from '../../stores/branchStore';
-import useEmployeeStore from '../../stores/employeeStore';
-import useAttendanceStore from '../../stores/attendanceStore';
-import useLeaveStore from '../../stores/leaveStore';
-import useOvertimeStore from '../../stores/overtimeStore';
-
-// ─── 상수 ───────────────────────────────────────────────
-const TODAY = new Date().toISOString().split('T')[0];
-const FARM_BRANCHES = ['busan', 'jinju', 'hadong'];
-const BRANCH_ACCENT = { busan: T.primary, jinju: T.success, hadong: T.warning };
-const BRANCH_ACCENT_SOFT = { busan: T.primarySoft, jinju: T.successSoft, hadong: T.warningSoft };
-const BRANCH_NAMES = { busan: '부산LAB', jinju: '진주HUB', hadong: '하동HUB' };
-const LEAVE_TYPE_KO = {
-  annual: '연차 신청', half_am: '오전 반차', half_pm: '오후 반차',
-  special: '특별휴가', sick: '병가',
-  연차: '연차 신청', 오전반차: '오전 반차', 오후반차: '오후 반차',
-};
-function timeAgo(iso) {
-  if (!iso) return '-';
-  const diff = Date.now() - new Date(iso).getTime();
-  const min = Math.floor(diff / 60000);
-  if (min < 1) return '방금';
-  if (min < 60) return `${min}분 전`;
-  const h = Math.floor(min / 60);
-  if (h < 24) return `${h}시간 전`;
-  return `${Math.floor(h / 24)}일 전`;
-}
-function formatDate(dateStr) {
-  if (!dateStr) return '-';
-  const d = new Date(dateStr);
-  const days = ['일', '월', '화', '수', '목', '금', '토'];
-  return `${d.getMonth() + 1}/${d.getDate()} (${days[d.getDay()]})`;
-}
 
 // 관리팀(본사) 대시보드 — 인터랙티브
 // 기간 탭 · 지점 막대 → 클릭 시 작물별 분해 드릴다운 · 승인 필터 · 지점 상세 모달
 
 function HQDashboardInteractive() {
-  const navigate = useNavigate();
   const [period, setPeriod] = useState('월');
   const [drillBranch, setDrillBranch] = useState(null); // code or null
   const [approvalFilter, setApprovalFilter] = useState('전체');
   const [branchModal, setBranchModal] = useState(null);
-  const [processing, setProcessing] = useState(null);
 
-  const currentUser = useAuthStore((s) => s.currentUser);
-  const branchList = useBranchStore((s) => s.branches);
-  const employees = useEmployeeStore((s) => s.employees);
-  const records = useAttendanceStore((s) => s.records);
-  const leaveRequests = useLeaveStore((s) => s.requests);
-  const overtimeRequests = useOvertimeStore((s) => s.requests);
-  const farmReview = useLeaveStore((s) => s.farmReview);
-  const otApprove = useOvertimeStore((s) => s.approveRequest);
-  const otReject = useOvertimeStore((s) => s.rejectRequest);
-
-  const empMap = useMemo(() => Object.fromEntries(employees.map((e) => [e.id, e])), [employees]);
-  const todayRecords = useMemo(() => records.filter((r) => r.date === TODAY && r.checkIn), [records]);
-
-  // 지점별 실데이터 (출근·지각·가동률·관리자명) — 수확/작물은 DB 부재로 fallback
-  const branches = useMemo(() => FARM_BRANCHES.map((code) => {
-    const branch = branchList.find((b) => b.code === code);
-    const branchEmps = employees.filter((e) => e.isActive && e.branch === code);
-    const checkedInRecs = todayRecords.filter((r) => empMap[r.employeeId]?.branch === code);
-    const lateRecs = checkedInRecs.filter((r) => r.status === 'late');
-    const workers = branchEmps.length || 0;
-    const checkedIn = checkedInRecs.length;
-    const late = lateRecs.length;
-    const rate = workers ? Math.round((checkedIn / workers) * 100) : 0;
-    const mgr = branchEmps.find((e) => e.role === 'farm_admin' && !e.name.includes('팀'))?.name ?? '-';
-    return {
-      code,
-      name: branch?.name ?? BRANCH_NAMES[code] ?? code,
-      mgr,
-      workers,
-      checkedIn,
-      late,
-      rate,
-      harvest: 0,
-      harvestT: 0,
-      tbm: 0,
-      accent: BRANCH_ACCENT[code] ?? T.muted,
-      accentSoft: BRANCH_ACCENT_SOFT[code] ?? T.bg,
-      status: workers > 0 && rate < 85 ? 'alert' : 'active',
-      crops: [],
-    };
-  }), [branchList, employees, todayRecords, empMap]);
+  // 지점 + 지점별 작물 구성
+  const branches = [
+    { code: 'busan', name: '부산LAB', mgr: '김재배', workers: 20, checkedIn: 18, late: 2, rate: 90,
+      harvest: 1240, harvestT: 1200, tbm: 100, accent: T.primary, accentSoft: T.primarySoft, status: 'active',
+      crops: [
+        { name: '토마토', v: 580, t: 560, c: '#E11D48' },
+        { name: '딸기', v: 360, t: 360, c: '#EC4899' },
+        { name: '파프리카', v: 300, t: 280, c: '#F59E0B' },
+      ],
+    },
+    { code: 'jinju', name: '진주HUB', mgr: '박지점', workers: 14, checkedIn: 13, late: 0, rate: 93,
+      harvest: 980, harvestT: 1100, tbm: 92, accent: T.success, accentSoft: T.successSoft, status: 'active',
+      crops: [
+        { name: '오이', v: 620, t: 700, c: '#10B981' },
+        { name: '애호박', v: 360, t: 400, c: '#84CC16' },
+      ],
+    },
+    { code: 'hadong', name: '하동HUB', mgr: '최책임', workers: 12, checkedIn: 10, late: 1, rate: 83,
+      harvest: 760, harvestT: 950, tbm: 75, accent: T.warning, accentSoft: T.warningSoft, status: 'alert',
+      crops: [
+        { name: '방울토마토', v: 480, t: 600, c: '#F97316' },
+        { name: '고추', v: 280, t: 350, c: '#DC2626' },
+      ],
+    },
+  ];
 
   // 기간별 스케일 배수 (같은 지점 구조 유지, 총량만 스케일)
   const periodMeta = {
@@ -99,64 +46,16 @@ function HQDashboardInteractive() {
   };
   const pm = periodMeta[period];
 
-  // 승인 데이터 — 근태는 실데이터, 예산·인사·자재는 정적 fallback
-  const approvals = useMemo(() => {
-    const leaves = leaveRequests
-      .filter((r) => r.status === 'pending')
-      .map((r) => {
-        const emp = empMap[r.employeeId];
-        return {
-          id: r.id,
-          _table: 'leave_requests',
-          branch: BRANCH_NAMES[emp?.branch] ?? emp?.branch ?? '-',
-          bc: BRANCH_ACCENT[emp?.branch] ?? T.muted,
-          name: emp?.name ?? '-',
-          tag: '근태', tagTone: 'primary',
-          type: LEAVE_TYPE_KO[r.type] ?? r.type ?? '휴가',
-          detail: formatDate(r.startDate ?? r.date) + ' · 본인',
-          time: timeAgo(r.createdAt),
-          urgent: false,
-          _sk: new Date(r.createdAt || 0).getTime(),
-        };
-      });
-    const ots = overtimeRequests
-      .filter((r) => r.status === 'pending')
-      .map((r) => {
-        const emp = empMap[r.employeeId];
-        return {
-          id: r.id,
-          _table: 'overtime_requests',
-          branch: BRANCH_NAMES[emp?.branch] ?? emp?.branch ?? '-',
-          bc: BRANCH_ACCENT[emp?.branch] ?? T.muted,
-          name: emp?.name ?? '-',
-          tag: '근태', tagTone: 'primary',
-          type: '연장근무 승인',
-          detail: `${formatDate(r.date)} · ${r.hours ?? 0}시간${r.minutes ? ` ${r.minutes}분` : ''}`,
-          time: timeAgo(r.createdAt),
-          urgent: false,
-          _sk: new Date(r.createdAt || 0).getTime(),
-        };
-      });
-    const geuntae = [...leaves, ...ots].sort((a, b) => b._sk - a._sk);
-    return geuntae;
-  }, [leaveRequests, overtimeRequests, empMap]);
-
-  const handleApprove = useCallback(async (r) => {
-    if (!r._table || processing) return;
-    setProcessing(r.id);
-    if (r._table === 'leave_requests') await farmReview(r.id, true, currentUser?.id);
-    else await otApprove(r.id, currentUser?.id);
-    setProcessing(null);
-  }, [farmReview, otApprove, currentUser, processing]);
-
-  const handleReject = useCallback(async (r) => {
-    if (!r._table || processing) return;
-    setProcessing(r.id);
-    if (r._table === 'leave_requests') await farmReview(r.id, false, currentUser?.id);
-    else await otReject(r.id, currentUser?.id);
-    setProcessing(null);
-  }, [farmReview, otReject, currentUser, processing]);
-
+  // 승인 데이터
+  const approvals = [
+    { id: 1, branch: '부산LAB', bc: T.primary, name: '김재배', tag: '근태', tagTone: 'primary', type: '연차 신청', detail: '4/23 (수) · 본인', time: '10분 전', urgent: false },
+    { id: 2, branch: '하동HUB', bc: T.warning, name: '최책임', tag: '예산', tagTone: 'warning', type: '설비 구매 요청', detail: '환기팬 2대 · 480만원', time: '42분 전', urgent: true },
+    { id: 3, branch: '진주HUB', bc: T.success, name: '박지점', tag: '인사', tagTone: 'info', type: '신규 작업자 등록', detail: '임시 3명 · 5/1~31', time: '1시간 전', urgent: false },
+    { id: 4, branch: '부산LAB', bc: T.primary, name: '김재배', tag: '자재', tagTone: 'success', type: '농약 재고 발주', detail: '총 120만원', time: '2시간 전', urgent: false },
+    { id: 5, branch: '하동HUB', bc: T.warning, name: '최책임', tag: '근태', tagTone: 'primary', type: '연장근무 승인', detail: '오늘 2명 · 각 2h', time: '3시간 전', urgent: false },
+    { id: 6, branch: '진주HUB', bc: T.success, name: '박지점', tag: '예산', tagTone: 'warning', type: '비료 추가 발주', detail: '총 340만원', time: '4시간 전', urgent: false },
+    { id: 7, branch: '부산LAB', bc: T.primary, name: '김재배', tag: '인사', tagTone: 'info', type: '계약직 재계약', detail: '2명 · 7/1 시행', time: '5시간 전', urgent: false },
+  ];
   const approvalFiltered = approvalFilter === '전체' ? approvals : approvals.filter(a => a.tag === approvalFilter);
   const approvalCounts = {
     '전체': approvals.length, '근태': approvals.filter(a => a.tag === '근태').length,
@@ -209,7 +108,7 @@ function HQDashboardInteractive() {
               <h3 style={{ fontSize: 13, fontWeight: 700, color: T.text, margin: 0 }}>지점별 운영 현황</h3>
               <span style={{ fontSize: 11, color: T.mutedSoft }}>클릭하여 상세 보기</span>
             </div>
-            <span onClick={() => navigate('/admin/hq/branches')} style={{ fontSize: 11, color: HQ.accent, fontWeight: 600, cursor: 'pointer' }}>지점 관리 →</span>
+            <span style={{ fontSize: 11, color: HQ.accent, fontWeight: 600, cursor: 'pointer' }}>지점 관리 →</span>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12 }}>
             {branches.map((b) => (
@@ -289,7 +188,7 @@ function HQDashboardInteractive() {
                     background: T.surface, color: T.muted, fontSize: 11, fontWeight: 600, cursor: 'pointer',
                     marginBottom: 10,
                   }}>
-                    <Icon d={<polyline points="15 18 9 12 15 6"/>} size={11} sw={2.2} />
+                    <Icon d="M15 18l-6-6 6-6" size={11} sw={2.2} />
                     지점 비교로 돌아가기
                   </button>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6 }}>
@@ -342,7 +241,7 @@ function HQDashboardInteractive() {
                 <h3 style={{ fontSize: 14, fontWeight: 700, color: T.text, margin: 0 }}>승인 허브</h3>
                 <Pill tone="danger">{approvalFiltered.length}</Pill>
               </div>
-              <span onClick={() => navigate('/admin/hq/approvals')} style={{ fontSize: 11, color: HQ.accent, fontWeight: 600, cursor: 'pointer' }}>전체 →</span>
+              <span style={{ fontSize: 11, color: HQ.accent, fontWeight: 600, cursor: 'pointer' }}>전체 →</span>
             </div>
 
             <div style={{ display: 'flex', gap: 6, marginBottom: 12, fontSize: 11, flexWrap: 'wrap' }}>
@@ -386,22 +285,14 @@ function HQDashboardInteractive() {
                   <div style={{ fontSize: 12, fontWeight: 600, color: T.text }}>{r.type}</div>
                   <div style={{ fontSize: 11, color: T.muted, marginTop: 2 }}>{r.detail}</div>
                   <div style={{ display: 'flex', gap: 6, marginTop: 8 }}>
-                    <button
-                      onClick={() => r._table && handleReject(r)}
-                      disabled={!!processing}
-                      style={{
-                        flex: 1, padding: '5px 0', borderRadius: 6, border: `1px solid ${T.border}`,
-                        background: T.surface, color: T.muted, fontSize: 11, fontWeight: 600,
-                        cursor: r._table ? 'pointer' : 'default', opacity: processing === r.id ? 0.6 : 1,
-                      }}>반려</button>
-                    <button
-                      onClick={() => r._table && handleApprove(r)}
-                      disabled={!!processing}
-                      style={{
-                        flex: 1, padding: '5px 0', borderRadius: 6, border: 0,
-                        background: HQ.accent, color: '#fff', fontSize: 11, fontWeight: 600,
-                        cursor: r._table ? 'pointer' : 'default', opacity: processing === r.id ? 0.6 : 1,
-                      }}>승인</button>
+                    <button style={{
+                      flex: 1, padding: '5px 0', borderRadius: 6, border: `1px solid ${T.border}`,
+                      background: T.surface, color: T.muted, fontSize: 11, fontWeight: 600, cursor: 'pointer',
+                    }}>반려</button>
+                    <button style={{
+                      flex: 1, padding: '5px 0', borderRadius: 6, border: 0,
+                      background: HQ.accent, color: '#fff', fontSize: 11, fontWeight: 600, cursor: 'pointer',
+                    }}>승인</button>
                   </div>
                 </div>
               ))}
@@ -423,7 +314,6 @@ function HQDashboardInteractive() {
 
 // ─── 상단바 ───
 function HQTopBarInteractive({ title, subtitle, period, onPeriodChange }) {
-  const navigate = useNavigate();
   return (
     <div style={{
       display: 'flex', alignItems: 'center', justifyContent: 'space-between',
@@ -452,20 +342,20 @@ function HQTopBarInteractive({ title, subtitle, period, onPeriodChange }) {
             );
           })}
         </div>
-        <div onClick={() => alert('검색 기능은 준비 중입니다')} style={{
+        <div style={{
           display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px',
           background: T.bg, border: `1px solid ${T.border}`, borderRadius: 8,
-          width: 200, color: T.mutedSoft, fontSize: 13, cursor: 'pointer',
+          width: 200, color: T.mutedSoft, fontSize: 13,
         }}>
           <Icon d={icons.search} size={14} />
           <span>검색</span>
           <span style={{ marginLeft: 'auto', fontSize: 10, padding: '2px 5px', background: T.surface, border: `1px solid ${T.border}`, borderRadius: 4, fontWeight: 600 }}>⌘K</span>
         </div>
-        <button onClick={() => navigate('/admin/hq/notices')} style={btnGhostStyle}>
+        <button style={btnGhostStyle}>
           <Icon d={icons.bell} size={16} />
           <span style={{ position: 'absolute', top: 4, right: 4, width: 7, height: 7, borderRadius: 999, background: T.danger }} />
         </button>
-        {btnPrimary('전사 공지', icons.plus, () => navigate('/admin/hq/notices'))}
+        {btnPrimary('전사 공지', icons.plus)}
       </div>
     </div>
   );
@@ -667,7 +557,7 @@ function CropBarChart({ branch, mult }) {
   );
 }
 
-// ─── 하단 카드 3개 ───
+// ─── 하단 카드 3개 (간소화) ───
 function FinanceTrendCard() {
   return (
     <Card>
@@ -713,7 +603,6 @@ function FinanceTrendCard() {
 }
 
 function IssueFeedCard() {
-  const navigate = useNavigate();
   return (
     <Card>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
@@ -721,7 +610,7 @@ function IssueFeedCard() {
           <h3 style={{ fontSize: 14, fontWeight: 700, color: T.text, margin: 0 }}>전 지점 이상 신고</h3>
           <Pill tone="danger">7</Pill>
         </div>
-        <span onClick={() => navigate('/admin/records')} style={{ fontSize: 11, color: HQ.accent, fontWeight: 600, cursor: 'pointer' }}>전체 →</span>
+        <span style={{ fontSize: 11, color: HQ.accent, fontWeight: 600, cursor: 'pointer' }}>전체 →</span>
       </div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
         {[
@@ -752,12 +641,11 @@ function IssueFeedCard() {
 }
 
 function NoticeMgmtCard() {
-  const navigate = useNavigate();
   return (
     <Card>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
         <h3 style={{ fontSize: 14, fontWeight: 700, color: T.text, margin: 0 }}>공지 · 정책 관리</h3>
-        <span onClick={() => navigate('/admin/hq/notices')} style={{ fontSize: 11, color: HQ.accent, fontWeight: 600, cursor: 'pointer' }}>+ 새 공지</span>
+        <span style={{ fontSize: 11, color: HQ.accent, fontWeight: 600, cursor: 'pointer' }}>+ 새 공지</span>
       </div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
         {[
@@ -909,4 +797,5 @@ function BranchDetailModal({ branch, onClose, mult }) {
     </div>
   );
 }
+
 export { HQDashboardInteractive };
