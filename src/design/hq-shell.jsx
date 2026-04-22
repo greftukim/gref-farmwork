@@ -156,10 +156,14 @@ const HQTopBar = ({ title, subtitle, actions }) => (
         borderRadius: 8, width: 220, color: T.mutedSoft, fontSize: 13,
       }}>
         <Icon d={icons.search} size={14} />
-        <span>검색</span>
+        <input
+          placeholder="검색"
+          onChange={() => { /* BACKLOG: GLOBAL-SEARCH-001 */ }}
+          style={{ flex: 1, border: 0, outline: 'none', background: 'transparent', fontSize: 13, color: 'inherit' }}
+        />
         <span style={{ marginLeft: 'auto', fontSize: 10, padding: '2px 5px', background: T.surface, border: `1px solid ${T.border}`, borderRadius: 4, fontWeight: 600 }}>⌘K</span>
       </div>
-      <button style={btnGhostStyle}>
+      <button onClick={() => alert('알림 기능 준비 중입니다.')} style={btnGhostStyle}>
         <Icon d={icons.bell} size={16} />
         <span style={{ position: 'absolute', top: 4, right: 4, width: 7, height: 7, borderRadius: 999, background: T.danger }} />
       </button>
