@@ -1,6 +1,26 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { T, Card, Pill, Dot, Icon, icons, Avatar, btnPrimary, btnSecondary } from '../../design/primitives';
 import { HQ } from '../../design/hq-shell';
+import useEmployeeStore from '../../stores/employeeStore';
+import useLeaveStore from '../../stores/leaveStore';
+import useAuthStore from '../../stores/authStore';
+
+// ─────── 지점 메타 (코드 → 표시명·색상) ───────
+const BRANCH_META = {
+  busan:        { name: '부산LAB',  dot: T.primary,   avatar: 'blue' },
+  jinju:        { name: '진주HUB',  dot: T.success,   avatar: 'emerald' },
+  hadong:       { name: '하동HUB',  dot: T.warning,   avatar: 'amber' },
+  headquarters: { name: '총괄본사', dot: T.text,      avatar: 'slate' },
+  management:   { name: '관리팀',   dot: HQ.accent,   avatar: 'slate' },
+  seedlab:      { name: 'Seed LAB', dot: T.mutedSoft, avatar: 'slate' },
+};
+const HQ_BRANCHES = ['headquarters', 'management', 'seedlab'];
+const ROLE_LABEL = { master: '총괄', hr_admin: '인사관리', farm_admin: '관리자', worker: '작업자' };
+const hireDisplay = (d) => {
+  if (!d) return '—';
+  const dt = new Date(d);
+  return `${dt.getFullYear()}.${String(dt.getMonth() + 1).padStart(2, '0')}`;
+};
 
 // 관리팀(HQ) 나머지 5개 페이지
 // ① 승인 허브  ② 지점 관리  ③ 전사 직원  ④ 공지·정책  ⑤ 경영 지표
@@ -51,18 +71,45 @@ function HQApprovalsScreen() {
   const [selected, setSelected] = useState(new Set());
   const [filter, setFilter] = useState({ branch: 'all', type: 'all' });
 
-  const items = [
-    { id: 1, branch: '부산LAB', bc: T.primary, name: '김재배', role: '지점장', tag: '근태', tagTone: 'primary', type: '연차 신청', detail: '4/23 (수) 1일 · 본인 사용', amount: '', time: '10분 전', urgent: false },
-    { id: 2, branch: '하동HUB', bc: T.warning, name: '최책임', role: '지점장', tag: '예산', tagTone: 'warning', type: '설비 구매 요청', detail: '환기팬 2대 (B동, C동 각 1대)', amount: '480만원', time: '42분 전', urgent: true },
-    { id: 3, branch: '진주HUB', bc: T.success, name: '박지점', role: '지점장', tag: '인사', tagTone: 'info', type: '신규 작업자 등록', detail: '임시 3명 · 5/1 ~ 5/31', amount: '', time: '1시간 전', urgent: false },
-    { id: 4, branch: '부산LAB', bc: T.primary, name: '김재배', role: '지점장', tag: '자재', tagTone: 'success', type: '농약 재고 발주', detail: '토마토 응애용 살충제 10L', amount: '120만원', time: '2시간 전', urgent: false },
-    { id: 5, branch: '하동HUB', bc: T.warning, name: '최책임', role: '지점장', tag: '근태', tagTone: 'primary', type: '연장근무 승인', detail: '오늘 2명 · 각 2시간', amount: '18만원', time: '3시간 전', urgent: false },
-    { id: 6, branch: '진주HUB', bc: T.success, name: '박지점', role: '지점장', tag: '예산', tagTone: 'warning', type: '비료 추가 발주', detail: '유박비료 500kg', amount: '340만원', time: '4시간 전', urgent: false },
-    { id: 7, branch: '부산LAB', bc: T.primary, name: '김재배', role: '지점장', tag: '인사', tagTone: 'info', type: '계약직 재계약', detail: '홍길순, 김영수 · 7/1 시행', amount: '', time: '5시간 전', urgent: false },
-    { id: 8, branch: '하동HUB', bc: T.warning, name: '최책임', role: '지점장', tag: '자재', tagTone: 'success', type: '포장재 발주', detail: '방울토마토용 500g 박스 2000개', amount: '210만원', time: '어제', urgent: false },
-  ];
+  const requests = useLeaveStore((s) => s.requests);
+  const fetchRequests = useLeaveStore((s) => s.fetchRequests);
+  const farmReview = useLeaveStore((s) => s.farmReview);
+  const employees = useEmployeeStore((s) => s.employees);
+  const fetchEmployees = useEmployeeStore((s) => s.fetchEmployees);
+  const currentUser = useAuthStore((s) => s.currentUser);
 
-  let filtered = items;
+  useEffect(() => {
+    fetchRequests();
+    if (employees.length === 0) fetchEmployees();
+  }, []);
+
+  const pending  = requests.filter(r => r.status === 'pending');
+  const approved = requests.filter(r => r.status === 'approved');
+  const rejected = requests.filter(r => r.status === 'rejected');
+
+  const tabItems = useMemo(() => {
+    const source = tab === 'approved' ? approved : tab === 'rejected' ? rejected : pending;
+    return source.map(r => {
+      const emp = employees.find(e => e.id === r.employeeId);
+      const bm = BRANCH_META[emp?.branch] || { name: emp?.branch || '—', dot: T.mutedSoft };
+      return {
+        id: r.id,
+        branch: bm.name,
+        bc: bm.dot,
+        name: emp?.name || '—',
+        role: ROLE_LABEL[emp?.role] || '작업자',
+        tag: '근태',
+        tagTone: 'primary',
+        type: r.type,
+        detail: `${r.date}${r.reason ? ' · ' + r.reason : ''}`,
+        amount: '',
+        time: r.createdAt ? new Date(r.createdAt).toLocaleDateString('ko-KR', { month: 'numeric', day: 'numeric' }) + '일' : '—',
+        urgent: false,
+      };
+    });
+  }, [requests, employees, tab]);
+
+  let filtered = tabItems;
   if (filter.branch !== 'all') filtered = filtered.filter(i => i.branch === filter.branch);
   if (filter.type !== 'all') filtered = filtered.filter(i => i.tag === filter.type);
 
@@ -73,6 +120,23 @@ function HQApprovalsScreen() {
   };
   const toggleAll = () => setSelected(selected.size === filtered.length ? new Set() : new Set(filtered.map(i => i.id)));
 
+  const handleApprove = async (id) => {
+    await farmReview(id, true, currentUser?.id);
+    setSelected(s => { const n = new Set(s); n.delete(id); return n; });
+  };
+  const handleReject = async (id) => {
+    await farmReview(id, false, currentUser?.id);
+    setSelected(s => { const n = new Set(s); n.delete(id); return n; });
+  };
+  const handleBatchApprove = async () => {
+    for (const id of selected) await farmReview(id, true, currentUser?.id);
+    setSelected(new Set());
+  };
+  const handleBatchReject = async () => {
+    for (const id of selected) await farmReview(id, false, currentUser?.id);
+    setSelected(new Set());
+  };
+
   return (
     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
       <HQPageHeader
@@ -80,10 +144,10 @@ function HQApprovalsScreen() {
         title="승인 허브"
         actions={<>{btnSecondary('내보내기', icons.chart)}{btnPrimary('규칙 설정', icons.settings)}</>}
         tabs={[
-          { id: 'pending', label: '대기 중', count: 12 },
-          { id: 'approved', label: '승인됨', count: 47 },
-          { id: 'rejected', label: '반려', count: 3 },
-          { id: 'rules', label: '승인 규칙' },
+          { id: 'pending',  label: '대기 중', count: pending.length },
+          { id: 'approved', label: '승인됨',  count: approved.length },
+          { id: 'rejected', label: '반려',    count: rejected.length },
+          { id: 'rules',    label: '승인 규칙' },
         ]}
         activeTab={tab}
         onTab={setTab}
@@ -93,7 +157,7 @@ function HQApprovalsScreen() {
         {/* 요약 KPI */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12 }}>
           {[
-            { l: '대기 중', v: 12, sub: '평균 응답 2.4h', tone: T.warning, bg: T.warningSoft },
+            { l: '대기 중', v: pending.length, sub: '평균 응답 2.4h', tone: T.warning, bg: T.warningSoft },
             { l: '긴급', v: 2, sub: '3시간 이상 경과 1건', tone: T.danger, bg: T.dangerSoft },
             { l: '이번 주 승인액', v: '1,840만원', sub: '예산 대비 22%', tone: HQ.accent, bg: HQ.accentSoft },
             { l: '평균 처리 시간', v: '3.2h', sub: '▼ 전주 대비 -0.4h', tone: T.success, bg: T.successSoft },
@@ -143,8 +207,8 @@ function HQApprovalsScreen() {
             {selected.size > 0 && (
               <div style={{ marginLeft: 'auto', display: 'flex', gap: 8, alignItems: 'center' }}>
                 <span style={{ fontSize: 12, fontWeight: 600, color: T.text }}>{selected.size}건 선택됨</span>
-                <button style={{ padding: '6px 12px', borderRadius: 6, border: `1px solid ${T.border}`, background: T.surface, color: T.muted, fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>일괄 반려</button>
-                <button style={{ padding: '6px 12px', borderRadius: 6, border: 0, background: HQ.accent, color: '#fff', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>일괄 승인</button>
+                <button onClick={handleBatchReject} style={{ padding: '6px 12px', borderRadius: 6, border: `1px solid ${T.border}`, background: T.surface, color: T.muted, fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>일괄 반려</button>
+                <button onClick={handleBatchApprove} style={{ padding: '6px 12px', borderRadius: 6, border: 0, background: HQ.accent, color: '#fff', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>일괄 승인</button>
               </div>
             )}
           </div>
@@ -165,7 +229,9 @@ function HQApprovalsScreen() {
               </tr>
             </thead>
             <tbody>
-              {filtered.map(r => (
+              {filtered.length === 0 ? (
+                <tr><td colSpan={7} style={{ padding: 32, textAlign: 'center', color: T.mutedSoft, fontSize: 12 }}>해당 조건의 승인 요청 없음</td></tr>
+              ) : filtered.map(r => (
                 <tr key={r.id} style={{
                   borderBottom: `1px solid ${T.borderSoft}`,
                   background: selected.has(r.id) ? HQ.accentSoft : 'transparent',
@@ -195,11 +261,15 @@ function HQApprovalsScreen() {
                   <td style={{ padding: '12px 8px', textAlign: 'right', fontSize: 12, fontWeight: 700, color: T.text }}>{r.amount || '—'}</td>
                   <td style={{ padding: '12px 8px', fontSize: 11, color: T.mutedSoft }}>{r.time}</td>
                   <td style={{ padding: '12px 16px', textAlign: 'right' }}>
-                    <div style={{ display: 'inline-flex', gap: 6 }}>
-                      <button style={{ padding: '5px 12px', borderRadius: 6, border: `1px solid ${T.border}`, background: T.surface, color: T.muted, fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>반려</button>
-                      <button style={{ padding: '5px 12px', borderRadius: 6, border: 0, background: HQ.accent, color: '#fff', fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>승인</button>
-                      <button style={{ padding: '5px 8px', borderRadius: 6, border: `1px solid ${T.border}`, background: T.surface, color: T.mutedSoft, fontSize: 11, cursor: 'pointer' }}>⋯</button>
-                    </div>
+                    {tab === 'pending' ? (
+                      <div style={{ display: 'inline-flex', gap: 6 }}>
+                        <button onClick={() => handleReject(r.id)} style={{ padding: '5px 12px', borderRadius: 6, border: `1px solid ${T.border}`, background: T.surface, color: T.muted, fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>반려</button>
+                        <button onClick={() => handleApprove(r.id)} style={{ padding: '5px 12px', borderRadius: 6, border: 0, background: HQ.accent, color: '#fff', fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>승인</button>
+                        <button style={{ padding: '5px 8px', borderRadius: 6, border: `1px solid ${T.border}`, background: T.surface, color: T.mutedSoft, fontSize: 11, cursor: 'pointer' }}>⋯</button>
+                      </div>
+                    ) : (
+                      <Pill tone={tab === 'approved' ? 'success' : 'danger'} size="sm">{tab === 'approved' ? '승인됨' : '반려됨'}</Pill>
+                    )}
                   </td>
                 </tr>
               ))}
@@ -351,19 +421,25 @@ function HQBranchesScreen() {
 // ═══════════════════════════════════════════════════════════
 function HQEmployeesScreen() {
   const [tab, setTab] = useState('all');
+  const [empTypeFilter, setEmpTypeFilter] = useState('전체');
+  const employees = useEmployeeStore((s) => s.employees);
+  const fetchEmployees = useEmployeeStore((s) => s.fetchEmployees);
 
-  const employees = [
-    { name: '김재배', role: '지점장', branch: '부산LAB', bc: T.primary, status: 'active', joined: '2021.03', type: '정규', avatar: 'blue' },
-    { name: '박지점', role: '지점장', branch: '진주HUB', bc: T.success, status: 'active', joined: '2023.05', type: '정규', avatar: 'emerald' },
-    { name: '최책임', role: '지점장', branch: '하동HUB', bc: T.warning, status: 'active', joined: '2024.02', type: '정규', avatar: 'amber' },
-    { name: '이대한', role: '총괄', branch: '본사', bc: T.text, status: 'active', joined: '2020.01', type: '정규', avatar: 'slate' },
-    { name: '홍수진', role: '작업반장', branch: '부산LAB', bc: T.primary, status: 'active', joined: '2022.08', type: '정규', avatar: 'rose' },
-    { name: '김영수', role: '작업자', branch: '부산LAB', bc: T.primary, status: 'active', joined: '2023.02', type: '정규', avatar: 'blue' },
-    { name: '이강모', role: '작업자', branch: '하동HUB', bc: T.warning, status: 'leave', joined: '2023.09', type: '정규', avatar: 'amber' },
-    { name: '정태민', role: '작업자', branch: '진주HUB', bc: T.success, status: 'active', joined: '2024.01', type: '계약', avatar: 'emerald' },
-    { name: '윤서연', role: '작업자', branch: '부산LAB', bc: T.primary, status: 'active', joined: '2024.03', type: '계약', avatar: 'rose' },
-    { name: '장민호', role: '작업자', branch: '하동HUB', bc: T.warning, status: 'active', joined: '2025.02', type: '임시', avatar: 'amber' },
-  ];
+  useEffect(() => { fetchEmployees(); }, []);
+
+  const tabFiltered = useMemo(() => {
+    if (tab === 'busan')  return employees.filter(e => e.branch === 'busan');
+    if (tab === 'jinju')  return employees.filter(e => e.branch === 'jinju');
+    if (tab === 'hadong') return employees.filter(e => e.branch === 'hadong');
+    if (tab === 'hq')     return employees.filter(e => HQ_BRANCHES.includes(e.branch));
+    return employees;
+  }, [employees, tab]);
+
+  const totalActive = employees.filter(e => e.isActive).length;
+  const busanCount  = employees.filter(e => e.branch === 'busan').length;
+  const jinjuCount  = employees.filter(e => e.branch === 'jinju').length;
+  const hadongCount = employees.filter(e => e.branch === 'hadong').length;
+  const hqCount     = employees.filter(e => HQ_BRANCHES.includes(e.branch)).length;
 
   return (
     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
@@ -372,11 +448,11 @@ function HQEmployeesScreen() {
         title="전사 직원"
         actions={<>{btnSecondary('CSV 내보내기', icons.chart)}{btnPrimary('직원 추가', icons.plus)}</>}
         tabs={[
-          { id: 'all', label: '전체', count: 60 },
-          { id: 'busan', label: '부산LAB', count: 20 },
-          { id: 'jinju', label: '진주HUB', count: 14 },
-          { id: 'hadong', label: '하동HUB', count: 12 },
-          { id: 'hq', label: '본사', count: 14 },
+          { id: 'all',    label: '전체',   count: employees.length },
+          { id: 'busan',  label: '부산LAB', count: busanCount },
+          { id: 'jinju',  label: '진주HUB', count: jinjuCount },
+          { id: 'hadong', label: '하동HUB', count: hadongCount },
+          { id: 'hq',     label: '본사',   count: hqCount },
         ]}
         activeTab={tab}
         onTab={setTab}
@@ -385,7 +461,7 @@ function HQEmployeesScreen() {
         {/* KPI */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12 }}>
           {[
-            { l: '총 인원', v: 60, u: '명', sub: '활성 58 · 휴직 2' },
+            { l: '총 인원', v: employees.length, u: '명', sub: `활성 ${totalActive} · 비활성 ${employees.length - totalActive}` },
             { l: '정규직', v: 42, u: '명', sub: '70%' },
             { l: '계약/임시', v: 18, u: '명', sub: '30%' },
             { l: '이번 달 입사', v: 4, u: '명', sub: '퇴사 1건' },
@@ -409,14 +485,17 @@ function HQEmployeesScreen() {
               <span style={{ fontSize: 12, color: T.mutedSoft }}>이름, 연락처로 검색</span>
             </div>
             <div style={{ display: 'flex', gap: 6 }}>
-              {['전체', '정규', '계약', '임시'].map((t, i) => (
-                <button key={t} style={{
-                  padding: '6px 12px', borderRadius: 6, fontSize: 11, fontWeight: 600, cursor: 'pointer',
-                  border: `1px solid ${i === 0 ? HQ.accent : T.border}`,
-                  background: i === 0 ? HQ.accentSoft : T.surface,
-                  color: i === 0 ? HQ.accentText : T.muted,
-                }}>{t}</button>
-              ))}
+              {['전체', '정규', '계약', '임시'].map((t) => {
+                const on = empTypeFilter === t;
+                return (
+                  <button key={t} onClick={() => setEmpTypeFilter(t)} style={{
+                    padding: '6px 12px', borderRadius: 6, fontSize: 11, fontWeight: 600, cursor: 'pointer',
+                    border: `1px solid ${on ? HQ.accent : T.border}`,
+                    background: on ? HQ.accentSoft : T.surface,
+                    color: on ? HQ.accentText : T.muted,
+                  }}>{t}</button>
+                );
+              })}
             </div>
           </div>
 
@@ -433,38 +512,45 @@ function HQEmployeesScreen() {
               </tr>
             </thead>
             <tbody>
-              {employees.map((e, i) => (
-                <tr key={i} style={{ borderBottom: `1px solid ${T.borderSoft}` }}>
-                  <td style={{ padding: '10px 16px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                      <Avatar name={e.name[0]} size={32} c={e.avatar} />
-                      <div style={{ fontSize: 13, fontWeight: 600, color: T.text }}>{e.name}</div>
-                    </div>
-                  </td>
-                  <td style={{ padding: '10px 8px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: T.text, fontWeight: 500 }}>
-                      <Dot c={e.bc} />{e.branch}
-                    </div>
-                  </td>
-                  <td style={{ padding: '10px 8px', fontSize: 12, color: T.muted }}>
-                    {e.role === '총괄' || e.role === '지점장' ? <Pill tone="primary" size="sm">{e.role}</Pill> : e.role}
-                  </td>
-                  <td style={{ padding: '10px 8px', fontSize: 12, color: T.muted }}>
-                    <Pill tone={e.type === '정규' ? 'success' : e.type === '계약' ? 'info' : 'muted'} size="sm">{e.type}</Pill>
-                  </td>
-                  <td style={{ padding: '10px 8px', fontSize: 12, color: T.muted }}>{e.joined}</td>
-                  <td style={{ padding: '10px 8px' }}>
-                    {e.status === 'active' ? <Pill tone="success" size="sm">재직</Pill> : <Pill tone="warning" size="sm">휴직</Pill>}
-                  </td>
-                  <td style={{ padding: '10px 16px', textAlign: 'right' }}>
-                    <button style={{ padding: '4px 10px', borderRadius: 6, border: `1px solid ${T.border}`, background: T.surface, color: T.muted, fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>상세</button>
-                  </td>
-                </tr>
-              ))}
+              {tabFiltered.map((e) => {
+                const bm = BRANCH_META[e.branch] || { name: e.branch || '—', dot: T.mutedSoft, avatar: 'slate' };
+                const roleLabel = e.jobTitle || ROLE_LABEL[e.role] || e.role;
+                const isAdmin = e.role === 'farm_admin' || e.role === 'hr_admin' || e.role === 'master';
+                const typeLabel = e.jobType === 'admin' ? '관리자' : '작업자';
+                const typeTone  = e.jobType === 'admin' ? 'primary' : 'muted';
+                return (
+                  <tr key={e.id} style={{ borderBottom: `1px solid ${T.borderSoft}` }}>
+                    <td style={{ padding: '10px 16px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                        <Avatar name={e.name[0]} size={32} c={bm.avatar} />
+                        <div style={{ fontSize: 13, fontWeight: 600, color: T.text }}>{e.name}</div>
+                      </div>
+                    </td>
+                    <td style={{ padding: '10px 8px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: T.text, fontWeight: 500 }}>
+                        <Dot c={bm.dot} />{bm.name}
+                      </div>
+                    </td>
+                    <td style={{ padding: '10px 8px', fontSize: 12, color: T.muted }}>
+                      {isAdmin ? <Pill tone="primary" size="sm">{roleLabel}</Pill> : roleLabel}
+                    </td>
+                    <td style={{ padding: '10px 8px', fontSize: 12, color: T.muted }}>
+                      <Pill tone={typeTone} size="sm">{typeLabel}</Pill>
+                    </td>
+                    <td style={{ padding: '10px 8px', fontSize: 12, color: T.muted }}>{hireDisplay(e.hireDate)}</td>
+                    <td style={{ padding: '10px 8px' }}>
+                      {e.isActive ? <Pill tone="success" size="sm">재직</Pill> : <Pill tone="danger" size="sm">비활성</Pill>}
+                    </td>
+                    <td style={{ padding: '10px 16px', textAlign: 'right' }}>
+                      <button style={{ padding: '4px 10px', borderRadius: 6, border: `1px solid ${T.border}`, background: T.surface, color: T.muted, fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>상세</button>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
           <div style={{ padding: '12px 16px', borderTop: `1px solid ${T.borderSoft}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 11, color: T.mutedSoft }}>
-            <span>총 60명 중 1-10</span>
+            <span>총 {tabFiltered.length}명</span>
             <div style={{ display: 'flex', gap: 4 }}>
               {['←', '1', '2', '3', '4', '5', '6', '→'].map((p, i) => (
                 <span key={i} style={{
