@@ -128,7 +128,7 @@
 | EMAIL-SKIP-001 | 설계 메모 | wontfix | 세션 21 (2026-04-22) | - | employees 테이블에 email 컬럼 없음. Sidebar 하단 식별자를 username(@표시)으로 대체. 이메일 기반 기능 필요 시 마이그레이션 재검토. | docs/BACKLOG.md |
 | RECONNECT-OTHERS-001 | 재연결 | partial (5/9) | 세션 21 (2026-04-22) | - | HQ 페이지 실데이터 재연결. 세션 22 완료: HQEmployeesScreen·HQApprovalsScreen·Dashboard·HQBranchesScreen·HQNoticesScreen (5개). 이월: HQFinanceScreen·GrowthCompare·Performance·DashboardInteractive (4개). | docs/BACKLOG.md |
 | HQ-EMP-TYPE-001 | UI 결정 | open | 세션 22 (2026-04-22) | - | HQEmployeesScreen 고용형태 필터(정규/계약/임시) — employees.job_type 값이 'admin'/'worker'만 존재, 해당 컬럼 없음. empTypeFilter state 클릭 시각 피드백은 있으나 실 필터링 미작동. DB 컬럼 확보 또는 wontfix 결정 필요. | docs/BACKLOG.md |
-| HQ-EMP-SEARCH-001 | UI | open | 세션 22 (2026-04-22) | - | HQEmployeesScreen 검색창이 `<span>검색</span>` 목업 — 실 input으로 교체 시 JSX 구조 변경 필요 (목업 수정 에스컬레이션 규정상 이번 세션 스킵). 필터 input 교체 별 세션에서 처리. | docs/BACKLOG.md |
+| HQ-EMP-SEARCH-001 | UI | resolved | 세션 22 등록 → 세션 24 (2026-04-23) 해소 | - | HQEmployeesScreen 검색창 `<span>검색</span>` → 실 input 교체 완료. 세션 24 Task 3(_pages.jsx JSX 수정). | docs/BACKLOG.md |
 | HQ-EMP-CSV-001 | 기능 미구현 | open | 세션 22 (2026-04-22) | - | HQEmployeesScreen CSV 내보내기 버튼 클릭 무반응. 실 내보내기 로직 미연결. | docs/BACKLOG.md |
 | HQ-EMP-ADD-001 | 기능 미구현 | open | 세션 22 (2026-04-22) | - | HQEmployeesScreen 직원 추가 버튼 — HQ 전용 직원 추가 모달 미연결. 재배팀 EmployeeDetailModal 재사용 또는 신규 작성 검토. | docs/BACKLOG.md |
 | HQ-BRANCHES-META-001 | 데이터 보완 | open | 세션 22 (2026-04-22) | - | HQBranchesScreen 지점 카드 상세 정보(지점장·수확량·출근률·면적·작물) — branches 테이블에 해당 컬럼 없음. workers 수만 실데이터, 나머지 하드코딩 유지. DB 컬럼 확보 또는 별 트랙 처리. | docs/BACKLOG.md |
@@ -142,6 +142,11 @@
 | HARVEST-TABLE-001 | 데이터 보완 | open | 세션 23 (2026-04-23) | - | harvest_records 테이블 0 rows — 월간/지점별 수확량 + Dashboard 차트 모두 0 표시. 수확 입력 UI 트랙 신설 또는 수동 입력 방법 결정 필요. | docs/BACKLOG.md |
 | HARVEST-WEEKLY-001 | 재연결 | open | 세션 23 (2026-04-23) | - | Dashboard 주간 수확량 차트 weeks=[0,0,0,0] — HARVEST-TABLE-001 해소 후 주차별 GROUP BY 쿼리 연결 필요. | docs/BACKLOG.md |
 | HQ-EMP-PAGINATION-001 | UI | open | 세션 23 (2026-04-23) | - | HQEmployeesScreen 페이지네이션 버튼(1~6) 하드코딩 — 실 직원 수 기반 페이지 분할 로직 미연결. 현 인원(38명) 대비 낮은 우선순위. | docs/BACKLOG.md |
+| NOTIFICATION-DROPDOWN-001 | 기능 미구현 | open | 세션 24 (2026-04-23) | - | HQTopBar 알림 벨 버튼 클릭 시 `alert()` 임시 처리 — 알림 드롭다운 패널 미구현. 알림 DB 트랙 신설 후 처리. | docs/BACKLOG.md |
+| GLOBAL-SEARCH-001 | 기능 미구현 | open | 세션 24 (2026-04-23) | - | HQTopBar 검색 input onChange 미연결(BACKLOG 주석만) — 전역 검색 기능 미구현. 검색 인덱스·UX 설계 후 별 트랙 처리. | docs/BACKLOG.md |
+| HQ-PERIOD-PICKER-001 | 기능 미구현 | open | 세션 24 (2026-04-23) | - | HQTopBar 기간 피커(일/주/월/분기) 탭 — onClick 미연결, 시각 효과만. 대시보드 기간 필터 트랙 처리 시 연결. | docs/BACKLOG.md |
+| APPROVAL-CATEGORY-001 | 데이터 보완 | open | 세션 24 (2026-04-23) | - | Dashboard 승인허브 위젯 예산/인사/자재 카테고리 데이터 없음 — 해당 테이블 미존재, 빈 상태 표시. 각 카테고리 테이블 신설 후 필터 연결. | docs/BACKLOG.md |
+| HQ-EMPLOYEE-EDIT-MODAL-001 | 기능 미구현 | open | 세션 24 (2026-04-23) | - | HQEmployeesScreen 직원 상세 모달 편집 기능 미연결 — onEdit prop 미전달(read-only 모드). HQ 전용 권한 정책 확정 후 onEdit 연결 처리. | docs/BACKLOG.md |
 
 ---
 
