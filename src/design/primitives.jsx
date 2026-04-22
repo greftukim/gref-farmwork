@@ -1,4 +1,6 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
+import useAuthStore from '../stores/authStore';
 
 // GREF Farm — 프로페셔널 SaaS 디자인
 // 디자인 토큰
@@ -110,7 +112,9 @@ const Avatar = ({ name = '김', size = 32, c = 'indigo' }) => {
 };
 
 // ─────── 관리자 레이아웃 (공용) ───────
-const Sidebar = ({ active = 'dashboard' }) => {
+const Sidebar = ({ active = 'dashboard', onNavigate }) => {
+  const navigate = useNavigate();
+  const logout = useAuthStore((s) => s.logout);
   const items = [
     { id: 'dashboard', label: '대시보드', icon: icons.dashboard },
     { id: 'employees', label: '직원 관리', icon: icons.users },
@@ -148,7 +152,7 @@ const Sidebar = ({ active = 'dashboard' }) => {
         {items.map(i => {
           const on = i.id === active;
           return (
-            <div key={i.id} style={{
+            <div key={i.id} onClick={() => onNavigate && onNavigate(i.id)} style={{
               display: 'flex', alignItems: 'center', gap: 10,
               padding: '9px 12px', borderRadius: 8, cursor: 'pointer',
               background: on ? T.primarySoft : 'transparent',
@@ -166,7 +170,7 @@ const Sidebar = ({ active = 'dashboard' }) => {
         })}
       </nav>
       <div style={{ padding: 12, borderTop: `1px solid ${T.borderSoft}` }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 10px' }}>
+        <div onClick={async () => { await logout(); navigate('/login'); }} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 10px', cursor: 'pointer' }}>
           <Avatar name="관" size={32} c="slate" />
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ fontSize: 13, fontWeight: 600, color: T.text }}>관리자</div>
