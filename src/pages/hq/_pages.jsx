@@ -582,6 +582,7 @@ function HQEmployeesScreen() {
               <tr style={{ background: T.bg, borderBottom: `1px solid ${T.border}` }}>
                 <th style={{ padding: '10px 16px', textAlign: 'left', fontSize: 11, fontWeight: 700, color: T.muted }}>직원</th>
                 <th style={{ padding: '10px 8px', textAlign: 'left', fontSize: 11, fontWeight: 700, color: T.muted }}>지점</th>
+                <th style={{ padding: '10px 8px', textAlign: 'left', fontSize: 11, fontWeight: 700, color: T.muted }}>연락처</th>
                 <th style={{ padding: '10px 8px', textAlign: 'left', fontSize: 11, fontWeight: 700, color: T.muted }}>직책</th>
                 <th style={{ padding: '10px 8px', textAlign: 'left', fontSize: 11, fontWeight: 700, color: T.muted }}>고용형태</th>
                 <th style={{ padding: '10px 8px', textAlign: 'left', fontSize: 11, fontWeight: 700, color: T.muted }}>입사일</th>
@@ -608,6 +609,9 @@ function HQEmployeesScreen() {
                       <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: T.text, fontWeight: 500 }}>
                         <Dot c={bm.dot} />{bm.name}
                       </div>
+                    </td>
+                    <td style={{ padding: '10px 8px', fontSize: 12, color: T.muted, fontVariantNumeric: 'tabular-nums' }}>
+                      {e.phone || '—'}
                     </td>
                     <td style={{ padding: '10px 8px', fontSize: 12, color: T.muted }}>
                       {isAdmin ? <Pill tone="primary" size="sm">{roleLabel}</Pill> : roleLabel}
