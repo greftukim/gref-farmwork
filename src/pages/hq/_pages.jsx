@@ -1,9 +1,12 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { T, Card, Pill, Dot, Icon, icons, Avatar, btnPrimary, btnSecondary } from '../../design/primitives';
 import { HQ } from '../../design/hq-shell';
+import { supabase } from '../../lib/supabase';
 import useEmployeeStore from '../../stores/employeeStore';
 import useLeaveStore from '../../stores/leaveStore';
 import useAuthStore from '../../stores/authStore';
+import useAttendanceStore from '../../stores/attendanceStore';
+import useNoticeStore from '../../stores/noticeStore';
 
 // ─────── 지점 메타 (코드 → 표시명·색상) ───────
 const BRANCH_META = {
