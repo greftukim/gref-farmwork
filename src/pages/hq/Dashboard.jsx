@@ -1,20 +1,91 @@
-import React from 'react';
+import React, { useEffect, useMemo } from 'react';
 import { T, Card, Pill, Dot, Icon, icons, btnPrimary, btnSecondary } from '../../design/primitives';
 import { HQ, HQTopBar } from '../../design/hq-shell';
+import useEmployeeStore from '../../stores/employeeStore';
+import useLeaveStore from '../../stores/leaveStore';
+import useIssueStore from '../../stores/issueStore';
+import useNoticeStore from '../../stores/noticeStore';
+import useAuthStore from '../../stores/authStore';
+
+const D_BRANCH_META = {
+  busan:        { name: '부산LAB',  dot: T.primary,   avatar: 'blue' },
+  jinju:        { name: '진주HUB',  dot: T.success,   avatar: 'emerald' },
+  hadong:       { name: '하동HUB',  dot: T.warning,   avatar: 'amber' },
+  headquarters: { name: '총괄본사', dot: T.text,      avatar: 'slate' },
+  management:   { name: '관리팀',   dot: HQ.accent,   avatar: 'slate' },
+  seedlab:      { name: 'Seed LAB', dot: T.mutedSoft, avatar: 'slate' },
+};
 
 // 관리팀(본사) 대시보드 화면
 function HQDashboardScreen() {
-  // 지점 데이터 (부산LAB, 진주HUB, 하동HUB)
+  const employees    = useEmployeeStore((s) => s.employees);
+  const fetchEmployees = useEmployeeStore((s) => s.fetchEmployees);
+  const requests     = useLeaveStore((s) => s.requests);
+  const fetchRequests = useLeaveStore((s) => s.fetchRequests);
+  const farmReview   = useLeaveStore((s) => s.farmReview);
+  const issues       = useIssueStore((s) => s.issues);
+  const fetchIssues  = useIssueStore((s) => s.fetchIssues);
+  const notices      = useNoticeStore((s) => s.notices);
+  const fetchNotices = useNoticeStore((s) => s.fetchNotices);
+  const currentUser  = useAuthStore((s) => s.currentUser);
+
+  useEffect(() => {
+    fetchEmployees();
+    fetchRequests();
+    fetchIssues();
+    fetchNotices();
+  }, []);
+
+  const bwc = (code) => employees.filter(e => e.branch === code && e.isActive).length;
+
+  // 지점 데이터 — workers 실데이터, 출근/수확/TBM 미연결
   const branches = [
-    { code: 'busan', name: '부산LAB', mgr: '김재배', workers: 20, checkedIn: 18, late: 2, rate: 90, harvest: 1240, harvestT: 1200, tbm: 100, accent: T.primary, accentSoft: T.primarySoft, status: 'active' },
-    { code: 'jinju', name: '진주HUB', mgr: '박지점', workers: 14, checkedIn: 13, late: 0, rate: 93, harvest: 980, harvestT: 1100, tbm: 92, accent: T.success, accentSoft: T.successSoft, status: 'active' },
-    { code: 'hadong', name: '하동HUB', mgr: '최책임', workers: 12, checkedIn: 10, late: 1, rate: 83, harvest: 760, harvestT: 950, tbm: 75, accent: T.warning, accentSoft: T.warningSoft, status: 'alert' },
+    { code: 'busan', name: '부산LAB', mgr: '김재배', workers: bwc('busan'), checkedIn: 18, late: 2, rate: 90, harvest: 1240, harvestT: 1200, tbm: 100, accent: T.primary, accentSoft: T.primarySoft, status: 'active' },
+    { code: 'jinju', name: '진주HUB', mgr: '박지점', workers: bwc('jinju'), checkedIn: 13, late: 0, rate: 93, harvest: 980, harvestT: 1100, tbm: 92, accent: T.success, accentSoft: T.successSoft, status: 'active' },
+    { code: 'hadong', name: '하동HUB', mgr: '최책임', workers: bwc('hadong'), checkedIn: 10, late: 1, rate: 83, harvest: 760, harvestT: 950, tbm: 75, accent: T.warning, accentSoft: T.warningSoft, status: 'alert' },
   ];
 
   const totalWorkers = branches.reduce((s, b) => s + b.workers, 0);
   const totalCheckedIn = branches.reduce((s, b) => s + b.checkedIn, 0);
   const totalHarvest = branches.reduce((s, b) => s + b.harvest, 0);
   const totalTarget = branches.reduce((s, b) => s + b.harvestT, 0);
+
+  const openIssues = issues.filter(i => !i.isResolved);
+
+  const pendingLeave = useMemo(() =>
+    requests.filter(r => r.status === 'pending').slice(0, 5).map(r => {
+      const emp = employees.find(e => e.id === r.employeeId);
+      const bm = D_BRANCH_META[emp?.branch] || { name: emp?.branch || '—', dot: T.mutedSoft };
+      return {
+        id: r.id, branch: bm.name, bc: bm.dot, name: emp?.name || '—',
+        tag: '근태', tagTone: 'primary', type: r.type,
+        detail: `${r.date}${r.reason ? ' · ' + r.reason.slice(0, 12) : ''}`,
+        time: r.createdAt ? new Date(r.createdAt).toLocaleDateString('ko-KR', { month: 'numeric', day: 'numeric' }) + '일' : '—',
+        urgent: false,
+      };
+    }), [requests, employees]);
+
+  const issueFeed = useMemo(() =>
+    openIssues.slice(0, 4).map(i => {
+      const emp = employees.find(e => e.id === i.workerId);
+      const bm = D_BRANCH_META[emp?.branch] || { name: '—', dot: T.mutedSoft };
+      const sevMap = { '병해충': 'critical', '설비고장': 'critical', '작물이상': 'warning' };
+      return {
+        branch: bm.name, bc: bm.dot, severity: sevMap[i.type] || 'info',
+        type: i.type, place: '—', who: emp?.name || '—',
+        time: i.createdAt ? new Date(i.createdAt).toLocaleDateString('ko-KR', { month: 'numeric', day: 'numeric' }) + '일' : '—',
+        note: i.comment || '이상 신고',
+      };
+    }), [issues, employees]);
+
+  const noticeItems = useMemo(() =>
+    notices.slice(0, 4).map(n => ({
+      tag: n.priority === 'important' ? '전사 · 중요' : (n.authorTeam || '정책'),
+      tone: n.priority === 'important' ? 'danger' : 'info',
+      title: n.title,
+      meta: `작성 ${new Date(n.createdAt).toLocaleDateString('ko-KR', { month: 'numeric', day: 'numeric' })}일`,
+      pinned: n.priority === 'important',
+    })), [notices]);
 
   return (
     <div style={{ flex: 1, overflow: 'auto', background: T.bg }}>
@@ -32,7 +103,7 @@ function HQDashboardScreen() {
             { label: '전사 가동률', value: Math.round(totalCheckedIn / totalWorkers * 100), unit: '%', sub: `${totalCheckedIn} / ${totalWorkers}명 출근`, trend: '+2.1%p', tone: 'success' },
             { label: '월 수확량', value: (totalHarvest).toLocaleString(), unit: 'kg', sub: `목표 ${totalTarget.toLocaleString()}kg · ${Math.round(totalHarvest / totalTarget * 100)}%`, trend: '▲ 8%', tone: 'primary' },
             { label: '월 인건비', value: '8,420', unit: '만원', sub: '예산 9,200만원 · 91%', trend: '−3.2%', tone: 'warning' },
-            { label: '미해결 이슈', value: 7, unit: '건', sub: '긴급 2 · 일반 5', trend: '긴급', tone: 'danger' },
+            { label: '미해결 이슈', value: openIssues.length, unit: '건', sub: '이상 신고 미해결', trend: '긴급', tone: 'danger' },
           ].map((k, i) => {
             const tones = { success: T.success, primary: HQ.accent, warning: T.warning, danger: T.danger };
             const softs = { success: T.successSoft, primary: HQ.accentSoft, warning: T.warningSoft, danger: T.dangerSoft };
@@ -209,7 +280,7 @@ function HQDashboardScreen() {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                 <h3 style={{ fontSize: 14, fontWeight: 700, color: T.text, margin: 0 }}>승인 허브</h3>
-                <Pill tone="danger">12</Pill>
+                <Pill tone="danger">{requests.filter(r => r.status === 'pending').length}</Pill>
               </div>
               <span style={{ fontSize: 11, color: HQ.accent, fontWeight: 600, cursor: 'pointer' }}>전체 →</span>
             </div>
@@ -240,14 +311,10 @@ function HQDashboardScreen() {
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8, maxHeight: 340, overflow: 'auto' }}>
-              {[
-                { branch: '부산LAB', bc: T.primary, name: '김재배', tag: '근태', tagTone: 'primary', type: '연차 신청', detail: '4/23 (수) · 본인', time: '10분 전', urgent: false },
-                { branch: '하동HUB', bc: T.warning, name: '최책임', tag: '예산', tagTone: 'warning', type: '설비 구매 요청', detail: '환기팬 2대 · 480만원', time: '42분 전', urgent: true },
-                { branch: '진주HUB', bc: T.success, name: '박지점', tag: '인사', tagTone: 'info', type: '신규 작업자 등록', detail: '임시 3명 · 5/1~31', time: '1시간 전', urgent: false },
-                { branch: '부산LAB', bc: T.primary, name: '김재배', tag: '자재', tagTone: 'success', type: '농약 재고 발주', detail: '총 120만원', time: '2시간 전', urgent: false },
-                { branch: '하동HUB', bc: T.warning, name: '최책임', tag: '근태', tagTone: 'primary', type: '연장근무 승인', detail: '오늘 2명 · 각 2h', time: '3시간 전', urgent: false },
-              ].map((r, i) => (
-                <div key={i} style={{
+              {pendingLeave.length === 0 ? (
+                <div style={{ padding: 20, textAlign: 'center', color: T.mutedSoft, fontSize: 12 }}>대기 중인 승인 요청 없음</div>
+              ) : pendingLeave.map((r) => (
+                <div key={r.id} style={{
                   padding: '10px 12px', background: T.bg, borderRadius: 8,
                   borderLeft: r.urgent ? `3px solid ${T.danger}` : '3px solid transparent',
                 }}>
@@ -262,11 +329,11 @@ function HQDashboardScreen() {
                   <div style={{ fontSize: 12, fontWeight: 600, color: T.text }}>{r.type}</div>
                   <div style={{ fontSize: 11, color: T.muted, marginTop: 2 }}>{r.detail}</div>
                   <div style={{ display: 'flex', gap: 6, marginTop: 8 }}>
-                    <button style={{
+                    <button onClick={() => farmReview(r.id, false, currentUser?.id)} style={{
                       flex: 1, padding: '5px 0', borderRadius: 6, border: `1px solid ${T.border}`,
                       background: T.surface, color: T.muted, fontSize: 11, fontWeight: 600, cursor: 'pointer',
                     }}>반려</button>
-                    <button style={{
+                    <button onClick={() => farmReview(r.id, true, currentUser?.id)} style={{
                       flex: 1, padding: '5px 0', borderRadius: 6, border: 0,
                       background: HQ.accent, color: '#fff', fontSize: 11, fontWeight: 600, cursor: 'pointer',
                     }}>승인</button>
@@ -342,17 +409,14 @@ function HQDashboardScreen() {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                 <h3 style={{ fontSize: 14, fontWeight: 700, color: T.text, margin: 0 }}>전 지점 이상 신고</h3>
-                <Pill tone="danger">7</Pill>
+                <Pill tone="danger">{openIssues.length}</Pill>
               </div>
               <span style={{ fontSize: 11, color: HQ.accent, fontWeight: 600, cursor: 'pointer' }}>전체 →</span>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              {[
-                { branch: '부산LAB', bc: T.primary, severity: 'critical', type: '병해충', place: 'B동 3열 · 딸기', who: '최수진', time: '8분 전', note: '잎 하면 흰색 반점 다수 확인' },
-                { branch: '하동HUB', bc: T.warning, severity: 'critical', type: '설비 고장', place: '환기창 2번', who: '이강모', time: '32분 전', note: '자동 개폐 반응 없음' },
-                { branch: '진주HUB', bc: T.success, severity: 'warning', type: 'EC 이상', place: 'C동 2열 · 파프리카', who: '자동감지', time: '1시간 전', note: 'EC 3.2 → 기준 초과' },
-                { branch: '부산LAB', bc: T.primary, severity: 'info', type: '작물 이상', place: 'A동 7열 · 토마토', who: '김수확', time: '2시간 전', note: '과실 일부 열과 발생' },
-              ].map((it, i) => {
+              {issueFeed.length === 0 ? (
+                <div style={{ padding: 20, textAlign: 'center', color: T.mutedSoft, fontSize: 12 }}>미해결 이슈 없음</div>
+              ) : issueFeed.map((it, i) => {
                 const sevTone = { critical: 'danger', warning: 'warning', info: 'info' }[it.severity];
                 const sevBg = { critical: T.dangerSoft, warning: T.warningSoft, info: T.infoSoft }[it.severity];
                 const sevBorder = { critical: T.danger, warning: T.warning, info: T.info }[it.severity];
@@ -373,7 +437,7 @@ function HQDashboardScreen() {
                 );
               })}
               <div style={{ padding: 10, background: T.bg, borderRadius: 8, textAlign: 'center' }}>
-                <span style={{ fontSize: 11, color: T.mutedSoft }}>해결됨 · 오늘 5건</span>
+                <span style={{ fontSize: 11, color: T.mutedSoft }}>해결됨 · 총 {issues.filter(i => i.isResolved).length}건</span>
               </div>
             </div>
           </Card>
@@ -387,12 +451,9 @@ function HQDashboardScreen() {
               <span style={{ fontSize: 11, color: HQ.accent, fontWeight: 600, cursor: 'pointer' }}>+ 새 공지</span>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              {[
-                { tag: '전사 · 중요', tone: 'danger', title: '5월 안전교육 이수 필참 안내', meta: '전 직원 · 읽음 42/60 (70%)', pinned: true, branches: 'ALL' },
-                { tag: '정책', tone: 'info', title: '2026년 연차 사용 가이드라인 개정', meta: '전 직원 · 읽음 58/60 (97%)', branches: 'ALL' },
-                { tag: '부산LAB', tone: 'primary', title: '금주 토요일 출근조 편성', meta: '부산LAB · 읽음 18/20', branches: 'busan' },
-                { tag: '하동HUB', tone: 'warning', title: '설비 점검일 연기', meta: '하동HUB · 읽음 8/12', branches: 'hadong' },
-              ].map((n, i) => {
+              {noticeItems.length === 0 ? (
+                <div style={{ padding: 20, textAlign: 'center', color: T.mutedSoft, fontSize: 12 }}>공지 없음</div>
+              ) : noticeItems.map((n, i) => {
                 const tones = { danger: T.danger, primary: T.primary, success: T.success, warning: T.warning, info: HQ.accent, muted: T.mutedSoft };
                 const softs = { danger: T.dangerSoft, primary: T.primarySoft, success: T.successSoft, warning: T.warningSoft, info: HQ.accentSoft, muted: T.bg };
                 return (
@@ -416,7 +477,7 @@ function HQDashboardScreen() {
 
             {/* 하단 요약 */}
             <div style={{ marginTop: 12, paddingTop: 12, borderTop: `1px solid ${T.borderSoft}`, display: 'flex', justifyContent: 'space-between', fontSize: 11 }}>
-              <span style={{ color: T.mutedSoft }}>활성 공지 <span style={{ color: T.text, fontWeight: 700 }}>8건</span></span>
+              <span style={{ color: T.mutedSoft }}>활성 공지 <span style={{ color: T.text, fontWeight: 700 }}>{notices.length}건</span></span>
               <span style={{ color: T.mutedSoft }}>평균 열람률 <span style={{ color: T.success, fontWeight: 700 }}>83%</span></span>
             </div>
           </Card>
