@@ -222,8 +222,8 @@ const btnGhostStyle = {
   display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
 };
 
-const btnPrimary = (label, iconD) => (
-  <button style={{
+const btnPrimary = (label, iconD, onClick) => (
+  <button onClick={onClick} style={{
     display: 'inline-flex', alignItems: 'center', gap: 6,
     height: 36, padding: '0 14px', borderRadius: 8,
     background: T.primary, color: '#fff', border: 0,
@@ -235,8 +235,8 @@ const btnPrimary = (label, iconD) => (
   </button>
 );
 
-const btnSecondary = (label, iconD) => (
-  <button style={{
+const btnSecondary = (label, iconD, onClick) => (
+  <button onClick={onClick} style={{
     display: 'inline-flex', alignItems: 'center', gap: 6,
     height: 36, padding: '0 14px', borderRadius: 8,
     background: T.surface, color: T.text, border: `1px solid ${T.border}`,
