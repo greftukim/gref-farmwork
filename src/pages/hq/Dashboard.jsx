@@ -196,7 +196,7 @@ function HQDashboardScreen() {
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12 }}>
             {branches.map((b) => (
-              <Card key={b.code} pad={0} style={{ overflow: 'hidden', cursor: 'pointer' }}>
+              <Card key={b.code} pad={0} onClick={() => navigate('/admin/hq/branches')} style={{ overflow: 'hidden', cursor: 'pointer' }}>
                 <div style={{
                   padding: '14px 16px', background: b.accentSoft,
                   borderBottom: `1px solid ${T.borderSoft}`,
