@@ -1,12 +1,12 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { T, Card, Pill, Dot, Icon, icons, Avatar, btnPrimary, btnSecondary } from '../../design/primitives';
 import { HQ } from '../../design/hq-shell';
-import { supabase } from '../../lib/supabase';
 import useEmployeeStore from '../../stores/employeeStore';
 import useLeaveStore from '../../stores/leaveStore';
 import useAuthStore from '../../stores/authStore';
 import useAttendanceStore from '../../stores/attendanceStore';
 import useNoticeStore from '../../stores/noticeStore';
+import useHarvestStore from '../../stores/harvestStore';
 import EmployeeDetailModal from '../../components/employees/EmployeeDetailModal';
 
 // ─────── 지점 메타 (코드 → 표시명·색상) ───────
@@ -299,22 +299,25 @@ function HQBranchesScreen() {
   const fetchEmployees = useEmployeeStore((s) => s.fetchEmployees);
   const records = useAttendanceStore((s) => s.records);
   const fetchRecords = useAttendanceStore((s) => s.fetchRecords);
-  const [monthlyHarvestByEmp, setMonthlyHarvestByEmp] = useState({});
+  const harvestRecords = useHarvestStore((s) => s.records);
+  const fetchHarvest = useHarvestStore((s) => s.fetchCurrentMonth);
 
   const today = new Date().toISOString().slice(0, 10);
 
   useEffect(() => {
     if (employees.length === 0) fetchEmployees();
     fetchRecords();
-    const now = new Date();
-    const firstOfMonth = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-01`;
-    supabase.from('harvest_records').select('quantity, employee_id').gte('date', firstOfMonth)
-      .then(({ data }) => {
-        const map = {};
-        data?.forEach(r => { map[r.employee_id] = (map[r.employee_id]||0) + (r.quantity||0); });
-        setMonthlyHarvestByEmp(map);
-      });
+    fetchHarvest();
   }, []);
+
+  // employee_id → 이번 달 수확량 합계 (harvestStore.records 기반)
+  const monthlyHarvestByEmp = useMemo(() => {
+    const map = {};
+    harvestRecords.forEach((r) => {
+      map[r.employee_id] = (map[r.employee_id] || 0) + Number(r.quantity || 0);
+    });
+    return map;
+  }, [harvestRecords]);
 
   const bwc = (code) => employees.filter(e => e.branch === code && e.isActive).length;
 

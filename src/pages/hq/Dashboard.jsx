@@ -2,13 +2,13 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { T, Card, Pill, Dot, Icon, icons, btnPrimary, btnSecondary } from '../../design/primitives';
 import { HQ, HQTopBar } from '../../design/hq-shell';
-import { supabase } from '../../lib/supabase';
 import useEmployeeStore from '../../stores/employeeStore';
 import useLeaveStore from '../../stores/leaveStore';
 import useIssueStore from '../../stores/issueStore';
 import useNoticeStore from '../../stores/noticeStore';
 import useAuthStore from '../../stores/authStore';
 import useAttendanceStore from '../../stores/attendanceStore';
+import useHarvestStore from '../../stores/harvestStore';
 
 const D_BRANCH_META = {
   busan:        { name: '부산LAB',  dot: T.primary,   avatar: 'blue',    accent: T.primary,   accentSoft: T.primarySoft  },
@@ -33,9 +33,10 @@ function HQDashboardScreen() {
   const currentUser  = useAuthStore((s) => s.currentUser);
   const records      = useAttendanceStore((s) => s.records);
   const fetchRecords = useAttendanceStore((s) => s.fetchRecords);
+  const harvestRecords = useHarvestStore((s) => s.records);
+  const fetchHarvest   = useHarvestStore((s) => s.fetchCurrentMonth);
 
   const navigate = useNavigate();
-  const [monthlyHarvestByEmp, setMonthlyHarvestByEmp] = useState({});
   const [approvalFilter, setApprovalFilter] = useState('all');
   const [cropFilter, setCropFilter] = useState('토마토');
 
@@ -45,17 +46,45 @@ function HQDashboardScreen() {
     fetchIssues();
     fetchNotices();
     fetchRecords();
-    // harvest_records: employee_id별 이번 달 수확량 집계 (행 없으면 빈 map)
-    const now = new Date();
-    const firstOfMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
-    supabase.from('harvest_records').select('quantity, employee_id').gte('date', firstOfMonth)
-      .then(({ data }) => {
-        if (!data) return;
-        const map = {};
-        data.forEach((r) => { map[r.employee_id] = (map[r.employee_id] || 0) + (r.quantity || 0); });
-        setMonthlyHarvestByEmp(map);
-      });
+    fetchHarvest();
   }, []);
+
+  // employee_id → 이번 달 수확량 합계 (harvestStore.records 기반)
+  const monthlyHarvestByEmp = useMemo(() => {
+    const map = {};
+    harvestRecords.forEach((r) => {
+      map[r.employee_id] = (map[r.employee_id] || 0) + Number(r.quantity || 0);
+    });
+    return map;
+  }, [harvestRecords]);
+
+  // 작물 탭 필터 적용된 records (D-T1)
+  const cropFilteredRecords = useMemo(
+    () => harvestRecords.filter((r) => r.crop?.name === cropFilter),
+    [harvestRecords, cropFilter],
+  );
+
+  // 지점 × 최근 4주 수확량 (cropFilter 반영, D-D2)
+  const branchWeekHarvest = useMemo(() => {
+    const now = new Date();
+    const map = { busan: [0, 0, 0, 0], jinju: [0, 0, 0, 0], hadong: [0, 0, 0, 0] };
+    cropFilteredRecords.forEach((r) => {
+      const br = r.employee?.branch;
+      if (!map[br]) return;
+      const daysAgo = Math.floor((now - new Date(r.date)) / 86400000);
+      const weekIdx = 3 - Math.min(Math.floor(daysAgo / 7), 3);
+      if (weekIdx >= 0 && weekIdx <= 3) {
+        map[br][weekIdx] += Number(r.quantity || 0);
+      }
+    });
+    return map;
+  }, [cropFilteredRecords]);
+
+  // 차트 공통 max (모든 지점·주 통틀어)
+  const weekMax = useMemo(() => {
+    const m = Math.max(...Object.values(branchWeekHarvest).flat(), 0);
+    return m > 0 ? m : 1;
+  }, [branchWeekHarvest]);
 
   const today = new Date().toISOString().split('T')[0];
 
@@ -90,7 +119,7 @@ function HQDashboardScreen() {
       mgr: branchMgr(code),
       workers, checkedIn: att.checkedIn, late: att.late, rate,
       harvest,
-      harvestT: 0,  // BACKLOG: HARVEST-TABLE-001
+      harvestT: 0,  // BACKLOG: HARVEST-TARGETS-001 (지점별 목표치)
       tbm: 0,       // BACKLOG: TBM-COMPLETION-001
       status: rate < 80 && workers > 0 ? 'alert' : 'active',
     };
@@ -286,11 +315,11 @@ function HQDashboardScreen() {
               </div>
             </div>
 
-            {/* 주별 바 차트 — 주간 집계 없음, 0으로 표시 (BACKLOG: HARVEST-WEEKLY-001) */}
+            {/* 주별 바 차트 — 최근 4주 rolling (index 3=현재 주), cropFilter 반영 */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: 16, marginTop: 8 }}>
               {branches.map((b) => {
-                const weeks = [{ w: '1주', v: 0 }, { w: '2주', v: 0 }, { w: '3주', v: 0 }, { w: '4주', v: 0 }];
-                const max = 360;
+                const weekVals = branchWeekHarvest[b.code] || [0, 0, 0, 0];
+                const labels = ['3주 전', '2주 전', '지난주', '이번주'];
                 return (
                   <div key={b.code}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 6 }}>
@@ -304,13 +333,14 @@ function HQDashboardScreen() {
                       </div>
                     </div>
                     <div style={{ display: 'flex', gap: 3, height: 32, alignItems: 'flex-end' }}>
-                      {weeks.map((w, i) => (
+                      {weekVals.map((v, i) => (
                         <div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3 }}>
                           <div style={{
-                            width: '100%', height: `${Math.max(w.v / max * 100, 0)}%`,
-                            background: b.accent, borderRadius: '3px 3px 0 0', minHeight: 4, opacity: 0.25,
+                            width: '100%', height: `${Math.max(v / weekMax * 100, 0)}%`,
+                            background: b.accent, borderRadius: '3px 3px 0 0', minHeight: 4,
+                            opacity: v > 0 ? 0.85 : 0.2,
                           }} />
-                          <span style={{ fontSize: 9, color: T.mutedSoft }}>{w.w}</span>
+                          <span style={{ fontSize: 9, color: T.mutedSoft }}>{labels[i]}</span>
                         </div>
                       ))}
                     </div>
