@@ -37,6 +37,7 @@ function HQDashboardScreen() {
   const navigate = useNavigate();
   const [monthlyHarvestByEmp, setMonthlyHarvestByEmp] = useState({});
   const [approvalFilter, setApprovalFilter] = useState('all');
+  const [cropFilter, setCropFilter] = useState('토마토');
 
   useEffect(() => {
     fetchEmployees();
@@ -270,15 +271,18 @@ function HQDashboardScreen() {
                 </div>
               </div>
               <div style={{ display: 'flex', gap: 4, background: T.bg, padding: 3, borderRadius: 6, fontSize: 11 }}>
-                {['토마토', '딸기', '파프리카', '오이'].map((t, i) => (
-                  <span key={t} style={{
-                    padding: '4px 10px', borderRadius: 4, fontWeight: 600,
-                    background: i === 0 ? T.surface : 'transparent',
-                    color: i === 0 ? T.text : T.mutedSoft,
-                    boxShadow: i === 0 ? '0 1px 2px rgba(0,0,0,0.06)' : 'none',
-                    cursor: 'pointer',
-                  }}>{t}</span>
-                ))}
+                {['토마토', '딸기', '파프리카', '오이'].map((t) => {
+                  const on = cropFilter === t;
+                  return (
+                    <span key={t} onClick={() => setCropFilter(t)} style={{
+                      padding: '4px 10px', borderRadius: 4, fontWeight: 600,
+                      background: on ? T.surface : 'transparent',
+                      color: on ? T.text : T.mutedSoft,
+                      boxShadow: on ? '0 1px 2px rgba(0,0,0,0.06)' : 'none',
+                      cursor: 'pointer',
+                    }}>{t}</span>
+                  );
+                })}
               </div>
             </div>
 
