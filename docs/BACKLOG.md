@@ -147,6 +147,11 @@
 | HQ-PERIOD-PICKER-001 | 기능 미구현 | open | 세션 24 (2026-04-23) | - | HQTopBar 기간 피커(일/주/월/분기) 탭 — onClick 미연결, 시각 효과만. 대시보드 기간 필터 트랙 처리 시 연결. | docs/BACKLOG.md |
 | APPROVAL-CATEGORY-001 | 데이터 보완 | open | 세션 24 (2026-04-23) | - | Dashboard 승인허브 위젯 예산/인사/자재 카테고리 데이터 없음 — 해당 테이블 미존재, 빈 상태 표시. 각 카테고리 테이블 신설 후 필터 연결. | docs/BACKLOG.md |
 | HQ-EMPLOYEE-EDIT-MODAL-001 | 기능 미구현 | open | 세션 24 (2026-04-23) | - | HQEmployeesScreen 직원 상세 모달 편집 기능 미연결 — onEdit prop 미전달(read-only 모드). HQ 전용 권한 정책 확정 후 onEdit 연결 처리. | docs/BACKLOG.md |
+| HQ-REPORT-EXPORT-001 | 기능 미구현 | open | 세션 25 (2026-04-23) | - | HQDashboardScreen "리포트 내보내기" 버튼 — 현재 alert 임시 처리. 대시보드 전체 PDF/CSV 내보내기 로직 및 라이브러리 선정 필요. | docs/BACKLOG.md |
+| HQ-CROP-REPORT-001 | 기능 미구현 | open | 세션 25 (2026-04-23) | - | HQDashboardScreen "작물별 상세 분석 보고서 열기" — 현재 alert 임시 처리. 보고서 페이지 없음, HQ-FINANCE-001과 별개의 작물·수확 축. | docs/BACKLOG.md |
+| HQ-KPI-DRILLDOWN-001 | 기능 미구현 | open | 세션 25 (2026-04-23) | - | HQDashboardScreen 전사 KPI 4개 카드 클릭 시 alert 통일 — 각 KPI(가동률/수확량/인건비/이슈) 상세 드릴다운 페이지 모두 부재. 결정 근거: 4개 중 일부만 기능 제공 시 혼선 우려, 일관성 우선(태우님). | docs/BACKLOG.md |
+| HARVEST-CROP-FILTER-001 | 재연결 | open | 세션 25 (2026-04-23) | - | HQDashboardScreen 작물 탭(토마토/딸기/파프리카/오이) — useState 전환만 구현, 실제 harvest_records.crop_id → crops 테이블 조인 필터링 미구현. 데이터(harvest_records) 0 rows 누적 후 의미 있음. HARVEST-TABLE-001 선행. | docs/BACKLOG.md |
+| HQ-ISSUE-PAGE-001 | 재연결 | open | 세션 25 (2026-04-23) | - | HQ 전용 이상 신고 페이지 부재 — /admin/records(IssueCallPage)는 재배팀 Sidebar 라우트로 HQ 컨텍스트에서 이동 시 HQSidebar active 메뉴 부재로 혼선. G-H2("전체 →")와 G-C1(이슈 카드 클릭) 모두 alert 처리. HQ 사이드바에 "이상 신고" 메뉴 추가 또는 /admin/hq/issues 신규 페이지 필요. | docs/BACKLOG.md |
 
 ---
 
