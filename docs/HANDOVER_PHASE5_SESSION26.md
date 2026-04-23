@@ -167,7 +167,7 @@ Supabase MCP `execute_sql`은 문장별 독립 실행이므로 **PL/pgSQL DO 블
 
 | 해시 | 설명 |
 |---|---|
-| (예정) | J-CLEANUP-DEEP-001 resolve + SESSION26 HANDOVER |
+| `871af85` | J-CLEANUP-DEEP-001 resolve + SESSION26 HANDOVER |
 
 ---
 
