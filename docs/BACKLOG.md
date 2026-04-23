@@ -139,8 +139,8 @@
 | HQ-DASHBOARD-INTERACTIVE-001 | 재연결 | open | 세션 22 (2026-04-22) | - | DashboardInteractive.jsx (801줄) 실데이터 연결 — 0 store imports, path="hq/interactive" 라우트 존재 확인됨. 규모가 크므로 별 세션에서 단독 처리 권장. | docs/BACKLOG.md |
 | PROTECTED-ROUTE-001 | UX | open | 세션 21 (2026-04-22) | - | role 기반 라우트 가드 확장 — 현재 LoginPage에서만 분기, URL 직접 입력 시 차단 없음. master/hr_admin의 /admin/* 직접 접근, farm_admin의 /admin/hq 직접 접근 등 가능. ProtectedRoute 신규 작성 검토. | docs/BACKLOG.md |
 | DASHBOARD-PHASE2-001 | 재연결 | open | 세션 21 (2026-04-22) | - | AdminDashboard 주간 성과 그래프 + 주간 스케줄 실데이터 연결. 현재 하드코딩 유지 중 (Phase 2 예정). | docs/BACKLOG.md |
-| HARVEST-TABLE-001 | 데이터 보완 | open | 세션 23 (2026-04-23) | - | harvest_records 테이블 0 rows — 월간/지점별 수확량 + Dashboard 차트 모두 0 표시. 수확 입력 UI 트랙 신설 또는 수동 입력 방법 결정 필요. | docs/BACKLOG.md |
-| HARVEST-WEEKLY-001 | 재연결 | open | 세션 23 (2026-04-23) | - | Dashboard 주간 수확량 차트 weeks=[0,0,0,0] — HARVEST-TABLE-001 해소 후 주차별 GROUP BY 쿼리 연결 필요. | docs/BACKLOG.md |
+| HARVEST-TARGETS-001 | 목표치 설계 | open | 세션 23 (2026-04-23) 발견 → 세션 27 (2026-04-24) 재정의 | - | 지점별 월간 수확 목표치 설계 없음 — Dashboard 달성률/목표 대비 % 계산 불가. branches 테이블 harvest_target_kg 컬럼 ALTER vs 별 harvest_targets 테이블(월별·작물별 세분화) 신설 결정 필요. 박민식·김민국 답변 선행. 구 HARVEST-TABLE-001 rename (harvest_records 0건 이슈는 세션 27 시드 509건 투입으로 해소, 남은 목표치 트랙 분리). | docs/BACKLOG.md |
+| HARVEST-WEEKLY-001 | 재연결 | resolved | 세션 23 (2026-04-23) 발견 → 세션 27 (2026-04-24) 해소 | - | Dashboard 주간 수확량 차트 실데이터 연결 완료. 커밋 9731ddc — branchWeekHarvest useMemo(지점×최근 4주 2차원) + weekMax 동적 max + opacity 분기. cropFilter 반영. 전제 시드 509건 투입(세션 27 Task 2). | docs/BACKLOG.md |
 | HQ-EMP-PAGINATION-001 | UI | open | 세션 23 (2026-04-23) | - | HQEmployeesScreen 페이지네이션 버튼(1~6) 하드코딩 — 실 직원 수 기반 페이지 분할 로직 미연결. 현 인원(38명) 대비 낮은 우선순위. | docs/BACKLOG.md |
 | NOTIFICATION-DROPDOWN-001 | 기능 미구현 | open | 세션 24 (2026-04-23) | - | HQTopBar 알림 벨 버튼 클릭 시 `alert()` 임시 처리 — 알림 드롭다운 패널 미구현. 알림 DB 트랙 신설 후 처리. | docs/BACKLOG.md |
 | GLOBAL-SEARCH-001 | 기능 미구현 | open | 세션 24 (2026-04-23) | - | HQTopBar 검색 input onChange 미연결(BACKLOG 주석만) — 전역 검색 기능 미구현. 검색 인덱스·UX 설계 후 별 트랙 처리. | docs/BACKLOG.md |
@@ -150,7 +150,8 @@
 | HQ-REPORT-EXPORT-001 | 기능 미구현 | open | 세션 25 (2026-04-23) | - | HQDashboardScreen "리포트 내보내기" 버튼 — 현재 alert 임시 처리. 대시보드 전체 PDF/CSV 내보내기 로직 및 라이브러리 선정 필요. | docs/BACKLOG.md |
 | HQ-CROP-REPORT-001 | 기능 미구현 | open | 세션 25 (2026-04-23) | - | HQDashboardScreen "작물별 상세 분석 보고서 열기" — 현재 alert 임시 처리. 보고서 페이지 없음, HQ-FINANCE-001과 별개의 작물·수확 축. | docs/BACKLOG.md |
 | HQ-KPI-DRILLDOWN-001 | 기능 미구현 | open | 세션 25 (2026-04-23) | - | HQDashboardScreen 전사 KPI 4개 카드 클릭 시 alert 통일 — 각 KPI(가동률/수확량/인건비/이슈) 상세 드릴다운 페이지 모두 부재. 결정 근거: 4개 중 일부만 기능 제공 시 혼선 우려, 일관성 우선(태우님). | docs/BACKLOG.md |
-| HARVEST-CROP-FILTER-001 | 재연결 | open | 세션 25 (2026-04-23) | - | HQDashboardScreen 작물 탭(토마토/딸기/파프리카/오이) — useState 전환만 구현, 실제 harvest_records.crop_id → crops 테이블 조인 필터링 미구현. 데이터(harvest_records) 0 rows 누적 후 의미 있음. HARVEST-TABLE-001 선행. | docs/BACKLOG.md |
+| HARVEST-CROP-FILTER-001 | 재연결 | resolved | 세션 25 (2026-04-23) 발견 → 세션 27 (2026-04-24) 해소 | - | HQDashboardScreen 작물 탭 실 필터링 완료. 커밋 9731ddc — cropFilteredRecords useMemo(harvestRecords.filter(r => r.crop?.name === cropFilter)) → branchWeekHarvest 재계산 연쇄. 토마토/파프리카/딸기/오이 탭 전환 시 주별 차트 bar 즉시 업데이트. | docs/BACKLOG.md |
+| HQ-HARVEST-MENU-001 | UI 조사 | open | 세션 27 (2026-04-24) | - | HQSidebar 사이드바에 수확 기록 메뉴 노출 여부 확인 — /admin/harvest 입력 페이지는 기존 AdminLayout(재배팀 사이드바)에서만 접근 가능. HQ 컨텍스트(관리팀·본사 role)에서 수확 입력·조회 진입 경로 설계 필요. 세션 27 Task 1 Q1 선택지로 후속 정찰 이관 결정. | docs/BACKLOG.md |
 | HQ-ISSUE-PAGE-001 | 재연결 | open | 세션 25 (2026-04-23) | - | HQ 전용 이상 신고 페이지 부재 — /admin/records(IssueCallPage)는 재배팀 Sidebar 라우트로 HQ 컨텍스트에서 이동 시 HQSidebar active 메뉴 부재로 혼선. G-H2("전체 →")와 G-C1(이슈 카드 클릭) 모두 alert 처리. HQ 사이드바에 "이상 신고" 메뉴 추가 또는 /admin/hq/issues 신규 페이지 필요. | docs/BACKLOG.md |
 
 ---
