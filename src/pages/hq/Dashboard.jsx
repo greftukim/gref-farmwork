@@ -455,7 +455,7 @@ function HQDashboardScreen() {
                 const sevBg = { critical: T.dangerSoft, warning: T.warningSoft, info: T.infoSoft }[it.severity];
                 const sevBorder = { critical: T.danger, warning: T.warning, info: T.info }[it.severity];
                 return (
-                  <div key={i} style={{ padding: '10px 12px', background: sevBg, borderRadius: 8, borderLeft: `3px solid ${sevBorder}` }}>
+                  <div key={i} onClick={() => alert('HQ 전용 이상 신고 페이지 준비 중입니다.')} style={{ padding: '10px 12px', background: sevBg, borderRadius: 8, borderLeft: `3px solid ${sevBorder}`, cursor: 'pointer' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
                       <Dot c={it.bc} />
                       <span style={{ fontSize: 11, fontWeight: 700, color: T.muted }}>{it.branch}</span>
@@ -488,7 +488,7 @@ function HQDashboardScreen() {
                 const tones = { danger: T.danger, primary: T.primary, success: T.success, warning: T.warning, info: HQ.accent, muted: T.mutedSoft };
                 const softs = { danger: T.dangerSoft, primary: T.primarySoft, success: T.successSoft, warning: T.warningSoft, info: HQ.accentSoft, muted: T.bg };
                 return (
-                  <div key={i} style={{ padding: '10px 12px', background: T.bg, borderRadius: 8, borderLeft: n.pinned ? `3px solid ${T.danger}` : '3px solid transparent' }}>
+                  <div key={i} onClick={() => navigate('/admin/hq/notices')} style={{ padding: '10px 12px', background: T.bg, borderRadius: 8, borderLeft: n.pinned ? `3px solid ${T.danger}` : '3px solid transparent', cursor: 'pointer' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 5 }}>
                       <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 6px', borderRadius: 4, background: softs[n.tone], color: tones[n.tone] }}>{n.tag}</span>
                       {n.pinned && <Icon d="M10 2l2 5 5 1-4 4 1 6-5-3-5 3 1-6-4-4 5-1z" size={11} c={T.danger} />}
