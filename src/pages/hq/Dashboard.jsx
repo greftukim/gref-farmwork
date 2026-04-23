@@ -169,7 +169,7 @@ function HQDashboardScreen() {
             const tones = { success: T.success, primary: HQ.accent, warning: T.warning, danger: T.danger };
             const softs = { success: T.successSoft, primary: HQ.accentSoft, warning: T.warningSoft, danger: T.dangerSoft };
             return (
-              <Card key={i} pad={18} style={{ position: 'relative', overflow: 'hidden' }}>
+              <Card key={i} pad={18} onClick={() => alert('KPI 상세 드릴다운 준비 중입니다.')} style={{ position: 'relative', overflow: 'hidden', cursor: 'pointer' }}>
                 <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 3, background: tones[k.tone] }} />
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 14 }}>
                   <span style={{ fontSize: 12, color: T.muted, fontWeight: 600 }}>{k.label}</span>

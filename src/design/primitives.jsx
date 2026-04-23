@@ -30,8 +30,8 @@ const T = {
 };
 
 // ─────── 재사용 UI 프리미티브 ───────
-const Card = ({ children, style = {}, pad = 20 }) => (
-  <div style={{
+const Card = ({ children, style = {}, pad = 20, onClick }) => (
+  <div onClick={onClick} style={{
     background: T.surface, border: `1px solid ${T.border}`,
     borderRadius: 12, padding: pad, ...style,
   }}>{children}</div>
