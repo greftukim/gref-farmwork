@@ -219,15 +219,15 @@ function HQDashboardScreen() {
         {/* ─────── 전사 KPI 4개 ─────── */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12 }}>
           {[
-            { label: '전사 가동률', value: totalWorkers > 0 ? Math.round(totalCheckedIn / totalWorkers * 100) : 0, unit: '%', sub: gadongyulSub, trend: '—', tone: 'success' },
-            { label: '월 수확량', value: totalHarvest.toLocaleString(), unit: 'kg', sub: harvestSub, trend: '—', tone: 'primary' },
-            { label: '월 인건비', value: '—', unit: '', sub: '집계 없음', trend: '—', tone: 'warning' },
-            { label: '미해결 이슈', value: openIssues.length, unit: '건', sub: '이상 신고 미해결', trend: '긴급', tone: 'danger' },
+            { label: '전사 가동률', value: totalWorkers > 0 ? Math.round(totalCheckedIn / totalWorkers * 100) : 0, unit: '%', sub: gadongyulSub, trend: '—', tone: 'success', to: '/admin/hq/employees' },
+            { label: '월 수확량', value: totalHarvest.toLocaleString(), unit: 'kg', sub: harvestSub, trend: '—', tone: 'primary', to: '/admin/hq/finance' },
+            { label: '월 인건비', value: '—', unit: '', sub: '집계 없음', trend: '—', tone: 'warning', to: '/admin/hq/finance' },
+            { label: '미해결 이슈', value: openIssues.length, unit: '건', sub: '이상 신고 미해결', trend: '긴급', tone: 'danger', to: null },
           ].map((k, i) => {
             const tones = { success: T.success, primary: HQ.accent, warning: T.warning, danger: T.danger };
             const softs = { success: T.successSoft, primary: HQ.accentSoft, warning: T.warningSoft, danger: T.dangerSoft };
             return (
-              <Card key={i} pad={18} onClick={() => alert('KPI 상세 드릴다운 준비 중입니다.')} style={{ position: 'relative', overflow: 'hidden', cursor: 'pointer' }}>
+              <Card key={i} pad={18} onClick={() => k.to ? navigate(k.to) : alert('HQ 전용 이슈 페이지 준비 중입니다.')} style={{ position: 'relative', overflow: 'hidden', cursor: 'pointer' }}>
                 <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 3, background: tones[k.tone] }} />
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 14 }}>
                   <span style={{ fontSize: 12, color: T.muted, fontWeight: 600 }}>{k.label}</span>
