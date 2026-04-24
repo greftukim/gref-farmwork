@@ -1389,3 +1389,73 @@ navigator.serviceWorker.getRegistrations()
 - Workbox `skipWaiting: true` 설정으로 신규 SW 즉시 활성화 검토
 
 **관련 커밋:** e7000f4 (fix(session21))
+
+---
+
+## 교훈 50 — Playwright MCP 브라우저 인스턴스는 유휴 시 자동 종료된다
+
+**맥락:** Phase 5 세션 28 (2026-04-24), Playwright MCP로 프로덕션 검증 중 브라우저 dead 재발.
+
+**증상:**
+Task 1 완료 후 재개 시점에서 Playwright 브라우저 인스턴스가 dead 상태.
+Claude Code 재시작 후 `browser_navigate`로 다시 연결해야 했음.
+
+**원인:**
+Playwright MCP 브라우저는 일정 시간 유휴 상태가 지속되면 자동 종료됨.
+INFRA-001(Supabase MCP heartbeat 타임아웃)과 유사한 패턴이지만 다른 레이어.
+
+**예방:**
+- Task 사이 유휴 시간을 최소화 (연속 작업)
+- 장시간 대기가 예상될 경우 `browser_navigate`로 주기적 keep-alive
+- 재발 시 Claude Code 재시작 → `browser_navigate` → 로그인 재수행
+
+**교훈:**
+MCP 브라우저 세션 ≠ Claude Code 세션. Claude Code가 살아있어도 브라우저는 별도 수명을 가짐.
+
+---
+
+## 교훈 51 — random() 기반 시드의 검증 기대값은 추정치임을 명시해야 한다
+
+**맥락:** Phase 5 세션 28 (2026-04-24), 세션 27 핸드오버의 기대값 11,877 vs 실제 8,782.5 불일치.
+
+**증상:**
+세션 27 핸드오버에 "월 수확량 11,877" 검증 시나리오를 기록했으나,
+실제 프로덕션 DB에는 8,782.5가 집계됨. Playwright 검증에서 "불일치" 오경보 발생.
+
+**원인:**
+`harvest_records` 시드가 `random()` 기반 비결정적 SQL로 작성됨.
+핸드오버의 11,877은 기대 확률 기반 추정치였고, 실제 실행 결과는 달랐음.
+
+**예방:**
+- `random()` 시드 실행 후 `SELECT SUM(quantity) FROM harvest_records` 결과를 실측값으로 기록
+- 핸드오버에 기대값이 아닌 **실제 집계값** 기록 (`SELECT` 결과 직접 붙여넣기)
+- 검증 기대값에 "(추정)" 또는 "DB 실측값 기준" 명시
+
+**관련 커밋:** 9670823 (feat(session27): harvest_records 시드 migration 작성)
+
+---
+
+## 교훈 52 — JS 부동소수점 누산 버그는 Playwright DOM 추출로 발견 가능하다
+
+**맥락:** Phase 5 세션 28 (2026-04-24), BUG-F01 진주HUB `3115.7000000000003` 발견.
+
+**증상:**
+시각적 스크린샷만으로는 `3,115.7`처럼 보일 수 있으나,
+Playwright `page.evaluate()` DOM 텍스트 추출로 `3115.7000000000003` 원문 확인.
+
+**원인:**
+JavaScript IEEE 754 부동소수점 덧셈:
+`Number(r.quantity)` 값들을 반복 누산 시 오차 누적 (`0.1 + 0.2 ≠ 0.3`).
+
+**수정 패턴:**
+```js
+// Before (버그)
+{ l: '수확', v: b.harvest > 0 ? b.harvest : '—', u: 'kg' }
+// After (수정)
+{ l: '수확', v: b.harvest > 0 ? Number(b.harvest.toFixed(1)).toLocaleString() : '—', u: 'kg' }
+```
+
+**예방:**
+- 수치 렌더 시 항상 `toLocaleString()` 또는 `toFixed(N)` 적용
+- DB `NUMERIC` → JS `Number()` 변환 직후 반올림: `Math.round(v * 10) / 10`
+- Playwright DOM 텍스트 추출로 "눈에 보이는 값"과 "실제 DOM 값" 구분 검증

@@ -35,6 +35,8 @@
 | GENERAL-DASHBOARD-ITEMS-001 | 도메인 미확정 | open | 세션 15 (2026-04-14) | - | general role 대시보드 노출 항목 정의 — 박민식·김민국 답변 대기. 트랙 J 단위 4 또는 별 트랙에서 처리. | docs/handoff/2026-04-14_session15.md |
 | EMPLOYEE-PASSWORD-FIRST-LOGIN-001 | 보안 | open | 세션 15 (2026-04-14) | - | 트랙 J 마감 후 계정별 비밀번호 변경 필수. 첫 로그인 시 비밀번호 변경 강제 정책 검토. 현재 통일 비밀번호(rmfpvm001) 임시 운용. | docs/handoff/2026-04-14_session15.md |
 | TRACK-L-G-MERGE-001 | 트랙 매핑 | open | 세션 15 (2026-04-14) | - | 트랙 L (거터 QR 작업 흐름) 진입 시 Track G (포장 작업)와 통합 검토. 둘 다 작업자 흐름 재설계 영역 겹침. | docs/handoff/2026-04-14_session15.md |
+| BUG-F01 | BUG | resolved | 세션 28 (2026-04-24) | - | Dashboard 상단 지점 카드 b.harvest 부동소수점 누산 표시 버그(진주HUB `3115.7000000000003`) + toLocaleString() 누락. Dashboard.jsx:271 수정으로 해결. 커밋 3c6a275. | docs/BACKLOG.md |
+| BUG-F02 | BUG | resolved | 세션 28 (2026-04-24) | - | Dashboard 작물 탭 4개(토마토/딸기/파프리카/오이) cropFilter가 주별 바에만 반영되고 지점 합계·총합 미반영. 작물 탭 전면 제거 + 지점별×작물별 그룹 막대 6개 + 막대 클릭 추이 차트(최근 30일) 재설계로 해결. 커밋 3c6a275. | docs/BACKLOG.md |
 
 ---
 
