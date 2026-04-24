@@ -1541,3 +1541,42 @@ GROUP BY e.branch
 **예방:**
 - `harvest_records` 관련 SQL 작성 시 항상 `employees.branch` JOIN 포함
 - DB 스키마 변경 이력 확인 필수 — `branch_id` 추가 마이그레이션이 없었음을 확인 후 작성
+
+---
+
+## 교훈 56 — Playwright 회귀 스크립트의 모달/탭 감지는 요소 타입을 명시해야 한다
+
+**맥락:** Phase 5 세션 30 (2026-04-24), `scripts/regression_session30.cjs` 작성 중.
+
+**증상:**
+```
+BUG-F02 FAIL — bodyText.includes('토마토') → true
+```
+실제로는 작물 필터 탭이 제거되었으나, Recharts 차트 레이블에 작물명이 정상 표시되어 오탐 발생.
+
+**원인:**
+- `bodyText.includes('토마토')` 방식은 페이지 전체 텍스트를 검색하므로 차트 레이블, 테이블 셀 등 무관한 위치도 매칭됨
+- 작물 필터 탭이 `<button>` 요소인지 확인하지 않고 텍스트 존재 여부만 체크
+
+**수정 패턴:**
+```js
+// 탭 버튼 존재 여부로 체크 — 차트 레이블(SVG <text>/<tspan>)은 button이 아님
+const cropTabTomato = await page.$('button:has-text("토마토")');
+const hasCropTabBtns = !!(cropTabTomato || ...);
+hasCropTabBtns ? fail('BUG-F02 회귀') : pass('BUG-F02 PASS');
+```
+
+**모달 감지 오탐 방지:**
+```js
+// Modal 컴포넌트 구조 확인 후 실제 클래스 패턴으로 감지
+const modal = await page.$('div[class*="fixed"][class*="z-50"]');
+// 닫기: 명시적 텍스트 버튼 우선, Escape 폴백
+const closeBtn = await page.$('button:has-text("닫기")');
+if (closeBtn) await closeBtn.click({ timeout: 3000 });
+else await page.keyboard.press('Escape');
+```
+
+**예방:**
+- 회귀 스크립트에서 UI 요소 존재 확인 시 **DOM 요소 타입(button, input 등)까지 셀렉터에 명시**
+- 모달/다이얼로그 감지 전 실제 컴포넌트 구조(className 패턴) 확인 후 셀렉터 작성
+- 닫기 동작은 `try/catch + Escape 폴백` 패턴으로 크래시 방지

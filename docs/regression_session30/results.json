@@ -1,0 +1,71 @@
+{
+  "results": [
+    {
+      "name": "BUG-F01 PASS (부동소수점 없음)",
+      "status": "PASS",
+      "note": ""
+    },
+    {
+      "name": "BUG-F02 PASS (작물 필터 탭 없음)",
+      "status": "PASS",
+      "note": ""
+    },
+    {
+      "name": "Task1 검색창 input 존재",
+      "status": "PASS",
+      "note": ""
+    },
+    {
+      "name": "Task1 필터 동작 (전체41→필터10)",
+      "status": "PASS",
+      "note": ""
+    },
+    {
+      "name": "Task2 직원 상세 모달 열림",
+      "status": "PASS",
+      "note": ""
+    },
+    {
+      "name": "Task3 공지 작성 모달 열림",
+      "status": "PASS",
+      "note": ""
+    },
+    {
+      "name": "Task4-CSV내보내기 alert 반응 확인",
+      "status": "PASS",
+      "note": ""
+    },
+    {
+      "name": "Task4-직원추가 alert 반응 확인",
+      "status": "PASS",
+      "note": ""
+    },
+    {
+      "name": "Task4-지도보기 alert 반응 확인",
+      "status": "PASS",
+      "note": ""
+    },
+    {
+      "name": "Task4-지점추가 alert 반응 확인",
+      "status": "PASS",
+      "note": ""
+    },
+    {
+      "name": "Task4-승인내보내기 alert 반응 확인",
+      "status": "PASS",
+      "note": ""
+    },
+    {
+      "name": "Task5 지점 상세 → alert 반응",
+      "status": "PASS",
+      "note": ""
+    }
+  ],
+  "dialogs": [
+    {
+      "type": "alert",
+      "msg": "부산LAB 지점 상세 페이지 준비 중입니다."
+    }
+  ],
+  "errors": []
+}

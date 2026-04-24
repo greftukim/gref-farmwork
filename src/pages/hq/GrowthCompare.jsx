@@ -122,9 +122,10 @@ function HQGrowthCompareScreen() {
                   ))}
                 </div>
                 <div style={{ padding: '10px 16px', background: T.bg }}>
-                  <button style={{ width: '100%', padding: '7px 0', borderRadius: 6, border: 0, background: T.surface, color: T.primary, fontSize: 11, fontWeight: 700, cursor: 'pointer', borderTop: `1px solid ${T.borderSoft}` }}>
+                  <button onClick={() => alert('지점별 생육 상세 페이지 준비 중입니다.')} style={{ width: '100%', padding: '7px 0', borderRadius: 6, border: 0, background: T.surface, color: T.primary, fontSize: 11, fontWeight: 700, cursor: 'pointer', borderTop: `1px solid ${T.borderSoft}` }}>
                     지점 상세 보기 →
                   </button>
+                  {/* BACKLOG: HQ-GROWTH-BRANCH-DETAIL-001 */}
                 </div>
               </Card>
             );
@@ -210,7 +211,8 @@ function HQGrowthCompareScreen() {
                 <li><strong style={{ color: T.text }}>부산LAB · 파프리카</strong> — 편차 −9%, 미조치 이상 2건. 화방 높이 부진.</li>
               </ul>
             </div>
-            <button style={{ padding: '8px 14px', borderRadius: 7, border: 0, background: T.warning, color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>지점 알림 발송</button>
+            <button onClick={() => alert('지점 알림 발송 기능 준비 중입니다.')} style={{ padding: '8px 14px', borderRadius: 7, border: 0, background: T.warning, color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>지점 알림 발송</button>
+            {/* BACKLOG: HQ-GROWTH-ALERT-SEND-001 */}
           </div>
         </Card>
       </div>

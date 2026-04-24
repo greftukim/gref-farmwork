@@ -152,7 +152,12 @@ function HQApprovalsScreen() {
       <HQPageHeader
         subtitle="본사 · 지점장 요청 관리"
         title="승인 허브"
-        actions={<>{btnSecondary('내보내기', icons.chart)}{btnPrimary('규칙 설정', icons.settings)}</>}
+        actions={<>
+          {btnSecondary('내보내기', icons.chart, () => alert('승인 내역 내보내기 기능 준비 중입니다.'))}
+          {/* BACKLOG: HQ-APPROVAL-EXPORT-001 */}
+          {btnPrimary('규칙 설정', icons.settings, () => alert('승인 규칙 설정 기능 준비 중입니다.'))}
+          {/* BACKLOG: HQ-APPROVAL-RULE-001 */}
+        </>}
         tabs={[
           { id: 'pending',  label: '대기 중', count: pending.length },
           { id: 'approved', label: '승인됨',  count: approved.length },
@@ -365,7 +370,12 @@ function HQBranchesScreen() {
       <HQPageHeader
         subtitle="본사 · 다지점 운영"
         title="지점 관리"
-        actions={<>{btnSecondary('지도로 보기', icons.location)}{btnPrimary('지점 추가', icons.plus)}</>}
+        actions={<>
+          {btnSecondary('지도로 보기', icons.location, () => alert('지점 지도 기능 준비 중입니다.'))}
+          {/* BACKLOG: HQ-BRANCH-MAP-001 */}
+          {btnPrimary('지점 추가', icons.plus, () => alert('지점 추가 기능 준비 중입니다.'))}
+          {/* BACKLOG: HQ-BRANCH-ADD-001 */}
+        </>}
       />
       <div style={{ flex: 1, overflow: 'auto', padding: 24, background: T.bg, display: 'flex', flexDirection: 'column', gap: 16 }}>
         {/* 전사 요약 */}
@@ -409,7 +419,8 @@ function HQBranchesScreen() {
                 </div>
                 <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
                   {b.status === 'alert' ? <Pill tone="warning">주의</Pill> : <Pill tone="success">정상</Pill>}
-                  <button style={{ padding: '5px 10px', borderRadius: 6, border: `1px solid ${T.border}`, background: T.surface, color: T.muted, fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>상세 →</button>
+                  <button onClick={() => alert(`${b.name} 지점 상세 페이지 준비 중입니다.`)} style={{ padding: '5px 10px', borderRadius: 6, border: `1px solid ${T.border}`, background: T.surface, color: T.muted, fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>상세 →</button>
+                  {/* BACKLOG: HQ-BRANCH-DETAIL-001 */}
                 </div>
               </div>
 
@@ -492,6 +503,7 @@ function HQEmployeesScreen() {
   const [tab, setTab] = useState('all');
   const [empTypeFilter, setEmpTypeFilter] = useState('전체');
   const [selectedEmployee, setSelectedEmployee] = useState(null);
+  const [searchQuery, setSearchQuery] = useState('');
   const employees = useEmployeeStore((s) => s.employees);
   const fetchEmployees = useEmployeeStore((s) => s.fetchEmployees);
 
@@ -505,11 +517,18 @@ function HQEmployeesScreen() {
     else if (tab === 'jinju')  base = employees.filter(e => e.branch === 'jinju');
     else if (tab === 'hadong') base = employees.filter(e => e.branch === 'hadong');
     else if (tab === 'hq')     base = employees.filter(e => HQ_BRANCHES.includes(e.branch));
-    if (empTypeFilter === '정규') return base.filter(e => e.isActive && !e.contractEndDate);
-    if (empTypeFilter === '계약') return base.filter(e => e.isActive && e.contractEndDate);
-    if (empTypeFilter === '임시') return base.filter(e => !e.isActive);
+    if (empTypeFilter === '정규') base = base.filter(e => e.isActive && !e.contractEndDate);
+    else if (empTypeFilter === '계약') base = base.filter(e => e.isActive && e.contractEndDate);
+    else if (empTypeFilter === '임시') base = base.filter(e => !e.isActive);
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      base = base.filter(e =>
+        e.name?.toLowerCase().includes(q) ||
+        e.phone?.includes(q)
+      );
+    }
     return base;
-  }, [employees, tab, empTypeFilter]);
+  }, [employees, tab, empTypeFilter, searchQuery]);
 
   const totalActive  = employees.filter(e => e.isActive).length;
   const busanCount   = employees.filter(e => e.branch === 'busan').length;
@@ -527,7 +546,12 @@ function HQEmployeesScreen() {
       <HQPageHeader
         subtitle="본사 · 전 지점 통합"
         title="전사 직원"
-        actions={<>{btnSecondary('CSV 내보내기', icons.chart)}{btnPrimary('직원 추가', icons.plus)}</>}
+        actions={<>
+          {btnSecondary('CSV 내보내기', icons.chart, () => alert('직원 CSV 내보내기 기능 준비 중입니다.'))}
+          {/* BACKLOG: HQ-EMP-CSV-001 */}
+          {btnPrimary('직원 추가', icons.plus, () => alert('직원 추가 기능 준비 중입니다.'))}
+          {/* BACKLOG: HQ-EMP-ADD-001 */}
+        </>}
         tabs={[
           { id: 'all',    label: '전체',   count: employees.length },
           { id: 'busan',  label: '부산LAB', count: busanCount },
@@ -563,7 +587,12 @@ function HQEmployeesScreen() {
           <div style={{ padding: '12px 16px', borderBottom: `1px solid ${T.borderSoft}`, display: 'flex', alignItems: 'center', gap: 10 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 12px', background: T.bg, border: `1px solid ${T.border}`, borderRadius: 8, flex: 1, maxWidth: 320 }}>
               <Icon d={icons.search} size={14} c={T.mutedSoft} />
-              <span style={{ fontSize: 12, color: T.mutedSoft }}>이름, 연락처로 검색</span>
+              <input
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="이름, 연락처로 검색"
+                style={{ flex: 1, border: 0, outline: 'none', background: 'transparent', fontSize: 12, color: T.text }}
+              />
             </div>
             <div style={{ display: 'flex', gap: 6 }}>
               {['전체', '정규', '계약', '임시'].map((t) => {
@@ -667,6 +696,11 @@ function HQNoticesScreen() {
   const [tab, setTab] = useState('active');
   const rawNotices = useNoticeStore((s) => s.notices);
   const fetchNotices = useNoticeStore((s) => s.fetchNotices);
+  const addNotice = useNoticeStore((s) => s.addNotice);
+  const currentUser = useAuthStore((s) => s.currentUser);
+  const [showNoticeModal, setShowNoticeModal] = useState(false);
+  const [noticeForm, setNoticeForm] = useState({ title: '', body: '', priority: 'normal' });
+  const [noticeSaving, setNoticeSaving] = useState(false);
 
   useEffect(() => { fetchNotices(); }, []);
 
@@ -697,7 +731,7 @@ function HQNoticesScreen() {
       <HQPageHeader
         subtitle="본사 · 공지사항 및 사내 정책"
         title="공지 · 정책"
-        actions={<>{btnSecondary('열람 리포트', icons.chart)}{btnPrimary('새 공지 작성', icons.plus)}</>}
+        actions={<>{btnSecondary('열람 리포트', icons.chart)}{btnPrimary('새 공지 작성', icons.plus, () => { setNoticeForm({ title: '', body: '', priority: 'normal' }); setShowNoticeModal(true); })}</>}
         tabs={[
           { id: 'active', label: '활성', count: notices.length },
           { id: 'scheduled', label: '예약됨', count: 0 },
@@ -787,6 +821,76 @@ function HQNoticesScreen() {
           })}
         </div>
       </div>
+
+      {/* 새 공지 작성 모달 */}
+      {showNoticeModal && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
+          <div style={{ background: '#fff', borderRadius: 16, padding: 28, width: 480, boxShadow: '0 20px 60px rgba(0,0,0,0.2)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+              <h2 style={{ fontSize: 17, fontWeight: 700, color: T.text, margin: 0 }}>새 공지 작성</h2>
+              <button onClick={() => setShowNoticeModal(false)} style={{ width: 28, height: 28, borderRadius: 6, border: 0, background: 'transparent', cursor: 'pointer', color: T.mutedSoft, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <Icon d={icons.x} size={14} c={T.mutedSoft} />
+              </button>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+              <div>
+                <label style={{ fontSize: 11, fontWeight: 700, color: T.muted, display: 'block', marginBottom: 6 }}>우선순위</label>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  {[{ v: 'normal', l: '일반' }, { v: 'important', l: '중요' }, { v: 'urgent', l: '긴급' }].map(p => {
+                    const on = noticeForm.priority === p.v;
+                    const toneColor = p.v === 'urgent' ? T.danger : p.v === 'important' ? T.warning : T.muted;
+                    const toneBg = p.v === 'urgent' ? T.dangerSoft : p.v === 'important' ? T.warningSoft : '#F1F5F9';
+                    return (
+                      <button key={p.v} onClick={() => setNoticeForm({ ...noticeForm, priority: p.v })} style={{
+                        flex: 1, height: 34, borderRadius: 7, cursor: 'pointer',
+                        border: on ? `1.5px solid ${toneColor}` : `1px solid ${T.border}`,
+                        background: on ? toneBg : T.surface,
+                        color: on ? toneColor : T.muted,
+                        fontSize: 12, fontWeight: 700,
+                      }}>{p.l}</button>
+                    );
+                  })}
+                </div>
+              </div>
+              <div>
+                <label style={{ fontSize: 11, fontWeight: 700, color: T.muted, display: 'block', marginBottom: 6 }}>제목</label>
+                <input
+                  value={noticeForm.title}
+                  onChange={e => setNoticeForm({ ...noticeForm, title: e.target.value })}
+                  placeholder="공지 제목을 입력하세요"
+                  style={{ width: '100%', height: 40, padding: '0 12px', border: `1px solid ${T.border}`, borderRadius: 8, fontSize: 13, color: T.text, boxSizing: 'border-box' }}
+                />
+              </div>
+              <div>
+                <label style={{ fontSize: 11, fontWeight: 700, color: T.muted, display: 'block', marginBottom: 6 }}>내용</label>
+                <textarea
+                  value={noticeForm.body}
+                  onChange={e => setNoticeForm({ ...noticeForm, body: e.target.value })}
+                  placeholder="공지 내용을 입력하세요"
+                  rows={5}
+                  style={{ width: '100%', padding: '10px 12px', border: `1px solid ${T.border}`, borderRadius: 8, fontSize: 13, color: T.text, resize: 'vertical', fontFamily: 'inherit', lineHeight: 1.6, boxSizing: 'border-box' }}
+                />
+              </div>
+            </div>
+            <div style={{ display: 'flex', gap: 8, marginTop: 20 }}>
+              <button onClick={() => setShowNoticeModal(false)} style={{ flex: 1, height: 42, borderRadius: 9, border: `1px solid ${T.border}`, background: T.surface, color: T.muted, fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>취소</button>
+              <button
+                disabled={!noticeForm.title.trim() || noticeSaving}
+                onClick={async () => {
+                  if (!noticeForm.title.trim()) return;
+                  setNoticeSaving(true);
+                  await addNotice({ title: noticeForm.title.trim(), body: noticeForm.body.trim(), priority: noticeForm.priority, createdBy: currentUser?.id, authorTeam: '관리팀' });
+                  setNoticeSaving(false);
+                  setShowNoticeModal(false);
+                }}
+                style={{ flex: 2, height: 42, borderRadius: 9, border: 0, background: !noticeForm.title.trim() ? T.borderSoft : HQ.accent, color: !noticeForm.title.trim() ? T.mutedSoft : '#fff', fontSize: 13, fontWeight: 700, cursor: noticeForm.title.trim() ? 'pointer' : 'default' }}
+              >
+                {noticeSaving ? '등록 중...' : '공지 등록'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -818,7 +922,8 @@ function HQFinanceScreen() {
                 );
               })}
             </div>
-            {btnSecondary('PDF 내보내기', icons.chart)}
+            {btnSecondary('PDF 내보내기', icons.chart, () => alert('재무 PDF 내보내기 기능 준비 중입니다.'))}
+            {/* BACKLOG: HQ-FINANCE-PDF-EXPORT-001 */}
           </>
         }
       />
