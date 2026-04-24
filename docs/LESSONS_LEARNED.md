@@ -1459,3 +1459,85 @@ JavaScript IEEE 754 부동소수점 덧셈:
 - 수치 렌더 시 항상 `toLocaleString()` 또는 `toFixed(N)` 적용
 - DB `NUMERIC` → JS `Number()` 변환 직후 반올림: `Math.round(v * 10) / 10`
 - Playwright DOM 텍스트 추출로 "눈에 보이는 값"과 "실제 DOM 값" 구분 검증
+
+
+---
+
+## 교훈 53 — Playwright `page.once('dialog')` 패턴은 핸들러 충돌 에러 유발
+
+**맥락:** Phase 5 세션 29 (2026-04-24), `scripts/audit_hq.cjs` 작성 중.
+
+**증상:**
+`page.once('dialog', async d => { ... await d.dismiss(); })` 패턴을 여러 체크포인트에 걸쳐 반복 등록 시
+`Error: dialog.dismiss: Cannot dismiss dialog which is already handled!` 에러 발생.
+두 핸들러가 동시에 동일 dialog 이벤트를 처리하려는 충돌.
+
+**원인:**
+`page.once()` 핸들러가 첫 번째 이벤트 발생 후 해제(unregister)되기 전에
+다음 체크포인트에서 새 핸들러를 등록하면 overlap 발생.
+
+**수정 패턴:**
+```js
+// Before (버그): 각 체크포인트에서 page.once()
+page.once('dialog', async d => { await d.dismiss(); });
+
+// After (수정): 스크립트 시작 시 전역 단일 핸들러
+const dialogLog = [];
+page.on('dialog', async d => {
+  dialogLog.push({ type: d.type(), msg: d.message().slice(0, 80) });
+  await d.dismiss();
+});
+```
+
+**예방:**
+- Playwright 전수조사 스크립트는 `page.on()` 전역 단일 핸들러로 작성
+- `page.once()`는 단발성 특정 dialog 대기(e.g., confirm 클릭 후 즉시)에만 사용
+
+---
+
+## 교훈 54 — Node.js CommonJS 스크립트는 `"type": "module"` 환경에서 `.cjs` 확장자 필수
+
+**맥락:** Phase 5 세션 29 (2026-04-24), `scripts/audit_hq.js` 최초 작성 시.
+
+**증상:**
+`node scripts/audit_hq.js` 실행 시 `ReferenceError: require is not defined in ES module scope`.
+`package.json`에 `"type": "module"`이 선언된 프로젝트에서 `.js` 파일은 ESM으로 해석됨.
+
+**수정 패턴:**
+- 파일명 `audit_hq.js` → `audit_hq.cjs`로 변경
+- 또는 파일 상단에 `"use strict"` 대신 파일 확장자로 CJS 명시
+
+**예방:**
+- 프로젝트 루트 `package.json` 확인: `"type": "module"` 존재 시 Node.js 스크립트는 `.cjs` 확장자 사용
+- Playwright, chalk, fs 등 CJS require 스타일이 필요한 스크립트는 반드시 `.cjs`
+
+---
+
+## 교훈 55 — `harvest_records`에 `branch_id` 컬럼 없음 — `employees.branch` 경유 JOIN 필수
+
+**맥락:** Phase 5 세션 29 (2026-04-24), DB 수치 대조 중 Supabase MCP SQL 에러.
+
+**증상:**
+```sql
+SELECT hr.branch_id, SUM(hr.quantity)
+FROM harvest_records hr
+GROUP BY hr.branch_id
+```
+→ `ERROR: column hr.branch_id does not exist`
+
+**원인:**
+`harvest_records` 테이블 설계 시 `branch_id` 직접 컬럼 없이,
+`employee_id → employees.branch` 경유 구조로 설계됨.
+harvestStore(`src/stores/harvestStore.js`)도 동일 JOIN 경로 사용.
+
+**수정 패턴:**
+```sql
+SELECT e.branch, SUM(hr.quantity)
+FROM harvest_records hr
+JOIN employees e ON e.id = hr.employee_id
+GROUP BY e.branch
+```
+
+**예방:**
+- `harvest_records` 관련 SQL 작성 시 항상 `employees.branch` JOIN 포함
+- DB 스키마 변경 이력 확인 필수 — `branch_id` 추가 마이그레이션이 없었음을 확인 후 작성

@@ -130,7 +130,7 @@
 | EMAIL-SKIP-001 | 설계 메모 | wontfix | 세션 21 (2026-04-22) | - | employees 테이블에 email 컬럼 없음. Sidebar 하단 식별자를 username(@표시)으로 대체. 이메일 기반 기능 필요 시 마이그레이션 재검토. | docs/BACKLOG.md |
 | RECONNECT-OTHERS-001 | 재연결 | partial (5/9) | 세션 21 (2026-04-22) | - | HQ 페이지 실데이터 재연결. 세션 22 완료: HQEmployeesScreen·HQApprovalsScreen·Dashboard·HQBranchesScreen·HQNoticesScreen (5개). 이월: HQFinanceScreen·GrowthCompare·Performance·DashboardInteractive (4개). | docs/BACKLOG.md |
 | HQ-EMP-TYPE-001 | UI 결정 | open | 세션 22 (2026-04-22) | - | HQEmployeesScreen 고용형태 필터(정규/계약/임시) — employees.job_type 값이 'admin'/'worker'만 존재, 해당 컬럼 없음. empTypeFilter state 클릭 시각 피드백은 있으나 실 필터링 미작동. DB 컬럼 확보 또는 wontfix 결정 필요. | docs/BACKLOG.md |
-| HQ-EMP-SEARCH-001 | UI | resolved | 세션 22 등록 → 세션 24 (2026-04-23) 해소 | - | HQEmployeesScreen 검색창 `<span>검색</span>` → 실 input 교체 완료. 세션 24 Task 3(_pages.jsx JSX 수정). | docs/BACKLOG.md |
+| HQ-EMP-SEARCH-001 | UI | open (재오픈) | 세션 22 등록 → 세션 24 resolved 오표기 → 세션 29 (2026-04-24) 재오픈 | - | HQEmployeesScreen 검색창 `_pages.jsx:566`이 여전히 `<span>이름, 연락처로 검색</span>` 상태. 세션 24 BACKLOG "resolved" 표기는 오류 — 실 코드 수정 커밋 없음. git log 세션 24 범위 내 `_pages.jsx` 변경: 연락처 컬럼 추가(714619f) + 모달 연결(58c45b7)만 존재, span→input 교체 없음. 수정 공수: 쉬움. | docs/BACKLOG.md |
 | HQ-EMP-CSV-001 | 기능 미구현 | open | 세션 22 (2026-04-22) | - | HQEmployeesScreen CSV 내보내기 버튼 클릭 무반응. 실 내보내기 로직 미연결. | docs/BACKLOG.md |
 | HQ-EMP-ADD-001 | 기능 미구현 | open | 세션 22 (2026-04-22) | - | HQEmployeesScreen 직원 추가 버튼 — HQ 전용 직원 추가 모달 미연결. 재배팀 EmployeeDetailModal 재사용 또는 신규 작성 검토. | docs/BACKLOG.md |
 | HQ-BRANCHES-META-001 | 데이터 보완 | open | 세션 22 (2026-04-22) | - | HQBranchesScreen 지점 카드 상세 정보(지점장·수확량·출근률·면적·작물) — branches 테이블에 해당 컬럼 없음. workers 수만 실데이터, 나머지 하드코딩 유지. DB 컬럼 확보 또는 별 트랙 처리. | docs/BACKLOG.md |
@@ -155,6 +155,17 @@
 | HARVEST-CROP-FILTER-001 | 재연결 | resolved | 세션 25 (2026-04-23) 발견 → 세션 27 (2026-04-24) 해소 | - | HQDashboardScreen 작물 탭 실 필터링 완료. 커밋 9731ddc — cropFilteredRecords useMemo(harvestRecords.filter(r => r.crop?.name === cropFilter)) → branchWeekHarvest 재계산 연쇄. 토마토/파프리카/딸기/오이 탭 전환 시 주별 차트 bar 즉시 업데이트. | docs/BACKLOG.md |
 | HQ-HARVEST-MENU-001 | UI 조사 | open | 세션 27 (2026-04-24) | - | HQSidebar 사이드바에 수확 기록 메뉴 노출 여부 확인 — /admin/harvest 입력 페이지는 기존 AdminLayout(재배팀 사이드바)에서만 접근 가능. HQ 컨텍스트(관리팀·본사 role)에서 수확 입력·조회 진입 경로 설계 필요. 세션 27 Task 1 Q1 선택지로 후속 정찰 이관 결정. | docs/BACKLOG.md |
 | HQ-ISSUE-PAGE-001 | 재연결 | open | 세션 25 (2026-04-23) | - | HQ 전용 이상 신고 페이지 부재 — /admin/records(IssueCallPage)는 재배팀 Sidebar 라우트로 HQ 컨텍스트에서 이동 시 HQSidebar active 메뉴 부재로 혼선. G-H2("전체 →")와 G-C1(이슈 카드 클릭) 모두 alert 처리. HQ 사이드바에 "이상 신고" 메뉴 추가 또는 /admin/hq/issues 신규 페이지 필요. | docs/BACKLOG.md |
+| HQ-BRANCH-MAP-001 | 기능 미구현 | open | 세션 29 (2026-04-24) | - | HQBranchesScreen "지도로 보기" 버튼 클릭 무반응 — `btnSecondary('지도로 보기', icons.location)` onClick 미전달. 지도 UI(Kakao/Naver Maps 등) 미설계. | docs/BACKLOG.md |
+| HQ-BRANCH-ADD-001 | 기능 미구현 | open | 세션 29 (2026-04-24) | - | HQBranchesScreen "지점 추가" 버튼 클릭 무반응 — `btnPrimary('지점 추가', icons.plus)` onClick 미전달. 지점 추가 모달/폼 미구현. | docs/BACKLOG.md |
+| HQ-BRANCH-CONTACT-001 | 기능 미구현 | open | 세션 29 (2026-04-24) | - | HQBranchesScreen 지점 카드 "연락" 버튼 클릭 무반응 — onClick 미연결. 전화/메시지 연동 또는 연락처 표시 모달 미설계. 의도된 동작 가능성 있으므로 박민식·김민국 확인 필요. | docs/BACKLOG.md |
+| HQ-APPROVAL-EXPORT-001 | 기능 미구현 | open | 세션 29 (2026-04-24) | - | HQApprovalsScreen "내보내기" 버튼 클릭 무반응 — `btnSecondary('내보내기', icons.chart)` onClick 미전달 (`_pages.jsx:155`). 승인 데이터 CSV 내보내기 로직 미구현. | docs/BACKLOG.md |
+| HQ-APPROVAL-RULE-001 | 기능 미구현 | open | 세션 29 (2026-04-24) | - | HQApprovalsScreen "규칙 설정" 버튼 클릭 무반응 — `btnPrimary('규칙 설정', icons.settings)` onClick 미전달 (`_pages.jsx:155`). 승인 규칙 설정 모달/페이지 미구현. | docs/BACKLOG.md |
+| HQ-NOTICE-CREATE-001 | 기능 미구현 | open | 세션 29 (2026-04-24) | - | HQNoticesScreen "새 공지 작성" 버튼 클릭 무반응 — `btnPrimary('새 공지 작성', icons.plus)` onClick 미전달 (`_pages.jsx:700`). 공지 작성 모달 미구현. P1 우선 처리 대상. | docs/BACKLOG.md |
+| HQ-NOTICE-READ-REPORT-001 | 기능 미구현 | open | 세션 29 (2026-04-24) | - | HQNoticesScreen "열람 리포트" 버튼 클릭 무반응 — `btnSecondary('열람 리포트', icons.chart)` onClick 미전달 (`_pages.jsx:700`). 열람률 집계 트랙 신설 후 처리. | docs/BACKLOG.md |
+| HQ-FINANCE-PDF-EXPORT-001 | 기능 미구현 | open | 세션 29 (2026-04-24) | - | HQFinanceScreen "PDF 내보내기" 버튼 클릭 무반응 — onClick 미전달. PDF 라이브러리 선정 필요. HQ-FINANCE-001(재무 실데이터 연결) 완료 후 처리 권장. | docs/BACKLOG.md |
+| HQ-FINANCE-CONSOLE-ERR-001 | BUG | open | 세션 29 (2026-04-24) | - | HQFinanceScreen 진입 시 console 에러 1건 발생 — Playwright console error 이벤트 캐치됨. 에러 메시지 미확인. 예상 원인: 하드코딩 재무 데이터 undefined 접근 또는 Recharts 렌더 오류. 재조사 필요. | docs/BACKLOG.md |
+| HQ-GROWTH-ALERT-SEND-001 | 기능 미구현 | open | 세션 29 (2026-04-24) | - | GrowthCompare "지점 알림 발송" 버튼 클릭 무반응 — onClick 미연결. FCM 연동 로직 미구현. HQ-GROWTH-001(생육 실데이터 연결) 후 처리 권장. | docs/BACKLOG.md |
+| HQ-EMP-INACTIVE-DISPLAY-001 | UI 결정 | open | 세션 29 (2026-04-24) | - | HQEmployeesScreen 직원 테이블 41행 표시 (DB 활성 38명 + 비활성 3명 포함 추정) — `is_active=false` 직원 노출 여부 의도 확인 필요. 세션 17 EMPLOYEE-BRANCH-NULL-001·EMPLOYEE-DUPLICATE-NAME-001과 연관. | docs/BACKLOG.md |
 
 ---
 

@@ -1,0 +1,327 @@
+{
+  "runDate": "2026-04-24T03:30:38.763Z",
+  "totalIssues": 24,
+  "bySeverity": {
+    "P0": 0,
+    "P1": 3,
+    "P2": 18,
+    "P3": 3
+  },
+  "byCategory": {
+    "UI": 2,
+    "인터랙션": 16,
+    "데이터": 6
+  },
+  "dialogLog": [
+    {
+      "page": "dashboard",
+      "type": "alert",
+      "msg": "리포트 내보내기 기능 준비 중입니다."
+    },
+    {
+      "page": "dashboard",
+      "type": "alert",
+      "msg": "알림 기능 준비 중입니다."
+    },
+    {
+      "page": "dashboard",
+      "type": "alert",
+      "msg": "작물별 상세 분석 보고서 준비 중입니다."
+    }
+  ],
+  "consoleErrors": {
+    "finance": [
+      "WebSocket connection to 'wss://yzqdpfauadbtutkhxzeu.supabase.co/realtime/v1/websocket?apikey=sb_publishable_bcxeo5JzQkh4KDl1LKZTCg_IX1wU7wK&vsn=2.0.0' failed: Error during WebSocket handshake: Unexpected response code: 502"
+    ]
+  },
+  "issues": [
+    {
+      "id": "AUDIT-HQ-1-01",
+      "pageNum": 1,
+      "title": "기간 피커 탭(일/주/월/분기) 미발견",
+      "severity": "P2",
+      "category": "UI",
+      "symptom": "탭 DOM 없음",
+      "evidence": "DOM 탐색",
+      "expectedCause": "TopBar 문제",
+      "effort": "중간",
+      "backlogId": "HQ-PERIOD-PICKER-001"
+    },
+    {
+      "id": "AUDIT-HQ-1-02",
+      "pageNum": 1,
+      "title": "\"리포트 내보내기\" alert 임시 처리",
+      "severity": "P2",
+      "category": "인터랙션",
+      "symptom": "alert: \"리포트 내보내기 기능 준비 중입니다.\"",
+      "evidence": "리포트 내보내기 기능 준비 중입니다.",
+      "expectedCause": "미구현",
+      "effort": "어려움",
+      "backlogId": "HQ-REPORT-EXPORT-001"
+    },
+    {
+      "id": "AUDIT-HQ-1-03",
+      "pageNum": 1,
+      "title": "검색 input은 입력 가능하나 결과 반영 미구현",
+      "severity": "P3",
+      "category": "인터랙션",
+      "symptom": "onChange 연결됨, 검색 결과 필터링 없음",
+      "evidence": "테스트",
+      "expectedCause": "GLOBAL-SEARCH-001",
+      "effort": "어려움",
+      "backlogId": "GLOBAL-SEARCH-001"
+    },
+    {
+      "id": "AUDIT-HQ-1-04",
+      "pageNum": 1,
+      "title": "알림 벨 버튼 alert 임시 처리",
+      "severity": "P2",
+      "category": "인터랙션",
+      "symptom": "alert(\"알림 기능 준비 중입니다.\")",
+      "evidence": "검증됨",
+      "expectedCause": "미구현",
+      "effort": "어려움",
+      "backlogId": "NOTIFICATION-DROPDOWN-001"
+    },
+    {
+      "id": "AUDIT-HQ-1-05",
+      "pageNum": 1,
+      "title": "\"작물별 상세 분석 보고서 열기\" alert 임시 처리",
+      "severity": "P2",
+      "category": "인터랙션",
+      "symptom": "alert 처리",
+      "evidence": "검증됨",
+      "expectedCause": "미구현",
+      "effort": "어려움",
+      "backlogId": "HQ-CROP-REPORT-001"
+    },
+    {
+      "id": "AUDIT-HQ-2-01",
+      "pageNum": 2,
+      "title": "지점 카드 상세 정보 대부분 미집계 (— 표시)",
+      "severity": "P2",
+      "category": "데이터",
+      "symptom": "'—' 16개 발견",
+      "evidence": "16개",
+      "expectedCause": "HQ-BRANCHES-META-001",
+      "effort": "어려움",
+      "backlogId": "HQ-BRANCHES-META-001"
+    },
+    {
+      "id": "AUDIT-HQ-2-02",
+      "pageNum": 2,
+      "title": "\"지도로 보기\" 버튼 클릭 무반응",
+      "severity": "P2",
+      "category": "인터랙션",
+      "symptom": "지도 UI 미표시, alert 없음",
+      "evidence": "검증됨",
+      "expectedCause": "미구현",
+      "effort": "어려움",
+      "backlogId": null
+    },
+    {
+      "id": "AUDIT-HQ-2-03",
+      "pageNum": 2,
+      "title": "\"지점 추가\" 버튼 클릭 무반응 (모달/alert 없음)",
+      "severity": "P2",
+      "category": "인터랙션",
+      "symptom": "클릭 후 아무 반응 없음",
+      "evidence": "검증됨",
+      "expectedCause": "미구현",
+      "effort": "중간",
+      "backlogId": null
+    },
+    {
+      "id": "AUDIT-HQ-2-04",
+      "pageNum": 2,
+      "title": "\"연락\" 버튼 클릭 무반응",
+      "severity": "P3",
+      "category": "인터랙션",
+      "symptom": "피드백 없음",
+      "evidence": "검증됨",
+      "expectedCause": "미구현",
+      "effort": "중간",
+      "backlogId": null
+    },
+    {
+      "id": "AUDIT-HQ-3-01",
+      "pageNum": 3,
+      "title": "검색 input 미발견",
+      "severity": "P1",
+      "category": "UI",
+      "symptom": "검색창 없음 또는 span",
+      "evidence": "검증됨",
+      "expectedCause": "input 교체 미완",
+      "effort": "쉬움",
+      "backlogId": "HQ-EMP-SEARCH-001"
+    },
+    {
+      "id": "AUDIT-HQ-3-02",
+      "pageNum": 3,
+      "title": "고용형태 필터 실 필터링 미작동 (empTypeFilter 상태는 변하나 실데이터 없음)",
+      "severity": "P2",
+      "category": "인터랙션",
+      "symptom": "job_type 컬럼 값 불일치로 실 필터링 안 됨",
+      "evidence": "코드 분석: HQ-EMP-TYPE-001",
+      "expectedCause": "HQ-EMP-TYPE-001",
+      "effort": "어려움",
+      "backlogId": "HQ-EMP-TYPE-001"
+    },
+    {
+      "id": "AUDIT-HQ-3-03",
+      "pageNum": 3,
+      "title": "\"상세\" 버튼 클릭 시 모달 미표시",
+      "severity": "P1",
+      "category": "인터랙션",
+      "symptom": "모달 DOM 없음",
+      "evidence": "검증됨",
+      "expectedCause": "연결 문제",
+      "effort": "중간",
+      "backlogId": "HQ-EMPLOYEE-EDIT-MODAL-001"
+    },
+    {
+      "id": "AUDIT-HQ-3-04",
+      "pageNum": 3,
+      "title": "CSV 내보내기 버튼 클릭 무반응",
+      "severity": "P2",
+      "category": "인터랙션",
+      "symptom": "다운로드 없음, alert 없음",
+      "evidence": "검증됨",
+      "expectedCause": "로직 미연결",
+      "effort": "중간",
+      "backlogId": "HQ-EMP-CSV-001"
+    },
+    {
+      "id": "AUDIT-HQ-3-05",
+      "pageNum": 3,
+      "title": "\"직원 추가\" 버튼 클릭 무반응",
+      "severity": "P2",
+      "category": "인터랙션",
+      "symptom": "모달/alert 없음",
+      "evidence": "검증됨",
+      "expectedCause": "미구현",
+      "effort": "중간",
+      "backlogId": "HQ-EMP-ADD-001"
+    },
+    {
+      "id": "AUDIT-HQ-4-01",
+      "pageNum": 4,
+      "title": "승인 허브 예산/인사/자재 카테고리 데이터 없음 (근태만 구현)",
+      "severity": "P2",
+      "category": "데이터",
+      "symptom": "예산/인사/자재 탭 클릭 시 빈 상태",
+      "evidence": "코드 분석",
+      "expectedCause": "APPROVAL-CATEGORY-001",
+      "effort": "어려움",
+      "backlogId": "APPROVAL-CATEGORY-001"
+    },
+    {
+      "id": "AUDIT-HQ-4-02",
+      "pageNum": 4,
+      "title": "\"내보내기\" 버튼 클릭 무반응",
+      "severity": "P2",
+      "category": "인터랙션",
+      "symptom": "alert/다운로드 없음",
+      "evidence": "검증됨",
+      "expectedCause": "미구현",
+      "effort": "중간",
+      "backlogId": null
+    },
+    {
+      "id": "AUDIT-HQ-5-01",
+      "pageNum": 5,
+      "title": "열람률 데이터 미표시 (HQ-NOTICES-META-001)",
+      "severity": "P3",
+      "category": "데이터",
+      "symptom": "% 수치 없음. read:0·readPct:0 기본값",
+      "evidence": "검증됨",
+      "expectedCause": "DB 컬럼 없음",
+      "effort": "어려움",
+      "backlogId": "HQ-NOTICES-META-001"
+    },
+    {
+      "id": "AUDIT-HQ-5-02",
+      "pageNum": 5,
+      "title": "\"새 공지 작성\" 버튼 클릭 무반응",
+      "severity": "P1",
+      "category": "인터랙션",
+      "symptom": "모달/alert 없음",
+      "evidence": "검증됨",
+      "expectedCause": "미구현",
+      "effort": "중간",
+      "backlogId": null
+    },
+    {
+      "id": "AUDIT-HQ-5-03",
+      "pageNum": 5,
+      "title": "\"열람 리포트\" 버튼 클릭 무반응",
+      "severity": "P2",
+      "category": "인터랙션",
+      "symptom": "피드백 없음",
+      "evidence": "검증됨",
+      "expectedCause": "미구현",
+      "effort": "중간",
+      "backlogId": null
+    },
+    {
+      "id": "AUDIT-HQ-6-01",
+      "pageNum": 6,
+      "title": "재무 데이터 전체 하드코딩 (DB 소스 없음)",
+      "severity": "P2",
+      "category": "데이터",
+      "symptom": "표시값: +18%, ▲ 전년 대비 +18%, −3.2%",
+      "evidence": "코드 분석",
+      "expectedCause": "HQ-FINANCE-001",
+      "effort": "어려움",
+      "backlogId": "HQ-FINANCE-001"
+    },
+    {
+      "id": "AUDIT-HQ-6-02",
+      "pageNum": 6,
+      "title": "\"PDF 내보내기\" 버튼 클릭 무반응",
+      "severity": "P2",
+      "category": "인터랙션",
+      "symptom": "피드백 없음",
+      "evidence": "검증됨",
+      "expectedCause": "미구현",
+      "effort": "어려움",
+      "backlogId": null
+    },
+    {
+      "id": "AUDIT-HQ-7-01",
+      "pageNum": 7,
+      "title": "생육 데이터 하드코딩 (growth_surveys 미연결)",
+      "severity": "P2",
+      "category": "데이터",
+      "symptom": "화면 수치가 HQ_GR_DATA 목업",
+      "evidence": "코드 분석",
+      "expectedCause": "HQ-GROWTH-001",
+      "effort": "어려움",
+      "backlogId": "HQ-GROWTH-001"
+    },
+    {
+      "id": "AUDIT-HQ-7-02",
+      "pageNum": 7,
+      "title": "\"지점 알림 발송\" 버튼 클릭 무반응",
+      "severity": "P2",
+      "category": "인터랙션",
+      "symptom": "피드백 없음",
+      "evidence": "검증됨",
+      "expectedCause": "미구현",
+      "effort": "중간",
+      "backlogId": null
+    },
+    {
+      "id": "AUDIT-HQ-9-01",
+      "pageNum": 9,
+      "title": "DashboardInteractive 전체 하드코딩 (store 미연결)",
+      "severity": "P2",
+      "category": "데이터",
+      "symptom": "지점/승인/기간 데이터 전부 목업 (0 store imports)",
+      "evidence": "코드 분석",
+      "expectedCause": "HQ-DASHBOARD-INTERACTIVE-001",
+      "effort": "어려움",
+      "backlogId": "HQ-DASHBOARD-INTERACTIVE-001"
+    }
+  ]
+}
