@@ -180,6 +180,7 @@
 | FARM-GROWTH-DB-001 | 데이터 재연결 | open | 세션 31 (2026-04-24) | - | Growth.jsx 전체 하드코딩(GR_DATA, GROWTH_SCHEMA, STANDARD_CURVE — src/data/growth.js). growth_surveys DB 미연결. 별 트랙. HQ-GROWTH-001(GrowthCompare)과 동일 패턴. | docs/AUDIT_SESSION31_FARM.md |
 | FARM-PERF-DATA-001 | 데이터 재연결 | open | 세션 31 (2026-04-24) | - | Performance.jsx 하드코딩(PERF_DATA, SAM 테이블). HQ-PERFORMANCE-001(Performance.jsx HQ 뷰)과 동일 파일·패턴. 별 트랙. | docs/AUDIT_SESSION31_FARM.md |
 | FARM-HQ-NOTICE-001 | HQ 연동 | open | 세션 31 (2026-04-24) | - | noticeStore는 HQ·farm 공용 notices 테이블 사용. DB 0건이라 양쪽 연동 동작 미검증. DB 공지 1건 삽입 후 양쪽 UI 확인으로 빠른 검증 가능. | docs/AUDIT_SESSION31_FARM.md |
+| WORKER-M-STATIC-001 | 데이터 재연결 | open | 세션 33 (2026-04-24) | - | `/worker/m/home`, `/worker/m/checkin`, `/worker/m/attendance`, `/worker/m/profile` 화면 (`src/pages/mobile/_screens.jsx`) 전부 정적 목업. useAuthStore·useAttendanceStore·useTaskStore 미연결. 이름("김민국"), 날짜("4월 21일 화요일"), 근무시간(08:00/17:00), 출근기록 모두 하드코딩. Playwright FAIL: MHOME-HARDCODE-NAME·MHOME-HARDCODE-DATE·MPROFILE-HARDCODE. | docs/AUDIT_SESSION33_MOBILE_WORKER.md |
 
 ---
 

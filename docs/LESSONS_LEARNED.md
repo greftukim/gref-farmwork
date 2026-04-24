@@ -1616,3 +1616,38 @@ ErrorBoundary 화면 출력, 대시보드 전체 블랭크
 - `grep -n "isToday" src/pages/admin/AdminDashboard.jsx` → 0이어야 함
 - 빌드 성공 ≠ 런타임 안전 — JavaScript는 정의되지 않은 변수를 빌드 단계에서 잡지 못하는 경우 있음
 - Playwright 회귀 스크립트에서 ErrorBoundary 화면("앱 오류 발생") 탐지 로직 추가 권장
+
+---
+
+## 교훈 58 — Playwright Zustand persist localStorage 주입은 `addInitScript()` 필수
+
+**발견 세션:** 세션 33 (2026-04-24)  
+**관련 BACKLOG:** 없음 (인프라 이슈)
+
+**증상:**
+```js
+// 실패 패턴
+await page.goto(`${BASE}/login`);
+await page.waitForLoadState('domcontentloaded');
+await page.evaluate((auth) => {
+  localStorage.setItem('gref-auth', JSON.stringify(auth));
+}, WORKER_AUTH);
+await page.goto(`${BASE}/worker`);
+// → /login 으로 리다이렉트됨 (인증 실패)
+```
+
+**원인:** `initialize()` (`App.jsx useEffect`)가 Zustand persist를 통해 `set({ loading: false })`를 호출하면, persist 미들웨어가 partialize 결과를 localStorage에 **덮어씀**. 이 시점에 Zustand 인메모리 state는 null이므로 내가 inject한 localStorage 값이 사라진다.
+
+**수정 패턴:**
+```js
+// 성공 패턴 — 페이지 스크립트보다 먼저 실행됨
+await page.addInitScript((auth) => {
+  localStorage.setItem('gref-auth', JSON.stringify(auth));
+}, WORKER_AUTH);
+await page.goto(`${BASE}/worker`);  // 이제 Zustand가 내 값을 먼저 읽음
+```
+
+**예방:**
+- Zustand persist를 사용하는 앱에서 localStorage 인증 주입은 반드시 `addInitScript()` 사용
+- `goto()` 후 `evaluate(localStorage.setItem(...))` 패턴은 Zustand persist가 이미 실행된 이후 → 효과 없음
+- `addInitScript`는 새 탭/컨텍스트당 한 번 등록하면 이후 모든 `goto()`에 적용됨

@@ -1,0 +1,244 @@
+{
+  "results": [
+    {
+      "id": "AUTH-INJECT",
+      "status": "PASS",
+      "note": "worker 랜딩 성공: http://localhost:5173/worker"
+    },
+    {
+      "id": "HOME-CONSOLE",
+      "status": "PASS",
+      "note": "홈 콘솔 에러 없음"
+    },
+    {
+      "id": "HOME-NAME",
+      "status": "PASS",
+      "note": "인증 계정 \"윤화순\" 표시"
+    },
+    {
+      "id": "HOME-DATE",
+      "status": "PASS",
+      "note": "하드코딩 날짜 없음"
+    },
+    {
+      "id": "HOME-BOTTOMNAV",
+      "status": "PASS",
+      "note": "BottomNav 표시 확인"
+    },
+    {
+      "id": "HOME-CHECKIN-BTN",
+      "status": "PASS",
+      "note": "출퇴근 버튼 존재: [출근하기, 출퇴근] (클릭 미수행)"
+    },
+    {
+      "id": "TASKS-CONSOLE",
+      "status": "PASS",
+      "note": "작업 목록 콘솔 에러 없음"
+    },
+    {
+      "id": "TASKS-SCOPE",
+      "status": "PASS",
+      "note": "worker 범위 데이터 (타 지점 미노출)"
+    },
+    {
+      "id": "TASKS-ROUTE",
+      "status": "PASS",
+      "note": "경로 유지"
+    },
+    {
+      "id": "SURVEY-CONSOLE",
+      "status": "PASS",
+      "note": "생육 조사 콘솔 에러 없음"
+    },
+    {
+      "id": "SURVEY-ROUTE",
+      "status": "PASS",
+      "note": "경로 유지"
+    },
+    {
+      "id": "ATT-CONSOLE",
+      "status": "PASS",
+      "note": "근태 콘솔 에러 없음"
+    },
+    {
+      "id": "ATT-ROUTE",
+      "status": "PASS",
+      "note": "경로 유지"
+    },
+    {
+      "id": "LEAVE-CONSOLE",
+      "status": "PASS",
+      "note": "휴가 신청 콘솔 에러 없음"
+    },
+    {
+      "id": "LEAVE-ROUTE",
+      "status": "PASS",
+      "note": "경로 유지"
+    },
+    {
+      "id": "LEAVE-BTN",
+      "status": "PASS",
+      "note": "신청 버튼 존재 (폼 제출 미수행)"
+    },
+    {
+      "id": "ISSUES-CONSOLE",
+      "status": "PASS",
+      "note": "이상 신고 콘솔 에러 없음"
+    },
+    {
+      "id": "ISSUES-ROUTE",
+      "status": "PASS",
+      "note": "경로 유지"
+    },
+    {
+      "id": "EMERGENCY-CONSOLE",
+      "status": "PASS",
+      "note": "긴급 호출 콘솔 에러 없음"
+    },
+    {
+      "id": "EMERGENCY-ROUTE",
+      "status": "PASS",
+      "note": "경로 유지"
+    },
+    {
+      "id": "NOTICES-CONSOLE",
+      "status": "PASS",
+      "note": "공지사항 콘솔 에러 없음"
+    },
+    {
+      "id": "NOTICES-ROUTE",
+      "status": "PASS",
+      "note": "경로 유지"
+    },
+    {
+      "id": "MORE-CONSOLE",
+      "status": "PASS",
+      "note": "더보기 콘솔 에러 없음"
+    },
+    {
+      "id": "MORE-ROUTE",
+      "status": "PASS",
+      "note": "WorkerMorePage → Navigate to /worker/notices (의도적 리다이렉트)"
+    },
+    {
+      "id": "MHOME-CONSOLE",
+      "status": "PASS",
+      "note": "모바일 홈 콘솔 에러 없음"
+    },
+    {
+      "id": "MHOME-ROUTE",
+      "status": "PASS",
+      "note": "경로 유지"
+    },
+    {
+      "id": "MHOME-HARDCODE-NAME",
+      "status": "FAIL",
+      "note": "하드코딩 이름 \"김민국\" — BUG (MobileHomeScreen 정적 컴포넌트)"
+    },
+    {
+      "id": "MHOME-HARDCODE-DATE",
+      "status": "FAIL",
+      "note": "하드코딩 날짜 \"4월 21일 화요일\" — BUG"
+    },
+    {
+      "id": "MCHECKIN-CONSOLE",
+      "status": "PASS",
+      "note": "체크인 콘솔 에러 없음"
+    },
+    {
+      "id": "MCHECKIN-ROUTE",
+      "status": "PASS",
+      "note": "경로 유지"
+    },
+    {
+      "id": "MCHECKIN-HARDCODE",
+      "status": "PASS",
+      "note": "체크인 화면 이름 하드코딩 없음"
+    },
+    {
+      "id": "MTASKS-CONSOLE",
+      "status": "PASS",
+      "note": "모바일 작업 콘솔 에러 없음"
+    },
+    {
+      "id": "MTASKS-ROUTE",
+      "status": "PASS",
+      "note": "경로 유지"
+    },
+    {
+      "id": "MTASKS-SCOPE",
+      "status": "PASS",
+      "note": "타 지점 미노출"
+    },
+    {
+      "id": "MATT-CONSOLE",
+      "status": "PASS",
+      "note": "모바일 근태 콘솔 에러 없음"
+    },
+    {
+      "id": "MATT-ROUTE",
+      "status": "PASS",
+      "note": "경로 유지"
+    },
+    {
+      "id": "MPROFILE-CONSOLE",
+      "status": "PASS",
+      "note": "모바일 프로필 콘솔 에러 없음"
+    },
+    {
+      "id": "MPROFILE-ROUTE",
+      "status": "PASS",
+      "note": "경로 유지"
+    },
+    {
+      "id": "MPROFILE-HARDCODE",
+      "status": "FAIL",
+      "note": "하드코딩 이름 \"김민국\" — BUG"
+    },
+    {
+      "id": "MGROWTH-CONSOLE",
+      "status": "PASS",
+      "note": "모바일 생육 콘솔 에러 없음"
+    },
+    {
+      "id": "MGROWTH-ROUTE",
+      "status": "PASS",
+      "note": "경로 유지"
+    },
+    {
+      "id": "QR-CONSOLE",
+      "status": "PASS",
+      "note": "QR 스캔 콘솔 에러 없음"
+    },
+    {
+      "id": "QR-ROUTE",
+      "status": "PASS",
+      "note": "경로 유지: http://localhost:5173/worker/m/qr-scan"
+    },
+    {
+      "id": "BOTTOMNAV-LINKS",
+      "status": "PASS",
+      "note": "4개 링크 확인 (최소 4개)"
+    },
+    {
+      "id": "BOTTOMNAV-CLICK",
+      "status": "WARN",
+      "note": "탭 클릭 후 예상 경로 아님: http://localhost:5173/worker"
+    },
+    {
+      "id": "AUTH-PERSIST",
+      "status": "PASS",
+      "note": "인증 유지: http://localhost:5173/worker/attendance"
+    },
+    {
+      "id": "ROLE-GUARD",
+      "status": "PASS",
+      "note": "/admin 접근 차단 → http://localhost:5173/login"
+    }
+  ],
+  "summary": {
+    "passCount": 43,
+    "failCount": 3,
+    "warnCount": 1
+  }
+}
