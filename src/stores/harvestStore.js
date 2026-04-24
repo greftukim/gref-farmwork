@@ -67,6 +67,36 @@ const useHarvestStore = create((set, get) => ({
     });
     return weeks;
   },
+
+  // 지점 × 작물 2차원 집계: { busan: { '토마토': 3364.8, ... }, jinju: {...}, hadong: {...} }
+  getByBranchAndCrop: () => {
+    const { records } = get();
+    const result = {};
+    records.forEach((r) => {
+      const br = r.employee?.branch || 'unknown';
+      const crop = r.crop?.name || 'unknown';
+      if (!result[br]) result[br] = {};
+      result[br][crop] = (result[br][crop] || 0) + Number(r.quantity || 0);
+    });
+    return result;
+  },
+
+  // 특정 지점+작물의 최근 30일 일별 추이: [{date, qty}, ...] length=30
+  getTrendByBranchCrop: (branch, crop) => {
+    const { records } = get();
+    const src = records.filter((r) => r.employee?.branch === branch && r.crop?.name === crop);
+    const dateMap = {};
+    src.forEach((r) => {
+      dateMap[r.date] = (dateMap[r.date] || 0) + Number(r.quantity || 0);
+    });
+    const now = new Date();
+    return Array.from({ length: 30 }, (_, i) => {
+      const d = new Date(now);
+      d.setDate(d.getDate() - (29 - i));
+      const key = d.toISOString().split('T')[0];
+      return { date: key, qty: Math.round((dateMap[key] || 0) * 10) / 10 };
+    });
+  },
 }));
 
 export default useHarvestStore;

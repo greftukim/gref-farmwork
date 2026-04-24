@@ -19,6 +19,20 @@ const D_BRANCH_META = {
   seedlab:      { name: 'Seed LAB', dot: T.mutedSoft, avatar: 'slate' },
 };
 
+// 지점별 작물 순서 (메인→보조) — 시드 데이터 기준
+const BRANCH_CROPS = {
+  busan:  ['토마토', '방울토마토'],
+  jinju:  ['파프리카', '미니파프리카'],
+  hadong: ['딸기', '오이'],
+};
+
+// 지점별 작물 색상: 메인=진한 색, 보조=연한 색
+const CROP_COLORS = {
+  busan:  { main: '#6366F1', sub: '#A5B4FC' },
+  jinju:  { main: '#059669', sub: '#6EE7B7' },
+  hadong: { main: '#D97706', sub: '#FDE68A' },
+};
+
 // 관리팀(본사) 대시보드 화면
 function HQDashboardScreen() {
   const employees    = useEmployeeStore((s) => s.employees);
@@ -38,7 +52,7 @@ function HQDashboardScreen() {
 
   const navigate = useNavigate();
   const [approvalFilter, setApprovalFilter] = useState('all');
-  const [cropFilter, setCropFilter] = useState('토마토');
+  const [selectedCrop, setSelectedCrop] = useState(null); // { branch, crop }
 
   useEffect(() => {
     fetchEmployees();
@@ -58,33 +72,43 @@ function HQDashboardScreen() {
     return map;
   }, [harvestRecords]);
 
-  // 작물 탭 필터 적용된 records (D-T1)
-  const cropFilteredRecords = useMemo(
-    () => harvestRecords.filter((r) => r.crop?.name === cropFilter),
-    [harvestRecords, cropFilter],
-  );
-
-  // 지점 × 최근 4주 수확량 (cropFilter 반영, D-D2)
-  const branchWeekHarvest = useMemo(() => {
-    const now = new Date();
-    const map = { busan: [0, 0, 0, 0], jinju: [0, 0, 0, 0], hadong: [0, 0, 0, 0] };
-    cropFilteredRecords.forEach((r) => {
+  // 지점 × 작물 이번달 집계: { busan: { '토마토': 3364.8, ... }, ... }
+  const branchCropData = useMemo(() => {
+    const result = {};
+    harvestRecords.forEach((r) => {
       const br = r.employee?.branch;
-      if (!map[br]) return;
-      const daysAgo = Math.floor((now - new Date(r.date)) / 86400000);
-      const weekIdx = 3 - Math.min(Math.floor(daysAgo / 7), 3);
-      if (weekIdx >= 0 && weekIdx <= 3) {
-        map[br][weekIdx] += Number(r.quantity || 0);
-      }
+      const crop = r.crop?.name;
+      if (!br || !crop || !['busan', 'jinju', 'hadong'].includes(br)) return;
+      if (!result[br]) result[br] = {};
+      result[br][crop] = (result[br][crop] || 0) + Number(r.quantity || 0);
     });
-    return map;
-  }, [cropFilteredRecords]);
+    return result;
+  }, [harvestRecords]);
 
-  // 차트 공통 max (모든 지점·주 통틀어)
-  const weekMax = useMemo(() => {
-    const m = Math.max(...Object.values(branchWeekHarvest).flat(), 0);
-    return m > 0 ? m : 1;
-  }, [branchWeekHarvest]);
+  // 그룹 막대 공통 max (6개 막대 중 최댓값)
+  const barMax = useMemo(() => {
+    let max = 0;
+    ['busan', 'jinju', 'hadong'].forEach((br) => {
+      Object.values(branchCropData[br] || {}).forEach((v) => { if (v > max) max = v; });
+    });
+    return max > 0 ? max : 1;
+  }, [branchCropData]);
+
+  // 선택된 지점+작물의 최근 30일 일별 추이
+  const trendData = useMemo(() => {
+    if (!selectedCrop) return [];
+    const { branch, crop } = selectedCrop;
+    const src = harvestRecords.filter((r) => r.employee?.branch === branch && r.crop?.name === crop);
+    const dateMap = {};
+    src.forEach((r) => { dateMap[r.date] = (dateMap[r.date] || 0) + Number(r.quantity || 0); });
+    const now = new Date();
+    return Array.from({ length: 30 }, (_, i) => {
+      const d = new Date(now);
+      d.setDate(d.getDate() - (29 - i));
+      const key = d.toISOString().split('T')[0];
+      return { date: key, qty: Math.round((dateMap[key] || 0) * 10) / 10 };
+    });
+  }, [harvestRecords, selectedCrop]);
 
   const today = new Date().toISOString().split('T')[0];
 
@@ -268,7 +292,7 @@ function HQDashboardScreen() {
 
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8, paddingTop: 12, borderTop: `1px solid ${T.borderSoft}` }}>
                     {[
-                      { l: '수확', v: b.harvest > 0 ? b.harvest : '—', u: b.harvest > 0 ? 'kg' : '' },
+                      { l: '수확', v: b.harvest > 0 ? Number(b.harvest.toFixed(1)).toLocaleString() : '—', u: b.harvest > 0 ? 'kg' : '' },
                       { l: '달성', v: b.harvestT > 0 ? `${Math.round(b.harvest / b.harvestT * 100)}` : '—', u: b.harvestT > 0 ? '%' : '' },
                       { l: 'TBM', v: '—', u: '' },
                     ].map((s, i) => (
@@ -290,6 +314,7 @@ function HQDashboardScreen() {
         {/* ─────── 지점별 수확량 비교 + 승인 허브 ─────── */}
         <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 20 }}>
           <Card>
+            {/* 헤더: 총합 + 추이 뒤로가기 버튼 */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
               <div>
                 <h3 style={{ fontSize: 14, fontWeight: 700, color: T.text, margin: 0 }}>이번 달 지점별 수확량</h3>
@@ -299,55 +324,143 @@ function HQDashboardScreen() {
                   {totalTarget > 0 && <Pill tone="success">목표 대비 {Math.round(totalHarvest / totalTarget * 100)}%</Pill>}
                 </div>
               </div>
-              <div style={{ display: 'flex', gap: 4, background: T.bg, padding: 3, borderRadius: 6, fontSize: 11 }}>
-                {['토마토', '딸기', '파프리카', '오이'].map((t) => {
-                  const on = cropFilter === t;
+              {selectedCrop && (
+                <button onClick={() => setSelectedCrop(null)} style={{
+                  display: 'flex', alignItems: 'center', gap: 4, padding: '5px 10px',
+                  background: T.bg, border: `1px solid ${T.border}`, borderRadius: 6,
+                  fontSize: 11, fontWeight: 600, color: T.muted, cursor: 'pointer',
+                }}>← 전체 보기</button>
+              )}
+            </div>
+
+            {selectedCrop ? (
+              /* ── 추이 차트 (최근 30일 일별, 동일 영역 교체) ── */
+              (() => {
+                const crops = BRANCH_CROPS[selectedCrop.branch] || [];
+                const isMain = crops[0] === selectedCrop.crop;
+                const color = isMain
+                  ? CROP_COLORS[selectedCrop.branch]?.main
+                  : CROP_COLORS[selectedCrop.branch]?.sub;
+                const branchName = D_BRANCH_META[selectedCrop.branch]?.name || selectedCrop.branch;
+                const maxQty = Math.max(...trendData.map((d) => d.qty), 1);
+                const hasData = trendData.some((d) => d.qty > 0);
+                const W = 400, H = 80;
+                const pts = trendData.map((d, i) => {
+                  const x = (i / 29) * W;
+                  const y = H - (d.qty / maxQty) * (H - 6);
+                  return `${x.toFixed(1)},${y.toFixed(1)}`;
+                }).join(' ');
+                const totalThisMonth = trendData.reduce((s, d) => s + d.qty, 0);
+                return (
+                  <div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+                      <Dot c={color} />
+                      <span style={{ fontSize: 12, fontWeight: 700, color: T.text }}>
+                        {branchName} · {selectedCrop.crop}
+                      </span>
+                      <span style={{ fontSize: 11, color: T.mutedSoft }}>최근 30일 일별 추이</span>
+                      <span style={{ marginLeft: 'auto', fontSize: 13, fontWeight: 700, color: T.text }}>
+                        {Number(totalThisMonth.toFixed(1)).toLocaleString()} kg
+                      </span>
+                    </div>
+                    {hasData ? (
+                      <div style={{ position: 'relative', height: 100, background: T.bg, borderRadius: 8, padding: '8px 4px 24px' }}>
+                        <svg viewBox={`0 0 ${W} ${H}`} style={{ width: '100%', height: '100%', overflow: 'visible' }}>
+                          {/* 격자 선 */}
+                          {[0, 0.5, 1].map((frac) => (
+                            <line key={frac} x1={0} y1={H - frac * (H - 6)} x2={W} y2={H - frac * (H - 6)}
+                              stroke={T.borderSoft} strokeWidth="0.5" />
+                          ))}
+                          {/* 면 채움 */}
+                          <polyline
+                            points={`0,${H} ${pts} ${W},${H}`}
+                            fill={color} fillOpacity="0.12" stroke="none"
+                          />
+                          {/* 선 */}
+                          <polyline
+                            points={pts} fill="none"
+                            stroke={color} strokeWidth="1.8" strokeLinejoin="round" strokeLinecap="round"
+                          />
+                          {/* 데이터 점 (값 있는 날만) */}
+                          {trendData.map((d, i) => d.qty > 0 && (
+                            <circle key={i}
+                              cx={(i / 29 * W).toFixed(1)}
+                              cy={(H - (d.qty / maxQty) * (H - 6)).toFixed(1)}
+                              r="2.5" fill={color}
+                            />
+                          ))}
+                        </svg>
+                        {/* X축: 처음·중간·마지막 날짜 */}
+                        <div style={{ position: 'absolute', bottom: 4, left: 4, right: 4, display: 'flex', justifyContent: 'space-between', fontSize: 9, color: T.mutedSoft }}>
+                          <span>{trendData[0]?.date?.slice(5)}</span>
+                          <span>{trendData[14]?.date?.slice(5)}</span>
+                          <span>{trendData[29]?.date?.slice(5)}</span>
+                        </div>
+                      </div>
+                    ) : (
+                      <div style={{ height: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', background: T.bg, borderRadius: 8 }}>
+                        <span style={{ fontSize: 12, color: T.mutedSoft }}>기간 내 수확 기록 없음</span>
+                      </div>
+                    )}
+                  </div>
+                );
+              })()
+            ) : (
+              /* ── 지점별 그룹 막대 차트 (작물 탭 제거, 6개 막대) ── */
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 18, marginTop: 8 }}>
+                {branches.map((b) => {
+                  const cropMap = branchCropData[b.code] || {};
+                  const crops = BRANCH_CROPS[b.code] || [];
+                  const colors = CROP_COLORS[b.code] || { main: b.accent, sub: b.accentSoft };
                   return (
-                    <span key={t} onClick={() => setCropFilter(t)} style={{
-                      padding: '4px 10px', borderRadius: 4, fontWeight: 600,
-                      background: on ? T.surface : 'transparent',
-                      color: on ? T.text : T.mutedSoft,
-                      boxShadow: on ? '0 1px 2px rgba(0,0,0,0.06)' : 'none',
-                      cursor: 'pointer',
-                    }}>{t}</span>
+                    <div key={b.code}>
+                      {/* 지점 헤더 */}
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 8 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                          <Dot c={b.accent} />
+                          <span style={{ fontSize: 12, fontWeight: 600, color: T.text }}>{b.name}</span>
+                        </div>
+                        <span style={{ fontSize: 14, fontWeight: 700, color: T.text }}>
+                          {b.harvest > 0 ? Number(b.harvest.toFixed(1)).toLocaleString() : '—'} kg
+                        </span>
+                      </div>
+                      {/* 두 개 막대 (메인 + 보조 작물) */}
+                      <div style={{ display: 'flex', gap: 8 }}>
+                        {crops.map((crop, ci) => {
+                          const qty = cropMap[crop] || 0;
+                          const color = ci === 0 ? colors.main : colors.sub;
+                          const heightPct = qty > 0 ? Math.max(qty / barMax * 100, 6) : 0;
+                          return (
+                            <div key={crop} onClick={() => setSelectedCrop({ branch: b.code, crop })}
+                              style={{ flex: 1, cursor: 'pointer' }}
+                              title={`${crop}: ${qty > 0 ? Number(qty.toFixed(1)).toLocaleString() : '—'} kg — 클릭하면 추이 보기`}
+                            >
+                              <div style={{
+                                height: 52, display: 'flex', alignItems: 'flex-end',
+                                background: T.bg, borderRadius: 6, padding: '4px 4px 0', overflow: 'hidden',
+                              }}>
+                                <div style={{
+                                  width: '100%', height: `${heightPct}%`,
+                                  background: color, borderRadius: '3px 3px 0 0',
+                                  opacity: qty > 0 ? 0.85 : 0.2, minHeight: qty > 0 ? 4 : 0,
+                                  transition: 'opacity 0.15s',
+                                }} />
+                              </div>
+                              <div style={{ marginTop: 4, textAlign: 'center' }}>
+                                <div style={{ fontSize: 9, color: T.mutedSoft, fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{crop}</div>
+                                <div style={{ fontSize: 10, fontWeight: 700, color: qty > 0 ? T.text : T.mutedSoft }}>
+                                  {qty > 0 ? Number(qty.toFixed(1)).toLocaleString() : '—'}
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
                   );
                 })}
               </div>
-            </div>
-
-            {/* 주별 바 차트 — 최근 4주 rolling (index 3=현재 주), cropFilter 반영 */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 16, marginTop: 8 }}>
-              {branches.map((b) => {
-                const weekVals = branchWeekHarvest[b.code] || [0, 0, 0, 0];
-                const labels = ['3주 전', '2주 전', '지난주', '이번주'];
-                return (
-                  <div key={b.code}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 6 }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                        <Dot c={b.accent} />
-                        <span style={{ fontSize: 12, fontWeight: 600, color: T.text }}>{b.name}</span>
-                      </div>
-                      <div style={{ fontSize: 11, color: T.mutedSoft }}>
-                        <span style={{ fontSize: 14, fontWeight: 700, color: T.text }}>{b.harvest.toLocaleString()}</span>
-                        {b.harvestT > 0 ? ` / ${b.harvestT.toLocaleString()}kg` : ' kg'}
-                      </div>
-                    </div>
-                    <div style={{ display: 'flex', gap: 3, height: 32, alignItems: 'flex-end' }}>
-                      {weekVals.map((v, i) => (
-                        <div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3 }}>
-                          <div style={{
-                            width: '100%', height: `${Math.max(v / weekMax * 100, 0)}%`,
-                            background: b.accent, borderRadius: '3px 3px 0 0', minHeight: 4,
-                            opacity: v > 0 ? 0.85 : 0.2,
-                          }} />
-                          <span style={{ fontSize: 9, color: T.mutedSoft }}>{labels[i]}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
+            )}
 
             <div style={{ marginTop: 18, paddingTop: 14, borderTop: `1px solid ${T.borderSoft}`, display: 'flex', justifyContent: 'space-between', fontSize: 11, color: T.mutedSoft }}>
               <span>전년 동월 대비 <span style={{ fontWeight: 700 }}>—</span></span>
