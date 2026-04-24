@@ -8,6 +8,7 @@ import useAttendanceStore from '../../stores/attendanceStore';
 import useNoticeStore from '../../stores/noticeStore';
 import useHarvestStore from '../../stores/harvestStore';
 import EmployeeDetailModal from '../../components/employees/EmployeeDetailModal';
+import EmployeeEditModal from '../../components/employees/EmployeeEditModal';
 
 // ─────── 지점 메타 (코드 → 표시명·색상) ───────
 const BRANCH_META = {
@@ -503,6 +504,7 @@ function HQEmployeesScreen() {
   const [tab, setTab] = useState('all');
   const [empTypeFilter, setEmpTypeFilter] = useState('전체');
   const [selectedEmployee, setSelectedEmployee] = useState(null);
+  const [editEmployee, setEditEmployee] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
   const employees = useEmployeeStore((s) => s.employees);
   const fetchEmployees = useEmployeeStore((s) => s.fetchEmployees);
@@ -682,7 +684,14 @@ function HQEmployeesScreen() {
         <EmployeeDetailModal
           employee={selectedEmployee}
           onClose={() => setSelectedEmployee(null)}
+          onEdit={(e) => setEditEmployee(e)}
           branchNameMap={branchNameMap}
+        />
+      )}
+      {editEmployee && (
+        <EmployeeEditModal
+          employee={editEmployee}
+          onClose={() => setEditEmployee(null)}
         />
       )}
     </div>
