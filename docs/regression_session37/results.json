@@ -1,0 +1,193 @@
+{
+  "PASS": 30,
+  "FAIL": 0,
+  "WARN": 1,
+  "results": [
+    {
+      "test": "HQ-LOGIN",
+      "status": "PASS",
+      "title": "jhkim 로그인",
+      "detail": "http://localhost:5173/admin/hq"
+    },
+    {
+      "test": "SCHEDULE-LOAD",
+      "status": "PASS",
+      "title": "TopBar \"근무 관리\" 타이틀 존재",
+      "detail": ""
+    },
+    {
+      "test": "SCHEDULE-LOAD",
+      "status": "PASS",
+      "title": "\"출퇴근 기록\" 버튼 존재",
+      "detail": ""
+    },
+    {
+      "test": "SCHEDULE-LOAD",
+      "status": "PASS",
+      "title": "\"스케줄 등록\" 버튼 존재",
+      "detail": ""
+    },
+    {
+      "test": "SCHEDULE-TABS",
+      "status": "PASS",
+      "title": "\"일간\" 탭 존재",
+      "detail": ""
+    },
+    {
+      "test": "SCHEDULE-TABS",
+      "status": "PASS",
+      "title": "\"주간\" 탭 존재",
+      "detail": ""
+    },
+    {
+      "test": "SCHEDULE-TABS",
+      "status": "PASS",
+      "title": "\"월간\" 탭 존재",
+      "detail": ""
+    },
+    {
+      "test": "SCHEDULE-TIMELINE",
+      "status": "PASS",
+      "title": "시간 헤더 08:00 존재",
+      "detail": ""
+    },
+    {
+      "test": "SCHEDULE-TIMELINE",
+      "status": "PASS",
+      "title": "시간 헤더 17:00 존재",
+      "detail": ""
+    },
+    {
+      "test": "SCHEDULE-TIMELINE",
+      "status": "PASS",
+      "title": "\"타임라인\" 카드 헤더 존재",
+      "detail": ""
+    },
+    {
+      "test": "SCHEDULE-TIMELINE",
+      "status": "PASS",
+      "title": "근무 시간 범위 표시",
+      "detail": ""
+    },
+    {
+      "test": "SCHEDULE-LEGEND",
+      "status": "PASS",
+      "title": "범례 \"TBM\" 존재",
+      "detail": ""
+    },
+    {
+      "test": "SCHEDULE-LEGEND",
+      "status": "PASS",
+      "title": "범례 \"수확\" 존재",
+      "detail": ""
+    },
+    {
+      "test": "SCHEDULE-LEGEND",
+      "status": "PASS",
+      "title": "범례 \"측정\" 존재",
+      "detail": ""
+    },
+    {
+      "test": "SCHEDULE-LEGEND",
+      "status": "PASS",
+      "title": "범례 \"이상\" 존재",
+      "detail": ""
+    },
+    {
+      "test": "SCHEDULE-NAV",
+      "status": "PASS",
+      "title": "네비게이션 버튼 2개 존재",
+      "detail": ""
+    },
+    {
+      "test": "SCHEDULE-NAV",
+      "status": "PASS",
+      "title": "‹ 클릭 날짜 변경: 4월 24일 → 4월 23일",
+      "detail": ""
+    },
+    {
+      "test": "SCHEDULE-WEEK-MODE",
+      "status": "PASS",
+      "title": "주간 뷰 요일 탭 7개 표시",
+      "detail": ""
+    },
+    {
+      "test": "SCHEDULE-WEEK-MODE",
+      "status": "PASS",
+      "title": "\"주차\" 표시",
+      "detail": ""
+    },
+    {
+      "test": "SCHEDULE-MONTH-MODE",
+      "status": "PASS",
+      "title": "월간 캘린더 헤더 존재",
+      "detail": ""
+    },
+    {
+      "test": "SCHEDULE-MONTH-MODE",
+      "status": "PASS",
+      "title": "캘린더 날짜 셀 30개",
+      "detail": ""
+    },
+    {
+      "test": "SCHEDULE-MONTH-MODE",
+      "status": "WARN",
+      "title": "월간 클릭 후 타임라인 미확인",
+      "detail": ""
+    },
+    {
+      "test": "SCHEDULE-ATTD-BTN",
+      "status": "PASS",
+      "title": "출퇴근 기록 이동: http://localhost:5173/admin/attendance-status",
+      "detail": ""
+    },
+    {
+      "test": "SCHEDULE-SCHED-BTN",
+      "status": "PASS",
+      "title": "스케줄 등록 alert: \"스케줄 등록 기능은 준비 중입니다.\"",
+      "detail": ""
+    },
+    {
+      "test": "BUG-F01",
+      "status": "PASS",
+      "title": "BUG-F01 회귀 없음",
+      "detail": ""
+    },
+    {
+      "test": "BUG-F02",
+      "status": "PASS",
+      "title": "BUG-F02 회귀 없음",
+      "detail": ""
+    },
+    {
+      "test": "DASHBOARD-CHART",
+      "status": "PASS",
+      "title": "차트 \"부산LAB\" 표시",
+      "detail": ""
+    },
+    {
+      "test": "DASHBOARD-CHART",
+      "status": "PASS",
+      "title": "차트 \"진주HUB\" 표시",
+      "detail": ""
+    },
+    {
+      "test": "DASHBOARD-CHART",
+      "status": "PASS",
+      "title": "차트 \"하동HUB\" 표시",
+      "detail": ""
+    },
+    {
+      "test": "HQ-SIDEBAR-LOGOUT",
+      "status": "PASS",
+      "title": "HQ 사이드바 \"로그아웃\" 텍스트 존재",
+      "detail": ""
+    },
+    {
+      "test": "HQ-CONSOLE-ERRORS",
+      "status": "PASS",
+      "title": "HQ 콘솔 에러 없음",
+      "detail": ""
+    }
+  ]
+}

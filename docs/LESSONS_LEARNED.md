@@ -1783,3 +1783,17 @@ function MobileAttendanceScreen() {
 - Playwright 감사 시 페이지 렌더링 "정상"은 빈 상태 vs 실제 콘텐츠를 구분하여 판정
 - 빈 상태 페이지는 "(b) DB 데이터 없음 — 스킵"으로 명시적 표기
 - 재접수 방지를 위해 BACKLOG에 해당 페이지 상태 명시 필요
+
+---
+
+## 교훈 63 — Gantt 타임라인 바는 started_at/completed_at 기반; 미시작 태스크는 스킵
+
+**날짜:** 2026-04-24 (세션 37)  
+**관련 파일:** `src/pages/admin/SchedulePage.jsx`
+
+tasks 테이블의 `started_at`(TIMESTAMPTZ) 필드가 NULL인 태스크는 아직 시작되지 않은 것으로 Gantt 바 렌더링에서 제외한다.  
+`completed_at`이 NULL이면 `started_at + estimated_minutes`(없으면 +1h)로 예상 종료시간을 대체한다.
+
+**예방:**
+- 스케줄 뷰에 "진행 중" 바가 보이지 않으면 DB에 `started_at`이 NULL인지 먼저 확인
+- 새 DB 시간 필드 추가 전 기존 필드(started_at/completed_at) 존재 여부를 MCP 조회로 선확인 → 불필요한 마이그레이션 방지 (Case A vs B 분기)

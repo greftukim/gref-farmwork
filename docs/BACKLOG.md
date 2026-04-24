@@ -189,6 +189,8 @@
 | CROP-ADD-S36-001 | 기능 추가 | resolved | 세션 36 (2026-04-24) | - | 미니오이·완숙토마토 crops 테이블 INSERT. task_types JSONB 포함. 이후 harvest 재시드에서 jinju·hadong·busan 연계 사용. | docs/BACKLOG.md |
 | DASHBOARD-CHART-LAYOUT-001 | UX 개선 | resolved | 세션 36 (2026-04-24) | - | Dashboard 지점별 수확량 차트 flexDirection column→row (3지점 가로 배치). 3번째 작물 색상(sub2) 지원. busan 3종 막대 수평 표시. Playwright PASS. | docs/BACKLOG.md |
 | GROWTH-EMPTY-STATE-001 | 진단 | resolved (스킵) | 세션 36 (2026-04-24) | - | /admin/growth·performance·stats "화이트 스크린" 신고. 진단 결과: DB 빈 상태 → 코드 정상 동작. standard_curves·marker_plants·growth_surveys·performance 데이터 없음. 코드 수정 불필요. FARM-GROWTH-DB-001·FARM-PERF-DATA-001 트랙으로 이관. 교훈 62 추가. | docs/BACKLOG.md |
+| SCHEDULE-PAGE-S37-001 | UI 이식 | resolved | 세션 37 (2026-04-24) | - | SchedulePage.jsx 전면 재작성. 목업(screen-others.jsx ScheduleScreen) 구조 이식. 일간/주간/월간 3뷰, ‹/› 날짜 네비게이션, 타임라인 Gantt (tasks.started_at/completed_at 기반), NOW 선(실시간), 점심 해치, approved leave → warningSolid 풀바, 월간 캘린더. TopBar: 출퇴근 기록 navigate + 스케줄 등록 alert. Playwright PASS 30/31. 커밋 예정. | docs/BACKLOG.md |
+| SCHED-REGISTER-001 | 기능 미구현 | open | 세션 37 (2026-04-24) | P3 | "스케줄 등록" 버튼 — 현재 alert("준비 중") 처리. 스케줄 수동 등록 모달(작업자·날짜·시간·작업유형) 구현 필요. tasks 테이블 insert 활용. | docs/BACKLOG.md |
 
 ---
 
