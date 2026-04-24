@@ -1,0 +1,99 @@
+{
+  "results": [
+    {
+      "id": "LOGIN-HDKIM",
+      "status": "PASS",
+      "note": "랜딩: http://localhost:5173/admin"
+    },
+    {
+      "id": "FARM-DASH-DATE-001",
+      "status": "PASS",
+      "note": "TopBar h1: \"2026년 4월 24일 금요일\""
+    },
+    {
+      "id": "FARM-DASH-SCHED-HARDCODE-001",
+      "status": "PASS",
+      "note": "\"오늘\" 뱃지 표시 확인, 오늘 레이블: 금 24"
+    },
+    {
+      "id": "DASH-CONSOLE",
+      "status": "PASS",
+      "note": "콘솔 에러 없음"
+    },
+    {
+      "id": "FARM-DASH-BTN-001-EXPORT",
+      "status": "PASS",
+      "note": "alert 확인: \"대시보드 내보내기 기능 준비 중입니다.\""
+    },
+    {
+      "id": "FARM-DASH-BTN-001-AI-APPLY",
+      "status": "PASS",
+      "note": "alert: \"AI 제안 적용 기능 준비 중입니다.\""
+    },
+    {
+      "id": "FARM-DASH-BTN-001-AI-DETAIL",
+      "status": "PASS",
+      "note": "alert: \"AI 제안 상세 기능 준비 중입니다.\""
+    },
+    {
+      "id": "FARM-TASK-ADD-001",
+      "status": "PASS",
+      "note": "\"작업 추가\" 버튼 존재"
+    },
+    {
+      "id": "FARM-TASK-ADD-001-NAV",
+      "status": "PASS",
+      "note": "navigate → http://localhost:5173/admin/tasks/new"
+    },
+    {
+      "id": "TASKPLAN-CONSOLE",
+      "status": "PASS",
+      "note": "콘솔 에러 없음"
+    },
+    {
+      "id": "FARM-LEAVE-SCOPE-001",
+      "status": "PASS",
+      "note": "휴가 신청 페이지 정상"
+    },
+    {
+      "id": "FARM-TASK-SCOPE-ISSUES",
+      "status": "PASS",
+      "note": "이상 신고 페이지 정상"
+    },
+    {
+      "id": "FARM-TASK-SCOPE-ATT",
+      "status": "PASS",
+      "note": "근태 현황 페이지 정상"
+    },
+    {
+      "id": "LOGIN-JHKIM",
+      "status": "PASS",
+      "note": "랜딩: http://localhost:5173/admin/hq"
+    },
+    {
+      "id": "HQ-DASH",
+      "status": "PASS",
+      "note": "HQ 대시보드 정상"
+    },
+    {
+      "id": "HQ-SCOPE",
+      "status": "PASS",
+      "note": "HQ 전체 지점 데이터 표시 확인"
+    },
+    {
+      "id": "HQ-EMP",
+      "status": "PASS",
+      "note": "HQ 직원 목록 정상"
+    },
+    {
+      "id": "HQ-APPROVALS",
+      "status": "PASS",
+      "note": "HQ 휴가 승인 정상 (scope 필터 미영향)"
+    }
+  ],
+  "summary": {
+    "passCount": 18,
+    "failCount": 0,
+    "warnCount": 0
+  }
+}

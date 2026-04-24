@@ -1,6 +1,7 @@
 // 작업 계획 — /admin/task-plan
 import React, { useMemo, useState } from 'react';
-import { Avatar, Card, Icon, Pill, T, TopBar, icons } from '../../design/primitives';
+import { useNavigate } from 'react-router-dom';
+import { Avatar, Card, Icon, Pill, T, TopBar, btnPrimary, icons } from '../../design/primitives';
 import useTaskStore from '../../stores/taskStore';
 import useEmployeeStore from '../../stores/employeeStore';
 
@@ -14,6 +15,7 @@ function weekStart(d) {
 }
 
 export default function TaskPlanPage() {
+  const navigate = useNavigate();
   const tasks = useTaskStore((s) => s.tasks);
   const employees = useEmployeeStore((s) => s.employees);
 
@@ -42,7 +44,7 @@ export default function TaskPlanPage() {
 
   return (
     <div style={{ flex: 1, overflow: 'auto', background: T.bg, minWidth: 0 }}>
-      <TopBar subtitle="작업 관리" title="작업 주간 계획" />
+      <TopBar subtitle="작업 관리" title="작업 주간 계획" actions={btnPrimary('작업 추가', icons.plus, () => navigate('/admin/tasks/new'))} />
       <div style={{ padding: 24 }}>
         <Card pad={14} style={{ marginBottom: 16, display: 'flex', alignItems: 'center', gap: 10 }}>
           <button onClick={() => shift(-1)} style={{ width: 30, height: 30, borderRadius: 7, border: `1px solid ${T.border}`, background: T.surface, cursor: 'pointer', color: T.muted, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>

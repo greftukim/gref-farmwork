@@ -7,9 +7,15 @@ const useAttendanceStore = create((set, get) => ({
   records: [],
   loading: false,
 
-  fetchRecords: async () => {
+  fetchRecords: async (currentUser) => {
     set({ loading: true });
-    const { data, error } = await supabase.from('attendance').select('*').order('date', { ascending: false });
+    let query = supabase.from('attendance').select('*').order('date', { ascending: false });
+    if (currentUser?.role === 'farm_admin' && currentUser?.branch) {
+      const { data: branchEmps } = await supabase.from('employees').select('id').eq('branch', currentUser.branch);
+      const empIds = (branchEmps || []).map((e) => e.id);
+      if (empIds.length > 0) query = query.in('employee_id', empIds);
+    }
+    const { data, error } = await query;
     if (!error && data) set({ records: data.map(snakeToCamel) });
     set({ loading: false });
   },

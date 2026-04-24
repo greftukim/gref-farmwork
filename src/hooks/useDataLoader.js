@@ -36,16 +36,16 @@ export default function useDataLoader() {
   useEffect(() => {
     fetchBranches();
     fetchEmployees(currentUser);
-    fetchRecords();
-    fetchRequests();
+    fetchRecords(currentUser);
+    fetchRequests(currentUser);
     fetchBalances();
     fetchSchedules();
     fetchCrops();
     fetchZones();
-    fetchTasks();
+    fetchTasks(currentUser);
     fetchSurveys();
     fetchSurveyItems();
-    fetchIssues();
+    fetchIssues(currentUser);
     fetchCalls();
     fetchNotices();
     fetchOvertimeRequests();

@@ -1580,3 +1580,39 @@ else await page.keyboard.press('Escape');
 - 회귀 스크립트에서 UI 요소 존재 확인 시 **DOM 요소 타입(button, input 등)까지 셀렉터에 명시**
 - 모달/다이얼로그 감지 전 실제 컴포넌트 구조(className 패턴) 확인 후 셀렉터 작성
 - 닫기 동작은 `try/catch + Escape 폴백` 패턴으로 크래시 방지
+
+---
+
+## 교훈 57 — 중첩 클로저 내 변수 부분 교체 시 잔류 참조 확인 필수
+
+**맥락:** Phase 5 세션 32 (2026-04-24), AdminDashboard 스케줄 그리드 하드코딩 수정.
+
+**증상:**
+```
+앱 오류 발생 — isToday is not defined
+ErrorBoundary 화면 출력, 대시보드 전체 블랭크
+```
+
+**원인:**
+- 스케줄 그리드 `.map()` 콜백에서 `isToday = i === 1`을 `day.isToday`로 교체할 때,
+  동일 콜백 내 다른 위치(하위 `.map()` 내부)에 `isToday` 직접 참조가 1개 남음
+- Edit 도구는 지정한 `old_string` 범위만 교체 — 콜백 끝까지 한 번에 선택하지 않으면 하위 참조가 생존
+
+**수정 패턴:**
+```jsx
+// 변경 전 (실수): 내부 items.map에서 여전히 isToday 참조
+{items.map((t, j) => (
+  <div key={j} style={{ background: isToday ? T.surface : T.surface }}>
+))}
+
+// 변경 후: day.isToday 또는 상수로 교체
+{items.map((t, j) => (
+  <div key={j} style={{ background: T.surface }}>
+))}
+```
+
+**예방:**
+- 클로저 변수를 rename/교체할 때 **파일 전체에서 해당 변수명 grep** 후 잔류 확인
+- `grep -n "isToday" src/pages/admin/AdminDashboard.jsx` → 0이어야 함
+- 빌드 성공 ≠ 런타임 안전 — JavaScript는 정의되지 않은 변수를 빌드 단계에서 잡지 못하는 경우 있음
+- Playwright 회귀 스크립트에서 ErrorBoundary 화면("앱 오류 발생") 탐지 로직 추가 권장

@@ -7,9 +7,15 @@ const useIssueStore = create((set) => ({
   issues: [],
   loading: false,
 
-  fetchIssues: async () => {
+  fetchIssues: async (currentUser) => {
     set({ loading: true });
-    const { data } = await supabase.from('issues').select('*').order('created_at', { ascending: false });
+    let query = supabase.from('issues').select('*').order('created_at', { ascending: false });
+    if (currentUser?.role === 'farm_admin' && currentUser?.branch) {
+      const { data: branchEmps } = await supabase.from('employees').select('id').eq('branch', currentUser.branch);
+      const empIds = (branchEmps || []).map((e) => e.id);
+      if (empIds.length > 0) query = query.in('worker_id', empIds);
+    }
+    const { data } = await query;
     if (data) set({ issues: data.map(snakeToCamel) });
     set({ loading: false });
   },

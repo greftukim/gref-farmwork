@@ -7,8 +7,14 @@ const useLeaveStore = create((set, get) => ({
   balances: [],
   loading: false,
 
-  fetchRequests: async () => {
-    const { data } = await supabase.from('leave_requests').select('*').order('created_at', { ascending: false });
+  fetchRequests: async (currentUser) => {
+    let query = supabase.from('leave_requests').select('*').order('created_at', { ascending: false });
+    if (currentUser?.role === 'farm_admin' && currentUser?.branch) {
+      const { data: branchEmps } = await supabase.from('employees').select('id').eq('branch', currentUser.branch);
+      const empIds = (branchEmps || []).map((e) => e.id);
+      if (empIds.length > 0) query = query.in('employee_id', empIds);
+    }
+    const { data } = await query;
     if (data) set({ requests: data.map(snakeToCamel) });
   },
 
@@ -60,9 +66,6 @@ const useLeaveStore = create((set, get) => ({
           }
         }
       }
-      // 전체 재조회
-      const { data: allData } = await supabase.from('leave_requests').select('*').order('created_at', { ascending: false });
-      if (allData) set({ requests: allData.map(snakeToCamel) });
     }
     return true;
   },
