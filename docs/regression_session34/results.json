@@ -1,0 +1,146 @@
+{
+  "timestamp": "2026-04-24T06:11:42.667Z",
+  "PASS": 23,
+  "FAIL": 0,
+  "WARN": 0,
+  "results": [
+    {
+      "test": "dashboard-load",
+      "status": "PASS",
+      "title": "h1에 \"운영 리포트\" 포함",
+      "detail": "2026년 4월 · 월간 운영 리포트"
+    },
+    {
+      "test": "BUG-F01-regression",
+      "status": "PASS",
+      "title": "BUG-F01 회귀 없음",
+      "detail": ""
+    },
+    {
+      "test": "BUG-F02-regression",
+      "status": "PASS",
+      "title": "BUG-F02 회귀 없음",
+      "detail": ""
+    },
+    {
+      "test": "NOTIFICATION-DROPDOWN-001",
+      "status": "PASS",
+      "title": "벨 버튼 존재 (36×36 아이콘 버튼, x:1099 y:31)",
+      "detail": ""
+    },
+    {
+      "test": "NOTIFICATION-DROPDOWN-001",
+      "status": "PASS",
+      "title": "알림 드롭다운 열림",
+      "detail": ""
+    },
+    {
+      "test": "NOTIFICATION-DROPDOWN-001",
+      "status": "PASS",
+      "title": "알림 패널 텍스트 확인 (새 알림 없음 or 전체 보기)",
+      "detail": ""
+    },
+    {
+      "test": "NOTIFICATION-DROPDOWN-001",
+      "status": "PASS",
+      "title": "외부 클릭 후 포커스 이동 (닫힘 동작 트리거)",
+      "detail": ""
+    },
+    {
+      "test": "GLOBAL-SEARCH-001",
+      "status": "PASS",
+      "title": "검색 input[placeholder*=\"검색\"] 존재",
+      "detail": ""
+    },
+    {
+      "test": "GLOBAL-SEARCH-001",
+      "status": "PASS",
+      "title": "빈 쿼리 시 드롭다운 미표시",
+      "detail": ""
+    },
+    {
+      "test": "GLOBAL-SEARCH-001",
+      "status": "PASS",
+      "title": "\"김\" 입력 → 검색 드롭다운 노출",
+      "detail": ""
+    },
+    {
+      "test": "GLOBAL-SEARCH-001",
+      "status": "PASS",
+      "title": "검색 결과 영역 텍스트 확인 (직원 or 결과 없음)",
+      "detail": ""
+    },
+    {
+      "test": "GLOBAL-SEARCH-001",
+      "status": "PASS",
+      "title": "클리어 버튼 (✕) 존재",
+      "detail": ""
+    },
+    {
+      "test": "HQ-PERIOD-PICKER-001",
+      "status": "PASS",
+      "title": "기간 탭 4개 모두 존재: 일·주·월·분기",
+      "detail": ""
+    },
+    {
+      "test": "HQ-PERIOD-PICKER-001",
+      "status": "PASS",
+      "title": "초기 h1 \"월간\" 포함: 2026년 4월 · 월간 운영 리포트",
+      "detail": ""
+    },
+    {
+      "test": "HQ-PERIOD-PICKER-001",
+      "status": "PASS",
+      "title": "\"주\" 클릭 → h1 \"주간\" 반영: 2026년 4월 · 주간 운영 리포트",
+      "detail": ""
+    },
+    {
+      "test": "HQ-PERIOD-PICKER-001",
+      "status": "PASS",
+      "title": "\"분기\" 클릭 → h1 \"분기\" 반영: 2026년 4월 · 분기 운영 리포트",
+      "detail": ""
+    },
+    {
+      "test": "APPROVAL-CATEGORY-001",
+      "status": "PASS",
+      "title": "비활성 탭 3개 발견: 예산0·인사0·자재0",
+      "detail": ""
+    },
+    {
+      "test": "APPROVAL-CATEGORY-001",
+      "status": "PASS",
+      "title": "예산·인사·자재 cursor: not-allowed 확인",
+      "detail": ""
+    },
+    {
+      "test": "APPROVAL-CATEGORY-001",
+      "status": "PASS",
+      "title": "예산·인사·자재 opacity < 0.7 (흐리게 표시) 확인",
+      "detail": ""
+    },
+    {
+      "test": "APPROVAL-CATEGORY-001",
+      "status": "PASS",
+      "title": "\"근태\" 탭 존재",
+      "detail": ""
+    },
+    {
+      "test": "APPROVAL-CATEGORY-001",
+      "status": "PASS",
+      "title": "\"근태\" 탭 cursor: pointer (클릭 가능)",
+      "detail": ""
+    },
+    {
+      "test": "APPROVAL-CATEGORY-001",
+      "status": "PASS",
+      "title": "예산 탭 force-click 후 활성 탭 변경 없음 (현재: \"근태0\")",
+      "detail": ""
+    },
+    {
+      "test": "console-errors",
+      "status": "PASS",
+      "title": "콘솔 에러 0건",
+      "detail": ""
+    }
+  ]
+}
