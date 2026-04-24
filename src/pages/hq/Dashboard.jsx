@@ -53,6 +53,7 @@ function HQDashboardScreen() {
   const navigate = useNavigate();
   const [approvalFilter, setApprovalFilter] = useState('all');
   const [selectedCrop, setSelectedCrop] = useState(null); // { branch, crop }
+  const [period, setPeriod] = useState('월');
 
   useEffect(() => {
     fetchEmployees();
@@ -193,7 +194,8 @@ function HQDashboardScreen() {
     })), [notices]);
 
   const now = new Date();
-  const titleStr = `${now.getFullYear()}년 ${now.getMonth() + 1}월 · 월간 운영 리포트`;
+  const PERIOD_LABEL = { '일': '일간', '주': '주간', '월': '월간', '분기': '분기' };
+  const titleStr = `${now.getFullYear()}년 ${now.getMonth() + 1}월 · ${PERIOD_LABEL[period] || '월간'} 운영 리포트`;
   const gadongyulSub = totalWorkers > 0 ? `${totalCheckedIn} / ${totalWorkers}명 출근` : '출근 데이터 없음';
   const harvestSub = totalTarget > 0
     ? `목표 ${totalTarget.toLocaleString()}kg · ${Math.round(totalHarvest / totalTarget * 100)}%`
@@ -204,6 +206,8 @@ function HQDashboardScreen() {
       <HQTopBar
         subtitle="본사 · 다지점 통합"
         title={titleStr}
+        period={period}
+        onPeriodChange={setPeriod}
         actions={<>
           {btnSecondary('리포트 내보내기', icons.chart, () => alert('리포트 내보내기 기능 준비 중입니다.'))}
           {btnPrimary('전사 공지 작성', icons.plus, () => navigate('/admin/hq/notices'))}
@@ -488,9 +492,12 @@ function HQDashboardScreen() {
                 { k: 'material',   l: '자재', n: 0 },
               ].map((p) => {
                 const on = approvalFilter === p.k;
+                const disabled = p.n === 0 && p.k !== 'all' && p.k !== 'attendance';
                 return (
-                  <span key={p.k} onClick={() => setApprovalFilter(p.k)} style={{
-                    padding: '4px 9px', borderRadius: 6, fontWeight: 600, cursor: 'pointer',
+                  <span key={p.k} onClick={disabled ? undefined : () => setApprovalFilter(p.k)} style={{
+                    padding: '4px 9px', borderRadius: 6, fontWeight: 600,
+                    cursor: disabled ? 'not-allowed' : 'pointer',
+                    opacity: disabled ? 0.4 : 1,
                     background: on ? T.text : T.bg,
                     color: on ? '#fff' : T.muted,
                     display: 'flex', alignItems: 'center', gap: 4,
