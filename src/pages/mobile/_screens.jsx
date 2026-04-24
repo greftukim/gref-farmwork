@@ -1,8 +1,42 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { T, Icon, icons, Pill, Avatar } from '../../design/primitives';
+import useAuthStore from '../../stores/authStore';
+import useAttendanceStore from '../../stores/attendanceStore';
+import useLeaveStore from '../../stores/leaveStore';
+
+const todayDate = () => new Date().toISOString().split('T')[0];
+
+const fmtTime = (iso) => {
+  if (!iso) return '—';
+  const d = new Date(iso);
+  return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+};
+
+const fmtWorkTime = (t) => (t ? String(t).slice(0, 5) : '—');
 
 // 작업자 모바일 앱 — 홈 + 출퇴근
 function MobileHomeScreen() {
+  const currentUser = useAuthStore((s) => s.currentUser);
+  const records = useAttendanceStore((s) => s.records);
+  const checkIn = useAttendanceStore((s) => s.checkIn);
+  const checkOut = useAttendanceStore((s) => s.checkOut);
+
+  const todayRecord = useMemo(
+    () => records.find((r) => r.employeeId === currentUser?.id && r.date === todayDate()),
+    [records, currentUser]
+  );
+  const todayStr = useMemo(() => {
+    const d = new Date();
+    const wd = ['일', '월', '화', '수', '목', '금', '토'][d.getDay()];
+    return `${d.getFullYear()}년 ${d.getMonth() + 1}월 ${d.getDate()}일 ${wd}요일`;
+  }, []);
+
+  const state = !todayRecord?.checkIn ? 'out' : (!todayRecord?.checkOut ? 'in' : 'done');
+  const checkInTime = fmtTime(todayRecord?.checkIn);
+  const checkOutTime = fmtTime(todayRecord?.checkOut);
+  const endTime = fmtWorkTime(currentUser?.workEndTime) || '17:00';
+  const roleLabel = currentUser?.isTeamLeader ? '반장' : (currentUser?.branch || '작업자');
+
   return (
     <div style={{ background: '#F2F2F7', height: '100%', overflow: 'auto', fontFamily: '-apple-system, Pretendard, system-ui' }}>
       {/* 상단 그린 헤더 */}
@@ -12,15 +46,15 @@ function MobileHomeScreen() {
       }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
           <div>
-            <div style={{ fontSize: 13, opacity: 0.8 }}>2026년 4월 21일 화요일</div>
-            <div style={{ fontSize: 22, fontWeight: 700, letterSpacing: -0.4, marginTop: 2 }}>안녕하세요, 김민국님</div>
+            <div style={{ fontSize: 13, opacity: 0.8 }}>{todayStr}</div>
+            <div style={{ fontSize: 22, fontWeight: 700, letterSpacing: -0.4, marginTop: 2 }}>안녕하세요, {currentUser?.name || '—'}님</div>
           </div>
           <div style={{ width: 40, height: 40, borderRadius: 999, background: 'rgba(255,255,255,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative' }}>
             <Icon d={icons.bell} size={18} c="#fff" sw={2} />
             <span style={{ position: 'absolute', top: 9, right: 11, width: 7, height: 7, borderRadius: 999, background: '#FDE047', border: '1.5px solid #fff' }} />
           </div>
         </div>
-        <div style={{ fontSize: 13, opacity: 0.85 }}>A동 · 토마토 재배 · 반장</div>
+        <div style={{ fontSize: 13, opacity: 0.85 }}>{currentUser?.branch || '—'}{currentUser?.isTeamLeader ? ' · 반장' : ''}</div>
       </div>
 
       {/* 출퇴근 카드 (오버랩) */}
@@ -50,31 +84,32 @@ function MobileHomeScreen() {
           <div style={{ display: 'flex', gap: 10, marginBottom: 16 }}>
             <div style={{ flex: 1, padding: 12, background: T.bg, borderRadius: 10 }}>
               <div style={{ fontSize: 10, color: T.mutedSoft, fontWeight: 600 }}>출근</div>
-              <div style={{ fontSize: 16, fontWeight: 700, color: T.text, marginTop: 3 }}>08:00</div>
-              <div style={{ fontSize: 10, color: T.success, marginTop: 2 }}>정시 출근</div>
+              <div style={{ fontSize: 16, fontWeight: 700, color: state !== 'out' ? T.text : T.mutedSoft, marginTop: 3 }}>{checkInTime}</div>
+              <div style={{ fontSize: 10, color: state !== 'out' ? T.success : T.mutedSoft, marginTop: 2 }}>{state !== 'out' ? '정시 출근' : '미출근'}</div>
             </div>
             <div style={{ flex: 1, padding: 12, background: T.bg, borderRadius: 10 }}>
-              <div style={{ fontSize: 10, color: T.mutedSoft, fontWeight: 600 }}>퇴근 예정</div>
-              <div style={{ fontSize: 16, fontWeight: 700, color: T.mutedSoft, marginTop: 3 }}>17:00</div>
+              <div style={{ fontSize: 10, color: T.mutedSoft, fontWeight: 600 }}>{state === 'done' ? '퇴근' : '퇴근 예정'}</div>
+              <div style={{ fontSize: 16, fontWeight: 700, color: state === 'done' ? T.text : T.mutedSoft, marginTop: 3 }}>{state === 'done' ? checkOutTime : endTime}</div>
               <div style={{ fontSize: 10, color: T.mutedSoft, marginTop: 2 }}>— · —</div>
             </div>
           </div>
 
           {/* 출근 / 퇴근 버튼 */}
           <div style={{ display: 'flex', gap: 8 }}>
-            <button style={{
+            <button onClick={() => state === 'out' && checkIn?.(currentUser?.id)} style={{
               flex: 1, padding: '14px 0', borderRadius: 12, border: `1px solid ${T.border}`,
-              background: T.surface, color: T.mutedSoft,
+              background: state === 'out' ? T.primary : T.surface,
+              color: state === 'out' ? '#fff' : T.mutedSoft,
               fontSize: 15, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
             }}>
               출근
-              <span style={{ fontSize: 11, color: T.success, fontWeight: 600 }}>✓ 08:00</span>
+              {state !== 'out' && <span style={{ fontSize: 11, color: T.success, fontWeight: 600 }}>✓ {checkInTime}</span>}
             </button>
-            <button style={{
+            <button onClick={() => state === 'in' && checkOut?.(currentUser?.id)} style={{
               flex: 1, padding: '14px 0', borderRadius: 12, border: 0,
-              background: T.danger, color: '#fff',
+              background: state === 'in' ? T.danger : T.border, color: '#fff',
               fontSize: 15, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-              boxShadow: '0 4px 12px rgba(220,38,38,0.3)',
+              boxShadow: state === 'in' ? '0 4px 12px rgba(220,38,38,0.3)' : 'none',
             }}>
               <Icon d={icons.logout} size={16} c="#fff" sw={2} />
               퇴근
@@ -208,6 +243,26 @@ function MobileHomeScreen() {
 
 // 출퇴근 전용 화면 — 위치 기반 원탭 체크
 function MobileCheckInScreen() {
+  const currentUser = useAuthStore((s) => s.currentUser);
+  const records = useAttendanceStore((s) => s.records);
+  const checkIn = useAttendanceStore((s) => s.checkIn);
+  const checkOut = useAttendanceStore((s) => s.checkOut);
+
+  const todayRecord = useMemo(
+    () => records.find((r) => r.employeeId === currentUser?.id && r.date === todayDate()),
+    [records, currentUser]
+  );
+  const todayShortStr = useMemo(() => {
+    const d = new Date();
+    const wd = ['일', '월', '화', '수', '목', '금', '토'][d.getDay()];
+    return `오늘 · ${d.getMonth() + 1}월 ${d.getDate()}일 ${wd}요일`;
+  }, []);
+
+  const state = !todayRecord?.checkIn ? 'out' : (!todayRecord?.checkOut ? 'in' : 'done');
+  const checkInTime = fmtTime(todayRecord?.checkIn);
+  const checkOutTime = fmtTime(todayRecord?.checkOut);
+  const endTime = fmtWorkTime(currentUser?.workEndTime) || '17:00';
+
   return (
     <div style={{ background: '#F2F2F7', height: '100%', fontFamily: '-apple-system, Pretendard, system-ui', display: 'flex', flexDirection: 'column', overflow: 'auto' }}>
       {/* 헤더 */}
@@ -228,11 +283,11 @@ function MobileCheckInScreen() {
           <div style={{ position: 'absolute', top: -20, right: -20, width: 120, height: 120, borderRadius: 999, background: 'rgba(255,255,255,0.08)' }} />
           <div style={{ position: 'absolute', top: 30, right: 40, width: 60, height: 60, borderRadius: 999, background: 'rgba(255,255,255,0.05)' }} />
           <div style={{ position: 'relative' }}>
-            <div style={{ fontSize: 12, opacity: 0.85, fontWeight: 600 }}>오늘 · 4월 21일 화요일</div>
-            <div style={{ fontSize: 42, fontWeight: 700, letterSpacing: -1.5, marginTop: 4, fontFamily: 'ui-monospace, monospace' }}>10:45</div>
+            <div style={{ fontSize: 12, opacity: 0.85, fontWeight: 600 }}>{todayShortStr}</div>
+            <div style={{ fontSize: 42, fontWeight: 700, letterSpacing: -1.5, marginTop: 4, fontFamily: 'ui-monospace, monospace' }}>{checkInTime !== '—' ? checkInTime : '--:--'}</div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 8, fontSize: 12 }}>
-              <span style={{ width: 6, height: 6, borderRadius: 999, background: '#FDE047', animation: 'p 1.5s infinite' }} />
-              <span style={{ opacity: 0.9 }}>근무중 · 2시간 45분째</span>
+              <span style={{ width: 6, height: 6, borderRadius: 999, background: state === 'in' ? '#FDE047' : T.mutedSoft, animation: state === 'in' ? 'p 1.5s infinite' : 'none' }} />
+              <span style={{ opacity: 0.9 }}>{state === 'out' ? '미출근' : state === 'in' ? `근무중 · ${checkInTime} 출근` : `퇴근 완료 · ${checkOutTime}`}</span>
             </div>
           </div>
         </div>
@@ -240,31 +295,33 @@ function MobileCheckInScreen() {
 
       {/* 출근/퇴근 카드 */}
       <div style={{ padding: '8px 16px', display: 'flex', flexDirection: 'column', gap: 10 }}>
-        {/* 출근 완료 */}
+        {/* 출근 카드 */}
         <div style={{
           background: T.surface, borderRadius: 14, padding: 16,
-          borderLeft: `3px solid ${T.success}`,
+          borderLeft: `3px solid ${state !== 'out' ? T.success : T.border}`,
           display: 'flex', alignItems: 'center', gap: 12,
         }}>
-          <div style={{ width: 44, height: 44, borderRadius: 12, background: T.successSoft, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <Icon d={icons.check} size={22} c={T.success} sw={2.4} />
+          <div style={{ width: 44, height: 44, borderRadius: 12, background: state !== 'out' ? T.successSoft : T.bg, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <Icon d={icons.check} size={22} c={state !== 'out' ? T.success : T.mutedSoft} sw={2.4} />
           </div>
           <div style={{ flex: 1 }}>
             <div style={{ fontSize: 11, color: T.mutedSoft, fontWeight: 600 }}>출근</div>
-            <div style={{ fontSize: 18, fontWeight: 700, color: T.text, marginTop: 1 }}>08:00 <span style={{ fontSize: 12, color: T.success, fontWeight: 600, marginLeft: 4 }}>· 정시</span></div>
+            <div style={{ fontSize: 18, fontWeight: 700, color: state !== 'out' ? T.text : T.mutedSoft, marginTop: 1 }}>
+              {checkInTime} {state !== 'out' && <span style={{ fontSize: 12, color: T.success, fontWeight: 600, marginLeft: 4 }}>· 정시</span>}
+            </div>
             <div style={{ fontSize: 11, color: T.mutedSoft, marginTop: 3, display: 'flex', alignItems: 'center', gap: 4 }}>
-              <Icon d={icons.location} size={10} /> A동 온실 · GPS 인증됨
+              <Icon d={icons.location} size={10} /> {currentUser?.branch || '—'} · GPS 인증됨
             </div>
           </div>
-          <Pill tone="success">완료</Pill>
+          <Pill tone={state !== 'out' ? 'success' : 'muted'}>{state !== 'out' ? '완료' : '대기'}</Pill>
         </div>
 
-        {/* 퇴근 대기 — 큰 버튼 */}
+        {/* 퇴근 카드 */}
         <div style={{ background: T.surface, borderRadius: 14, padding: 16 }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
             <div>
               <div style={{ fontSize: 11, color: T.mutedSoft, fontWeight: 600 }}>퇴근</div>
-              <div style={{ fontSize: 16, fontWeight: 700, color: T.text, marginTop: 2 }}>예정 17:00</div>
+              <div style={{ fontSize: 16, fontWeight: 700, color: T.text, marginTop: 2 }}>{state === 'done' ? checkOutTime : `예정 ${endTime}`}</div>
             </div>
             <Pill tone="muted">대기</Pill>
           </div>
@@ -284,16 +341,18 @@ function MobileCheckInScreen() {
             <Icon d={icons.check} size={16} c={T.success} sw={2.5} />
           </div>
 
-          <button style={{
+          <button onClick={() => state === 'in' && checkOut?.(currentUser?.id)} style={{
             width: '100%', padding: '16px 0', borderRadius: 12, border: 0,
-            background: `linear-gradient(180deg, ${T.danger} 0%, #B91C1C 100%)`,
+            background: state === 'in'
+              ? `linear-gradient(180deg, ${T.danger} 0%, #B91C1C 100%)`
+              : T.border,
             color: '#fff', fontSize: 16, fontWeight: 700,
             display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-            boxShadow: '0 4px 12px rgba(220,38,38,0.3), inset 0 1px 0 rgba(255,255,255,0.2)',
-            cursor: 'pointer',
+            boxShadow: state === 'in' ? '0 4px 12px rgba(220,38,38,0.3), inset 0 1px 0 rgba(255,255,255,0.2)' : 'none',
+            cursor: state === 'in' ? 'pointer' : 'not-allowed',
           }}>
             <Icon d={icons.logout} size={20} c="#fff" sw={2.2} />
-            퇴근 체크하기
+            {state === 'out' ? '출근 먼저 하세요' : state === 'done' ? '퇴근 완료' : '퇴근 체크하기'}
           </button>
           <div style={{ fontSize: 11, color: T.mutedSoft, textAlign: 'center', marginTop: 8 }}>
             버튼을 눌러 현재 위치에서 퇴근을 보고하세요
@@ -308,32 +367,51 @@ function MobileCheckInScreen() {
             <div style={{ fontSize: 13, fontWeight: 700, color: T.text }}>이번 주 근무 기록</div>
             <span style={{ fontSize: 11, color: T.primary, fontWeight: 600 }}>전체 보기</span>
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 6 }}>
-            {[
-              { d: '월', n: 20, h: '8h', ok: true },
-              { d: '화', n: 21, h: '-', today: true },
-              { d: '수', n: 22, h: '-', upcoming: true },
-              { d: '목', n: 23, h: '-', upcoming: true },
-              { d: '금', n: 24, h: '-', upcoming: true },
-              { d: '토', n: 25, h: '휴', off: true },
-              { d: '일', n: 26, h: '휴', off: true },
-            ].map((d, i) => (
-              <div key={i} style={{
-                padding: '8px 4px', borderRadius: 8, textAlign: 'center',
-                background: d.today ? T.primary : d.ok ? T.successSoft : d.off ? T.bg : T.bg,
-                color: d.today ? '#fff' : d.ok ? T.success : d.off ? T.mutedSoft : T.mutedSoft,
-                border: d.upcoming ? `1px dashed ${T.border}` : 'none',
-              }}>
-                <div style={{ fontSize: 10, fontWeight: 600, opacity: d.today ? 0.9 : 0.7 }}>{d.d}</div>
-                <div style={{ fontSize: 14, fontWeight: 700, margin: '3px 0' }}>{d.n}</div>
-                <div style={{ fontSize: 9, fontWeight: 600 }}>{d.h}</div>
-              </div>
-            ))}
-          </div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 12, paddingTop: 12, borderTop: `1px solid ${T.borderSoft}`, fontSize: 11, color: T.mutedSoft }}>
-            <span>이번 주 누적 <strong style={{ color: T.text, fontWeight: 700 }}>10시간 45분</strong></span>
-            <span>목표 40시간</span>
-          </div>
+          {(() => {
+            const now = new Date();
+            const dow = now.getDay(); // 0=Sun
+            const monday = new Date(now); monday.setDate(now.getDate() - ((dow + 6) % 7));
+            const days = Array.from({ length: 7 }, (_, i) => {
+              const d = new Date(monday); d.setDate(monday.getDate() + i);
+              const label = ['월','화','수','목','금','토','일'][i];
+              const dateStr = d.toISOString().split('T')[0];
+              const isToday = dateStr === todayDate();
+              const isFuture = d > now && !isToday;
+              const isSun = i === 6; const isSat = i === 5;
+              const rec = records.find((r) => r.employeeId === currentUser?.id && r.date === dateStr);
+              const h = rec?.checkIn ? (rec.workMinutes ? `${Math.floor(rec.workMinutes/60)}h` : '+') : (isSat || isSun ? '휴' : '-');
+              const ok = !!rec?.checkIn;
+              return { label, n: d.getDate(), h, isToday, isFuture, off: isSat || isSun, ok };
+            });
+            const weekMins = days.reduce((s, _, i) => {
+              const d = new Date(monday); d.setDate(monday.getDate() + i);
+              const rec = records.find((r) => r.employeeId === currentUser?.id && r.date === d.toISOString().split('T')[0]);
+              return s + (rec?.workMinutes || 0);
+            }, 0);
+            const wh = Math.floor(weekMins/60); const wm = weekMins % 60;
+            return (
+              <>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 6 }}>
+                  {days.map((d, i) => (
+                    <div key={i} style={{
+                      padding: '8px 4px', borderRadius: 8, textAlign: 'center',
+                      background: d.isToday ? T.primary : d.ok ? T.successSoft : d.off ? T.bg : T.bg,
+                      color: d.isToday ? '#fff' : d.ok ? T.success : d.off ? T.mutedSoft : T.mutedSoft,
+                      border: d.isFuture ? `1px dashed ${T.border}` : 'none',
+                    }}>
+                      <div style={{ fontSize: 10, fontWeight: 600, opacity: d.isToday ? 0.9 : 0.7 }}>{d.label}</div>
+                      <div style={{ fontSize: 14, fontWeight: 700, margin: '3px 0' }}>{d.n}</div>
+                      <div style={{ fontSize: 9, fontWeight: 600 }}>{d.h}</div>
+                    </div>
+                  ))}
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 12, paddingTop: 12, borderTop: `1px solid ${T.borderSoft}`, fontSize: 11, color: T.mutedSoft }}>
+                  <span>이번 주 누적 <strong style={{ color: T.text, fontWeight: 700 }}>{wh}시간 {wm}분</strong></span>
+                  <span>목표 40시간</span>
+                </div>
+              </>
+            );
+          })()}
         </div>
       </div>
 
@@ -341,23 +419,34 @@ function MobileCheckInScreen() {
       <div style={{ padding: '0 16px 20px' }}>
         <div style={{ background: T.surface, borderRadius: 14, padding: 16 }}>
           <div style={{ fontSize: 13, fontWeight: 700, color: T.text, marginBottom: 10 }}>최근 5일 기록</div>
-          {[
-            { d: '4/20 월', io: '08:02 / 17:10', h: '8h 08m', ok: true },
-            { d: '4/19 일', io: '—', h: '휴무', off: true },
-            { d: '4/18 금', io: '07:55 / 17:05', h: '8h 10m', ok: true },
-            { d: '4/17 목', io: '08:15 / 17:00', h: '7h 45m', late: true },
-            { d: '4/16 수', io: '08:00 / 18:30', h: '9h 30m', ot: true },
-          ].map((r, i) => (
-            <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 0', borderTop: i > 0 ? `1px solid ${T.borderSoft}` : 'none' }}>
-              <div style={{ fontSize: 12, color: T.muted, fontWeight: 600, width: 60 }}>{r.d}</div>
-              <div style={{ fontSize: 12, color: T.text, flex: 1, fontFamily: 'ui-monospace, monospace' }}>{r.io}</div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                {r.late && <Pill tone="warning">지각</Pill>}
-                {r.ot && <Pill tone="info">연장</Pill>}
-                <span style={{ fontSize: 12, fontWeight: 700, color: r.ok ? T.success : r.off ? T.mutedSoft : r.late ? T.warning : T.info }}>{r.h}</span>
-              </div>
-            </div>
-          ))}
+          {(() => {
+            const WD = ['일','월','화','수','목','금','토'];
+            const myRecs = records
+              .filter((r) => r.employeeId === currentUser?.id && r.checkIn)
+              .sort((a, b) => b.date.localeCompare(a.date))
+              .slice(0, 5);
+            if (myRecs.length === 0) return <div style={{ fontSize: 12, color: T.mutedSoft, padding: '8px 0' }}>기록 없음</div>;
+            return myRecs.map((r, i) => {
+              const d = new Date(r.date);
+              const dLabel = `${d.getMonth() + 1}/${d.getDate()} ${WD[d.getDay()]}`;
+              const io = `${fmtTime(r.checkIn)} / ${fmtTime(r.checkOut)}`;
+              const wm = r.workMinutes || 0;
+              const hLabel = wm ? `${Math.floor(wm/60)}h ${wm%60}m` : '+';
+              const isLate = r.status === 'late';
+              const isOt = wm > 480;
+              return (
+                <div key={r.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 0', borderTop: i > 0 ? `1px solid ${T.borderSoft}` : 'none' }}>
+                  <div style={{ fontSize: 12, color: T.muted, fontWeight: 600, width: 60 }}>{dLabel}</div>
+                  <div style={{ fontSize: 12, color: T.text, flex: 1, fontFamily: 'ui-monospace, monospace' }}>{io}</div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    {isLate && <Pill tone="warning">지각</Pill>}
+                    {isOt && <Pill tone="info">연장</Pill>}
+                    <span style={{ fontSize: 12, fontWeight: 700, color: isLate ? T.warning : isOt ? T.info : T.success }}>{hLabel}</span>
+                  </div>
+                </div>
+              );
+            });
+          })()}
         </div>
       </div>
     </div>
@@ -487,16 +576,45 @@ function MobileTasksScreen() {
 
 // ─────── 근태 탭 ───────
 function MobileAttendanceScreen() {
+  const currentUser = useAuthStore((s) => s.currentUser);
+  const records = useAttendanceStore((s) => s.records);
+  const requests = useLeaveStore((s) => s.requests);
+
+  const now = new Date();
+  const ym = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+  const monthLabel = `${now.getFullYear()}년 ${now.getMonth() + 1}월`;
+
+  const myMonthRecs = useMemo(
+    () => records.filter((r) => r.employeeId === currentUser?.id && r.date?.startsWith(ym)),
+    [records, currentUser, ym]
+  );
+  const workDays = myMonthRecs.filter((r) => r.checkIn).length;
+  const totalMins = myMonthRecs.reduce((s, r) => s + (r.workMinutes || 0), 0);
+  const totalHours = Math.floor(totalMins / 60);
+  const overMins = myMonthRecs.reduce((s, r) => s + Math.max(0, (r.workMinutes || 0) - 480), 0);
+  const overHours = Math.floor(overMins / 60);
+
+  // 실근무 기록 기반 달력 statusMap: { 1: 'work', 9: 'late', ... }
+  const monthStatusMap = useMemo(() => {
+    const map = {};
+    myMonthRecs.forEach((r) => {
+      const day = parseInt(r.date.split('-')[2], 10);
+      if (r.status === 'late') map[day] = 'late';
+      else if (r.checkIn) map[day] = 'work';
+    });
+    return map;
+  }, [myMonthRecs]);
+
   const stats = [
-    { l: '이번 달 근무', v: '168', u: '시간', sub: '21일 출근' },
-    { l: '연차 잔여', v: '8.5', u: '일', sub: '15일 중 6.5일 사용' },
-    { l: '연장 근무', v: '14', u: '시간', sub: '이번 달' },
+    { l: '이번 달 근무', v: String(totalHours), u: '시간', sub: `${workDays}일 출근` },
+    { l: '연차 잔여', v: '—', u: '일', sub: '— 신청 내역' },
+    { l: '연장 근무', v: String(overHours), u: '시간', sub: '이번 달' },
   ];
   return (
     <div style={{ background: '#F2F2F7', height: '100%', fontFamily: '-apple-system, Pretendard, system-ui', display: 'flex', flexDirection: 'column', overflow: 'auto' }}>
       <div style={{ background: T.surface, padding: '16px 20px 12px' }}>
         <div style={{ fontSize: 22, fontWeight: 700, color: T.text, letterSpacing: -0.4 }}>근태</div>
-        <div style={{ fontSize: 13, color: T.mutedSoft, marginTop: 2 }}>2026년 4월 · 김민국</div>
+        <div style={{ fontSize: 13, color: T.mutedSoft, marginTop: 2 }}>{monthLabel} · {currentUser?.name || '—'}</div>
       </div>
 
       {/* 월 요약 KPI */}
@@ -536,7 +654,7 @@ function MobileAttendanceScreen() {
       <div style={{ padding: '0 16px 12px' }}>
         <div style={{ background: T.surface, borderRadius: 14, padding: 14 }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
-            <div style={{ fontSize: 13, fontWeight: 700, color: T.text }}>4월 근무 현황</div>
+            <div style={{ fontSize: 13, fontWeight: 700, color: T.text }}>{now.getMonth() + 1}월 근무 현황</div>
             <div style={{ display: 'flex', gap: 4 }}>
               <button style={{ width: 24, height: 24, borderRadius: 6, border: `1px solid ${T.border}`, background: T.surface, fontSize: 10 }}>‹</button>
               <button style={{ width: 24, height: 24, borderRadius: 6, border: `1px solid ${T.border}`, background: T.surface, fontSize: 10 }}>›</button>
@@ -546,18 +664,13 @@ function MobileAttendanceScreen() {
             {['일', '월', '화', '수', '목', '금', '토'].map((d, i) => (
               <div key={d} style={{ fontSize: 10, fontWeight: 700, color: i === 0 ? T.danger : i === 6 ? T.primary : T.mutedSoft, textAlign: 'center', padding: '4px 0' }}>{d}</div>
             ))}
-            {Array.from({ length: 30 }).map((_, i) => {
-              const day = i - 2;
-              const isValid = day >= 1 && day <= 30;
-              const statusMap = {
-                1: 'work', 2: 'work', 3: 'work', 4: 'off', 5: 'off',
-                6: 'work', 7: 'work', 8: 'work', 9: 'late', 10: 'work', 11: 'off', 12: 'off',
-                13: 'work', 14: 'work', 15: 'leave', 16: 'work', 17: 'late', 18: 'work', 19: 'off',
-                20: 'work', 21: 'today', 22: 'plan', 23: 'plan', 24: 'plan', 25: 'off', 26: 'off',
-                27: 'plan', 28: 'plan', 29: 'plan', 30: 'plan',
-              };
-              const st = statusMap[day];
-              const colors = {
+            {(() => {
+              const year = now.getFullYear(); const month = now.getMonth();
+              const firstDow = new Date(year, month, 1).getDay(); // 0=Sun
+              const daysInMonth = new Date(year, month + 1, 0).getDate();
+              const todayDay = now.getDate();
+              const cells = firstDow + daysInMonth;
+              const COLORS = {
                 work: { bg: T.successSoft, fg: T.success },
                 late: { bg: T.warningSoft, fg: T.warning },
                 leave: { bg: T.primarySoft, fg: T.primary },
@@ -565,19 +678,28 @@ function MobileAttendanceScreen() {
                 plan: { bg: 'transparent', fg: T.mutedSoft, dashed: true },
                 today: { bg: T.primary, fg: '#fff' },
               };
-              const c = colors[st] || { bg: 'transparent', fg: T.mutedSoft };
-              return (
-                <div key={i} style={{
-                  aspectRatio: '1', padding: 3, borderRadius: 6, textAlign: 'center',
-                  background: c.bg,
-                  border: c.dashed ? `1px dashed ${T.border}` : 'none',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  fontSize: 12, fontWeight: 700, color: c.fg,
-                }}>
-                  {isValid && day}
-                </div>
-              );
-            })}
+              return Array.from({ length: Math.ceil(cells / 7) * 7 }).map((_, i) => {
+                const day = i - firstDow + 1;
+                const isValid = day >= 1 && day <= daysInMonth;
+                if (!isValid) return <div key={i} />;
+                const d = new Date(year, month, day);
+                const dow = d.getDay();
+                const isWeekend = dow === 0 || dow === 6;
+                const isToday = day === todayDay;
+                const isFuture = d > now && !isToday;
+                let st = monthStatusMap[day] || (isWeekend ? 'off' : isFuture ? 'plan' : 'off');
+                if (isToday) st = 'today';
+                const c = COLORS[st] || { bg: 'transparent', fg: T.mutedSoft };
+                return (
+                  <div key={i} style={{
+                    aspectRatio: '1', padding: 3, borderRadius: 6, textAlign: 'center',
+                    background: c.bg, border: c.dashed ? `1px dashed ${T.border}` : 'none',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    fontSize: 12, fontWeight: 700, color: c.fg,
+                  }}>{day}</div>
+                );
+              });
+            })()}
           </div>
           <div style={{ display: 'flex', gap: 10, marginTop: 12, paddingTop: 12, borderTop: `1px solid ${T.borderSoft}`, fontSize: 10, color: T.muted, flexWrap: 'wrap' }}>
             {[
@@ -596,48 +718,48 @@ function MobileAttendanceScreen() {
       </div>
 
       {/* 내 신청 이력 */}
-      <div style={{ padding: '0 16px 24px' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 4px' }}>
-          <div style={{ fontSize: 11, fontWeight: 700, color: T.mutedSoft, letterSpacing: 0.3 }}>내 신청 이력</div>
-          <span style={{ fontSize: 11, color: T.primary, fontWeight: 600 }}>전체 보기</span>
-        </div>
-        <div style={{ background: T.surface, borderRadius: 12, overflow: 'hidden' }}>
-          {[
-            { type: '연차', detail: '4/23 (수) · 1일', status: 'pending', date: '어제' },
-            { type: '오전반차', detail: '4/15 (화) · 0.5일', status: 'approved', date: '4/10' },
-            { type: '연장근무', detail: '4/10 (목) · 2시간', status: 'approved', date: '4/10' },
-            { type: '연차', detail: '4/3~4/4 · 2일', status: 'rejected', date: '3/28' },
-          ].map((r, i) => {
-            const sm = {
-              pending: { tone: 'warning', l: '승인 대기' },
-              approved: { tone: 'success', l: '승인됨' },
-              rejected: { tone: 'danger', l: '반려' },
-            }[r.status];
-            return (
-              <div key={i} style={{
-                padding: '12px 14px',
-                borderBottom: i < 3 ? `1px solid ${T.borderSoft}` : 'none',
-                display: 'flex', alignItems: 'center', gap: 10,
-              }}>
-                <div style={{ flex: 1 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                    <span style={{ fontSize: 13, fontWeight: 700, color: T.text }}>{r.type}</span>
-                    <Pill tone={sm.tone}>{sm.l}</Pill>
+      {(() => {
+        const myRequests = requests
+          .filter((r) => r.employeeId === currentUser?.id)
+          .sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''))
+          .slice(0, 4);
+        const SM = { pending: { tone: 'warning', l: '승인 대기' }, approved: { tone: 'success', l: '승인됨' }, rejected: { tone: 'danger', l: '반려' } };
+        return (
+          <div style={{ padding: '0 16px 24px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 4px' }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: T.mutedSoft, letterSpacing: 0.3 }}>내 신청 이력</div>
+              <span style={{ fontSize: 11, color: T.primary, fontWeight: 600 }}>전체 보기</span>
+            </div>
+            <div style={{ background: T.surface, borderRadius: 12, overflow: 'hidden' }}>
+              {myRequests.length === 0 ? (
+                <div style={{ padding: '16px 14px', fontSize: 12, color: T.mutedSoft }}>신청 이력 없음</div>
+              ) : myRequests.map((r, i) => {
+                const sm = SM[r.status] || SM.pending;
+                const dLabel = r.date ? (() => { const d = new Date(r.date); return `${d.getMonth()+1}/${d.getDate()}`; })() : '—';
+                return (
+                  <div key={r.id} style={{ padding: '12px 14px', borderBottom: i < myRequests.length - 1 ? `1px solid ${T.borderSoft}` : 'none', display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <span style={{ fontSize: 13, fontWeight: 700, color: T.text }}>{r.type || '휴가'}</span>
+                        <Pill tone={sm.tone}>{sm.l}</Pill>
+                      </div>
+                      <div style={{ fontSize: 11, color: T.mutedSoft, marginTop: 3 }}>{dLabel}{r.reason ? ` · ${r.reason.slice(0, 15)}` : ''}</div>
+                    </div>
+                    <div style={{ fontSize: 10, color: T.mutedSoft }}>{r.createdAt ? new Date(r.createdAt).toLocaleDateString('ko-KR', { month: 'numeric', day: 'numeric' }) + '일' : '—'}</div>
                   </div>
-                  <div style={{ fontSize: 11, color: T.mutedSoft, marginTop: 3 }}>{r.detail}</div>
-                </div>
-                <div style={{ fontSize: 10, color: T.mutedSoft }}>{r.date}</div>
-              </div>
-            );
-          })}
-        </div>
-      </div>
+                );
+              })}
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 }
 
 // ─────── 내 정보 탭 ───────
 function MobileProfileScreen() {
+  const currentUser = useAuthStore((s) => s.currentUser);
   return (
     <div style={{ background: '#F2F2F7', height: '100%', fontFamily: '-apple-system, Pretendard, system-ui', overflow: 'auto' }}>
       {/* 프로필 헤더 */}
@@ -660,11 +782,11 @@ function MobileProfileScreen() {
             background: 'rgba(255,255,255,0.2)', backdropFilter: 'blur(10px)',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             fontSize: 28, fontWeight: 700, color: '#fff', border: '2px solid rgba(255,255,255,0.3)',
-          }}>김</div>
+          }}>{currentUser?.name?.[0] || '?'}</div>
           <div>
-            <div style={{ fontSize: 20, fontWeight: 700, letterSpacing: -0.4 }}>김민국</div>
-            <div style={{ fontSize: 12, opacity: 0.85, marginTop: 3 }}>GF-001 · 반장</div>
-            <div style={{ fontSize: 11, opacity: 0.75, marginTop: 2 }}>A동 토마토 재배 · 2023.03.15 입사</div>
+            <div style={{ fontSize: 20, fontWeight: 700, letterSpacing: -0.4 }}>{currentUser?.name || '—'}</div>
+            <div style={{ fontSize: 12, opacity: 0.85, marginTop: 3 }}>{currentUser?.branch || '—'}{currentUser?.isTeamLeader ? ' · 반장' : ''}</div>
+            <div style={{ fontSize: 11, opacity: 0.75, marginTop: 2 }}>{currentUser?.role === 'worker' ? '작업자' : currentUser?.role || '—'}</div>
           </div>
         </div>
       </div>
