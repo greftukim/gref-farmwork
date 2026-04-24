@@ -151,10 +151,10 @@
 | APPROVAL-BUDGET-001 | 기능 미구현 | open | 세션 34 (2026-04-24) | P3 | 승인허브 "예산" 카테고리 — 예산 결재 테이블(budget_requests) 미존재. 예산 품의·지출 결재 워크플로우 설계 후 구현. 박민식·김민국 도메인 확인 필요. | docs/BACKLOG.md |
 | APPROVAL-HR-001 | 기능 미구현 | open | 세션 34 (2026-04-24) | P3 | 승인허브 "인사" 카테고리 — 인사 결재 테이블(hr_requests) 미존재. 채용/해고/전배 등 인사 결재 워크플로우 설계 후 구현. 박민식·김민국 도메인 확인 필요. | docs/BACKLOG.md |
 | APPROVAL-MATERIAL-001 | 기능 미구현 | open | 세션 34 (2026-04-24) | P3 | 승인허브 "자재" 카테고리 — 자재 구매 결재 테이블(material_requests) 미존재. 자재 구매 요청·결재 워크플로우 설계 후 구현. 박민식·김민국 도메인 확인 필요. | docs/BACKLOG.md |
-| HQ-EMPLOYEE-EDIT-MODAL-001 | 기능 미구현 | resolved | 세션 24 (2026-04-23) | - | HQEmployeesScreen "상세" 버튼 → `setSelectedEmployee(e)` onClick 연결 + `EmployeeDetailModal` 렌더링 완료. 세션 30 코드 재확인: L643 onClick, L665-671 모달 조건부 렌더링 모두 정상. 읽기 전용 모드 유지 (onEdit 미전달은 의도적 — HQ 편집 권한 정책 미확정). | docs/BACKLOG.md |
+| HQ-EMPLOYEE-EDIT-MODAL-001 | 기능 미구현 | resolved | 세션 24 (2026-04-23) 등록 → 세션 35 (2026-04-24) 편집 구현 | - | 상세 모달 연결(세션 24). 세션 35: EmployeeEditModal 신설(name/phone/jobTitle/isActive, master는 branch/role 추가), EmployeeDetailModal onEdit 연결, editEmployee state 추가. master/hr_admin 권한(canEditEmployee 기존 로직 준수). Playwright PASS. 커밋 ed4eb36. | docs/BACKLOG.md |
 | HQ-REPORT-EXPORT-001 | 기능 미구현 | open | 세션 25 (2026-04-23) | - | HQDashboardScreen "리포트 내보내기" 버튼 — 현재 alert 임시 처리. 대시보드 전체 PDF/CSV 내보내기 로직 및 라이브러리 선정 필요. | docs/BACKLOG.md |
 | HQ-CROP-REPORT-001 | 기능 미구현 | open | 세션 25 (2026-04-23) | - | HQDashboardScreen "작물별 상세 분석 보고서 열기" — 현재 alert 임시 처리. 보고서 페이지 없음, HQ-FINANCE-001과 별개의 작물·수확 축. | docs/BACKLOG.md |
-| HQ-KPI-DRILLDOWN-001 | 기능 미구현 | open | 세션 25 (2026-04-23) | - | HQDashboardScreen 전사 KPI 4개 카드 클릭 시 alert 통일 — 각 KPI(가동률/수확량/인건비/이슈) 상세 드릴다운 페이지 모두 부재. 결정 근거: 4개 중 일부만 기능 제공 시 혼선 우려, 일관성 우선(태우님). | docs/BACKLOG.md |
+| HQ-KPI-DRILLDOWN-001 | 기능 미구현 | resolved | 세션 25 (2026-04-23) 등록 → 세션 35 (2026-04-24) 해소 | - | 가동률→/admin/hq/employees, 수확량/인건비→/admin/hq/finance navigate. 미해결이슈 alert 유지(HQ-ISSUE-PAGE-001 미구현). Playwright PASS. 커밋 55838e3. | docs/BACKLOG.md |
 | HARVEST-CROP-FILTER-001 | 재연결 | resolved | 세션 25 (2026-04-23) 발견 → 세션 27 (2026-04-24) 해소 | - | HQDashboardScreen 작물 탭 실 필터링 완료. 커밋 9731ddc — cropFilteredRecords useMemo(harvestRecords.filter(r => r.crop?.name === cropFilter)) → branchWeekHarvest 재계산 연쇄. 토마토/파프리카/딸기/오이 탭 전환 시 주별 차트 bar 즉시 업데이트. | docs/BACKLOG.md |
 | HQ-HARVEST-MENU-001 | UI 조사 | open | 세션 27 (2026-04-24) | - | HQSidebar 사이드바에 수확 기록 메뉴 노출 여부 확인 — /admin/harvest 입력 페이지는 기존 AdminLayout(재배팀 사이드바)에서만 접근 가능. HQ 컨텍스트(관리팀·본사 role)에서 수확 입력·조회 진입 경로 설계 필요. 세션 27 Task 1 Q1 선택지로 후속 정찰 이관 결정. | docs/BACKLOG.md |
 | HQ-ISSUE-PAGE-001 | 재연결 | open | 세션 25 (2026-04-23) | - | HQ 전용 이상 신고 페이지 부재 — /admin/records(IssueCallPage)는 재배팀 Sidebar 라우트로 HQ 컨텍스트에서 이동 시 HQSidebar active 메뉴 부재로 혼선. G-H2("전체 →")와 G-C1(이슈 카드 클릭) 모두 alert 처리. HQ 사이드바에 "이상 신고" 메뉴 추가 또는 /admin/hq/issues 신규 페이지 필요. | docs/BACKLOG.md |
@@ -183,7 +183,7 @@
 | FARM-GROWTH-DB-001 | 데이터 재연결 | open | 세션 31 (2026-04-24) | - | Growth.jsx 전체 하드코딩(GR_DATA, GROWTH_SCHEMA, STANDARD_CURVE — src/data/growth.js). growth_surveys DB 미연결. 별 트랙. HQ-GROWTH-001(GrowthCompare)과 동일 패턴. | docs/AUDIT_SESSION31_FARM.md |
 | FARM-PERF-DATA-001 | 데이터 재연결 | open | 세션 31 (2026-04-24) | - | Performance.jsx 하드코딩(PERF_DATA, SAM 테이블). HQ-PERFORMANCE-001(Performance.jsx HQ 뷰)과 동일 파일·패턴. 별 트랙. | docs/AUDIT_SESSION31_FARM.md |
 | FARM-HQ-NOTICE-001 | HQ 연동 | open | 세션 31 (2026-04-24) | - | noticeStore는 HQ·farm 공용 notices 테이블 사용. DB 0건이라 양쪽 연동 동작 미검증. DB 공지 1건 삽입 후 양쪽 UI 확인으로 빠른 검증 가능. | docs/AUDIT_SESSION31_FARM.md |
-| WORKER-M-STATIC-001 | 데이터 재연결 | open | 세션 33 (2026-04-24) | - | `/worker/m/home`, `/worker/m/checkin`, `/worker/m/attendance`, `/worker/m/profile` 화면 (`src/pages/mobile/_screens.jsx`) 전부 정적 목업. useAuthStore·useAttendanceStore·useTaskStore 미연결. 이름("김민국"), 날짜("4월 21일 화요일"), 근무시간(08:00/17:00), 출근기록 모두 하드코딩. Playwright FAIL: MHOME-HARDCODE-NAME·MHOME-HARDCODE-DATE·MPROFILE-HARDCODE. | docs/AUDIT_SESSION33_MOBILE_WORKER.md |
+| WORKER-M-STATIC-001 | 데이터 재연결 | resolved | 세션 33 (2026-04-24) 등록 → 세션 35 (2026-04-24) 해소 | - | 4개 화면 스토어 연결 완료. useAuthStore(currentUser)/useAttendanceStore/useLeaveStore 연결. 이름·날짜·근무시간 동적화, 주간 요약·최근 5일·월 달력·신청 이력 실데이터. Playwright PASS 29/29. 커밋 402baa4. | docs/BACKLOG.md |
 
 ---
 

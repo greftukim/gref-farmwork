@@ -1,0 +1,184 @@
+{
+  "results": [
+    {
+      "test": "WORKER-M-AUTH",
+      "status": "PASS",
+      "title": "Worker 인증 랜딩",
+      "detail": "http://localhost:5173/worker"
+    },
+    {
+      "test": "MHOME",
+      "status": "PASS",
+      "title": "MHOME 콘솔 에러 없음",
+      "detail": ""
+    },
+    {
+      "test": "MHOME",
+      "status": "PASS",
+      "title": "MHOME 이름 하드코딩 없음",
+      "detail": ""
+    },
+    {
+      "test": "MHOME",
+      "status": "PASS",
+      "title": "MHOME 날짜 하드코딩 없음",
+      "detail": ""
+    },
+    {
+      "test": "MHOME",
+      "status": "PASS",
+      "title": "MHOME 인증 계정명 \"윤화순\" 표시",
+      "detail": ""
+    },
+    {
+      "test": "MCHECKIN",
+      "status": "PASS",
+      "title": "MCHECKIN 콘솔 에러 없음",
+      "detail": ""
+    },
+    {
+      "test": "MCHECKIN",
+      "status": "PASS",
+      "title": "MCHECKIN 이름 하드코딩 없음",
+      "detail": ""
+    },
+    {
+      "test": "MCHECKIN",
+      "status": "PASS",
+      "title": "MCHECKIN 날짜 하드코딩 없음",
+      "detail": ""
+    },
+    {
+      "test": "MATT",
+      "status": "PASS",
+      "title": "MATT 콘솔 에러 없음",
+      "detail": ""
+    },
+    {
+      "test": "MATT",
+      "status": "PASS",
+      "title": "MATT 이름 하드코딩 없음",
+      "detail": ""
+    },
+    {
+      "test": "MATT",
+      "status": "PASS",
+      "title": "MATT 계정명 표시",
+      "detail": ""
+    },
+    {
+      "test": "MPROFILE",
+      "status": "PASS",
+      "title": "MPROFILE 콘솔 에러 없음",
+      "detail": ""
+    },
+    {
+      "test": "MPROFILE",
+      "status": "PASS",
+      "title": "MPROFILE 이름 하드코딩 없음",
+      "detail": ""
+    },
+    {
+      "test": "MPROFILE",
+      "status": "PASS",
+      "title": "MPROFILE \"윤화순\" 표시 확인",
+      "detail": ""
+    },
+    {
+      "test": "HQ-LOGIN",
+      "status": "PASS",
+      "title": "jhkim 로그인",
+      "detail": "http://localhost:5173/admin/hq"
+    },
+    {
+      "test": "BUG-F01",
+      "status": "PASS",
+      "title": "BUG-F01 회귀 없음",
+      "detail": ""
+    },
+    {
+      "test": "BUG-F02",
+      "status": "PASS",
+      "title": "BUG-F02 회귀 없음",
+      "detail": ""
+    },
+    {
+      "test": "KPI-DRILLDOWN",
+      "status": "PASS",
+      "title": "KPI-전사 가동률 navigate",
+      "detail": "http://localhost:5173/admin/hq/employees"
+    },
+    {
+      "test": "KPI-DRILLDOWN",
+      "status": "PASS",
+      "title": "KPI-월 수확량 navigate",
+      "detail": "http://localhost:5173/admin/hq/finance"
+    },
+    {
+      "test": "KPI-DRILLDOWN",
+      "status": "PASS",
+      "title": "KPI-월 인건비 navigate",
+      "detail": "http://localhost:5173/admin/hq/finance"
+    },
+    {
+      "test": "KPI-DRILLDOWN",
+      "status": "PASS",
+      "title": "KPI-미해결이슈 alert",
+      "detail": "HQ 전용 이슈 페이지 준비 중입니다."
+    },
+    {
+      "test": "EDIT-MODAL",
+      "status": "PASS",
+      "title": "직원 테이블 행",
+      "detail": "41개"
+    },
+    {
+      "test": "EDIT-MODAL",
+      "status": "PASS",
+      "title": "상세 모달 열림",
+      "detail": "직원 상세"
+    },
+    {
+      "test": "EDIT-MODAL",
+      "status": "PASS",
+      "title": "편집 모달 열림",
+      "detail": "직원 정보 수정"
+    },
+    {
+      "test": "EDIT-MODAL",
+      "status": "PASS",
+      "title": "편집 폼 input 3개 확인",
+      "detail": ""
+    },
+    {
+      "test": "EDIT-MODAL",
+      "status": "PASS",
+      "title": "취소 후 편집 모달 닫힘",
+      "detail": ""
+    },
+    {
+      "test": "NOTIF-DROPDOWN",
+      "status": "PASS",
+      "title": "벨 버튼 (36×36) 존재",
+      "detail": ""
+    },
+    {
+      "test": "PERIOD-TABS",
+      "status": "PASS",
+      "title": "기간 탭 4개 (일·주·월·분기) 확인",
+      "detail": ""
+    },
+    {
+      "test": "CONSOLE-ERRORS",
+      "status": "PASS",
+      "title": "HQ 콘솔 에러 0건",
+      "detail": ""
+    }
+  ],
+  "summary": {
+    "PASS": 29,
+    "FAIL": 0,
+    "WARN": 0,
+    "total": 29
+  }
+}

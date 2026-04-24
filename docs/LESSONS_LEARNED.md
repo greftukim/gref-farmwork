@@ -1684,3 +1684,74 @@ spans.filter(s => ['예산', '인사'].some(t => s.textContent.trim().startsWith
 **예방:**
 - 탭·버튼·배지 조합 컴포넌트는 정확 일치 대신 `startsWith()` 또는 `includes()` 사용
 - Playwright 요소 텍스트 검사 전 실제 `textContent` 값을 `console.log`로 확인하는 습관
+
+## 교훈 60 — JSX IIFE 렌더링 시 `return (...);` + `})()}` 닫기 필수 확인
+
+**발견 세션:** 세션 35 (2026-04-24) — 이전 세션 편집 결함 수정  
+**관련 항목:** WORKER-M-STATIC-001
+
+**증상:**
+`MobileAttendanceScreen` JSX에서 IIFE(`{(() => { ... })()}`) 내부의 `return (...)` 닫힘 `);`와 IIFE 닫힘 `})()}` 누락 → 빌드 실패 또는 잘못된 DOM 구조.
+
+**원인:** 렌더 IIFE 패턴에서 편집 후 괄호 짝 불균형:
+```jsx
+{/* ❌ 잘못된 패턴 — return ( 와 })() 닫힘 누락 */}
+{(() => {
+  return (
+    <div>
+      ...
+      </div>   {/* padding div 닫힘 */}
+    </div>     {/* ← 이 div가 IIFE 밖 outer 컴포넌트 div를 닫으려다 구조 파괴 */}
+  );
+}
+
+{/* ✅ 올바른 패턴 */}
+{(() => {
+  return (
+    <div>
+      ...
+    </div>   {/* padding div 닫힘 */}
+  );           {/* IIFE return 닫힘 */}
+})()}          {/* IIFE 닫힘 */}
+```
+
+**예방:**
+- IIFE 편집 후 반드시 `)` → `})()}` 순서 확인
+- `npm run build`로 구문 오류 즉시 검출
+
+## 교훈 61 — Zustand 스토어 구독은 컴포넌트 최상위 훅에서만 — `getState()` 렌더 IIFE 사용 금지
+
+**발견 세션:** 세션 35 (2026-04-24) — 이전 세션 편집 결함 수정  
+**관련 항목:** WORKER-M-STATIC-001
+
+**증상:**
+```jsx
+// ❌ 안티패턴: IIFE 내부에서 getState() 직접 호출
+{(() => {
+  const requests = useLeaveStore.getState().requests;  // Rules of Hooks 위반 + 변경 감지 안 됨
+  ...
+})()}
+```
+상태가 변경되어도 컴포넌트가 재렌더링되지 않음.
+
+**올바른 패턴:**
+```jsx
+// ✅ 컴포넌트 최상위에서 훅 호출
+function MobileAttendanceScreen() {
+  const requests = useLeaveStore((s) => s.requests);  // React 반응성 유지
+  ...
+  return (
+    <div>
+      {(() => {
+        const myRequests = requests.filter(...);  // 이미 구독된 값 사용
+        return <div>...</div>;
+      })()}
+    </div>
+  );
+}
+```
+
+**예방:**
+- 훅(useXxxStore, useState 등)은 **반드시 컴포넌트/훅 함수 최상위**에서 호출
+- IIFE·콜백·중첩 함수 내부에서 훅 호출 금지 (React Rules of Hooks)
+- `zustand.getState()`는 Zustand 내부 로직(스토어 액션 간 상태 읽기)에서만 사용

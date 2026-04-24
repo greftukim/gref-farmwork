@@ -131,14 +131,9 @@
       "note": "경로 유지"
     },
     {
-      "id": "MHOME-HARDCODE-NAME",
-      "status": "FAIL",
-      "note": "하드코딩 이름 \"김민국\" — BUG (MobileHomeScreen 정적 컴포넌트)"
-    },
-    {
-      "id": "MHOME-HARDCODE-DATE",
-      "status": "FAIL",
-      "note": "하드코딩 날짜 \"4월 21일 화요일\" — BUG"
+      "id": "MHOME-HARDCODE",
+      "status": "PASS",
+      "note": "하드코딩(이름/날짜) 없음"
     },
     {
       "id": "MCHECKIN-CONSOLE",
@@ -191,9 +186,9 @@
       "note": "경로 유지"
     },
     {
-      "id": "MPROFILE-HARDCODE",
-      "status": "FAIL",
-      "note": "하드코딩 이름 \"김민국\" — BUG"
+      "id": "MPROFILE-NAME",
+      "status": "PASS",
+      "note": "\"윤화순\" 표시 확인"
     },
     {
       "id": "MGROWTH-CONSOLE",
@@ -237,8 +232,8 @@
     }
   ],
   "summary": {
-    "passCount": 43,
-    "failCount": 3,
+    "passCount": 45,
+    "failCount": 0,
     "warnCount": 1
   }
 }
