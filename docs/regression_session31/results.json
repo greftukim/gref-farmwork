@@ -1,0 +1,324 @@
+{
+  "summary": {
+    "pass": 53,
+    "warn": 4,
+    "fail": 0,
+    "total": 57
+  },
+  "issues": [
+    {
+      "id": "FARM-HQ-SCOPE-001",
+      "page": "HQLink",
+      "severity": "P2",
+      "cat": "권한",
+      "desc": "farm_admin이 /admin/hq/approvals 접근 가능 (PROTECTED-ROUTE-001)"
+    }
+  ],
+  "checkpoints": [
+    {
+      "page": "Login",
+      "status": "PASS",
+      "note": "랜딩 URL: http://localhost:5173/admin"
+    },
+    {
+      "page": "Dashboard",
+      "status": "PASS",
+      "note": "부동소수점 없음"
+    },
+    {
+      "page": "Dashboard",
+      "status": "PASS",
+      "note": "콘솔 에러 없음"
+    },
+    {
+      "page": "Dashboard",
+      "status": "WARN",
+      "note": "KPI 카드: 0개"
+    },
+    {
+      "page": "Dashboard",
+      "status": "PASS",
+      "note": "사이드바 메뉴 항목: 10개"
+    },
+    {
+      "page": "Dashboard",
+      "status": "PASS",
+      "note": "휴가 모두 보기 → http://localhost:5173/admin/records"
+    },
+    {
+      "page": "Dashboard",
+      "status": "PASS",
+      "note": "통계 상세 분석 → http://localhost:5173/admin/stats"
+    },
+    {
+      "page": "Dashboard",
+      "status": "PASS",
+      "note": "공지 작성 + → http://localhost:5173/admin/notices"
+    },
+    {
+      "page": "Dashboard",
+      "status": "PASS",
+      "note": "전체 스케줄 → http://localhost:5173/admin/attendance-status"
+    },
+    {
+      "page": "Employees",
+      "status": "PASS",
+      "note": "콘솔 에러 없음"
+    },
+    {
+      "page": "Employees",
+      "status": "PASS",
+      "note": "역할 필터 탭: 3개"
+    },
+    {
+      "page": "Employees",
+      "status": "PASS",
+      "note": "역할 필터 탭 클릭 반응"
+    },
+    {
+      "page": "Employees",
+      "status": "PASS",
+      "note": "직원 행 수: 17개 (DB busan 전체 15, 활성 12)"
+    },
+    {
+      "page": "Employees",
+      "status": "PASS",
+      "note": "직원 추가 모달 열림"
+    },
+    {
+      "page": "Employees",
+      "status": "PASS",
+      "note": "활성/비활성 토글 버튼 존재"
+    },
+    {
+      "page": "Schedule",
+      "status": "PASS",
+      "note": "콘솔 에러 없음"
+    },
+    {
+      "page": "Schedule",
+      "status": "PASS",
+      "note": "페이지 콘텐츠 있음"
+    },
+    {
+      "page": "Leave",
+      "status": "PASS",
+      "note": "콘솔 에러 없음"
+    },
+    {
+      "page": "Leave",
+      "status": "PASS",
+      "note": "휴가 행 수: 3개 (DB busan 8건)"
+    },
+    {
+      "page": "Leave",
+      "status": "PASS",
+      "note": "승인 버튼: 없음, 반려 버튼: 없음"
+    },
+    {
+      "page": "Leave",
+      "status": "PASS",
+      "note": "필터 탭 클릭 반응"
+    },
+    {
+      "page": "Tasks",
+      "status": "PASS",
+      "note": "콘솔 에러 없음"
+    },
+    {
+      "page": "Tasks",
+      "status": "PASS",
+      "note": "작업 행 수: 9개 (DB busan 작업 359건 by worker_id)"
+    },
+    {
+      "page": "Tasks",
+      "status": "WARN",
+      "note": "작업 추가 버튼 미발견"
+    },
+    {
+      "page": "Floor",
+      "status": "PASS",
+      "note": "콘솔 에러 없음"
+    },
+    {
+      "page": "Floor",
+      "status": "PASS",
+      "note": "평면도 콘텐츠 있음"
+    },
+    {
+      "page": "Growth",
+      "status": "PASS",
+      "note": "콘솔 에러 없음"
+    },
+    {
+      "page": "Growth",
+      "status": "PASS",
+      "note": "버튼/링크: 6개 — 대시보드, 작업 배정, 신고·호출, 근태 승인, 더보기, 💬"
+    },
+    {
+      "page": "GrowthInput",
+      "status": "PASS",
+      "note": "콘솔 에러 없음"
+    },
+    {
+      "page": "Performance",
+      "status": "PASS",
+      "note": "콘솔 에러 없음"
+    },
+    {
+      "page": "Performance",
+      "status": "PASS",
+      "note": "부동소수점 없음"
+    },
+    {
+      "page": "Performance/detail",
+      "status": "PASS",
+      "note": "콘솔 에러 없음"
+    },
+    {
+      "page": "Performance/compare",
+      "status": "PASS",
+      "note": "콘솔 에러 없음"
+    },
+    {
+      "page": "Stats",
+      "status": "PASS",
+      "note": "콘솔 에러 없음"
+    },
+    {
+      "page": "Stats",
+      "status": "PASS",
+      "note": "부동소수점 없음"
+    },
+    {
+      "page": "Notices",
+      "status": "PASS",
+      "note": "콘솔 에러 없음"
+    },
+    {
+      "page": "Notices",
+      "status": "PASS",
+      "note": "공지 행 수: 3개 (DB notices 0건 — Zustand 로컬)"
+    },
+    {
+      "page": "Notices",
+      "status": "PASS",
+      "note": "공지 작성 모달/폼 열림"
+    },
+    {
+      "page": "Notices",
+      "status": "WARN",
+      "note": "HQ 연동: DB notices 0건, farm notices도 0건 — 연동 동작 검증 불가"
+    },
+    {
+      "page": "Harvest",
+      "status": "PASS",
+      "note": "콘솔 에러 없음"
+    },
+    {
+      "page": "Harvest",
+      "status": "PASS",
+      "note": "부동소수점 없음"
+    },
+    {
+      "page": "Harvest",
+      "status": "PASS",
+      "note": "DB 이번달 busan 수확: 149건, 3964.3 kg"
+    },
+    {
+      "page": "Records",
+      "status": "PASS",
+      "note": "콘솔 에러 없음"
+    },
+    {
+      "page": "Records",
+      "status": "PASS",
+      "note": "이상 신고 콘텐츠 있음"
+    },
+    {
+      "page": "LeaveApproval",
+      "status": "PASS",
+      "note": "콘솔 에러 없음"
+    },
+    {
+      "page": "LeaveApproval",
+      "status": "PASS",
+      "note": "페이지 콘텐츠 있음"
+    },
+    {
+      "page": "LeaveApproval",
+      "status": "PASS",
+      "note": "승인 버튼 없음"
+    },
+    {
+      "page": "AttStatus",
+      "status": "PASS",
+      "note": "콘솔 에러 없음"
+    },
+    {
+      "page": "Board",
+      "status": "PASS",
+      "note": "콘솔 에러 없음"
+    },
+    {
+      "page": "SafetyChecks",
+      "status": "PASS",
+      "note": "콘솔 에러 없음"
+    },
+    {
+      "page": "DailyWorkLogs",
+      "status": "PASS",
+      "note": "콘솔 에러 없음"
+    },
+    {
+      "page": "OvertimeApproval",
+      "status": "PASS",
+      "note": "콘솔 에러 없음"
+    },
+    {
+      "page": "OvertimeApproval",
+      "status": "PASS",
+      "note": "콘텐츠 있음"
+    },
+    {
+      "page": "Crops",
+      "status": "PASS",
+      "note": "콘솔 에러 없음"
+    },
+    {
+      "page": "TempWorkers",
+      "status": "PASS",
+      "note": "콘솔 에러 없음"
+    },
+    {
+      "page": "PackagingTasks",
+      "status": "PASS",
+      "note": "콘솔 에러 없음"
+    },
+    {
+      "page": "HQLink",
+      "status": "WARN",
+      "note": "farm_admin이 HQ 승인허브 직접 접근 가능 → PROTECTED-ROUTE-001 해당"
+    }
+  ],
+  "consoleErrors": [],
+  "dialogs": [],
+  "dbBaseline": {
+    "hdkim": {
+      "role": "farm_admin",
+      "branch": "busan",
+      "name": "김현도"
+    },
+    "busanEmployees": {
+      "total": 15,
+      "active": 12
+    },
+    "busanHarvestThisMonth": {
+      "records": 149,
+      "totalKg": 3964.3
+    },
+    "busanLeaveRequests": 8,
+    "busanTasks": 359,
+    "notices": 0
+  }
+}
