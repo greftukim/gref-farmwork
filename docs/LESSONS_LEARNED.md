@@ -1755,3 +1755,31 @@ function MobileAttendanceScreen() {
 - 훅(useXxxStore, useState 등)은 **반드시 컴포넌트/훅 함수 최상위**에서 호출
 - IIFE·콜백·중첩 함수 내부에서 훅 호출 금지 (React Rules of Hooks)
 - `zustand.getState()`는 Zustand 내부 로직(스토어 액션 간 상태 읽기)에서만 사용
+
+---
+
+## 교훈 62 — 빈 상태 UI는 "버그"가 아님 — DB 데이터 유무로 먼저 분류
+
+**발견 세션:** 세션 36 (2026-04-24) — Task 0 화이트 스크린 진단
+
+**증상:**
+재배팀 `/admin/growth`, `/admin/performance`, `/admin/stats` 접속 시 내용 없이 텍스트만 표시.
+세션 31 감사에서 "정상 작동" 판정 후 재배팀에서 "화이트 스크린" 이슈로 재접수.
+
+**원인 분석:**
+- Playwright 텍스트 길이 측정 결과: 사이드바 제거 후 19–100자 수준
+- `useGrowthData()` → Supabase `standard_curves`, `marker_plants`, `growth_surveys` 조회 → 0건
+- `usePerformanceStore` → performance 배열 0건
+- 모두 코드 조건: `if (!data?.length) return <div>데이터가 없습니다</div>` 로 처리 — 정상 동작
+
+**분류 기준:**
+| 증상 | 원인 유형 | 대응 |
+|------|-----------|------|
+| 빈 배열에서 빈 상태 UI 렌더링 | (b) DB 데이터 없음 | 스킵 또는 시드 데이터 투입 |
+| console.error 발생 | (a) 코드 버그 | 수정 |
+| 완전 blank (JS 예외) | (a) 코드 버그 | 수정 |
+
+**예방:**
+- Playwright 감사 시 페이지 렌더링 "정상"은 빈 상태 vs 실제 콘텐츠를 구분하여 판정
+- 빈 상태 페이지는 "(b) DB 데이터 없음 — 스킵"으로 명시적 표기
+- 재접수 방지를 위해 BACKLOG에 해당 페이지 상태 명시 필요

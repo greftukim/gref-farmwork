@@ -1,0 +1,130 @@
+{
+  "results": [
+    {
+      "test": "MOBILE-AUTH",
+      "status": "PASS",
+      "title": "Worker 인증 랜딩",
+      "detail": "http://localhost:5173/worker"
+    },
+    {
+      "test": "MOBILE-LOGOUT",
+      "status": "PASS",
+      "title": "MPROFILE 콘솔 에러 없음",
+      "detail": ""
+    },
+    {
+      "test": "MOBILE-LOGOUT",
+      "status": "PASS",
+      "title": "MPROFILE 로그아웃 버튼 텍스트 존재",
+      "detail": ""
+    },
+    {
+      "test": "MOBILE-LOGOUT",
+      "status": "PASS",
+      "title": "MPROFILE \"윤화순\" 표시",
+      "detail": ""
+    },
+    {
+      "test": "MPROFILE-HARDCODE",
+      "status": "PASS",
+      "title": "MPROFILE 이름 하드코딩 없음",
+      "detail": ""
+    },
+    {
+      "test": "HQ-LOGIN",
+      "status": "PASS",
+      "title": "jhkim 로그인",
+      "detail": "http://localhost:5173/admin/hq"
+    },
+    {
+      "test": "BUG-F01",
+      "status": "PASS",
+      "title": "BUG-F01 회귀 없음",
+      "detail": ""
+    },
+    {
+      "test": "BUG-F02",
+      "status": "PASS",
+      "title": "BUG-F02 회귀 없음",
+      "detail": ""
+    },
+    {
+      "test": "DASHBOARD-CHART-LAYOUT",
+      "status": "PASS",
+      "title": "3지점 (부산·진주·하동) 모두 표시",
+      "detail": ""
+    },
+    {
+      "test": "DASHBOARD-CHART-LAYOUT",
+      "status": "PASS",
+      "title": "차트에 \"미니오이\" 표시",
+      "detail": ""
+    },
+    {
+      "test": "DASHBOARD-CHART-LAYOUT",
+      "status": "PASS",
+      "title": "차트에 \"완숙토마토\" 표시",
+      "detail": ""
+    },
+    {
+      "test": "HQ-SIDEBAR-LOGOUT",
+      "status": "PASS",
+      "title": "HQ 사이드바 \"로그아웃\" 텍스트 존재",
+      "detail": ""
+    },
+    {
+      "test": "KPI-DRILLDOWN-REGRESSION",
+      "status": "PASS",
+      "title": "KPI-전사가동률 navigate",
+      "detail": "http://localhost:5173/admin/hq/employees"
+    },
+    {
+      "test": "EDIT-MODAL-REGRESSION",
+      "status": "PASS",
+      "title": "편집 모달 열림",
+      "detail": ""
+    },
+    {
+      "test": "PERIOD-TABS",
+      "status": "PASS",
+      "title": "기간 탭 4개 (일·주·월·분기) 확인",
+      "detail": ""
+    },
+    {
+      "test": "FARM-SIDEBAR-LOGOUT",
+      "status": "WARN",
+      "title": "재배팀 사이드바는 farm_admin 로그인 필요 — 이번 세션 스킵",
+      "detail": ""
+    },
+    {
+      "test": "CONSOLE-ERRORS",
+      "status": "PASS",
+      "title": "HQ 콘솔 에러 0건",
+      "detail": ""
+    },
+    {
+      "test": "GROWTH-EMPTY-STATE",
+      "status": "PASS",
+      "title": "/admin/growth 정상 렌더 (빈 상태 또는 콘텐츠)",
+      "detail": ""
+    },
+    {
+      "test": "GROWTH-EMPTY-STATE",
+      "status": "PASS",
+      "title": "/admin/performance 정상 렌더 (빈 상태 또는 콘텐츠)",
+      "detail": ""
+    },
+    {
+      "test": "GROWTH-EMPTY-STATE",
+      "status": "PASS",
+      "title": "/admin/stats 정상 렌더 (빈 상태 또는 콘텐츠)",
+      "detail": ""
+    }
+  ],
+  "summary": {
+    "PASS": 19,
+    "FAIL": 0,
+    "WARN": 1,
+    "total": 20
+  }
+}

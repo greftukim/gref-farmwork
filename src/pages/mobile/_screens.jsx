@@ -1,4 +1,5 @@
 import React, { useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { T, Icon, icons, Pill, Avatar } from '../../design/primitives';
 import useAuthStore from '../../stores/authStore';
 import useAttendanceStore from '../../stores/attendanceStore';
@@ -760,6 +761,8 @@ function MobileAttendanceScreen() {
 // ─────── 내 정보 탭 ───────
 function MobileProfileScreen() {
   const currentUser = useAuthStore((s) => s.currentUser);
+  const logout = useAuthStore((s) => s.logout);
+  const navigate = useNavigate();
   return (
     <div style={{ background: '#F2F2F7', height: '100%', fontFamily: '-apple-system, Pretendard, system-ui', overflow: 'auto' }}>
       {/* 프로필 헤더 */}
@@ -886,12 +889,16 @@ function MobileProfileScreen() {
 
       {/* 로그아웃 */}
       <div style={{ padding: '16px 16px 24px' }}>
-        <button style={{
-          width: '100%', padding: '13px 0', borderRadius: 12,
-          background: T.surface, border: `1px solid ${T.border}`,
-          color: T.danger, fontSize: 13, fontWeight: 700,
-          display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-        }}>
+        <button
+          onClick={async () => { await logout(); navigate('/login'); }}
+          style={{
+            width: '100%', padding: '13px 0', borderRadius: 12,
+            background: T.surface, border: `1px solid ${T.border}`,
+            color: T.danger, fontSize: 13, fontWeight: 700,
+            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+            cursor: 'pointer',
+          }}
+        >
           <Icon d={icons.logout} size={15} c={T.danger} sw={2} />
           로그아웃
         </button>

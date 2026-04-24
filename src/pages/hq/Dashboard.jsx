@@ -19,16 +19,16 @@ const D_BRANCH_META = {
   seedlab:      { name: 'Seed LAB', dot: T.mutedSoft, avatar: 'slate' },
 };
 
-// 지점별 작물 순서 (메인→보조) — 시드 데이터 기준
+// 지점별 작물 순서 — session36 재시드 기준
 const BRANCH_CROPS = {
-  busan:  ['토마토', '방울토마토'],
-  jinju:  ['파프리카', '미니파프리카'],
-  hadong: ['딸기', '오이'],
+  busan:  ['토마토', '방울토마토', '완숙토마토'],
+  jinju:  ['미니오이'],
+  hadong: ['완숙토마토'],
 };
 
-// 지점별 작물 색상: 메인=진한 색, 보조=연한 색
+// 지점별 작물 색상: 메인=진한, 보조=중간, sub2=연한
 const CROP_COLORS = {
-  busan:  { main: '#6366F1', sub: '#A5B4FC' },
+  busan:  { main: '#6366F1', sub: '#A5B4FC', sub2: '#818CF8' },
   jinju:  { main: '#059669', sub: '#6EE7B7' },
   hadong: { main: '#D97706', sub: '#FDE68A' },
 };
@@ -410,29 +410,29 @@ function HQDashboardScreen() {
                 );
               })()
             ) : (
-              /* ── 지점별 그룹 막대 차트 (작물 탭 제거, 6개 막대) ── */
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 18, marginTop: 8 }}>
+              /* ── 지점별 그룹 막대 차트 (3지점 가로 배치, 지점당 작물 2개) ── */
+              <div style={{ display: 'flex', flexDirection: 'row', gap: 16, marginTop: 8 }}>
                 {branches.map((b) => {
                   const cropMap = branchCropData[b.code] || {};
                   const crops = BRANCH_CROPS[b.code] || [];
                   const colors = CROP_COLORS[b.code] || { main: b.accent, sub: b.accentSoft };
                   return (
-                    <div key={b.code}>
+                    <div key={b.code} style={{ flex: 1 }}>
                       {/* 지점 헤더 */}
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 8 }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                           <Dot c={b.accent} />
-                          <span style={{ fontSize: 12, fontWeight: 600, color: T.text }}>{b.name}</span>
+                          <span style={{ fontSize: 11, fontWeight: 600, color: T.text }}>{b.name}</span>
                         </div>
-                        <span style={{ fontSize: 14, fontWeight: 700, color: T.text }}>
+                        <span style={{ fontSize: 12, fontWeight: 700, color: T.text }}>
                           {b.harvest > 0 ? Number(b.harvest.toFixed(1)).toLocaleString() : '—'} kg
                         </span>
                       </div>
                       {/* 두 개 막대 (메인 + 보조 작물) */}
-                      <div style={{ display: 'flex', gap: 8 }}>
+                      <div style={{ display: 'flex', gap: 6 }}>
                         {crops.map((crop, ci) => {
                           const qty = cropMap[crop] || 0;
-                          const color = ci === 0 ? colors.main : colors.sub;
+                          const color = ci === 0 ? colors.main : ci === 1 ? colors.sub : (colors.sub2 || colors.sub);
                           const heightPct = qty > 0 ? Math.max(qty / barMax * 100, 6) : 0;
                           return (
                             <div key={crop} onClick={() => setSelectedCrop({ branch: b.code, crop })}
@@ -440,7 +440,7 @@ function HQDashboardScreen() {
                               title={`${crop}: ${qty > 0 ? Number(qty.toFixed(1)).toLocaleString() : '—'} kg — 클릭하면 추이 보기`}
                             >
                               <div style={{
-                                height: 52, display: 'flex', alignItems: 'flex-end',
+                                height: 64, display: 'flex', alignItems: 'flex-end',
                                 background: T.bg, borderRadius: 6, padding: '4px 4px 0', overflow: 'hidden',
                               }}>
                                 <div style={{

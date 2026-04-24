@@ -110,13 +110,21 @@ const HQSidebar = ({ active = 'dashboard', onNavigate }) => {
       </nav>
 
       <div style={{ padding: 12, borderTop: `1px solid ${T.borderSoft}` }}>
-        <div onClick={async () => { await logout(); navigate('/login'); }} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 10px', cursor: 'pointer' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 10px 4px' }}>
           <Avatar name={currentUser?.name?.[0] || '관'} size={32} c="slate" />
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ fontSize: 13, fontWeight: 600, color: T.text }}>{currentUser?.name || '관리자'}</div>
             <div style={{ fontSize: 11, color: T.mutedSoft, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{currentUser?.username ? `@${currentUser.username}` : '관리자'}</div>
           </div>
-          <Icon d={icons.logout} size={16} c={T.mutedSoft} />
+        </div>
+        <div
+          onClick={async () => { await logout(); navigate('/login'); }}
+          style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 10px', borderRadius: 6, cursor: 'pointer', color: T.danger, fontSize: 12, fontWeight: 600 }}
+          onMouseEnter={(e) => { e.currentTarget.style.background = T.dangerSoft; }}
+          onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
+        >
+          <Icon d={icons.logout} size={14} c={T.danger} sw={2} />
+          <span>로그아웃</span>
         </div>
       </div>
     </aside>

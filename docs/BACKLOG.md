@@ -184,6 +184,11 @@
 | FARM-PERF-DATA-001 | 데이터 재연결 | open | 세션 31 (2026-04-24) | - | Performance.jsx 하드코딩(PERF_DATA, SAM 테이블). HQ-PERFORMANCE-001(Performance.jsx HQ 뷰)과 동일 파일·패턴. 별 트랙. | docs/AUDIT_SESSION31_FARM.md |
 | FARM-HQ-NOTICE-001 | HQ 연동 | open | 세션 31 (2026-04-24) | - | noticeStore는 HQ·farm 공용 notices 테이블 사용. DB 0건이라 양쪽 연동 동작 미검증. DB 공지 1건 삽입 후 양쪽 UI 확인으로 빠른 검증 가능. | docs/AUDIT_SESSION31_FARM.md |
 | WORKER-M-STATIC-001 | 데이터 재연결 | resolved | 세션 33 (2026-04-24) 등록 → 세션 35 (2026-04-24) 해소 | - | 4개 화면 스토어 연결 완료. useAuthStore(currentUser)/useAttendanceStore/useLeaveStore 연결. 이름·날짜·근무시간 동적화, 주간 요약·최근 5일·월 달력·신청 이력 실데이터. Playwright PASS 29/29. 커밋 402baa4. | docs/BACKLOG.md |
+| MOBILE-LOGOUT-001 | 버그 수정 | resolved | 세션 36 (2026-04-24) 발견 → 세션 36 해소 | - | MobileProfileScreen 로그아웃 버튼 onClick 누락. useNavigate 미임포트 + logout 훅 미선언. _screens.jsx에 useNavigate import 추가, MobileProfileScreen 최상위에 logout/navigate 선언, button onClick 연결. 양 사이드바(primitives·hq-shell)도 로그아웃 아이콘만 있던 것을 "로그아웃" 텍스트 레이블 버튼으로 개선. | docs/BACKLOG.md |
+| HARVEST-RESEED-S36-001 | 데이터 재구성 | resolved | 세션 36 (2026-04-24) | - | harvest_records 509건 삭제 + 재시드. 신규 분배: busan=토마토·방울토마토·완숙토마토(균등 1/3), jinju=미니오이, hadong=완숙토마토. 515건 생성. Dashboard BRANCH_CROPS·CROP_COLORS 업데이트. | docs/BACKLOG.md |
+| CROP-ADD-S36-001 | 기능 추가 | resolved | 세션 36 (2026-04-24) | - | 미니오이·완숙토마토 crops 테이블 INSERT. task_types JSONB 포함. 이후 harvest 재시드에서 jinju·hadong·busan 연계 사용. | docs/BACKLOG.md |
+| DASHBOARD-CHART-LAYOUT-001 | UX 개선 | resolved | 세션 36 (2026-04-24) | - | Dashboard 지점별 수확량 차트 flexDirection column→row (3지점 가로 배치). 3번째 작물 색상(sub2) 지원. busan 3종 막대 수평 표시. Playwright PASS. | docs/BACKLOG.md |
+| GROWTH-EMPTY-STATE-001 | 진단 | resolved (스킵) | 세션 36 (2026-04-24) | - | /admin/growth·performance·stats "화이트 스크린" 신고. 진단 결과: DB 빈 상태 → 코드 정상 동작. standard_curves·marker_plants·growth_surveys·performance 데이터 없음. 코드 수정 불필요. FARM-GROWTH-DB-001·FARM-PERF-DATA-001 트랙으로 이관. 교훈 62 추가. | docs/BACKLOG.md |
 
 ---
 
