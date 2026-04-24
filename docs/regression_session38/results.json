@@ -1,0 +1,164 @@
+{
+  "pass": 26,
+  "fail": 0,
+  "warn": 0,
+  "total": 26,
+  "results": [
+    {
+      "test": "LOGIN",
+      "status": "PASS",
+      "title": "jhkim 로그인",
+      "detail": "http://localhost:5173/admin/hq"
+    },
+    {
+      "test": "GROWTH-DASHBOARD",
+      "status": "PASS",
+      "title": "로딩 완료 (spinner 종료)",
+      "detail": ""
+    },
+    {
+      "test": "GROWTH-DASHBOARD",
+      "status": "PASS",
+      "title": "화이트 스크린 없음",
+      "detail": ""
+    },
+    {
+      "test": "GROWTH-DASHBOARD",
+      "status": "PASS",
+      "title": "생육 대시보드 타이틀 표시",
+      "detail": ""
+    },
+    {
+      "test": "CROP-TABS",
+      "status": "PASS",
+      "title": "작물 탭: 토마토",
+      "detail": ""
+    },
+    {
+      "test": "CROP-TABS",
+      "status": "PASS",
+      "title": "작물 탭: 오이",
+      "detail": ""
+    },
+    {
+      "test": "CROP-TABS",
+      "status": "PASS",
+      "title": "작물 탭: 파프리카",
+      "detail": ""
+    },
+    {
+      "test": "KPI-CARDS",
+      "status": "PASS",
+      "title": "KPI: 이번 주 생장",
+      "detail": ""
+    },
+    {
+      "test": "KPI-CARDS",
+      "status": "PASS",
+      "title": "KPI: 화방 높이",
+      "detail": ""
+    },
+    {
+      "test": "KPI-CARDS",
+      "status": "PASS",
+      "title": "KPI: 누적 착과",
+      "detail": ""
+    },
+    {
+      "test": "KPI-CARDS",
+      "status": "PASS",
+      "title": "KPI: 작기 진행",
+      "detail": ""
+    },
+    {
+      "test": "TREND-CHART",
+      "status": "PASS",
+      "title": "개화 화방 높이 추이 섹션 표시",
+      "detail": ""
+    },
+    {
+      "test": "MARKER-TABLE",
+      "status": "PASS",
+      "title": "표식주 테이블 행 6개",
+      "detail": ""
+    },
+    {
+      "test": "GROWTH-INPUT",
+      "status": "PASS",
+      "title": "주별 입력 타이틀 표시",
+      "detail": ""
+    },
+    {
+      "test": "HEATMAP",
+      "status": "PASS",
+      "title": "히트맵 타이틀 표시",
+      "detail": ""
+    },
+    {
+      "test": "MARKER-MANAGE",
+      "status": "PASS",
+      "title": "표식주 관리 타이틀 표시",
+      "detail": ""
+    },
+    {
+      "test": "MARKER-MANAGE",
+      "status": "PASS",
+      "title": "샘플 설정 섹션 표시",
+      "detail": ""
+    },
+    {
+      "test": "MARKER-MANAGE",
+      "status": "PASS",
+      "title": "샘플 설정 지점: 부산LAB",
+      "detail": ""
+    },
+    {
+      "test": "MARKER-MANAGE",
+      "status": "PASS",
+      "title": "샘플 설정 지점: 진주HUB",
+      "detail": ""
+    },
+    {
+      "test": "MARKER-MANAGE",
+      "status": "PASS",
+      "title": "샘플 설정 지점: 하동HUB",
+      "detail": ""
+    },
+    {
+      "test": "REGRESSION-BUG-F01",
+      "status": "PASS",
+      "title": "BUG-F01 회귀 없음",
+      "detail": ""
+    },
+    {
+      "test": "REGRESSION-BUG-F02",
+      "status": "PASS",
+      "title": "BUG-F02 회귀 없음",
+      "detail": ""
+    },
+    {
+      "test": "REGRESSION-SCHEDULE",
+      "status": "PASS",
+      "title": "근무 관리 타이틀 유지",
+      "detail": ""
+    },
+    {
+      "test": "REGRESSION-SCHEDULE",
+      "status": "PASS",
+      "title": "타임라인 시간 헤더 유지",
+      "detail": ""
+    },
+    {
+      "test": "REGRESSION-HQ",
+      "status": "PASS",
+      "title": "HQ 사이드바 로그아웃 버튼 유지",
+      "detail": ""
+    },
+    {
+      "test": "REGRESSION-HQ-ERRORS",
+      "status": "PASS",
+      "title": "HQ 콘솔 에러 0건",
+      "detail": ""
+    }
+  ]
+}

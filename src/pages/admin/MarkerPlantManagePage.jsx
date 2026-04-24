@@ -27,6 +27,103 @@ const Label = ({ children, required }) => (
   </label>
 );
 
+const SAMPLE_BRANCHES = ['부산LAB', '진주HUB', '하동HUB'];
+const SAMPLE_CROPS = ['토마토', '오이', '파프리카'];
+
+function SampleConfigCard() {
+  const [configs, setConfigs] = useState([]);
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+
+  useEffect(() => {
+    supabase
+      .from('branch_crop_sample_config')
+      .select('id, branch, crop_id, sample_count, crops(name)')
+      .order('branch')
+      .then(({ data }) => { if (data) setConfigs(data); });
+  }, []);
+
+  const getValue = (branch, cropName) => {
+    const row = configs.find(c => c.branch === branch && c.crops?.name === cropName);
+    return row?.sample_count ?? 5;
+  };
+
+  const setValue = (branch, cropName, val) => {
+    setConfigs(prev => prev.map(c =>
+      c.branch === branch && c.crops?.name === cropName
+        ? { ...c, sample_count: Number(val) }
+        : c
+    ));
+    setSaved(false);
+  };
+
+  const save = async () => {
+    setSaving(true);
+    const updates = configs.map(c =>
+      supabase.from('branch_crop_sample_config')
+        .update({ sample_count: c.sample_count, updated_at: new Date().toISOString() })
+        .eq('id', c.id)
+    );
+    await Promise.all(updates);
+    setSaving(false);
+    setSaved(true);
+    setTimeout(() => setSaved(false), 2000);
+  };
+
+  return (
+    <Card pad={20}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+        <div>
+          <h3 style={{ fontSize: 14, fontWeight: 700, color: T.text, margin: 0 }}>조사 샘플 수 설정</h3>
+          <p style={{ fontSize: 11, color: T.mutedSoft, margin: '3px 0 0' }}>지점별 · 작물별 표식주 샘플 수 (기본 5주)</p>
+        </div>
+        <button onClick={save} disabled={saving}
+          style={{
+            height: 34, padding: '0 14px', borderRadius: 7, border: 0,
+            background: saved ? T.success : T.primary, color: '#fff',
+            fontSize: 12, fontWeight: 700, cursor: 'pointer', opacity: saving ? 0.6 : 1,
+          }}>
+          {saved ? '저장됨 ✓' : saving ? '저장 중...' : '저장'}
+        </button>
+      </div>
+      <div style={{ overflowX: 'auto' }}>
+        <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 400 }}>
+          <thead>
+            <tr style={{ background: T.bg, borderBottom: `1px solid ${T.border}` }}>
+              <th style={{ padding: '8px 14px', textAlign: 'left', fontSize: 11, fontWeight: 700, color: T.muted, width: 120 }}>지점</th>
+              {SAMPLE_CROPS.map(crop => (
+                <th key={crop} style={{ padding: '8px 14px', textAlign: 'center', fontSize: 11, fontWeight: 700, color: T.muted }}>{crop}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {SAMPLE_BRANCHES.map((branch, i) => (
+              <tr key={branch} style={{ borderBottom: `1px solid ${T.borderSoft}`, background: i % 2 === 0 ? T.surface : T.bg }}>
+                <td style={{ padding: '10px 14px', fontSize: 12, fontWeight: 700, color: T.text }}>{branch}</td>
+                {SAMPLE_CROPS.map(crop => (
+                  <td key={crop} style={{ padding: '8px 14px', textAlign: 'center' }}>
+                    <input
+                      type="number" min={1} max={20}
+                      value={getValue(branch, crop)}
+                      onChange={e => setValue(branch, crop, e.target.value)}
+                      style={{
+                        width: 64, height: 32, textAlign: 'center', padding: '0 6px',
+                        border: `1px solid ${T.border}`, borderRadius: 6,
+                        fontSize: 13, fontWeight: 700, color: T.text,
+                        background: T.surface,
+                      }}
+                    />
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </Card>
+  );
+}
+
 export default function MarkerPlantManagePage() {
   const crops = useCropStore((s) => s.crops);
   const [greenhouses, setGreenhouses] = useState([]);
@@ -175,6 +272,9 @@ export default function MarkerPlantManagePage() {
             </button>
           </div>
         </Card>
+
+        {/* 샘플 수 설정 */}
+        <SampleConfigCard />
 
         {/* 목록 */}
         <div>
