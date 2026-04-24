@@ -1,0 +1,152 @@
+{
+  "pass": 24,
+  "fail": 0,
+  "warn": 0,
+  "total": 24,
+  "results": [
+    {
+      "test": "LOGIN",
+      "status": "PASS",
+      "title": "jhkim 로그인",
+      "detail": "http://localhost:5173/admin/hq"
+    },
+    {
+      "test": "GROWTH-INPUT-LOAD",
+      "status": "PASS",
+      "title": "입력 페이지 로딩 완료",
+      "detail": ""
+    },
+    {
+      "test": "GROWTH-INPUT-LOAD",
+      "status": "PASS",
+      "title": "주별 생육 기록 입력 타이틀 표시",
+      "detail": ""
+    },
+    {
+      "test": "GROWTH-INPUT-LOAD",
+      "status": "PASS",
+      "title": "화이트 스크린 없음",
+      "detail": ""
+    },
+    {
+      "test": "GROWTH-INPUT-TABLE",
+      "status": "PASS",
+      "title": "number 입력 필드 66개 렌더링 (HR_DATA 연결 확인)",
+      "detail": ""
+    },
+    {
+      "test": "GROWTH-INPUT-PERMISSION-HR",
+      "status": "PASS",
+      "title": "hr_admin → 모든 입력 필드 읽기 전용 (정상)",
+      "detail": ""
+    },
+    {
+      "test": "GROWTH-INPUT-PERMISSION-HR",
+      "status": "PASS",
+      "title": "hr_admin → \"권한 없음\" 버튼 표시",
+      "detail": ""
+    },
+    {
+      "test": "GROWTH-INPUT-DERIVED",
+      "status": "PASS",
+      "title": "파생 항목 셀 12개 표시 (오이 leafRatio 포함)",
+      "detail": ""
+    },
+    {
+      "test": "GROWTH-INPUT-READONLY-PAST",
+      "status": "PASS",
+      "title": "과거 주차 → \"과거 기록 (읽기 전용)\" 버튼 표시",
+      "detail": ""
+    },
+    {
+      "test": "GROWTH-INPUT-READONLY-PAST",
+      "status": "PASS",
+      "title": "과거 주차 입력 필드 readOnly 확인",
+      "detail": ""
+    },
+    {
+      "test": "REGRESSION-DASHBOARD",
+      "status": "PASS",
+      "title": "대시보드 화이트 스크린 없음",
+      "detail": ""
+    },
+    {
+      "test": "REGRESSION-DASHBOARD",
+      "status": "PASS",
+      "title": "생육 대시보드 타이틀 유지",
+      "detail": ""
+    },
+    {
+      "test": "REGRESSION-CROP-TABS",
+      "status": "PASS",
+      "title": "작물 탭 유지: 토마토",
+      "detail": ""
+    },
+    {
+      "test": "REGRESSION-CROP-TABS",
+      "status": "PASS",
+      "title": "작물 탭 유지: 오이",
+      "detail": ""
+    },
+    {
+      "test": "REGRESSION-CROP-TABS",
+      "status": "PASS",
+      "title": "작물 탭 유지: 파프리카",
+      "detail": ""
+    },
+    {
+      "test": "REGRESSION-KPI",
+      "status": "PASS",
+      "title": "KPI 유지: 이번 주 생장",
+      "detail": ""
+    },
+    {
+      "test": "REGRESSION-KPI",
+      "status": "PASS",
+      "title": "KPI 유지: 화방 높이",
+      "detail": ""
+    },
+    {
+      "test": "REGRESSION-KPI",
+      "status": "PASS",
+      "title": "KPI 유지: 누적 착과",
+      "detail": ""
+    },
+    {
+      "test": "REGRESSION-KPI",
+      "status": "PASS",
+      "title": "KPI 유지: 작기 진행",
+      "detail": ""
+    },
+    {
+      "test": "REGRESSION-MARKER-TABLE",
+      "status": "PASS",
+      "title": "표식주 테이블 행 6개 유지",
+      "detail": ""
+    },
+    {
+      "test": "REGRESSION-BUG-F01",
+      "status": "PASS",
+      "title": "BUG-F01 회귀 없음",
+      "detail": ""
+    },
+    {
+      "test": "REGRESSION-SCHEDULE",
+      "status": "PASS",
+      "title": "근무 관리 타이틀 유지",
+      "detail": ""
+    },
+    {
+      "test": "REGRESSION-SCHEDULE",
+      "status": "PASS",
+      "title": "타임라인 시간 헤더 유지",
+      "detail": ""
+    },
+    {
+      "test": "REGRESSION-CONSOLE",
+      "status": "PASS",
+      "title": "중요 콘솔 에러 0건",
+      "detail": ""
+    }
+  ]
+}

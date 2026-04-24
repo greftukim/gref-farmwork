@@ -40,6 +40,7 @@ function buildMarkerPlants(plants, surveys) {
     return {
       id: displayId,
       dbId: p.id,
+      cropId: p.crop_id ?? null,
       crop: cropName,
       branch: p.branch || '',
       bed: p.bed || '',

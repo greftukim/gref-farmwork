@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { GROWTH_SCHEMA } from '../data/growth';
 import { Card, Icon, Pill, T, btnSecondary, icons } from '../design/primitives';
 import { useGrowthData } from '../hooks/useGrowthData';
+import useGrowthSurveyStore from '../stores/growthSurveyStore';
+import useAuthStore from '../stores/authStore';
 
 // 생육조사 화면 — 지점 (재배팀)
 // 4개 화면: 대시보드 / 주별 입력 / 표식주 상세 / 추이·히트맵
@@ -321,7 +323,7 @@ function GrowthDashboardScreen() {
             </thead>
             <tbody>
               {GR_DATA.markerPlants.filter(p => p.crop === crop).map(p => (
-                <tr key={p.id} style={{ borderBottom: `1px solid ${T.borderSoft}` }}>
+                <tr key={p.dbId} style={{ borderBottom: `1px solid ${T.borderSoft}` }}>
                   <td style={{ padding: '10px 16px', fontSize: 12, fontWeight: 700, color: T.text, fontFamily: 'ui-monospace, monospace' }}>{p.id}</td>
                   <td style={{ padding: '10px 12px', fontSize: 11, color: T.muted }}>{p.bed} · {p.row} · {p.no}번</td>
                   <td style={{ padding: '10px 12px', textAlign: 'right', fontSize: 12, color: T.text, fontVariantNumeric: 'tabular-nums' }}>{p.last.weeklyGrowth}<span style={{ fontSize: 9, color: T.mutedSoft }}>cm</span></td>
@@ -349,20 +351,75 @@ function GrowthDashboardScreen() {
 // ═══════════════════════════════════════════════════════════
 function GrowthInputScreen() {
   const { grData: GR_DATA, standardCurve: STANDARD_CURVE, loading } = useGrowthData();
+  const addSurvey = useGrowthSurveyStore(s => s.addSurvey);
+  const currentUser = useAuthStore(s => s.currentUser);
   const [crop, setCrop] = useState('토마토');
-  const [selectedWeek, setSelectedWeek] = useState(1);
+  const [selectedWeek, setSelectedWeek] = useState(null);
+  const [saving, setSaving] = useState(false);
+  const [plantMeasurements, setPlantMeasurements] = useState({});
+  const [weekNote, setWeekNote] = useState('');
   const navigate = useNavigate();
+
   if (loading) return <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: T.mutedSoft, fontSize: 14 }}>로딩 중...</div>;
   if (!GR_DATA.markerPlants?.length) return <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: T.mutedSoft, fontSize: 14 }}>데이터가 없습니다</div>;
+
+  const activeWeek = selectedWeek ?? GR_DATA.currentWeek ?? 1;
+  const canInput = ['farm_admin', 'worker', 'master'].includes(currentUser?.role);
   const schema = GROWTH_SCHEMA[crop];
   const plants = GR_DATA.markerPlants.filter(p => p.crop === crop);
-  const curve = STANDARD_CURVE[crop];
+  const curve = STANDARD_CURVE[crop] || {};
   const totalWeeks = (curve.flowerClusterH || []).length || 12;
-  const weekIdx = selectedWeek - 1;
-  const isPast = selectedWeek < GR_DATA.currentWeek;
-  const isFuture = selectedWeek > GR_DATA.currentWeek;
-  const isCurrent = selectedWeek === GR_DATA.currentWeek;
-  const readOnly = isPast;
+  const weekIdx = activeWeek - 1;
+  const isPast = activeWeek < GR_DATA.currentWeek;
+  const isFuture = activeWeek > GR_DATA.currentWeek;
+  const isCurrent = activeWeek === GR_DATA.currentWeek;
+  const readOnly = isPast || !canInput;
+
+  const _surveyBase = GR_DATA.date && GR_DATA.date !== '-' ? new Date(GR_DATA.date) : new Date();
+  _surveyBase.setDate(_surveyBase.getDate() + (activeWeek - (GR_DATA.currentWeek || 1)) * 7);
+  const weekSurveyDate = _surveyBase.toISOString().slice(0, 10);
+
+  const getVal = (plant, key) => {
+    const live = plantMeasurements[plant.dbId];
+    if (live && live[key] !== undefined) return live[key];
+    const stored = plant.last[key];
+    return stored !== undefined && stored !== null ? stored : '';
+  };
+
+  const setField = (plant, key, rawVal) => {
+    setPlantMeasurements(prev => ({
+      ...prev,
+      [plant.dbId]: { ...(prev[plant.dbId] || {}), [key]: rawVal === '' ? '' : Number(rawVal) },
+    }));
+  };
+
+  const handleSubmit = async () => {
+    if (readOnly || !canInput || saving) return;
+    setSaving(true);
+    try {
+      await Promise.all(plants.map(plant => {
+        const live = plantMeasurements[plant.dbId] || {};
+        const base = { ...plant.last, ...live };
+        const derived = {};
+        (schema || []).filter(s => s.type === 'derived' && s.formula).forEach(s => {
+          derived[s.key] = s.formula(base);
+        });
+        return addSurvey({
+          markerPlantId: plant.dbId,
+          cropId: plant.cropId,
+          surveyDate: weekSurveyDate,
+          weekNumber: activeWeek,
+          measurements: { ...base, ...derived },
+        });
+      }));
+      alert('조사 등록 완료!');
+      setPlantMeasurements({});
+    } catch (err) {
+      alert(`저장 실패: ${String(err)}`);
+    } finally {
+      setSaving(false);
+    }
+  };
 
   return (
     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
@@ -379,12 +436,18 @@ function GrowthInputScreen() {
           <div style={{ display: 'flex', gap: 8 }}>
             {btnSecondary('지난 주 값 불러오기', icons.clock, () => alert('이전 주 값 불러오기 기능은 준비 중입니다'))}
             {btnSecondary('임시 저장', icons.check, () => alert('임시 저장 기능은 준비 중입니다'))}
-            <button disabled={readOnly} style={{
-              padding: '8px 16px', borderRadius: 7, border: 0,
-              background: readOnly ? T.borderSoft : T.primary,
-              color: readOnly ? T.mutedSoft : '#fff',
-              fontSize: 12, fontWeight: 700, cursor: readOnly ? 'not-allowed' : 'pointer',
-            }}>{readOnly ? '과거 기록 (읽기 전용)' : '저장 · 제출'}</button>
+            <button
+              disabled={readOnly || saving}
+              onClick={handleSubmit}
+              style={{
+                padding: '8px 16px', borderRadius: 7, border: 0,
+                background: readOnly ? T.borderSoft : saving ? T.primarySoft : T.primary,
+                color: readOnly ? T.mutedSoft : saving ? T.primaryText : '#fff',
+                fontSize: 12, fontWeight: 700, cursor: (readOnly || saving) ? 'not-allowed' : 'pointer',
+              }}
+            >
+              {saving ? '저장 중...' : readOnly ? (isPast ? '과거 기록 (읽기 전용)' : '권한 없음') : '저장 · 제출'}
+            </button>
           </div>
         </div>
 
@@ -392,16 +455,16 @@ function GrowthInputScreen() {
         <div style={{ marginTop: 14, display: 'flex', alignItems: 'center', gap: 10 }}>
           <div style={{ fontSize: 11, color: T.mutedSoft, fontWeight: 600 }}>조사 주차</div>
           <button
-            onClick={() => setSelectedWeek(Math.max(1, selectedWeek - 1))}
-            disabled={selectedWeek <= 1}
-            style={{ width: 28, height: 28, borderRadius: 6, border: `1px solid ${T.border}`, background: T.surface, color: T.muted, cursor: selectedWeek <= 1 ? 'not-allowed' : 'pointer', opacity: selectedWeek <= 1 ? 0.4 : 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            onClick={() => setSelectedWeek(Math.max(1, activeWeek - 1))}
+            disabled={activeWeek <= 1}
+            style={{ width: 28, height: 28, borderRadius: 6, border: `1px solid ${T.border}`, background: T.surface, color: T.muted, cursor: activeWeek <= 1 ? 'not-allowed' : 'pointer', opacity: activeWeek <= 1 ? 0.4 : 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <Icon d={icons.chevLeft} size={14} c={T.muted} sw={2} />
           </button>
           {/* 주차 셀 */}
           <div style={{ display: 'flex', gap: 4, background: T.bg, padding: 4, borderRadius: 8 }}>
             {Array.from({ length: totalWeeks }, (_, i) => {
               const w = i + 1;
-              const on = w === selectedWeek;
+              const on = w === activeWeek;
               const past = w < GR_DATA.currentWeek;
               const cur = w === GR_DATA.currentWeek;
               const future = w > GR_DATA.currentWeek;
@@ -422,9 +485,9 @@ function GrowthInputScreen() {
             })}
           </div>
           <button
-            onClick={() => setSelectedWeek(Math.min(totalWeeks, selectedWeek + 1))}
-            disabled={selectedWeek >= GR_DATA.currentWeek}
-            style={{ width: 28, height: 28, borderRadius: 6, border: `1px solid ${T.border}`, background: T.surface, color: T.muted, cursor: selectedWeek >= GR_DATA.currentWeek ? 'not-allowed' : 'pointer', opacity: selectedWeek >= GR_DATA.currentWeek ? 0.4 : 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            onClick={() => setSelectedWeek(Math.min(totalWeeks, activeWeek + 1))}
+            disabled={activeWeek >= GR_DATA.currentWeek}
+            style={{ width: 28, height: 28, borderRadius: 6, border: `1px solid ${T.border}`, background: T.surface, color: T.muted, cursor: activeWeek >= GR_DATA.currentWeek ? 'not-allowed' : 'pointer', opacity: activeWeek >= GR_DATA.currentWeek ? 0.4 : 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <Icon d={icons.chevRight} size={14} c={T.muted} sw={2} />
           </button>
 
@@ -486,18 +549,20 @@ function GrowthInputScreen() {
               </thead>
               <tbody>
                 {plants.map((p, rowIdx) => (
-                  <tr key={p.id} style={{ borderBottom: `1px solid ${T.borderSoft}` }}>
+                  <tr key={p.dbId} style={{ borderBottom: `1px solid ${T.borderSoft}` }}>
                     <td style={{ padding: '8px 12px', fontSize: 11, fontWeight: 700, color: T.text, fontFamily: 'ui-monospace, monospace', position: 'sticky', left: 0, background: rowIdx % 2 === 0 ? T.surface : T.bg, zIndex: 1 }}>
                       {p.id}
                       <div style={{ fontSize: 9, color: T.mutedSoft, fontWeight: 500 }}>{p.bed} · {p.no}번</div>
                     </td>
                     {schema.map(s => {
-                      const val = p.last[s.key];
+                      const val = getVal(p, s.key);
                       const target = curve[s.key]?.[weekIdx];
-                      const dev = target && typeof val === 'number' ? (val - target) / target * 100 : 0;
+                      const numVal = typeof val === 'number' ? val : Number(val);
+                      const dev = target && !isNaN(numVal) && numVal !== 0 ? (numVal - target) / target * 100 : 0;
                       const warn = Math.abs(dev) > 15;
                       if (s.type === 'derived') {
-                        const computed = s.formula ? s.formula(p.last) : '-';
+                        const liveBase = { ...p.last, ...(plantMeasurements[p.dbId] || {}) };
+                        const computed = s.formula ? s.formula(liveBase) : '-';
                         return (
                           <td key={s.key} style={{ padding: '6px 8px', textAlign: 'center', borderLeft: `1px solid ${T.borderSoft}`, background: T.bg }}>
                             <div style={{ padding: '7px 0', fontSize: 12, fontWeight: 700, color: T.primary, fontVariantNumeric: 'tabular-nums' }}>{computed}</div>
@@ -507,8 +572,10 @@ function GrowthInputScreen() {
                       return (
                         <td key={s.key} style={{ padding: '6px 8px', textAlign: 'center', borderLeft: `1px solid ${T.borderSoft}` }}>
                           <input
-                            type="number" step={s.step} defaultValue={val}
+                            type="number" step={s.step}
+                            value={val}
                             readOnly={readOnly}
+                            onChange={readOnly ? undefined : (e) => setField(p, s.key, e.target.value)}
                             style={{
                               width: '100%', padding: '6px 6px', fontSize: 12, fontWeight: 600,
                               textAlign: 'center', fontVariantNumeric: 'tabular-nums',
@@ -534,8 +601,10 @@ function GrowthInputScreen() {
             <h3 style={{ fontSize: 13, fontWeight: 700, color: T.text, margin: 0, marginBottom: 10 }}>이번 주 전체 메모</h3>
             <textarea
               placeholder="온실 환경, 병해충, 특이사항 등..."
-              style={{ width: '100%', minHeight: 90, padding: 10, border: `1px solid ${T.border}`, borderRadius: 6, fontSize: 12, color: T.text, background: T.surface, fontFamily: 'inherit', resize: 'vertical' }}
-              defaultValue="4/24 새벽 최저 12℃ · 야간 기온 하강으로 파프리카 일부 개체 생장 지연 관찰. 화방 높이 관찰 지속 필요."
+              value={weekNote}
+              onChange={e => setWeekNote(e.target.value)}
+              readOnly={readOnly}
+              style={{ width: '100%', minHeight: 90, padding: 10, border: `1px solid ${T.border}`, borderRadius: 6, fontSize: 12, color: T.text, background: readOnly ? T.bg : T.surface, fontFamily: 'inherit', resize: 'vertical' }}
             />
           </Card>
           <Card>
@@ -543,8 +612,8 @@ function GrowthInputScreen() {
             <div style={{ fontSize: 11, color: T.mutedSoft, marginBottom: 10 }}>이상이 있는 개체만 체크 후 사진 첨부</div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
               {plants.slice(0, 3).map(p => (
-                <label key={p.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 10px', background: T.bg, borderRadius: 6, cursor: 'pointer' }}>
-                  <input type="checkbox" defaultChecked={p.health === 'warn'} />
+                <label key={p.dbId} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 10px', background: T.bg, borderRadius: 6, cursor: 'pointer' }}>
+                  <input type="checkbox" readOnly defaultChecked={p.health === 'warn'} />
                   <span style={{ fontSize: 12, fontWeight: 600, color: T.text, fontFamily: 'ui-monospace, monospace' }}>{p.id}</span>
                   <span style={{ fontSize: 11, color: T.muted, flex: 1 }}>{p.note || ''}</span>
                   {p.health === 'warn' && <button onClick={() => alert('사진 업로드 기능은 준비 중입니다')} style={{ padding: '3px 9px', fontSize: 10, border: 0, background: T.warning, color: '#fff', borderRadius: 4, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}><Icon d={icons.camera} size={10} c="#fff" />사진</button>}
@@ -775,7 +844,7 @@ function GrowthHeatmapScreen() {
               </thead>
               <tbody>
                 {plants.map(p => (
-                  <tr key={p.id}>
+                  <tr key={p.dbId}>
                     <td style={{ padding: '4px 12px', fontSize: 11, fontWeight: 700, color: T.text, fontFamily: 'ui-monospace, monospace', position: 'sticky', left: 0, background: T.surface, whiteSpace: 'nowrap' }}>{p.id}</td>
                     {schema.map(s => {
                       const target = curve[s.key]?.[weekIdx];

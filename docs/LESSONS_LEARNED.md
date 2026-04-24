@@ -1834,3 +1834,31 @@ FROM marker_plants mp
 JOIN crops c ON c.id = mp.crop_id
 CROSS JOIN (SELECT generate_series(1,8) AS week_no) AS w;
 ```
+
+## 교훈 66 — Supabase onAuthStateChange가 localStorage role 주입을 덮어씀
+
+Playwright 테스트에서 `localStorage['gref-auth']`를 직접 수정해 role을 바꾼 뒤 `goto()`로 재로드해도,
+앱이 마운트될 때 `initializeAuth()` → `supabase.auth.getSession()` → `employees` 테이블 재조회로
+DB의 실제 role이 Zustand 스토어를 덮어쓴다.
+
+**Why:** Zustand `persist`는 localStorage를 동기 초기값으로 읽지만, `initializeAuth` useEffect가 즉시
+DB 조회 후 set()을 호출하여 덮어쓴다.
+
+**How to apply:**
+- Playwright에서 권한 분기를 테스트하려면 ① 실제 DB 계정을 사용하거나 ② DB의 role 컬럼을 임시 변경
+  후 복원해야 한다. localStorage 단독 주입은 신뢰할 수 없다.
+- 대신 "hr_admin이 올바르게 readOnly로 표시되는지"를 확인하는 방향으로 테스트를 재설계할 수 있다
+  (실제 권한이 있는 계정이 없을 때).
+
+## 교훈 67 — 표식주 displayId는 지점 간 중복 발생 → React key에 UUID 사용
+
+`marker_plants`는 지점별로 bed+marker_number가 독립 관리되어 `T-A-01-01` 같은 displayId가
+3개 지점에서 동일하게 생성된다. 이를 React `key={p.id}` (displayId)로 사용하면
+crops 탭에서 모든 지점 식물이 합쳐질 때 중복 key 경고 43건이 발생한다.
+
+**Why:** displayId는 UI 표시용(사람이 읽는 ID)이고 React key는 렌더 추적용(기계가 쓰는 고유 ID)이므로
+서로 다른 값을 써야 한다.
+
+**How to apply:**
+- `<tr key={p.dbId}>` — DB UUID(항상 고유)를 key로 사용, displayId는 셀 안에서 `{p.id}`로 표시.
+- 이 패턴을 Growth.jsx 내 모든 plants.map() 에 일괄 적용하면 경고 완전 제거.
