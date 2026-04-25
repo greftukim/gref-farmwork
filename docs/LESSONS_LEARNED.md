@@ -2164,3 +2164,39 @@ return (
 ```
 - early return 패턴을 사용할 경우 Playwright 타이틀 검사가 실패할 수 있음
 - TopBar/타이틀은 early return 밖에 배치해야 Playwright waitForDataLoad 후 검사 가능
+
+## 교훈 86 — growth_surveys RLS: worker_id IS NOT NULL 조건이 marker_plant 기반 surveys를 차단
+
+growth_surveys 테이블 RLS SELECT 정책에서 `(farm_admin AND worker_id IS NOT NULL AND ...)` 조건은
+growthSurveyStore를 통해 삽입된 surveys(worker_id=NULL, 120건 전부)를 farm_admin에게 완전 차단.
+
+**Why:** useGrowthData 훅이 growth_surveys를 marker_plant_id 기반으로 조회하지만, RLS가 worker_id 기반으로 필터링.
+farm_admin: can_view_all_branches() = FALSE + worker_id IS NOT NULL = FALSE → 0건 반환.
+timeseries = {} → GrowthDashboardScreen ts=undefined → ts.length 크래시 → ErrorBoundary.
+
+**How to apply:**
+- growth_surveys처럼 marker_plant 기반 테이블의 RLS는 worker_id 조건을 두지 말 것
+- marker_plants 테이블 RLS와 동일한 is_admin_level() 패턴을 사용
+- 새 테이블 RLS 작성 시: "이 테이블의 데이터 소유자는 worker인가 marker_plant인가?" 먼저 확인
+- 회귀 방지: farm_admin으로 로그인해서 직접 접근 테스트 → 세션 개시 필수 절차에 포함
+
+## 교훈 87 — 데이터 집계 결과가 empty일 때 컴포넌트 early guard 필수
+
+`timeseries[crop]`처럼 집계 결과가 비어 있을 수 있는 모든 파생 값에는 반드시 guard가 필요.
+crops.length > 0이어도 timeseries가 {}일 수 있다 (RLS/쿼리 실패 → surveys=[] → timeseries={}).
+
+**Why:** `useGrowthData`는 marker_plants 쿼리 성공 → crops 빌드, 별개로 growth_surveys 쿼리 실패 → timeseries={}.
+GrowthDashboardScreen 라인 24: `if (!crops.length)` guard는 crops가 있으면 통과.
+이후 timeseries[crop]=undefined → ts.length 크래시.
+
+**How to apply:**
+```js
+// crops guard 통과 후에도 timeseries guard 필요
+const hasTimeseries = Object.keys(GR_DATA.timeseries).length > 0;
+if (!hasTimeseries) return <div>생육 조사 기록이 없습니다</div>;
+// 개별 ts도 fallback
+const ts = GR_DATA.timeseries[crop] || [];
+if (!ts.length) return <div>...</div>;
+```
+- "상위 데이터 존재 → 하위 데이터도 존재" 가정을 하지 말 것
+- 각 집계 단계마다 별도 empty 체크 필요

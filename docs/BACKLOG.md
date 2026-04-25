@@ -200,6 +200,7 @@
 | WORK-STATS-PAGE-001 | 검증·수정 | resolved | 세션 41 등록 → 세션 42 (2026-04-25) 해소 | - | /admin/work-stats — is_active 필터 누락(비활성 시드 포함) 수정 + attendance 시드 480건+ 투입(세션 42 migration). WorkStatsPage.jsx workers useMemo에 e.isActive 필터 추가. Playwright F-1~F-4 PASS. | docs/HANDOVER_PHASE5_SESSION42.md |
 | BRANCH-STATS-PAGE-001 | 기능 구현 | resolved | 세션 41 등록 → 세션 42 (2026-04-25) 해소 | - | /admin/branch-stats — "준비 중" stub 전면 재작성. usePerformanceData + useEmployeeStore 기반 3지점 KPI(활성 작업자/평균 성과율/주간 수확량) + 평균 성과율 비교 + 주간 수확량 비교 바 차트. Playwright G-1~G-4 PASS. | docs/HANDOVER_PHASE5_SESSION42.md |
 | BRANCH-WORK-SCHEDULE-UI-001 | 기능 미구현 | resolved | 세션 42 (2026-04-25) 등록 → 세션 44 (2026-04-25) 해소 | - | BranchSettingsPage.jsx에 "근무시간 설정" 섹션 추가. RLS 정책 신설(SELECT is_admin_level / UPDATE can_view_all_branches). start_time/end_time time 입력 + workdays 요일 버튼(7개). hr_admin 편집, farm_admin 읽기 전용. Playwright J-1~6 PASS 13/13. 세션 44 커밋. | docs/HANDOVER_PHASE5_SESSION44.md |
+| GROWTH-RLS-001 | RLS 회귀 | resolved | 세션 50 (2026-04-25) 발견·해소 | - | growth_surveys SELECT RLS 정책 worker_id IS NOT NULL 조건이 marker_plant 기반 surveys(worker_id=NULL, 전체 120건)를 farm_admin에게 차단. farm_admin /admin/growth 접근 시 timeseries={}→ts=undefined→ts.length 크래시(ErrorBoundary). 수정: growth_surveys_authenticated_select → is_admin_level() (marker_plants 정책 동일). 코드 방어: GrowthDashboardScreen/GrowthMarkerDetailScreen timeseries empty guard 추가. Playwright P-1~7 PASS. 커밋: 세션 50. | docs/HANDOVER_PHASE5_SESSION50.md |
 
 ---
 

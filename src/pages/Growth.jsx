@@ -22,6 +22,8 @@ function GrowthDashboardScreen() {
   const navigate = useNavigate();
   if (loading) return <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: T.mutedSoft, fontSize: 14 }}>로딩 중...</div>;
   if (!GR_DATA.crops?.length) return <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: T.mutedSoft, fontSize: 14 }}>데이터가 없습니다</div>;
+  const hasTimeseries = Object.keys(GR_DATA.timeseries).length > 0;
+  if (!hasTimeseries) return <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: T.mutedSoft, fontSize: 14 }}>생육 조사 기록이 없습니다</div>;
   const weekIdx = GR_DATA.currentWeek - 1;
   const current = GR_DATA.crops.find(c => c.name === crop);
   const schema = GROWTH_SCHEMA[crop] || GROWTH_SCHEMA['토마토'];
@@ -638,8 +640,9 @@ function GrowthMarkerDetailScreen() {
   const p = GR_DATA.markerPlants[0];
   const schema = GROWTH_SCHEMA[p.crop];
   const curve = STANDARD_CURVE[p.crop];
-  const ts = GR_DATA.timeseries[p.crop];
+  const ts = GR_DATA.timeseries[p.crop] || [];
   const weekIdx = GR_DATA.currentWeek - 1;
+  if (!ts.length) return <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: T.mutedSoft, fontSize: 14 }}>생육 조사 기록이 없습니다</div>;
 
   return (
     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
