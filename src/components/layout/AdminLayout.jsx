@@ -28,6 +28,7 @@ const HQ_ROUTES = {
   performance: '/admin/hq/performance',
   growth: '/admin/hq/growth',
   approvals: '/admin/hq/approvals',
+  issues: '/admin/hq/issues',
   finance: '/admin/hq/finance',
   notice: '/admin/hq/notices',
   settings: '/admin/hq',

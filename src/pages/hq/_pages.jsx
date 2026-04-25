@@ -1117,4 +1117,184 @@ function HQFinanceScreen() {
   );
 }
 
-export { HQPageHeader, HQApprovalsScreen, HQBranchesScreen, HQEmployeesScreen, HQFinanceScreen, HQNoticesScreen };
+// ─────────────────────────────────────────────────────────────
+// ⑥ 이상 신고 — HQ-ISSUE-PAGE-001
+// ─────────────────────────────────────────────────────────────
+const TYPE_META = {
+  병해충:  { tone: 'danger',  color: T.danger,  soft: T.dangerSoft  },
+  시설이상: { tone: 'warning', color: T.warning, soft: T.warningSoft },
+  작물이상: { tone: 'info',    color: T.info,    soft: T.infoSoft    },
+  기타:    { tone: 'default', color: T.muted,   soft: T.bg          },
+};
+
+const fmtAgo = (iso) => {
+  if (!iso) return '';
+  const m = Math.floor((Date.now() - new Date(iso)) / 60000);
+  if (m < 60) return `${m}분 전`;
+  if (m < 1440) return `${Math.floor(m / 60)}시간 전`;
+  return `${Math.floor(m / 1440)}일 전`;
+};
+
+function HQIssuesScreen() {
+  const currentUser   = useAuthStore((s) => s.currentUser);
+  const employees     = useEmployeeStore((s) => s.employees);
+  const [issues, setIssues]   = useState([]);
+  const [zones, setZones]     = useState({});
+  const [loading, setLoading] = useState(true);
+  const [filter, setFilter]   = useState('open');
+  const [resolving, setResolving] = useState(null);
+
+  useEffect(() => {
+    async function load() {
+      setLoading(true);
+      const [{ data: issueData }, { data: zoneData }] = await Promise.all([
+        supabase.from('issues').select('*').order('created_at', { ascending: false }),
+        supabase.from('zones').select('id, name'),
+      ]);
+      if (issueData) setIssues(issueData.map((r) => ({
+        id: r.id, workerId: r.worker_id, zoneId: r.zone_id,
+        type: r.type, comment: r.comment, isResolved: r.is_resolved,
+        resolvedBy: r.resolved_by, createdAt: r.created_at,
+      })));
+      if (zoneData) setZones(Object.fromEntries(zoneData.map((z) => [z.id, z.name])));
+      setLoading(false);
+    }
+    load();
+  }, []);
+
+  const empMap = useMemo(() => Object.fromEntries(employees.map((e) => [e.id, e])), [employees]);
+
+  const counts = useMemo(() => ({
+    open: issues.filter((i) => !i.isResolved).length,
+    resolved: issues.filter((i) => i.isResolved).length,
+    total: issues.length,
+    병해충: issues.filter((i) => !i.isResolved && i.type === '병해충').length,
+  }), [issues]);
+
+  const displayed = useMemo(() => {
+    if (filter === 'open') return issues.filter((i) => !i.isResolved);
+    if (filter === 'resolved') return issues.filter((i) => i.isResolved);
+    return issues;
+  }, [issues, filter]);
+
+  const handleResolve = async (id) => {
+    setResolving(id);
+    const { data } = await supabase.from('issues').update({
+      is_resolved: true,
+      resolved_by: currentUser?.id,
+      resolved_at: new Date().toISOString(),
+    }).eq('id', id).select().single();
+    if (data) setIssues((prev) => prev.map((i) => i.id === id ? { ...i, isResolved: true } : i));
+    setResolving(null);
+  };
+
+  return (
+    <div style={{ flex: 1, overflow: 'auto', background: T.bg, minWidth: 0 }}>
+      <HQPageHeader subtitle="안전 · 이상 관리" title="전 지점 이상 신고" />
+
+      <div style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 20 }}>
+        {/* KPI 카드 */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12 }}>
+          {[
+            { l: '미해결', v: counts.open, tone: T.danger, soft: T.dangerSoft },
+            { l: '해결됨', v: counts.resolved, tone: T.success, soft: T.successSoft },
+            { l: '전체', v: counts.total, tone: HQ.accent, soft: HQ.accentSoft },
+            { l: '병해충 미해결', v: counts.병해충, tone: T.warning, soft: T.warningSoft },
+          ].map((k, i) => (
+            <Card key={i} pad={18} style={{ position: 'relative', overflow: 'hidden' }}>
+              <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 3, background: k.tone }} />
+              <div style={{ fontSize: 12, color: T.muted, fontWeight: 600, marginBottom: 14 }}>{k.l}</div>
+              <div style={{ fontSize: 36, fontWeight: 700, color: T.text, letterSpacing: -1, lineHeight: 1 }}>{k.v}</div>
+              <div style={{ fontSize: 11, color: T.mutedSoft, marginTop: 8 }}>건</div>
+            </Card>
+          ))}
+        </div>
+
+        {/* 목록 카드 */}
+        <Card pad={0}>
+          <div style={{
+            padding: '14px 20px', borderBottom: `1px solid ${T.borderSoft}`,
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          }}>
+            <div style={{ display: 'flex', gap: 4 }}>
+              {[['open', '미해결'], ['resolved', '해결됨'], ['all', '전체']].map(([v, l]) => {
+                const on = filter === v;
+                return (
+                  <span key={v} onClick={() => setFilter(v)} style={{
+                    padding: '6px 12px', borderRadius: 6, fontSize: 12, fontWeight: 600, cursor: 'pointer',
+                    background: on ? HQ.accentSoft : 'transparent',
+                    color: on ? HQ.accentText : T.mutedSoft,
+                    boxShadow: on ? '0 1px 2px rgba(0,0,0,0.06)' : 'none',
+                  }}>{l}</span>
+                );
+              })}
+            </div>
+            <span style={{ fontSize: 12, color: T.mutedSoft }}>{displayed.length}건</span>
+          </div>
+
+          {loading ? (
+            <div style={{ padding: 60, textAlign: 'center', color: T.mutedSoft, fontSize: 13 }}>로딩 중...</div>
+          ) : displayed.length === 0 ? (
+            <div style={{ padding: 60, textAlign: 'center', color: T.mutedSoft, fontSize: 13 }}>
+              {filter === 'open' ? '미해결 이슈 없음' : '신고 내역이 없습니다'}
+            </div>
+          ) : displayed.map((it, idx) => {
+            const emp = empMap[it.workerId];
+            const branch = emp ? (BRANCH_META[emp.branch] || { name: emp.branch, dot: T.muted }) : null;
+            const tm = TYPE_META[it.type] || TYPE_META['기타'];
+            return (
+              <div key={it.id} style={{
+                padding: '16px 20px',
+                borderTop: idx ? `1px solid ${T.borderSoft}` : 'none',
+                borderLeft: it.type === '병해충' && !it.isResolved ? `3px solid ${T.danger}` : '3px solid transparent',
+                background: it.type === '병해충' && !it.isResolved ? 'rgba(220,38,38,0.02)' : T.surface,
+                display: 'flex', alignItems: 'flex-start', gap: 14,
+                opacity: it.isResolved ? 0.65 : 1,
+              }}>
+                <Avatar name={emp?.name?.[0] || '?'} color={it.isResolved ? 'slate' : 'rose'} size={36} />
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6, flexWrap: 'wrap' }}>
+                    <span style={{
+                      fontSize: 10, fontWeight: 700, padding: '2px 7px', borderRadius: 4,
+                      background: tm.soft, color: tm.color,
+                    }}>{it.type}</span>
+                    <span style={{ fontSize: 13, fontWeight: 700, color: T.text }}>{emp?.name || '알 수 없음'}</span>
+                    {branch && (
+                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                        <Dot c={branch.dot} />
+                        <span style={{ fontSize: 11, color: T.muted }}>{branch.name}</span>
+                      </span>
+                    )}
+                    {zones[it.zoneId] && (
+                      <span style={{ fontSize: 11, color: T.mutedSoft }}>· {zones[it.zoneId]}</span>
+                    )}
+                    <span style={{ fontSize: 11, color: T.mutedSoft, marginLeft: 'auto' }}>{fmtAgo(it.createdAt)}</span>
+                  </div>
+                  <div style={{ fontSize: 13, color: T.muted, lineHeight: 1.6 }}>{it.comment || '—'}</div>
+                </div>
+                <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
+                  {it.isResolved ? (
+                    <Pill tone="success"><Dot c={T.success} />해결됨</Pill>
+                  ) : (
+                    <button
+                      onClick={() => handleResolve(it.id)}
+                      disabled={resolving === it.id}
+                      style={{
+                        height: 30, padding: '0 14px', borderRadius: 6, border: 0,
+                        background: resolving === it.id ? T.borderSoft : T.success,
+                        color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer',
+                      }}>
+                      {resolving === it.id ? '처리 중…' : '해결 완료'}
+                    </button>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </Card>
+      </div>
+    </div>
+  );
+}
+
+export { HQPageHeader, HQApprovalsScreen, HQBranchesScreen, HQEmployeesScreen, HQFinanceScreen, HQNoticesScreen, HQIssuesScreen };

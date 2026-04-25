@@ -222,7 +222,7 @@ function HQDashboardScreen() {
             { label: '전사 가동률', value: totalWorkers > 0 ? Math.round(totalCheckedIn / totalWorkers * 100) : 0, unit: '%', sub: gadongyulSub, trend: '—', tone: 'success', to: '/admin/hq/employees' },
             { label: '월 수확량', value: totalHarvest.toLocaleString(), unit: 'kg', sub: harvestSub, trend: '—', tone: 'primary', to: '/admin/hq/finance' },
             { label: '월 인건비', value: '—', unit: '', sub: '집계 없음', trend: '—', tone: 'warning', to: '/admin/hq/finance' },
-            { label: '미해결 이슈', value: openIssues.length, unit: '건', sub: '이상 신고 미해결', trend: '긴급', tone: 'danger', to: null },
+            { label: '미해결 이슈', value: openIssues.length, unit: '건', sub: '이상 신고 미해결', trend: '긴급', tone: 'danger', to: '/admin/hq/issues' },
           ].map((k, i) => {
             const tones = { success: T.success, primary: HQ.accent, warning: T.warning, danger: T.danger };
             const softs = { success: T.successSoft, primary: HQ.accentSoft, warning: T.warningSoft, danger: T.dangerSoft };
@@ -599,7 +599,7 @@ function HQDashboardScreen() {
                 <h3 style={{ fontSize: 14, fontWeight: 700, color: T.text, margin: 0 }}>전 지점 이상 신고</h3>
                 <Pill tone="danger">{openIssues.length}</Pill>
               </div>
-              <span onClick={() => alert('HQ 전용 이상 신고 페이지 준비 중입니다.')} style={{ fontSize: 11, color: HQ.accent, fontWeight: 600, cursor: 'pointer' }}>전체 →</span>
+              <span onClick={() => navigate('/admin/hq/issues')} style={{ fontSize: 11, color: HQ.accent, fontWeight: 600, cursor: 'pointer' }}>전체 →</span>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
               {issueFeed.length === 0 ? (
@@ -609,7 +609,7 @@ function HQDashboardScreen() {
                 const sevBg = { critical: T.dangerSoft, warning: T.warningSoft, info: T.infoSoft }[it.severity];
                 const sevBorder = { critical: T.danger, warning: T.warning, info: T.info }[it.severity];
                 return (
-                  <div key={i} onClick={() => alert('HQ 전용 이상 신고 페이지 준비 중입니다.')} style={{ padding: '10px 12px', background: sevBg, borderRadius: 8, borderLeft: `3px solid ${sevBorder}`, cursor: 'pointer' }}>
+                  <div key={i} onClick={() => navigate('/admin/hq/issues')} style={{ padding: '10px 12px', background: sevBg, borderRadius: 8, borderLeft: `3px solid ${sevBorder}`, cursor: 'pointer' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
                       <Dot c={it.bc} />
                       <span style={{ fontSize: 11, fontWeight: 700, color: T.muted }}>{it.branch}</span>

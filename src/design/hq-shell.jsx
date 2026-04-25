@@ -23,6 +23,8 @@ const HQSidebar = ({ active = 'dashboard', onNavigate }) => {
   const navigate = useNavigate();
   const logout = useAuthStore((s) => s.logout);
   const currentUser = useAuthStore((s) => s.currentUser);
+  const issues = useIssueStore((s) => s.issues);
+  const openIssueCount = issues.filter((i) => !i.isResolved).length;
   const items = [
     { id: 'dashboard', label: '본사 대시보드', icon: icons.dashboard },
     { id: 'branches', label: '지점 관리', icon: icons.location },
@@ -30,6 +32,7 @@ const HQSidebar = ({ active = 'dashboard', onNavigate }) => {
     { id: 'performance', label: '작업자 성과', icon: icons.chart },
     { id: 'growth', label: '지점별 생육', icon: icons.sprout },
     { id: 'approvals', label: '승인 허브', icon: icons.check, badge: 12 },
+    { id: 'issues', label: '이상 신고', icon: icons.alert, badge: openIssueCount || null },
     { id: 'finance', label: '경영 지표', icon: icons.chart },
     { id: 'notice', label: '공지 · 정책', icon: icons.bell },
     { id: 'settings', label: '시스템 설정', icon: icons.settings },

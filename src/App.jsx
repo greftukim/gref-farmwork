@@ -24,7 +24,7 @@ class ErrorBoundary extends Component {
 import { HQDashboardScreen } from './pages/hq/Dashboard';
 import { HQDashboardInteractive } from './pages/hq/DashboardInteractive';
 import { HQGrowthCompareScreen } from './pages/hq/GrowthCompare';
-import { HQApprovalsScreen, HQBranchesScreen, HQEmployeesScreen, HQFinanceScreen, HQNoticesScreen } from './pages/hq/_pages';
+import { HQApprovalsScreen, HQBranchesScreen, HQEmployeesScreen, HQFinanceScreen, HQNoticesScreen, HQIssuesScreen } from './pages/hq/_pages';
 import { FloorPlanScreen } from './pages/FloorPlan';
 import { GrowthDashboardScreen, GrowthHeatmapScreen, GrowthInputScreen, GrowthMarkerDetailScreen } from './pages/Growth';
 import { BranchPerformanceScreen, HQPerformanceScreen, PerformanceCompareScreen, PerformanceDetailScreen } from './pages/Performance';
@@ -231,6 +231,7 @@ export default function App() {
               <Route path="employees" element={<HQEmployeesScreen />} />
               <Route path="finance" element={<HQFinanceScreen />} />
               <Route path="notices" element={<HQNoticesScreen />} />
+              <Route path="issues" element={<HQIssuesScreen />} />
             </Route>
             <Route path="m/home" element={<AdminHomeRoute />} />
             <Route path="m/approve" element={<MobileApprovalScreen />} />

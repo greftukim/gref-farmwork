@@ -2032,3 +2032,45 @@ const d = new Date();
 const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 ```
 - weekDays useMemo, 출퇴근 일자 비교, 일별 집계 모두 동일 패턴 적용.
+
+## 교훈 78 — Playwright 감사 스크립트 재작성 시 섹션 누락 리스크
+
+세션 47에서 세션 46 감사 스크립트를 "축약 리팩토링"하는 과정에서
+Section E~K가 "E-K 축약" 48 log()로 압축되고 Section L(35 log())이 완전 탈락했다.
+세션 46: 231 log() / 149 PASS. 세션 47: 147 log() / 93 PASS. 차이 -84 log() = 미분류가 아니라 탈락.
+
+**Why:** 재작성 시 이전 스크립트 섹션 헤더 목록을 대조하지 않고
+"이 부분은 간단하니까"라고 판단 후 축약 → 회귀 공백 발생.
+
+**How to apply:**
+- 감사 스크립트 재작성 전 `grep "\[SECTION" audit_sessionN.cjs` 로 섹션 목록 추출
+- 재작성 후 섹션 카운트와 log() 총수를 이전 스크립트와 비교 확인
+- 신규 세션 스크립트는 이전 스크립트를 복사 → 신규 섹션 추가 방식 유지
+
+## 교훈 79 — Dashboard 동일 텍스트 다중 요소: Playwright `.first()` 오클릭
+
+HQDashboardScreen에 "전체 →" 스팬이 두 곳(승인허브 line 482, 이슈피드 line 602)에 존재.
+`pageN.locator('text=전체 →').first().click()`은 승인허브 항목을 클릭 → /admin/hq/approvals 이동.
+N-11 WARN 1건 발생. `.nth(1)` 수정 후 PASS 152/0 달성.
+
+**Why:** 동일 텍스트를 여러 섹션에서 재사용할 때 DOM 순서가 중요하지만,
+`.first()`는 아무런 경고 없이 첫 번째 요소를 반환한다.
+
+**How to apply:**
+- 동일 텍스트 링크/버튼이 여러 개 있는 경우 `.nth(index)` 또는
+  부모 스코프 `locator('h3:has-text("섹션제목")').locator('..')`로 범위 한정
+- Playwright 테스트 작성 시 텍스트 검색 전에 해당 텍스트가 화면에 몇 개 존재하는지 확인
+
+## 교훈 80 — zone_id FK: UUID 하드코딩 금지, 실시간 SELECT 필수
+
+issues 시드 INSERT 시 zone_id를 메모리에서 하드코딩(`760ad285-...`)했다가
+실제 zones.id(`760ad29d-...`)와 한 자리 불일치 → FK constraint 위반.
+`SELECT id, name FROM zones` 결과를 직접 복사해 수정 후 해소.
+
+**Why:** UUID는 로컬 메모리 어디에서도 오류 없이 오타가 발생할 수 있다.
+눈으로 검증이 사실상 불가능한 36자리 문자열이다.
+
+**How to apply:**
+- 시드 INSERT의 FK UUID는 항상 `SELECT id FROM table WHERE name='...'` 서브쿼리 경유
+- 하드코딩이 불가피한 경우 INSERT 직전 `SELECT` 결과를 복붙 — 타이핑 금지
+- 교훈 35·37 (DB 상태 의존 값은 직접 조회 우선) 재확인
