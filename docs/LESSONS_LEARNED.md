@@ -1890,3 +1890,19 @@ SAM 기반 효율(작업시간/표준공수 비율) 계산이 불가능하다.
   SAM 연산 소스로 사용 불가.
 - 대안: harvest_records.employee_id → employees.id JOIN이 정상 매핑되어 있으므로
   수확량 기반 지표(harvestPct, stemsWeek)를 efficiency 대리 지표로 활용 가능(세션 40 채택).
+
+## 교훈 70 — Zustand stub 스토어(빈 배열 반환)는 화이트 스크린이 아닌 "데이터 공백"을 유발
+
+`performanceStore`는 `{ performance: [] }` 영구 초기값을 반환하며 DB fetch가 전혀 없었다.
+페이지는 렌더링되지만 KPI 전부 0, 랭킹 테이블 "평가 데이터가 없습니다" 표시 — 사용자 입장에서는
+사실상 화이트 스크린과 동일하다. 세션 36에서 "DB 비어있음"으로 오진해 건너뛴 이유가 여기에 있다.
+
+**Why:** 개발 초기 store를 stub으로 만들고 실제 DB 연결 구현을 미뤘으나, 미구현 상태가
+"정상 동작처럼 보이는 빈 화면"으로 위장되어 진단이 늦어짐.
+
+**How to apply:**
+- 새 Zustand store를 stub으로 만들 때 주석 또는 TODO로 "DB 미연결" 명시.
+- 세션 시작 시 `grep -rn "useState\|create.*=>\|performance:" src/stores` 로
+  fetch 로직 없는 stub 스토어 존재 여부 점검.
+- 해당 컴포넌트가 "빈 화면"을 보인다면 store fetch 존재 여부를 1순위로 확인.
+- stub 스토어가 단일 사용처인 경우 즉시 삭제(performanceStore 선례).

@@ -1,21 +1,41 @@
 // 성과 분석 — /admin/stats
 import React, { useMemo } from 'react';
-import { Avatar, Card, Icon, T, TopBar, icons } from '../../design/primitives';
-import usePerformanceStore from '../../stores/performanceStore';
-import useEmployeeStore from '../../stores/employeeStore';
+import { Avatar, Card, T, TopBar } from '../../design/primitives';
+import { usePerformanceData } from '../../hooks/usePerformanceData';
+import useAuthStore from '../../stores/authStore';
+
+const BRANCH_LABEL = { busan: '부산LAB', jinju: '진주HUB', hadong: '하동HUB' };
 
 export default function StatsPage() {
-  const performance = usePerformanceStore((s) => s.performance);
-  const employees = useEmployeeStore((s) => s.employees);
-  const empMap = useMemo(() => Object.fromEntries(employees.map((e) => [e.id, e])), [employees]);
+  const currentUser = useAuthStore((s) => s.currentUser);
+  const { workers: allWorkers, loading } = usePerformanceData();
 
-  const ranked = useMemo(() => {
-    return [...(performance || [])].sort((a, b) => (b.score || 0) - (a.score || 0));
-  }, [performance]);
+  const workers = useMemo(() => {
+    if (currentUser?.role === 'farm_admin' && currentUser?.branch) {
+      return allWorkers.filter((w) => w.branch === currentUser.branch);
+    }
+    return allWorkers;
+  }, [allWorkers, currentUser]);
 
-  const total = ranked.reduce((s, r) => s + (r.score || 0), 0);
-  const avg = ranked.length ? Math.round(total / ranked.length) : 0;
-  const topScore = ranked[0]?.score || 0;
+  const ranked = useMemo(
+    () => [...workers].sort((a, b) => b.harvestPct - a.harvestPct),
+    [workers],
+  );
+
+  const avgPct = ranked.length
+    ? Math.round(ranked.reduce((s, w) => s + w.harvestPct, 0) / ranked.length)
+    : 0;
+  const topWeekly = ranked.length ? Math.max(...ranked.map((w) => w.stemsWeek)) : 0;
+  const topPct = ranked[0]?.harvestPct || 0;
+
+  if (loading) {
+    return (
+      <div style={{ flex: 1, overflow: 'auto', background: T.bg, minWidth: 0 }}>
+        <TopBar subtitle="분석" title="작업자 성과 분석" />
+        <div style={{ padding: 60, textAlign: 'center', color: T.mutedSoft }}>로딩 중...</div>
+      </div>
+    );
+  }
 
   return (
     <div style={{ flex: 1, overflow: 'auto', background: T.bg, minWidth: 0 }}>
@@ -23,8 +43,8 @@ export default function StatsPage() {
       <div style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 20 }}>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12 }}>
           {[
-            { l: '평균 점수', v: avg, unit: '점', tone: T.primary },
-            { l: '최고 점수', v: topScore, unit: '점', tone: T.success },
+            { l: '평균 수확 성과율', v: avgPct, unit: '%', tone: T.primary },
+            { l: '주간 최고 수확량', v: topWeekly, unit: 'kg/주', tone: T.success },
             { l: '평가 인원', v: ranked.length, unit: '명', tone: T.info },
           ].map((k, i) => (
             <Card key={i} pad={18} style={{ position: 'relative', overflow: 'hidden' }}>
@@ -39,15 +59,14 @@ export default function StatsPage() {
         </div>
 
         <Card pad={0}>
-          <div style={{ padding: '14px 20px', borderBottom: `1px solid ${T.borderSoft}`, fontSize: 13, fontWeight: 700, color: T.text }}>성과 랭킹</div>
+          <div style={{ padding: '14px 20px', borderBottom: `1px solid ${T.borderSoft}`, fontSize: 13, fontWeight: 700, color: T.text }}>수확 성과 랭킹</div>
           {ranked.length === 0 ? (
-            <div style={{ padding: 60, textAlign: 'center', color: T.mutedSoft }}>평가 데이터가 없습니다</div>
-          ) : ranked.map((r, i) => {
-            const emp = empMap[r.employeeId];
-            const pct = topScore ? Math.round(((r.score || 0) / topScore) * 100) : 0;
+            <div style={{ padding: 60, textAlign: 'center', color: T.mutedSoft }}>수확 데이터가 없습니다</div>
+          ) : ranked.map((w, i) => {
+            const pct = topPct ? Math.round((w.harvestPct / topPct) * 100) : 0;
             const medal = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : null;
             return (
-              <div key={r.id || i} style={{
+              <div key={w.id} style={{
                 padding: '14px 20px',
                 borderTop: i ? `1px solid ${T.borderSoft}` : 'none',
                 display: 'flex', alignItems: 'center', gap: 14,
@@ -59,17 +78,22 @@ export default function StatsPage() {
                   fontSize: 13, fontWeight: 700, color: i < 3 ? T.warning : T.muted,
                   fontFamily: 'ui-monospace,monospace',
                 }}>{medal || `#${i + 1}`}</div>
-                <Avatar name={emp?.name || '?'} color="indigo" size={36} />
+                <Avatar name={w.name} color="indigo" size={36} />
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 13, fontWeight: 700, color: T.text, marginBottom: 3 }}>{emp?.name || '—'}</div>
-                  <div style={{ fontSize: 11, color: T.mutedSoft, marginBottom: 5 }}>{emp?.jobType || ''}</div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 3 }}>
+                    <span style={{ fontSize: 13, fontWeight: 700, color: T.text }}>{w.name}</span>
+                    <span style={{
+                      fontSize: 10, fontWeight: 600, padding: '1px 6px', borderRadius: 4,
+                      background: w.bc + '20', color: w.bc,
+                    }}>{BRANCH_LABEL[w.branch] || w.branch}</span>
+                  </div>
                   <div style={{ height: 5, background: T.bg, borderRadius: 3, overflow: 'hidden' }}>
                     <div style={{ width: `${pct}%`, height: '100%', background: i < 3 ? T.warning : T.primary }} />
                   </div>
                 </div>
-                <div style={{ textAlign: 'right', minWidth: 80 }}>
-                  <div style={{ fontSize: 22, fontWeight: 700, color: T.text, letterSpacing: -0.4, fontFamily: 'ui-monospace,monospace', lineHeight: 1 }}>{r.score || 0}</div>
-                  <div style={{ fontSize: 10, color: T.mutedSoft, marginTop: 3 }}>점 · {r.taskCount || 0}건</div>
+                <div style={{ textAlign: 'right', minWidth: 90 }}>
+                  <div style={{ fontSize: 22, fontWeight: 700, color: T.text, letterSpacing: -0.4, fontFamily: 'ui-monospace,monospace', lineHeight: 1 }}>{w.harvestPct}</div>
+                  <div style={{ fontSize: 10, color: T.mutedSoft, marginTop: 3 }}>% · {w.stemsWeek}kg/주</div>
                 </div>
               </div>
             );
