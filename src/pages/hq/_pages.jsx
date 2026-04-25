@@ -920,6 +920,111 @@ function HQNoticesScreen() {
 // ═══════════════════════════════════════════════════════════
 function HQFinanceScreen() {
   const [period, setPeriod] = useState('YTD');
+  const [monthlyData, setMonthlyData] = useState([]);
+  const [budgets, setBudgets] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function load() {
+      const [{ data: m }, { data: b }] = await Promise.all([
+        supabase.from('finance_monthly').select('*, branches(name, code)').order('year,month'),
+        supabase.from('finance_budgets').select('*, branches(name, code)'),
+      ]);
+      setMonthlyData(m || []);
+      setBudgets(b || []);
+      setLoading(false);
+    }
+    load();
+  }, []);
+
+  const now = new Date();
+  const currentYear = now.getFullYear();
+  const currentMonth = now.getMonth() + 1;
+  const currentQuarter = Math.ceil(currentMonth / 3);
+
+  const filteredData = useMemo(() => {
+    if (!monthlyData.length) return [];
+    switch (period) {
+      case 'MTD':
+        return monthlyData.filter(r => r.year === currentYear && r.month === currentMonth);
+      case 'QTD': {
+        const q1 = (currentQuarter - 1) * 3 + 1;
+        return monthlyData.filter(r => r.year === currentYear && r.month >= q1 && r.month <= currentQuarter * 3);
+      }
+      case 'YTD':
+        return monthlyData.filter(r => r.year === currentYear && r.month <= currentMonth);
+      case '2025':
+        return monthlyData.filter(r => r.year === 2025);
+      default:
+        return monthlyData;
+    }
+  }, [monthlyData, period, currentYear, currentMonth, currentQuarter]);
+
+  const totalRevenue = filteredData.reduce((s, r) => s + (r.revenue || 0), 0);
+  const totalLabor   = filteredData.reduce((s, r) => s + (r.labor_cost || 0), 0);
+  const totalCost    = filteredData.reduce((s, r) =>
+    s + (r.labor_cost || 0) + (r.material_cost || 0) + (r.energy_cost || 0) +
+    (r.maintenance_cost || 0) + (r.training_cost || 0) + (r.other_cost || 0), 0);
+  const profitRate   = totalRevenue > 0
+    ? ((totalRevenue - totalCost) / totalRevenue * 100).toFixed(1)
+    : '—';
+
+  const budgetYear = period === '2025' ? 2025 : currentYear;
+  const laborBudget = budgets
+    .filter(b => b.category === 'labor' && b.year === budgetYear)
+    .reduce((s, b) => s + (b.budget_amount || 0), 0);
+  const laborExecPct = laborBudget > 0 ? Math.round(totalLabor / laborBudget * 100) : null;
+
+  const kpiCards = loading
+    ? [
+        { l: '누적 수확액',   v: '…', u: '', sub: '로딩 중…', tone: T.success,   bg: T.successSoft, trend: '…' },
+        { l: '누적 인건비',   v: '…', u: '', sub: '로딩 중…', tone: T.warning,   bg: T.warningSoft, trend: '…' },
+        { l: '영업 이익률',   v: '…', u: '', sub: '로딩 중…', tone: HQ.accent,   bg: HQ.accentSoft, trend: '…' },
+        { l: 'kg당 생산원가', v: '—', u: '', sub: 'Phase 2 예정', tone: T.mutedSoft, bg: T.borderSoft, trend: 'P2' },
+      ]
+    : [
+        {
+          l: '누적 수확액',
+          v: totalRevenue >= 100000000
+            ? (totalRevenue / 100000000).toFixed(1)
+            : Math.round(totalRevenue / 10000).toLocaleString(),
+          u: totalRevenue >= 100000000 ? '억원' : '만원',
+          sub: `${filteredData.length}개월 합산 매출`,
+          tone: T.success, bg: T.successSoft,
+          trend: totalRevenue >= 100000000
+            ? `${(totalRevenue / 100000000).toFixed(1)}억`
+            : `${Math.round(totalRevenue / 10000).toLocaleString()}만`,
+        },
+        {
+          l: '누적 인건비',
+          v: Math.round(totalLabor / 10000).toLocaleString(),
+          u: '만원',
+          sub: laborExecPct !== null
+            ? `예산 ${Math.round(laborBudget / 10000).toLocaleString()}만원 · ${laborExecPct}%`
+            : '예산 미등록',
+          tone: T.warning, bg: T.warningSoft,
+          trend: `${Math.round(totalLabor / 10000).toLocaleString()}만`,
+        },
+        {
+          l: '영업 이익률',
+          v: profitRate,
+          u: profitRate !== '—' ? '%' : '',
+          sub: totalRevenue > 0
+            ? `수익 ${Math.round((totalRevenue - totalCost) / 10000).toLocaleString()}만원`
+            : '데이터 없음',
+          tone: HQ.accent, bg: HQ.accentSoft,
+          trend: profitRate !== '—' ? `${profitRate}%` : '—',
+        },
+        {
+          l: 'kg당 생산원가',
+          v: '—',
+          u: '',
+          sub: 'Phase 2 집계 예정',
+          tone: T.mutedSoft, bg: T.borderSoft,
+          trend: 'Phase 2',
+        },
+      ];
+
   return (
     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
       <HQPageHeader
@@ -948,14 +1053,9 @@ function HQFinanceScreen() {
         }
       />
       <div style={{ flex: 1, overflow: 'auto', padding: 24, background: T.bg, display: 'flex', flexDirection: 'column', gap: 16 }}>
-        {/* 핵심 KPI */}
+        {/* 핵심 KPI — Phase 1: 수확액/인건비/이익률 실데이터, kg당 원가 Phase 2 */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12 }}>
-          {[
-            { l: '누적 수확액', v: '4.2', u: '억원', sub: '▲ 전년 대비 +18%', tone: T.success, bg: T.successSoft, trend: '+18%' },
-            { l: '누적 인건비', v: '8,420', u: '만원', sub: '예산 9,200만원 · 91%', tone: T.warning, bg: T.warningSoft, trend: '−3.2%' },
-            { l: '영업 이익률', v: 23.4, u: '%', sub: '▲ 전분기 대비 +2.1%p', tone: HQ.accent, bg: HQ.accentSoft, trend: '+2.1%p' },
-            { l: 'kg당 생산원가', v: '2,740', u: '원', sub: '▼ 6% 개선', tone: T.success, bg: T.successSoft, trend: '▼ 6%' },
-          ].map((k, i) => (
+          {kpiCards.map((k, i) => (
             <Card key={i} pad={18} style={{ position: 'relative' }}>
               <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 3, background: k.tone }} />
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
