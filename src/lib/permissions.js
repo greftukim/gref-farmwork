@@ -10,6 +10,7 @@ export const ROLES = {
 
 // 역할 그룹
 export const ADMIN_ROLES = ['farm_admin', 'hr_admin', 'supervisor', 'master', 'general'];
+export const HQ_ROLES    = ['hr_admin', 'supervisor', 'master', 'general'];       // HQ 전용 (farm_admin 제외)
 export const ALL_BRANCH_ROLES = ['hr_admin', 'supervisor', 'master', 'general']; // 전체 지점 조회
 export const WRITE_ROLES = ['farm_admin', 'hr_admin', 'master'];      // 수정 권한
 export const HR_CRUD_ROLES = ['hr_admin', 'master'];                   // 직원 CRUD

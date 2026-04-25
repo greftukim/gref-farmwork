@@ -1,7 +1,7 @@
 import { useState, useEffect, Component } from 'react';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, Outlet } from 'react-router-dom';
 import useAuthStore from './stores/authStore';
-import { ADMIN_ROLES, isFarmAdmin, isAdminLevel } from './lib/permissions';
+import { ADMIN_ROLES, HQ_ROLES, isFarmAdmin, isAdminLevel } from './lib/permissions';
 
 class ErrorBoundary extends Component {
   constructor(props) { super(props); this.state = { error: null }; }
@@ -125,12 +125,12 @@ function HydrationGate({ children }) {
   return children;
 }
 
-function ProtectedRoute({ children, allowedRoles }) {
+function ProtectedRoute({ children, allowedRoles, redirectTo = '/login' }) {
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
   const currentUser = useAuthStore((s) => s.currentUser);
   if (!isAuthenticated || !currentUser) return <Navigate to="/login" replace />;
   if (allowedRoles && !allowedRoles.includes(currentUser.role)) {
-    return <Navigate to="/login" replace />;
+    return <Navigate to={redirectTo} replace />;
   }
   return children;
 }
@@ -218,15 +218,20 @@ export default function App() {
             <Route path="performance" element={<BranchPerformanceScreen />} />
             <Route path="performance/detail" element={<PerformanceDetailScreen />} />
             <Route path="performance/compare" element={<PerformanceCompareScreen />} />
-            <Route path="hq" element={<HQDashboardScreen />} />
-            <Route path="hq/interactive" element={<HQDashboardInteractive />} />
-            <Route path="hq/growth" element={<HQGrowthCompareScreen />} />
-            <Route path="hq/performance" element={<HQPerformanceScreen />} />
-            <Route path="hq/approvals" element={<HQApprovalsScreen />} />
-            <Route path="hq/branches" element={<HQBranchesScreen />} />
-            <Route path="hq/employees" element={<HQEmployeesScreen />} />
-            <Route path="hq/finance" element={<HQFinanceScreen />} />
-            <Route path="hq/notices" element={<HQNoticesScreen />} />
+            {/* HQ 전용 라우트 — farm_admin 직접 URL 접근 차단 (PROTECTED-ROUTE-001) */}
+            <Route path="hq" element={
+              <ProtectedRoute allowedRoles={HQ_ROLES} redirectTo="/admin"><Outlet /></ProtectedRoute>
+            }>
+              <Route index element={<HQDashboardScreen />} />
+              <Route path="interactive" element={<HQDashboardInteractive />} />
+              <Route path="growth" element={<HQGrowthCompareScreen />} />
+              <Route path="performance" element={<HQPerformanceScreen />} />
+              <Route path="approvals" element={<HQApprovalsScreen />} />
+              <Route path="branches" element={<HQBranchesScreen />} />
+              <Route path="employees" element={<HQEmployeesScreen />} />
+              <Route path="finance" element={<HQFinanceScreen />} />
+              <Route path="notices" element={<HQNoticesScreen />} />
+            </Route>
             <Route path="m/home" element={<AdminHomeRoute />} />
             <Route path="m/approve" element={<MobileApprovalScreen />} />
             <Route path="m/floor" element={<MobileFloorScreen />} />
