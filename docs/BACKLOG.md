@@ -137,7 +137,7 @@
 | HQ-NOTICES-META-001 | 데이터 보완 | open | 세션 22 (2026-04-22) | - | HQNoticesScreen 열람률·만료일·대상 — notices 테이블에 해당 컬럼 없음. read:0·readPct:0·expires:'상시' 기본값 표시 중. 컬럼 신설 시 마이그레이션 필요. | docs/BACKLOG.md |
 | HQ-FINANCE-001 | 데이터 보완 | open | 세션 22 (2026-04-22) | - | HQFinanceScreen 전체(수익/비용/이익률/예산 등) — DB 소스 없음. 완전 하드코딩 상태. 재무 트랙 별 신설 또는 wontfix 결정 필요. | docs/BACKLOG.md |
 | HQ-GROWTH-001 | 재연결 | open | 세션 22 (2026-04-22) | - | GrowthCompare.jsx 실데이터 연결 — HQ_GR_DATA 완전 하드코딩, growth_surveys 테이블 직접 매핑 복잡. 집계 쿼리 설계 후 별 세션 처리. | docs/BACKLOG.md |
-| HQ-PERFORMANCE-001 | 재연결 | open | 세션 22 (2026-04-22) | - | Performance.jsx 실데이터 전면 교체 — usePerformanceData는 sam_standards만 fetch, 실 성과 데이터(daily_work_logs + SAM 집계) 모두 하드코딩. 집계 로직 설계 후 별 세션 처리. | docs/BACKLOG.md |
+| HQ-PERFORMANCE-001 | 재연결 | resolved | 세션 22 (2026-04-22) 등록 → 세션 40 (2026-04-25) 해소 | - | FARM-PERF-DATA-001과 동일 세션 해소. HQPerformanceScreen early return 제거 + harvest_records 집계 + jhkim(hr_admin) 접근 Playwright 확인. Playwright B-3 PASS. | docs/HANDOVER_PHASE5_SESSION40.md |
 | HQ-DASHBOARD-INTERACTIVE-001 | 재연결 | open | 세션 22 (2026-04-22) | - | DashboardInteractive.jsx (801줄) 실데이터 연결 — 0 store imports, path="hq/interactive" 라우트 존재 확인됨. 규모가 크므로 별 세션에서 단독 처리 권장. | docs/BACKLOG.md |
 | PROTECTED-ROUTE-001 | UX | open | 세션 21 (2026-04-22) | - | role 기반 라우트 가드 확장 — 현재 LoginPage에서만 분기, URL 직접 입력 시 차단 없음. master/hr_admin의 /admin/* 직접 접근, farm_admin의 /admin/hq 직접 접근 등 가능. ProtectedRoute 신규 작성 검토. | docs/BACKLOG.md |
 | DASHBOARD-PHASE2-001 | 재연결 | open | 세션 21 (2026-04-22) | - | AdminDashboard 주간 성과 그래프 + 주간 스케줄 실데이터 연결. 현재 하드코딩 유지 중 (Phase 2 예정). | docs/BACKLOG.md |
@@ -183,7 +183,7 @@
 | FARM-GROWTH-DB-001 | 데이터 재연결 | resolved | 세션 31 등록 → 세션 38 (2026-04-24) 해소 | - | useGrowthData 훅 전면 재작성(buildCrops/buildTimeseries/buildMarkerPlants). crops.category·growth_surveys.week_number·marker_plants.marker_number 컬럼 추가. branch_crop_sample_config 신규 테이블 + 샘플 설정 UI. 시드 15 marker_plants × 8주 = 120 surveys. 화이트 스크린 해소. Playwright PASS 26/26. 커밋 세션 38. | docs/BACKLOG.md |
 | GROWTH-SURVEYS-001 | 데이터 연결 | resolved | 세션 38 (2026-04-24) | - | FARM-GROWTH-DB-001 구현 세부. DDL(4 알터/신규 테이블) + 시드(DELETE 196건 + INSERT 135건) + 훅 재작성 + 샘플 설정 UI. | docs/BACKLOG.md |
 | GROWTH-INPUT-SESSION39-001 | 기능 미구현 | resolved | 세션 38 (2026-04-24) 등록 → 세션 39 (2026-04-24) 해소 | P2 | GrowthInputScreen 제어 입력 + handleSubmit + 권한 분기 구현. selectedWeek null-초기화로 초기 렌더 flash 제거. p.dbId를 React key로 교체(중복 key 경고 해소). addSurvey에 markerPlantId/weekNumber/cropId 추가. Playwright PASS 24/24. | docs/BACKLOG.md |
-| FARM-PERF-DATA-001 | 데이터 재연결 | open | 세션 31 (2026-04-24) | - | Performance.jsx 하드코딩(PERF_DATA, SAM 테이블). HQ-PERFORMANCE-001(Performance.jsx HQ 뷰)과 동일 파일·패턴. 별 트랙. | docs/AUDIT_SESSION31_FARM.md |
+| FARM-PERF-DATA-001 | 데이터 재연결 | resolved | 세션 31 (2026-04-24) 등록 → 세션 40 (2026-04-25) 해소 | - | usePerformanceData 훅 전면 재작성(employees + harvest_records 집계). PERF_DATA·SAM 하드코딩 제거. early return 4건 제거. BRANCHES/CROPS_LIST 상수화. 라벨 변경(efficiency→수확 성과율, speedStem→주간 수확량 kg/주). Playwright PASS 49/49. 커밋 세션 40. | docs/HANDOVER_PHASE5_SESSION40.md |
 | FARM-HQ-NOTICE-001 | HQ 연동 | open | 세션 31 (2026-04-24) | - | noticeStore는 HQ·farm 공용 notices 테이블 사용. DB 0건이라 양쪽 연동 동작 미검증. DB 공지 1건 삽입 후 양쪽 UI 확인으로 빠른 검증 가능. | docs/AUDIT_SESSION31_FARM.md |
 | WORKER-M-STATIC-001 | 데이터 재연결 | resolved | 세션 33 (2026-04-24) 등록 → 세션 35 (2026-04-24) 해소 | - | 4개 화면 스토어 연결 완료. useAuthStore(currentUser)/useAttendanceStore/useLeaveStore 연결. 이름·날짜·근무시간 동적화, 주간 요약·최근 5일·월 달력·신청 이력 실데이터. Playwright PASS 29/29. 커밋 402baa4. | docs/BACKLOG.md |
 | MOBILE-LOGOUT-001 | 버그 수정 | resolved | 세션 36 (2026-04-24) 발견 → 세션 36 해소 | - | MobileProfileScreen 로그아웃 버튼 onClick 누락. useNavigate 미임포트 + logout 훅 미선언. _screens.jsx에 useNavigate import 추가, MobileProfileScreen 최상위에 logout/navigate 선언, button onClick 연결. 양 사이드바(primitives·hq-shell)도 로그아웃 아이콘만 있던 것을 "로그아웃" 텍스트 레이블 버튼으로 개선. | docs/BACKLOG.md |
@@ -193,6 +193,7 @@
 | GROWTH-EMPTY-STATE-001 | 진단 | resolved (스킵) | 세션 36 (2026-04-24) | - | /admin/growth·performance·stats "화이트 스크린" 신고. 진단 결과: DB 빈 상태 → 코드 정상 동작. standard_curves·marker_plants·growth_surveys·performance 데이터 없음. 코드 수정 불필요. FARM-GROWTH-DB-001·FARM-PERF-DATA-001 트랙으로 이관. 교훈 62 추가. | docs/BACKLOG.md |
 | SCHEDULE-PAGE-S37-001 | UI 이식 | resolved | 세션 37 (2026-04-24) | - | SchedulePage.jsx 전면 재작성. 목업(screen-others.jsx ScheduleScreen) 구조 이식. 일간/주간/월간 3뷰, ‹/› 날짜 네비게이션, 타임라인 Gantt (tasks.started_at/completed_at 기반), NOW 선(실시간), 점심 해치, approved leave → warningSolid 풀바, 월간 캘린더. TopBar: 출퇴근 기록 navigate + 스케줄 등록 alert. Playwright PASS 30/31. 커밋 예정. | docs/BACKLOG.md |
 | SCHED-REGISTER-001 | 기능 미구현 | open | 세션 37 (2026-04-24) | P3 | "스케줄 등록" 버튼 — 현재 alert("준비 중") 처리. 스케줄 수동 등록 모달(작업자·날짜·시간·작업유형) 구현 필요. tasks 테이블 insert 활용. | docs/BACKLOG.md |
+| TASKS-WORKER-ID-MISMATCH-001 | 데이터 정합 | open | 세션 40 (2026-04-25) | P2 | tasks.worker_id가 삭제된 시드_작업자01~03 UUID에만 연결됨 — 현재 활성 직원(employees.id)과 매핑 없음. tasks 296건 전부 고아 상태. SAM 기반 efficiency 계산 불가 원인. 해소 방법: (1) tasks.worker_id → employees.id 마이그레이션 UPDATE, 또는 (2) 신규 작업 등록 시 실 직원 연결 로직 구현. 우선 후자(SCHED-REGISTER-001) 선행 후 자연스럽게 해소. | docs/BACKLOG.md |
 
 ---
 

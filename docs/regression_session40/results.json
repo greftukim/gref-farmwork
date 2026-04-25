@@ -1,0 +1,302 @@
+{
+  "pass": 49,
+  "fail": 0,
+  "warn": 0,
+  "total": 49,
+  "results": [
+    {
+      "test": "LOGIN",
+      "status": "PASS",
+      "title": "jhkim 로그인",
+      "detail": "http://localhost:5173/admin/hq"
+    },
+    {
+      "test": "PERF-BRANCH",
+      "status": "PASS",
+      "title": "BranchPerformanceScreen 로딩 완료",
+      "detail": ""
+    },
+    {
+      "test": "PERF-BRANCH",
+      "status": "PASS",
+      "title": "화이트 스크린 없음",
+      "detail": ""
+    },
+    {
+      "test": "PERF-BRANCH",
+      "status": "PASS",
+      "title": "성과 관리 타이틀 표시",
+      "detail": ""
+    },
+    {
+      "test": "PERF-BRANCH-DATA",
+      "status": "PASS",
+      "title": "작업자 순위 테이블 12행 (실 DB 연결 확인)",
+      "detail": ""
+    },
+    {
+      "test": "PERF-BRANCH-DATA",
+      "status": "PASS",
+      "title": "KPI 카드 표시: 평균 수확 성과율",
+      "detail": ""
+    },
+    {
+      "test": "PERF-BRANCH-DATA",
+      "status": "PASS",
+      "title": "KPI 카드 표시: 평균 수확 달성률",
+      "detail": ""
+    },
+    {
+      "test": "PERF-BRANCH-DATA",
+      "status": "PASS",
+      "title": "KPI 카드 표시: 목표 달성 인원",
+      "detail": ""
+    },
+    {
+      "test": "PERF-BRANCH-DATA",
+      "status": "PASS",
+      "title": "KPI 카드 표시: 평균 출근률",
+      "detail": ""
+    },
+    {
+      "test": "PERF-HQ",
+      "status": "PASS",
+      "title": "HQPerformanceScreen 로딩 완료",
+      "detail": ""
+    },
+    {
+      "test": "PERF-HQ",
+      "status": "PASS",
+      "title": "HQ 화이트 스크린 없음",
+      "detail": ""
+    },
+    {
+      "test": "PERF-HQ",
+      "status": "PASS",
+      "title": "HQ 성과 관리 타이틀 표시",
+      "detail": ""
+    },
+    {
+      "test": "PERF-HQ",
+      "status": "PASS",
+      "title": "jhkim(hr_admin) → HQ 성과 페이지 접근 허용 확인 (HQ-PERFORMANCE-001)",
+      "detail": ""
+    },
+    {
+      "test": "PERF-HQ-DATA",
+      "status": "PASS",
+      "title": "HQ 전사 순위 테이블 30행",
+      "detail": ""
+    },
+    {
+      "test": "PERF-HQ-DATA",
+      "status": "PASS",
+      "title": "Top 5 카드 표시: 수확 성과율 Top 5",
+      "detail": ""
+    },
+    {
+      "test": "PERF-HQ-DATA",
+      "status": "PASS",
+      "title": "Top 5 카드 표시: 수확 달성률 Top 5",
+      "detail": ""
+    },
+    {
+      "test": "PERF-HQ-DATA",
+      "status": "PASS",
+      "title": "Top 5 카드 표시: 주간 수확량 Top 5",
+      "detail": ""
+    },
+    {
+      "test": "PERF-HQ-DATA",
+      "status": "PASS",
+      "title": "지점 데이터 표시: 부산LAB",
+      "detail": ""
+    },
+    {
+      "test": "PERF-HQ-DATA",
+      "status": "PASS",
+      "title": "지점 데이터 표시: 진주HUB",
+      "detail": ""
+    },
+    {
+      "test": "PERF-HQ-DATA",
+      "status": "PASS",
+      "title": "지점 데이터 표시: 하동HUB",
+      "detail": ""
+    },
+    {
+      "test": "PERF-DETAIL",
+      "status": "PASS",
+      "title": "PerformanceDetailScreen 로딩 완료",
+      "detail": ""
+    },
+    {
+      "test": "PERF-DETAIL",
+      "status": "PASS",
+      "title": "Detail 화이트 스크린 없음",
+      "detail": ""
+    },
+    {
+      "test": "PERF-DETAIL",
+      "status": "PASS",
+      "title": "PerformanceDetailScreen 작업자 헤더 표시",
+      "detail": ""
+    },
+    {
+      "test": "PERF-DETAIL",
+      "status": "PASS",
+      "title": "Detail KPI 표시: 수확 성과율",
+      "detail": ""
+    },
+    {
+      "test": "PERF-DETAIL",
+      "status": "PASS",
+      "title": "Detail KPI 표시: 수확 달성률",
+      "detail": ""
+    },
+    {
+      "test": "PERF-DETAIL",
+      "status": "PASS",
+      "title": "Detail KPI 표시: 주간 수확량",
+      "detail": ""
+    },
+    {
+      "test": "PERF-DETAIL",
+      "status": "PASS",
+      "title": "Detail KPI 표시: 출근률",
+      "detail": ""
+    },
+    {
+      "test": "PERF-COMPARE",
+      "status": "PASS",
+      "title": "PerformanceCompareScreen 로딩 완료",
+      "detail": ""
+    },
+    {
+      "test": "PERF-COMPARE",
+      "status": "PASS",
+      "title": "Compare 화이트 스크린 없음",
+      "detail": ""
+    },
+    {
+      "test": "PERF-COMPARE",
+      "status": "PASS",
+      "title": "Compare 타이틀 표시",
+      "detail": ""
+    },
+    {
+      "test": "PERF-COMPARE",
+      "status": "PASS",
+      "title": "비교 테이블 수확 성과율 항목 표시",
+      "detail": ""
+    },
+    {
+      "test": "PERF-LABEL-CHANGE",
+      "status": "PASS",
+      "title": "\"주간 수확량 Top 5\" 라벨 변경 확인",
+      "detail": ""
+    },
+    {
+      "test": "PERF-LABEL-CHANGE",
+      "status": "PASS",
+      "title": "\"수확 성과율 Top 5\" 라벨 변경 확인",
+      "detail": ""
+    },
+    {
+      "test": "PERF-LABEL-CHANGE",
+      "status": "PASS",
+      "title": "구 라벨(\"종합 효율 Top 5\", \"작업 속도 Top 5\") 제거 확인",
+      "detail": ""
+    },
+    {
+      "test": "REGRESSION-GROWTH-INPUT",
+      "status": "PASS",
+      "title": "GrowthInputScreen 로딩 완료",
+      "detail": ""
+    },
+    {
+      "test": "REGRESSION-GROWTH-INPUT",
+      "status": "PASS",
+      "title": "생육 입력 타이틀 유지",
+      "detail": ""
+    },
+    {
+      "test": "REGRESSION-GROWTH-DASH",
+      "status": "PASS",
+      "title": "생육 대시보드 화이트 스크린 없음",
+      "detail": ""
+    },
+    {
+      "test": "REGRESSION-GROWTH-TABS",
+      "status": "PASS",
+      "title": "작물 탭 유지: 토마토",
+      "detail": ""
+    },
+    {
+      "test": "REGRESSION-GROWTH-TABS",
+      "status": "PASS",
+      "title": "작물 탭 유지: 오이",
+      "detail": ""
+    },
+    {
+      "test": "REGRESSION-GROWTH-TABS",
+      "status": "PASS",
+      "title": "작물 탭 유지: 파프리카",
+      "detail": ""
+    },
+    {
+      "test": "REGRESSION-GROWTH-KPI",
+      "status": "PASS",
+      "title": "생육 KPI 유지: 이번 주 생장",
+      "detail": ""
+    },
+    {
+      "test": "REGRESSION-GROWTH-KPI",
+      "status": "PASS",
+      "title": "생육 KPI 유지: 화방 높이",
+      "detail": ""
+    },
+    {
+      "test": "REGRESSION-GROWTH-KPI",
+      "status": "PASS",
+      "title": "생육 KPI 유지: 누적 착과",
+      "detail": ""
+    },
+    {
+      "test": "REGRESSION-GROWTH-KPI",
+      "status": "PASS",
+      "title": "생육 KPI 유지: 작기 진행",
+      "detail": ""
+    },
+    {
+      "test": "REGRESSION-MAIN-DASHBOARD",
+      "status": "PASS",
+      "title": "BUG-F01 부동소수점 회귀 없음",
+      "detail": ""
+    },
+    {
+      "test": "REGRESSION-SCHEDULE",
+      "status": "PASS",
+      "title": "근무 관리 타이틀 유지",
+      "detail": ""
+    },
+    {
+      "test": "REGRESSION-SCHEDULE",
+      "status": "PASS",
+      "title": "타임라인 시간 헤더 유지",
+      "detail": ""
+    },
+    {
+      "test": "REGRESSION-HQ-DASHBOARD",
+      "status": "PASS",
+      "title": "HQ 대시보드 표시",
+      "detail": ""
+    },
+    {
+      "test": "REGRESSION-CONSOLE",
+      "status": "PASS",
+      "title": "중요 콘솔 에러 0건",
+      "detail": ""
+    }
+  ]
+}

@@ -1862,3 +1862,31 @@ crops 탭에서 모든 지점 식물이 합쳐질 때 중복 key 경고 43건이
 **How to apply:**
 - `<tr key={p.dbId}>` — DB UUID(항상 고유)를 key로 사용, displayId는 셀 안에서 `{p.id}`로 표시.
 - 이 패턴을 Growth.jsx 내 모든 plants.map() 에 일괄 적용하면 경고 완전 제거.
+
+## 교훈 68 — early return 뒤에 숨은 크래시: 제거 전 dead code 전수 점검
+
+`Performance.jsx` 4개 화면 함수가 각각 `return <div>데이터가 없습니다</div>`를 함수 맨 앞에
+두어 이후 코드 전체를 dead code로 만들었다. 그 아래에 `PERF_DATA`, `SAM` 등 import되지 않은
+변수 참조가 수십 곳 있었다 — early return이 없었다면 런타임에서 즉각 크래시.
+
+**Why:** 개발 편의상 "일단 early return으로 막아두고 나중에 구현"하는 패턴이 장기간 방치되면,
+그 아래 dead code는 린터도 컴파일러도 건드리지 않으므로 크래시 위험이 축적된다.
+
+**How to apply:**
+- early return을 제거하기 전 반드시 해당 함수 전체를 읽고 `undefined` 참조 가능성 확인.
+- 특히 import 목록에 없는 전역 변수(`PERF_DATA`, `SAM` 등) 참조를 grep으로 확인.
+- 제거 후 즉시 빌드 검증(`npx vite build`) — 런타임 전에 참조 오류 발견 가능.
+
+## 교훈 69 — tasks.worker_id가 시드 UUID에만 연결되어 SAM 기반 efficiency 계산 불가
+
+`tasks` 테이블 296건의 `worker_id`가 J-CLEANUP-DEEP-001(세션 26)에서 삭제된
+`시드_작업자01~03` UUID에 연결되어 있다. 활성 직원 `employees.id`와 매핑이 없으므로
+SAM 기반 효율(작업시간/표준공수 비율) 계산이 불가능하다.
+
+**Why:** 시드 데이터 삽입 시 실 직원과의 JOIN 경로를 고려하지 않고 임시 UUID를 사용했기 때문.
+
+**How to apply:**
+- 시드 작업자 데이터를 사용한 tasks는 신규 작업 등록(SCHED-REGISTER-001) 완료 전까지
+  SAM 연산 소스로 사용 불가.
+- 대안: harvest_records.employee_id → employees.id JOIN이 정상 매핑되어 있으므로
+  수확량 기반 지표(harvestPct, stemsWeek)를 efficiency 대리 지표로 활용 가능(세션 40 채택).
