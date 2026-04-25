@@ -138,7 +138,7 @@ export default function SchedulePage() {
     tasks
       .filter((t) => t.date === selDateStr)
       .forEach((t) => {
-        if (!result[t.workerId]) return;
+        if (!result[t.workerId]) return; // workers = is_active=true 만 포함, 비활성 작업자 태스크 무시
         let s = tsOffset(t.startedAt);
         if (s === null) return; // not started yet — skip
         let e = tsOffset(t.completedAt);
