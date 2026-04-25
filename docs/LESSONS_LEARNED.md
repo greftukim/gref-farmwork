@@ -1906,3 +1906,31 @@ SAM 기반 효율(작업시간/표준공수 비율) 계산이 불가능하다.
   fetch 로직 없는 stub 스토어 존재 여부 점검.
 - 해당 컴포넌트가 "빈 화면"을 보인다면 store fetch 존재 여부를 1순위로 확인.
 - stub 스토어가 단일 사용처인 경우 즉시 삭제(performanceStore 선례).
+
+## 교훈 71 — Playwright 스크립트 내 하드코딩 WARN은 테스트 부채로 굳는다
+
+E-4에서 `log('WARN', 'farm_admin 지점 분기: 세션 I에서 hdkim 직접 테스트')` 구문이
+다음 세션까지 WARN으로 집계되어 "WARN 1건"이 인수인계 항목으로 승격됐다.
+실제로 Section I에서 hdkim 접근 여부만 확인했고 지점 필터 실증은 미완이었다.
+
+**Why:** 검증 구현이 어렵거나 별 컨텍스트가 필요한 경우 임시로 WARN 하드코딩 처리하는
+관행이 생겼고, 이것이 다음 세션까지 WARN으로 보고됨.
+
+**How to apply:**
+- Playwright 스크립트에 `log('WARN', ...)` 하드코딩 금지. 모든 WARN은 런타임 조건 분기로만 생성.
+- 검증이 어려운 시나리오는 별도 컨텍스트(새 browser context)를 열어서 실측하거나,
+  SKIP으로 처리하되 주석에 사유 명시.
+
+## 교훈 72 — RLS enabled + 정책 0건 = deny-all 무증상 실패
+
+`branch_work_schedule_config` 테이블은 세션 42에서 `ALTER TABLE ... ENABLE ROW LEVEL SECURITY`
+상태로 생성됐으나 정책이 하나도 없었다. 프론트엔드에서 Supabase 쿼리를 날리면 에러도 없이
+빈 결과(data=null)가 반환되어 "RLS 차단"임을 즉각 알 수 없다.
+
+**Why:** 마이그레이션에서 RLS 활성화만 하고 정책 추가를 별 세션에 미루면,
+프론트엔드 코드 작성 시 DB 접근 불가 상태로 디버깅이 어려워진다.
+
+**How to apply:**
+- 새 테이블 생성 마이그레이션에는 `ENABLE ROW LEVEL SECURITY` + 최소한 SELECT 정책을 함께 포함.
+- 세션 시작 시 "어제 만든 테이블인데 데이터가 안 보인다"면 즉시 `pg_policies` 조회로 정책 유무 확인.
+- 정책 없는 테이블에서 anon/authenticated 쿼리가 빈 결과를 반환하는 것은 에러가 아닌 정상 동작.
