@@ -37,6 +37,16 @@ const useNoticeStore = create((set) => ({
     }
   },
 
+  // DB에 read_by 컬럼 미존재 — 세션 내 로컬 읽음 처리만 수행
+  markRead: (id, userId) => {
+    if (!userId) return;
+    set((s) => ({
+      notices: s.notices.map((n) =>
+        n.id === id ? { ...n, readBy: [...(n.readBy || []), userId] } : n
+      ),
+    }));
+  },
+
   deleteNotice: async (id) => {
     const { error } = await supabase.from('notices').delete().eq('id', id);
     if (!error) {

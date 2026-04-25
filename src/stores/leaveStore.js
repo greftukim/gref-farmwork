@@ -36,6 +36,9 @@ const useLeaveStore = create((set, get) => ({
     }
   },
 
+  approveRequest: (requestId) => get().farmReview(requestId, true, null),
+  rejectRequest:  (requestId) => get().farmReview(requestId, false, null),
+
   // 재배팀 단독 승인 (pending → approved 직행)
   farmReview: async (requestId, approved, reviewerId) => {
     const status = approved ? 'approved' : 'rejected';

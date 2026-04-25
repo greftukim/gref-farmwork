@@ -55,7 +55,7 @@ export default function WorkerNoticePage({ onBack }) {
                   <span style={{ fontSize: 11, color: T.mutedSoft, marginLeft: 'auto' }}>{fmtAgo(n.createdAt)}</span>
                 </div>
                 <div style={{ fontSize: 14, fontWeight: 700, color: T.text, marginBottom: 4 }}>{n.title}</div>
-                <div style={{ fontSize: 12, color: T.muted, lineHeight: 1.5, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{n.content}</div>
+                <div style={{ fontSize: 12, color: T.muted, lineHeight: 1.5, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{n.body}</div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 10, fontSize: 10, color: T.mutedSoft }}>
                   <Avatar name={n.authorName || '관리자'} color="indigo" size={18} />
                   <span>{n.authorName || '관리자'}</span>
@@ -82,7 +82,7 @@ export default function WorkerNoticePage({ onBack }) {
               </button>
             </div>
             <div style={{ padding: 20, overflow: 'auto', fontSize: 13, color: T.text, lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>
-              {open.content}
+              {open.body}
               <div style={{ marginTop: 20, paddingTop: 14, borderTop: `1px solid ${T.borderSoft}`, display: 'flex', alignItems: 'center', gap: 8, fontSize: 11, color: T.mutedSoft }}>
                 <Avatar name={open.authorName || '관리자'} color="indigo" size={24} />
                 <span>{open.authorName || '관리자'}</span>

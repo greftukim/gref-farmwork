@@ -2328,3 +2328,39 @@ _pages.jsx는 react-router-dom에서 아무것도 import 하지 않고 있었다
 **How to apply:**
 - 페이지 이동 버튼 추가 전: `grep useNavigate {파일명}` 으로 import 여부 먼저 확인
 - 없으면: import 라인 추가 + 컴포넌트 상단 `const navigate = useNavigate();` 동시에 추가
+
+---
+
+## 교훈 96 — DB 스키마 문서(db-schema.md)가 실제 DB와 괴리될 수 있다 — 페이지 필드 수정 전 Supabase 직접 조회 선행
+
+세션 56 STORE-MISSING-001 진단: IssueCallPage가 `it.status`, `it.severity`, `it.employeeId`를 참조하나
+DB `issues` 테이블에는 해당 컬럼이 없었다. `db-schema.md`에도 없음에도 페이지 코드가 먼저 작성됨.
+STORE-MISSING-003 진단: notices 테이블에 `read_by`, `pinned`, `important` 컬럼 미존재.
+
+**Why:** 초기 개발 시 UI 먼저 작성 후 DB 스키마 업데이트가 뒤처지는 패턴.
+이미 구현된 코드가 없는 컬럼을 참조하면 조용히 undefined 반환 → 무증상으로 진단 어려움.
+
+**How to apply:**
+- store 구독 키 진단 시: `grep s.xxx pages/` 뒤에 반드시 Supabase `information_schema.columns` 조회로 컬럼 실존 확인
+- DB 컬럼 없이 기능 구현할 때: 로컬 상태로 fallback 가능한지 판단 → 가능하면 DB 변경 없이 처리
+- `db-schema.md`는 정답 문서가 아닌 "마지막으로 확인된 상태". 항상 실제 DB 조회가 우선.
+
+---
+
+## 교훈 97 — store action 래퍼 패턴: 기존 action 재활용 > 신규 action 중복 구현
+
+세션 56 STORE-MISSING-002: LeavePage가 `approveRequest(id)`/`rejectRequest(id)`를 호출하지만
+store에는 `farmReview(requestId, approved, reviewerId)`가 이미 있었다.
+2줄 래퍼로 해결:
+```js
+approveRequest: (id) => get().farmReview(id, true, null),
+rejectRequest:  (id) => get().farmReview(id, false, null),
+```
+
+**Why:** 페이지 코드 작성자가 store의 실제 메서드명을 모르고 더 직관적인 이름으로 호출.
+기존 action을 재구현하면 로직 중복 + 버그 재발 위험 발생.
+
+**How to apply:**
+- 누락 action 추가 전: store 파일 전체 읽고 기존 action 중 재활용 가능한 것 있는지 확인
+- 같은 DB 조작이면 래퍼 2줄이 재구현 30줄보다 낫다
+- 래퍼 인자 매핑 시 null 허용 여부 확인 (farm_reviewed_by: null → Supabase에서 허용)

@@ -84,7 +84,7 @@ export default function IssueCallPage() {
           {filtered.length === 0 ? (
             <div style={{ padding: 60, textAlign: 'center', color: T.mutedSoft, fontSize: 13 }}>신고 내역이 없습니다</div>
           ) : filtered.map((it, i) => {
-            const emp = empMap[it.employeeId];
+            const emp = empMap[it.workerId];
             const sv = SEVERITY[it.severity] || SEVERITY.normal;
             const st = STATUS[it.status] || STATUS.pending;
             return (
@@ -103,7 +103,7 @@ export default function IssueCallPage() {
                     <span style={{ fontSize: 11, color: T.mutedSoft }}>· {it.category || '기타'}</span>
                     <span style={{ fontSize: 11, color: T.mutedSoft, marginLeft: 'auto' }}>{fmtAgo(it.createdAt)}</span>
                   </div>
-                  <div style={{ fontSize: 13, color: T.muted, lineHeight: 1.5 }}>{it.message || it.description}</div>
+                  <div style={{ fontSize: 13, color: T.muted, lineHeight: 1.5 }}>{it.comment}</div>
                   {it.location && <div style={{ fontSize: 11, color: T.mutedSoft, marginTop: 6, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
                     <Icon d={icons.location} size={11} c={T.mutedSoft} sw={2} />{it.location}
                   </div>}
