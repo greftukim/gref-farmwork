@@ -10,6 +10,9 @@ import {
 import useBranchStore from '../../stores/branchStore';
 import useEmployeeStore from '../../stores/employeeStore';
 import useAttendanceStore from '../../stores/attendanceStore';
+import { supabase } from '../../lib/supabase';
+import useAuthStore from '../../stores/authStore';
+import { HQ_ROLES } from '../../lib/permissions';
 
 const TODAY = new Date().toISOString().split('T')[0];
 
@@ -172,6 +175,16 @@ function DetailMap({ radius, accent, lat, lng }) {
   );
 }
 
+const WORKDAY_OPTIONS = [
+  { key: 'mon', label: '월' },
+  { key: 'tue', label: '화' },
+  { key: 'wed', label: '수' },
+  { key: 'thu', label: '목' },
+  { key: 'fri', label: '금' },
+  { key: 'sat', label: '토' },
+  { key: 'sun', label: '일' },
+];
+
 // ─────────────────────────────────────────────────────────
 // 공통 input/label
 // ─────────────────────────────────────────────────────────
@@ -204,6 +217,8 @@ export default function BranchSettingsPage() {
   const deleteBranch = useBranchStore((s) => s.deleteBranch);
   const employees = useEmployeeStore((s) => s.employees);
   const records = useAttendanceStore((s) => s.records);
+  const currentUser = useAuthStore((s) => s.currentUser);
+  const canEditSchedule = HQ_ROLES.includes(currentUser?.role);
 
   const [selectedId, setSelectedId] = useState(null);
   const [searchQ, setSearchQ] = useState('');
@@ -213,6 +228,10 @@ export default function BranchSettingsPage() {
   const [addLoading, setAddLoading] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState(null);
   const [toast, setToast] = useState(null);
+
+  const [schedForm, setSchedForm] = useState({ start_time: '07:30', end_time: '16:30', workdays: ['mon','tue','wed','thu','fri'] });
+  const [schedLoading, setSchedLoading] = useState(false);
+  const [schedSaving, setSchedSaving] = useState(false);
 
   // 기본 선택
   useEffect(() => {
@@ -237,6 +256,26 @@ export default function BranchSettingsPage() {
       lng: selected.longitude,
     });
   }, [selectedId, selected?.updatedAt]);
+
+  useEffect(() => {
+    if (!selected?.code) return;
+    setSchedLoading(true);
+    supabase
+      .from('branch_work_schedule_config')
+      .select('start_time, end_time, workdays')
+      .eq('branch', selected.code)
+      .single()
+      .then(({ data }) => {
+        if (data) {
+          setSchedForm({
+            start_time: (data.start_time || '07:30:00').slice(0, 5),
+            end_time: (data.end_time || '16:30:00').slice(0, 5),
+            workdays: Array.isArray(data.workdays) ? data.workdays : ['mon','tue','wed','thu','fri'],
+          });
+        }
+        setSchedLoading(false);
+      });
+  }, [selectedId, selected?.code]);
 
   // 파생 데이터
   const filtered = useMemo(() => {
@@ -284,6 +323,33 @@ export default function BranchSettingsPage() {
       radiusMeters: parseInt(form.radius) || 100,
     });
     showToast(`${form.name} 설정이 저장되었습니다`);
+  };
+
+  const handleScheduleSave = async () => {
+    if (!selected?.code || !canEditSchedule) return;
+    setSchedSaving(true);
+    const { error } = await supabase
+      .from('branch_work_schedule_config')
+      .update({
+        start_time: schedForm.start_time + ':00',
+        end_time: schedForm.end_time + ':00',
+        workdays: schedForm.workdays,
+        updated_at: new Date().toISOString(),
+        updated_by: currentUser?.id || null,
+      })
+      .eq('branch', selected.code);
+    setSchedSaving(false);
+    if (error) showToast(`근무시간 저장 실패: ${error.message}`, 'danger');
+    else showToast(`${selected.name} 근무시간이 저장되었습니다`);
+  };
+
+  const toggleWorkday = (key) => {
+    setSchedForm((f) => ({
+      ...f,
+      workdays: f.workdays.includes(key)
+        ? f.workdays.filter((d) => d !== key)
+        : [...f.workdays, key],
+    }));
   };
 
   const handleUseCurrentLocation = () => {
@@ -616,6 +682,110 @@ export default function BranchSettingsPage() {
                     </button>
                   </div>
                 </div>
+              </Card>
+
+              {/* 근무시간 설정 */}
+              <Card pad={0}>
+                <div style={{ padding: '14px 20px', borderBottom: `1px solid ${T.borderSoft}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <div>
+                    <h3 style={{ fontSize: 14, fontWeight: 700, color: T.text, margin: 0 }}>근무시간 설정</h3>
+                    <p style={{ fontSize: 11, color: T.mutedSoft, margin: '2px 0 0' }}>
+                      {canEditSchedule ? '지점별 출퇴근 기준 시간과 근무 요일을 설정합니다' : '읽기 전용 (HQ 관리자만 수정 가능)'}
+                    </p>
+                  </div>
+                  {!canEditSchedule && (
+                    <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 8px', background: T.bg, border: `1px solid ${T.border}`, borderRadius: 4, color: T.mutedSoft }}>읽기 전용</span>
+                  )}
+                </div>
+
+                {schedLoading ? (
+                  <div style={{ padding: 24, textAlign: 'center', color: T.mutedSoft, fontSize: 12 }}>로딩 중...</div>
+                ) : (
+                  <div style={{ padding: 20, display: 'flex', flexDirection: 'column', gap: 18 }}>
+                    {/* 시간 */}
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+                      <FormRow label="출근 시간" required>
+                        <input
+                          type="time"
+                          value={schedForm.start_time}
+                          onChange={(e) => canEditSchedule && setSchedForm((f) => ({ ...f, start_time: e.target.value }))}
+                          disabled={!canEditSchedule}
+                          style={{ ...inputStyle, cursor: canEditSchedule ? 'auto' : 'not-allowed', opacity: canEditSchedule ? 1 : 0.6 }}
+                        />
+                      </FormRow>
+                      <FormRow label="퇴근 시간" required>
+                        <input
+                          type="time"
+                          value={schedForm.end_time}
+                          onChange={(e) => canEditSchedule && setSchedForm((f) => ({ ...f, end_time: e.target.value }))}
+                          disabled={!canEditSchedule}
+                          style={{ ...inputStyle, cursor: canEditSchedule ? 'auto' : 'not-allowed', opacity: canEditSchedule ? 1 : 0.6 }}
+                        />
+                      </FormRow>
+                    </div>
+
+                    {/* 근무 요일 */}
+                    <div>
+                      <div style={{ fontSize: 11, fontWeight: 700, color: T.muted, letterSpacing: 0.2, marginBottom: 8 }}>근무 요일</div>
+                      <div style={{ display: 'flex', gap: 6 }}>
+                        {WORKDAY_OPTIONS.map(({ key, label }) => {
+                          const active = schedForm.workdays.includes(key);
+                          const isSat = key === 'sat';
+                          const isSun = key === 'sun';
+                          return (
+                            <button
+                              key={key}
+                              onClick={() => canEditSchedule && toggleWorkday(key)}
+                              disabled={!canEditSchedule}
+                              style={{
+                                width: 36, height: 36, borderRadius: 8, border: `1px solid ${active ? accent.fg : T.border}`,
+                                background: active ? accent.fg : T.surface,
+                                color: active ? '#fff' : (isSat ? '#3B82F6' : isSun ? '#EF4444' : T.muted),
+                                fontSize: 12, fontWeight: 700, cursor: canEditSchedule ? 'pointer' : 'not-allowed',
+                                opacity: canEditSchedule ? 1 : 0.6,
+                                transition: 'all 120ms',
+                              }}
+                            >
+                              {label}
+                            </button>
+                          );
+                        })}
+                      </div>
+                      <div style={{ marginTop: 8, fontSize: 11, color: T.mutedSoft }}>
+                        선택된 요일: {schedForm.workdays.length > 0
+                          ? schedForm.workdays.map((d) => WORKDAY_OPTIONS.find((o) => o.key === d)?.label).filter(Boolean).join('·')
+                          : '없음 (공휴일 전용 지점)'}
+                      </div>
+                    </div>
+
+                    {/* 근무시간 미리보기 */}
+                    <div style={{ padding: 12, background: accent.soft, borderRadius: 8, display: 'flex', alignItems: 'center', gap: 8, fontSize: 12 }}>
+                      <Icon d={icons.check} size={13} c={accent.fg} sw={2.4} />
+                      <span style={{ color: accent.text }}>
+                        기준 근무시간 <strong>{schedForm.start_time} ~ {schedForm.end_time}</strong>
+                        {' '}({schedForm.workdays.length}일/주)
+                      </span>
+                    </div>
+                  </div>
+                )}
+
+                {canEditSchedule && (
+                  <div style={{ padding: '12px 20px', borderTop: `1px solid ${T.borderSoft}`, background: T.bg, display: 'flex', justifyContent: 'flex-end' }}>
+                    <button
+                      onClick={handleScheduleSave}
+                      disabled={schedSaving || schedLoading}
+                      style={{
+                        display: 'inline-flex', alignItems: 'center', gap: 6,
+                        height: 36, padding: '0 18px', borderRadius: 8,
+                        background: schedSaving ? T.mutedSoft : T.primary, color: '#fff', border: 0,
+                        fontSize: 13, fontWeight: 600, cursor: schedSaving ? 'not-allowed' : 'pointer',
+                      }}
+                    >
+                      <Icon d={icons.check} size={13} c="#fff" sw={2.5} />
+                      {schedSaving ? '저장 중...' : '근무시간 저장'}
+                    </button>
+                  </div>
+                )}
               </Card>
 
               {/* 가이드 */}

@@ -197,7 +197,7 @@
 | STATS-AGGREGATION-001 | 데이터 재연결 | resolved | 세션 31 (2026-04-24) 등록 → 세션 41 (2026-04-25) 해소 | - | StatsPage — performanceStore(영구 빈 배열 stub) 제거, usePerformanceData 훅 연결. KPI 카드: 평균 수확 성과율(%), 주간 최고 수확량(kg/주), 평가 인원(명). 랭킹: harvestPct 내림차순. farm_admin → 본인 지점 필터. performanceStore.js 삭제. Playwright PASS 62/63(WARN 1: farm_admin 분기 jhkim 불가). 커밋 세션 41. | docs/HANDOVER_PHASE5_SESSION41.md |
 | WORK-STATS-PAGE-001 | 검증·수정 | resolved | 세션 41 등록 → 세션 42 (2026-04-25) 해소 | - | /admin/work-stats — is_active 필터 누락(비활성 시드 포함) 수정 + attendance 시드 480건+ 투입(세션 42 migration). WorkStatsPage.jsx workers useMemo에 e.isActive 필터 추가. Playwright F-1~F-4 PASS. | docs/HANDOVER_PHASE5_SESSION42.md |
 | BRANCH-STATS-PAGE-001 | 기능 구현 | resolved | 세션 41 등록 → 세션 42 (2026-04-25) 해소 | - | /admin/branch-stats — "준비 중" stub 전면 재작성. usePerformanceData + useEmployeeStore 기반 3지점 KPI(활성 작업자/평균 성과율/주간 수확량) + 평균 성과율 비교 + 주간 수확량 비교 바 차트. Playwright G-1~G-4 PASS. | docs/HANDOVER_PHASE5_SESSION42.md |
-| BRANCH-WORK-SCHEDULE-UI-001 | 기능 미구현 | open | 세션 42 (2026-04-25) | P2 | branch_work_schedule_config 설정 UI — DB 테이블 신설 완료(세션 42 migration), 편집 UI 미구현. 지점별 근무시간(start/end_time)·근무요일(workdays) 수정 기능. HR 관리자 전용. 별 세션 처리. | docs/BACKLOG.md |
+| BRANCH-WORK-SCHEDULE-UI-001 | 기능 미구현 | resolved | 세션 42 (2026-04-25) 등록 → 세션 44 (2026-04-25) 해소 | - | BranchSettingsPage.jsx에 "근무시간 설정" 섹션 추가. RLS 정책 신설(SELECT is_admin_level / UPDATE can_view_all_branches). start_time/end_time time 입력 + workdays 요일 버튼(7개). hr_admin 편집, farm_admin 읽기 전용. Playwright J-1~6 PASS 13/13. 세션 44 커밋. | docs/HANDOVER_PHASE5_SESSION44.md |
 
 ---
 

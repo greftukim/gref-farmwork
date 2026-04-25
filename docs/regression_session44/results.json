@@ -1,0 +1,710 @@
+{
+  "pass": 117,
+  "fail": 0,
+  "warn": 0,
+  "total": 117,
+  "results": [
+    {
+      "test": "LOGIN",
+      "status": "PASS",
+      "title": "jhkim 로그인",
+      "detail": "http://localhost:5173/admin/hq"
+    },
+    {
+      "test": "PERF-BRANCH",
+      "status": "PASS",
+      "title": "BranchPerformanceScreen 로딩 완료",
+      "detail": ""
+    },
+    {
+      "test": "PERF-BRANCH",
+      "status": "PASS",
+      "title": "화이트 스크린 없음",
+      "detail": ""
+    },
+    {
+      "test": "PERF-BRANCH",
+      "status": "PASS",
+      "title": "성과 관리 타이틀 표시",
+      "detail": ""
+    },
+    {
+      "test": "PERF-BRANCH-DATA",
+      "status": "PASS",
+      "title": "테이블 12행",
+      "detail": ""
+    },
+    {
+      "test": "PERF-BRANCH-DATA",
+      "status": "PASS",
+      "title": "KPI: 평균 수확 성과율",
+      "detail": ""
+    },
+    {
+      "test": "PERF-BRANCH-DATA",
+      "status": "PASS",
+      "title": "KPI: 평균 수확 달성률",
+      "detail": ""
+    },
+    {
+      "test": "PERF-BRANCH-DATA",
+      "status": "PASS",
+      "title": "KPI: 목표 달성 인원",
+      "detail": ""
+    },
+    {
+      "test": "PERF-BRANCH-DATA",
+      "status": "PASS",
+      "title": "KPI: 평균 출근률",
+      "detail": ""
+    },
+    {
+      "test": "PERF-HQ",
+      "status": "PASS",
+      "title": "HQPerformanceScreen 로딩 완료",
+      "detail": ""
+    },
+    {
+      "test": "PERF-HQ",
+      "status": "PASS",
+      "title": "HQ 화이트 스크린 없음",
+      "detail": ""
+    },
+    {
+      "test": "PERF-HQ",
+      "status": "PASS",
+      "title": "HQ 성과 관리 타이틀",
+      "detail": ""
+    },
+    {
+      "test": "PERF-HQ",
+      "status": "PASS",
+      "title": "jhkim(hr_admin) → HQ 성과 페이지 접근 허용",
+      "detail": ""
+    },
+    {
+      "test": "PERF-HQ-DATA",
+      "status": "PASS",
+      "title": "HQ 테이블 30행",
+      "detail": ""
+    },
+    {
+      "test": "PERF-HQ-DATA",
+      "status": "PASS",
+      "title": "Top 5: 수확 성과율 Top 5",
+      "detail": ""
+    },
+    {
+      "test": "PERF-HQ-DATA",
+      "status": "PASS",
+      "title": "Top 5: 수확 달성률 Top 5",
+      "detail": ""
+    },
+    {
+      "test": "PERF-HQ-DATA",
+      "status": "PASS",
+      "title": "Top 5: 주간 수확량 Top 5",
+      "detail": ""
+    },
+    {
+      "test": "PERF-HQ-DATA",
+      "status": "PASS",
+      "title": "지점: 부산LAB",
+      "detail": ""
+    },
+    {
+      "test": "PERF-HQ-DATA",
+      "status": "PASS",
+      "title": "지점: 진주HUB",
+      "detail": ""
+    },
+    {
+      "test": "PERF-HQ-DATA",
+      "status": "PASS",
+      "title": "지점: 하동HUB",
+      "detail": ""
+    },
+    {
+      "test": "PERF-DETAIL",
+      "status": "PASS",
+      "title": "Detail 로딩 완료",
+      "detail": ""
+    },
+    {
+      "test": "PERF-DETAIL",
+      "status": "PASS",
+      "title": "Detail 화이트 스크린 없음",
+      "detail": ""
+    },
+    {
+      "test": "PERF-DETAIL",
+      "status": "PASS",
+      "title": "작업자 헤더 표시",
+      "detail": ""
+    },
+    {
+      "test": "PERF-DETAIL",
+      "status": "PASS",
+      "title": "Detail KPI: 수확 성과율",
+      "detail": ""
+    },
+    {
+      "test": "PERF-DETAIL",
+      "status": "PASS",
+      "title": "Detail KPI: 수확 달성률",
+      "detail": ""
+    },
+    {
+      "test": "PERF-DETAIL",
+      "status": "PASS",
+      "title": "Detail KPI: 주간 수확량",
+      "detail": ""
+    },
+    {
+      "test": "PERF-DETAIL",
+      "status": "PASS",
+      "title": "Detail KPI: 출근률",
+      "detail": ""
+    },
+    {
+      "test": "PERF-COMPARE",
+      "status": "PASS",
+      "title": "Compare 로딩 완료",
+      "detail": ""
+    },
+    {
+      "test": "PERF-COMPARE",
+      "status": "PASS",
+      "title": "Compare 화이트 스크린 없음",
+      "detail": ""
+    },
+    {
+      "test": "PERF-COMPARE",
+      "status": "PASS",
+      "title": "Compare 타이틀",
+      "detail": ""
+    },
+    {
+      "test": "PERF-COMPARE",
+      "status": "PASS",
+      "title": "비교 테이블 항목",
+      "detail": ""
+    },
+    {
+      "test": "PERF-LABEL-CHANGE",
+      "status": "PASS",
+      "title": "\"주간 수확량 Top 5\" 라벨",
+      "detail": ""
+    },
+    {
+      "test": "PERF-LABEL-CHANGE",
+      "status": "PASS",
+      "title": "\"수확 성과율 Top 5\" 라벨",
+      "detail": ""
+    },
+    {
+      "test": "PERF-LABEL-CHANGE",
+      "status": "PASS",
+      "title": "구 라벨 제거",
+      "detail": ""
+    },
+    {
+      "test": "REGRESSION-GROWTH-INPUT",
+      "status": "PASS",
+      "title": "GrowthInputScreen 로딩 완료",
+      "detail": ""
+    },
+    {
+      "test": "REGRESSION-GROWTH-INPUT",
+      "status": "PASS",
+      "title": "생육 입력 타이틀",
+      "detail": ""
+    },
+    {
+      "test": "REGRESSION-GROWTH-DASH",
+      "status": "PASS",
+      "title": "생육 대시보드 정상",
+      "detail": ""
+    },
+    {
+      "test": "REGRESSION-GROWTH-TABS",
+      "status": "PASS",
+      "title": "작물 탭: 토마토",
+      "detail": ""
+    },
+    {
+      "test": "REGRESSION-GROWTH-TABS",
+      "status": "PASS",
+      "title": "작물 탭: 오이",
+      "detail": ""
+    },
+    {
+      "test": "REGRESSION-GROWTH-TABS",
+      "status": "PASS",
+      "title": "작물 탭: 파프리카",
+      "detail": ""
+    },
+    {
+      "test": "REGRESSION-GROWTH-KPI",
+      "status": "PASS",
+      "title": "KPI: 이번 주 생장",
+      "detail": ""
+    },
+    {
+      "test": "REGRESSION-GROWTH-KPI",
+      "status": "PASS",
+      "title": "KPI: 화방 높이",
+      "detail": ""
+    },
+    {
+      "test": "REGRESSION-GROWTH-KPI",
+      "status": "PASS",
+      "title": "KPI: 누적 착과",
+      "detail": ""
+    },
+    {
+      "test": "REGRESSION-GROWTH-KPI",
+      "status": "PASS",
+      "title": "KPI: 작기 진행",
+      "detail": ""
+    },
+    {
+      "test": "REGRESSION-MAIN-DASHBOARD",
+      "status": "PASS",
+      "title": "BUG-F01 부동소수점 회귀 없음",
+      "detail": ""
+    },
+    {
+      "test": "REGRESSION-SCHEDULE",
+      "status": "PASS",
+      "title": "근무 관리 타이틀",
+      "detail": ""
+    },
+    {
+      "test": "REGRESSION-SCHEDULE",
+      "status": "PASS",
+      "title": "타임라인 헤더",
+      "detail": ""
+    },
+    {
+      "test": "REGRESSION-EMPLOYEES",
+      "status": "PASS",
+      "title": "직원 관리 페이지",
+      "detail": ""
+    },
+    {
+      "test": "REGRESSION-EMPLOYEES",
+      "status": "PASS",
+      "title": "직원 41행",
+      "detail": ""
+    },
+    {
+      "test": "REGRESSION-HQ-DASHBOARD",
+      "status": "PASS",
+      "title": "HQ 대시보드 표시 (hr_admin)",
+      "detail": ""
+    },
+    {
+      "test": "REGRESSION-CONSOLE",
+      "status": "PASS",
+      "title": "중요 콘솔 에러 0건",
+      "detail": ""
+    },
+    {
+      "test": "STATS-LOAD",
+      "status": "PASS",
+      "title": "StatsPage 로딩 완료",
+      "detail": ""
+    },
+    {
+      "test": "STATS-LOAD",
+      "status": "PASS",
+      "title": "성과 분석 타이틀",
+      "detail": ""
+    },
+    {
+      "test": "STATS-LOAD",
+      "status": "PASS",
+      "title": "빈 상태 없음",
+      "detail": ""
+    },
+    {
+      "test": "STATS-KPI",
+      "status": "PASS",
+      "title": "KPI: 평균 수확 성과율",
+      "detail": ""
+    },
+    {
+      "test": "STATS-KPI",
+      "status": "PASS",
+      "title": "KPI: 주간 최고 수확량",
+      "detail": ""
+    },
+    {
+      "test": "STATS-KPI",
+      "status": "PASS",
+      "title": "KPI: 평가 인원",
+      "detail": ""
+    },
+    {
+      "test": "STATS-KPI",
+      "status": "PASS",
+      "title": "\"kg/주\" 단위",
+      "detail": ""
+    },
+    {
+      "test": "STATS-KPI",
+      "status": "PASS",
+      "title": "랭킹 헤더",
+      "detail": ""
+    },
+    {
+      "test": "STATS-RANKING",
+      "status": "PASS",
+      "title": "% 단위 표시",
+      "detail": ""
+    },
+    {
+      "test": "STATS-RANKING",
+      "status": "PASS",
+      "title": "지점 배지 표시",
+      "detail": ""
+    },
+    {
+      "test": "STATS-PERMISSION",
+      "status": "PASS",
+      "title": "hr_admin 전체 지점 (3개 지점 배지 확인)",
+      "detail": ""
+    },
+    {
+      "test": "STATS-PERMISSION",
+      "status": "PASS",
+      "title": "farm_admin → /admin/stats 로딩 정상",
+      "detail": ""
+    },
+    {
+      "test": "STATS-PERMISSION",
+      "status": "PASS",
+      "title": "farm_admin → 부산LAB 직원 표시 (지점 필터 적용)",
+      "detail": ""
+    },
+    {
+      "test": "STATS-PERMISSION",
+      "status": "PASS",
+      "title": "farm_admin → 진주HUB 배지 없음 (타 지점 차단 확인)",
+      "detail": ""
+    },
+    {
+      "test": "STATS-PERMISSION",
+      "status": "PASS",
+      "title": "farm_admin → 하동HUB 배지 없음 (타 지점 차단 확인)",
+      "detail": ""
+    },
+    {
+      "test": "WORK-STATS-LOAD",
+      "status": "PASS",
+      "title": "근무 통계 타이틀",
+      "detail": ""
+    },
+    {
+      "test": "WORK-STATS-LOAD",
+      "status": "PASS",
+      "title": "stub 제거됨",
+      "detail": ""
+    },
+    {
+      "test": "WORK-STATS-KPI",
+      "status": "PASS",
+      "title": "KPI: 총 근무 시간",
+      "detail": ""
+    },
+    {
+      "test": "WORK-STATS-KPI",
+      "status": "PASS",
+      "title": "단위: h",
+      "detail": ""
+    },
+    {
+      "test": "WORK-STATS-KPI",
+      "status": "PASS",
+      "title": "KPI: 총 출근 일수",
+      "detail": ""
+    },
+    {
+      "test": "WORK-STATS-KPI",
+      "status": "PASS",
+      "title": "단위: 일",
+      "detail": ""
+    },
+    {
+      "test": "WORK-STATS-KPI",
+      "status": "PASS",
+      "title": "KPI: 평가 인원",
+      "detail": ""
+    },
+    {
+      "test": "WORK-STATS-KPI",
+      "status": "PASS",
+      "title": "단위: 명",
+      "detail": ""
+    },
+    {
+      "test": "WORK-STATS-TABLE",
+      "status": "PASS",
+      "title": "테이블 헤더",
+      "detail": ""
+    },
+    {
+      "test": "WORK-STATS-TABLE",
+      "status": "PASS",
+      "title": "0h 이상 근무시간",
+      "detail": ""
+    },
+    {
+      "test": "WORK-STATS-FILTER",
+      "status": "PASS",
+      "title": "날짜 입력 2개",
+      "detail": ""
+    },
+    {
+      "test": "BRANCH-STATS-LOAD",
+      "status": "PASS",
+      "title": "지점별 성과 타이틀",
+      "detail": ""
+    },
+    {
+      "test": "BRANCH-STATS-LOAD",
+      "status": "PASS",
+      "title": "stub 제거됨",
+      "detail": ""
+    },
+    {
+      "test": "BRANCH-STATS-CARDS",
+      "status": "PASS",
+      "title": "지점 카드: 부산LAB",
+      "detail": ""
+    },
+    {
+      "test": "BRANCH-STATS-CARDS",
+      "status": "PASS",
+      "title": "지점 카드: 진주HUB",
+      "detail": ""
+    },
+    {
+      "test": "BRANCH-STATS-CARDS",
+      "status": "PASS",
+      "title": "지점 카드: 하동HUB",
+      "detail": ""
+    },
+    {
+      "test": "BRANCH-STATS-KPI",
+      "status": "PASS",
+      "title": "항목: 활성 작업자",
+      "detail": ""
+    },
+    {
+      "test": "BRANCH-STATS-KPI",
+      "status": "PASS",
+      "title": "항목: 평균 성과율",
+      "detail": ""
+    },
+    {
+      "test": "BRANCH-STATS-KPI",
+      "status": "PASS",
+      "title": "항목: 주간 수확량",
+      "detail": ""
+    },
+    {
+      "test": "BRANCH-STATS-COMPARE",
+      "status": "PASS",
+      "title": "평균 성과율 비교 섹션",
+      "detail": ""
+    },
+    {
+      "test": "BRANCH-STATS-COMPARE",
+      "status": "PASS",
+      "title": "주간 수확량 비교 섹션",
+      "detail": ""
+    },
+    {
+      "test": "APP-NAME-LOGIN",
+      "status": "PASS",
+      "title": "\"FarmWork\" 표시",
+      "detail": ""
+    },
+    {
+      "test": "APP-NAME-LOGIN",
+      "status": "PASS",
+      "title": "구 이름 제거",
+      "detail": ""
+    },
+    {
+      "test": "APP-NAME-SIDEBAR",
+      "status": "PASS",
+      "title": "\"FarmWork\" 사이드바",
+      "detail": ""
+    },
+    {
+      "test": "HQ-ROUTE-HR-ADMIN",
+      "status": "PASS",
+      "title": "jhkim 로그인",
+      "detail": ""
+    },
+    {
+      "test": "HQ-ROUTE-HR-ADMIN",
+      "status": "PASS",
+      "title": "hr_admin → /admin/hq 접근 허용 (http://localhost:5173/admin/hq)",
+      "detail": ""
+    },
+    {
+      "test": "HQ-ROUTE-HR-ADMIN",
+      "status": "PASS",
+      "title": "hr_admin → /admin/hq/employees 접근 허용",
+      "detail": ""
+    },
+    {
+      "test": "HQ-ROUTE-HR-ADMIN",
+      "status": "PASS",
+      "title": "hr_admin → /admin/hq/finance 접근 허용",
+      "detail": ""
+    },
+    {
+      "test": "HQ-ROUTE-FARM-ADMIN",
+      "status": "PASS",
+      "title": "hdkim(farm_admin) 로그인, URL: http://localhost:5173/admin",
+      "detail": ""
+    },
+    {
+      "test": "HQ-ROUTE-FARM-ADMIN",
+      "status": "PASS",
+      "title": "farm_admin → /admin/hq → /admin 리디렉트",
+      "detail": ""
+    },
+    {
+      "test": "HQ-ROUTE-FARM-ADMIN",
+      "status": "PASS",
+      "title": "farm_admin → /admin/hq/employees → /admin 리디렉트",
+      "detail": ""
+    },
+    {
+      "test": "HQ-ROUTE-FARM-ADMIN",
+      "status": "PASS",
+      "title": "farm_admin → /admin/hq/finance → /admin 리디렉트",
+      "detail": ""
+    },
+    {
+      "test": "HQ-ROUTE-FARM-ADMIN",
+      "status": "PASS",
+      "title": "farm_admin → /admin/performance 접근 허용",
+      "detail": ""
+    },
+    {
+      "test": "HQ-ROUTE-FARM-ADMIN",
+      "status": "PASS",
+      "title": "farm_admin → /admin/stats 접근 허용",
+      "detail": ""
+    },
+    {
+      "test": "BRANCH-WORK-SCHEDULE",
+      "status": "PASS",
+      "title": "jhkim 로그인",
+      "detail": ""
+    },
+    {
+      "test": "BRANCH-WORK-SCHEDULE",
+      "status": "PASS",
+      "title": "지점 설정 페이지 로드",
+      "detail": ""
+    },
+    {
+      "test": "BRANCH-WORK-SCHEDULE",
+      "status": "PASS",
+      "title": "\"근무시간 설정\" 섹션 표시",
+      "detail": ""
+    },
+    {
+      "test": "BRANCH-WORK-SCHEDULE",
+      "status": "PASS",
+      "title": "출근 시간 표시 (DB 데이터 로드 확인)",
+      "detail": ""
+    },
+    {
+      "test": "BRANCH-WORK-SCHEDULE",
+      "status": "PASS",
+      "title": "퇴근 시간 필드 표시",
+      "detail": ""
+    },
+    {
+      "test": "BRANCH-WORK-SCHEDULE",
+      "status": "PASS",
+      "title": "요일 버튼: 월",
+      "detail": ""
+    },
+    {
+      "test": "BRANCH-WORK-SCHEDULE",
+      "status": "PASS",
+      "title": "요일 버튼: 화",
+      "detail": ""
+    },
+    {
+      "test": "BRANCH-WORK-SCHEDULE",
+      "status": "PASS",
+      "title": "요일 버튼: 수",
+      "detail": ""
+    },
+    {
+      "test": "BRANCH-WORK-SCHEDULE",
+      "status": "PASS",
+      "title": "요일 버튼: 목",
+      "detail": ""
+    },
+    {
+      "test": "BRANCH-WORK-SCHEDULE",
+      "status": "PASS",
+      "title": "요일 버튼: 금",
+      "detail": ""
+    },
+    {
+      "test": "BRANCH-WORK-SCHEDULE",
+      "status": "PASS",
+      "title": "요일 버튼: 토",
+      "detail": ""
+    },
+    {
+      "test": "BRANCH-WORK-SCHEDULE",
+      "status": "PASS",
+      "title": "요일 버튼: 일",
+      "detail": ""
+    },
+    {
+      "test": "BRANCH-WORK-SCHEDULE",
+      "status": "PASS",
+      "title": "\"근무시간 저장\" 버튼 표시 (hr_admin 편집 권한 확인)",
+      "detail": ""
+    },
+    {
+      "test": "BRANCH-WORK-SCHEDULE",
+      "status": "PASS",
+      "title": "hdkim(farm_admin) 로그인",
+      "detail": ""
+    },
+    {
+      "test": "BRANCH-WORK-SCHEDULE",
+      "status": "PASS",
+      "title": "farm_admin → 근무시간 설정 섹션 표시",
+      "detail": ""
+    },
+    {
+      "test": "BRANCH-WORK-SCHEDULE",
+      "status": "PASS",
+      "title": "farm_admin → \"읽기 전용\" 표시 확인",
+      "detail": ""
+    },
+    {
+      "test": "BRANCH-WORK-SCHEDULE",
+      "status": "PASS",
+      "title": "farm_admin → 저장 버튼 없음 (편집 차단 확인)",
+      "detail": ""
+    }
+  ]
+}
