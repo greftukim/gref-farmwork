@@ -2074,3 +2074,93 @@ issues 시드 INSERT 시 zone_id를 메모리에서 하드코딩(`760ad285-...`)
 - 시드 INSERT의 FK UUID는 항상 `SELECT id FROM table WHERE name='...'` 서브쿼리 경유
 - 하드코딩이 불가피한 경우 INSERT 직전 `SELECT` 결과를 복붙 — 타이핑 금지
 - 교훈 35·37 (DB 상태 의존 값은 직접 조회 우선) 재확인
+
+## 교훈 81 — AdminDashboard vs DashboardInteractive: 보완 관계, deprecated 아님
+
+두 대시보드는 경쟁이 아니라 보완 관계다.
+- AdminDashboard (`/admin`): 범용 랜딩 페이지 — farm_admin 기본, hr_admin도 접근
+- DashboardInteractive (`/admin/hq/interactive`): HQ 전용 운영 리포트 — 기간별 분석, 드릴다운, 다지점 비교
+
+**Why:** 세션 46-47 부산물로 "한쪽이 대체 예정?"이라는 의문이 발생했으나,
+두 화면이 다른 정보(농장 일상 운영 vs HQ 전략적 분석)를 보여준다는 것이 확인됨.
+KPI가 겹치는 경우(수확량, 미해결이슈) 반드시 동일 store 사용 → 값 불일치 방지.
+
+**How to apply:**
+- 두 Dashboard에 같은 KPI가 표시될 때: 동일 store (harvestStore, issueStore) 사용
+- DashboardInteractive deprecated 논의는 재개하지 않음
+- 새 HQ 기능 추가 시: DashboardInteractive에 위젯 추가 vs 별 HQ 페이지 신설 결정 필요
+
+## 교훈 82 — harvestStore currentMonth × mult 패턴: 기간별 추정치 표시 접근법
+
+기간별 실집계가 복잡한 KPI(인건비, 가동률)는 "월 실데이터 × 기간 배수"로 추정치를 제공하는 접근이 실용적이다.
+
+**Why:** 일/주/분기 개별 실집계는 DB 쿼리가 복잡하고 (attendance 기간별 집계,
+재무 DB 부재), 사용자에게 "추정"임을 명시하면 오해 없이 사용 가능.
+
+**How to apply:**
+```js
+const pm = {
+  ...periodMeta[period],
+  kpiHarvest: Math.round(realMonthHarvest * periodMeta[period].mult),
+  harvestT: Math.round(totalTarget * periodMeta[period].mult),
+};
+```
+- trend badge에 '실데이터' vs '추정' 구분 표시
+- 정확도가 중요한 KPI(이슈 건수)는 period 무관하게 항상 실값 사용
+
+## 교훈 83 — branches 테이블에 manager 컬럼 없음 — employees.farm_admin 첫 실명 추출
+
+branches 테이블에는 code, name, monthly_harvest_target_kg, lat/lng 만 존재.
+지점장 이름은 employees.role='farm_admin' + 해당 branch 조건으로 추출해야 한다.
+
+**Why:** BranchDetailModal에 `branch.mgr` 표시가 필요했으나 branches에 컬럼이 없어서
+hardcoded '김재배' 등을 사용하고 있었음. 실데이터 연결 시 발견.
+
+**How to apply:**
+```js
+const mgrByBranch = {};
+employees.forEach((e) => {
+  if (e.role === 'farm_admin' && !mgrByBranch[e.branch] && !e.name.includes('재배팀')) {
+    mgrByBranch[e.branch] = e.name; // 첫 번째 실명 farm_admin
+  }
+});
+```
+- `재배팀` 포함 계정(부산재배팀, 진주재배팀 등)은 사람 이름이 아니므로 제외
+- 지점장이 복수인 경우 첫 번째 반환 — 정렬 순서는 employees INSERT 순
+
+## 교훈 84 — Pill 컴포넌트 알 수 없는 tone → 방어 폴백 필수
+
+Pill 컴포넌트에서 `const c = tones[tone]` 패턴은 `tone`이 딕셔너리에 없을 때 `c=undefined` → `c.bg` 접근 시 런타임 크래시.
+React ErrorBoundary가 이를 잡아 "앱 오류 발생" 화면 표시.
+
+**Why:** TYPE_META['기타']에 `tone: 'default'`를 사용했으나 Pill tones에는 'muted','primary','success','warning','danger','info'만 있음.
+'default'가 없어서 c=undefined, c.bg 크래시 발생.
+
+**How to apply:**
+```js
+// Pill 컴포넌트 내부
+const c = tones[tone] || tones.muted; // 알 수 없는 tone은 muted로 폴백
+```
+- 외부에서 Pill을 사용하는 쪽도 지원하는 tone만 전달해야 함 (TYPE_META 등에서 'default' 사용 금지)
+- 방어 코드는 컴포넌트 내부에 두고, 호출처도 올바른 tone 값을 사용하도록 동시 수정
+
+## 교훈 85 — `if (loading) return <loading>` 제거 시 TopBar/타이틀은 항상 렌더링 구조로
+
+로딩 중 early return 패턴을 사용하면 타이틀(TopBar) 포함 전체가 DOM에서 사라짐.
+Playwright `waitForDataLoad` 성공 후에도 타이틀 텍스트가 없어 FAIL 발생.
+
+**Why:** `if (loading) return <LoadingScreen />`은 DOM에 '운영 리포트' 텍스트를 전혀 출력하지 않음.
+waitForDataLoad는 '로딩 중...' 텍스트가 사라지면 완료로 판단하는데, 로딩 화면이 다른 컴포넌트이면 본 타이틀이 없는 상태.
+
+**How to apply:**
+```jsx
+return (
+  <div>
+    <TopBar title="운영 리포트" />  {/* 항상 렌더 */}
+    {loading && <LoadingIndicator />}
+    {!loading && <div>...콘텐츠...</div>}
+  </div>
+);
+```
+- early return 패턴을 사용할 경우 Playwright 타이틀 검사가 실패할 수 있음
+- TopBar/타이틀은 early return 밖에 배치해야 Playwright waitForDataLoad 후 검사 가능

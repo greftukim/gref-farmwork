@@ -1,60 +1,203 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { T, Card, Pill, Dot, Icon, icons, btnPrimary, btnGhostStyle } from '../../design/primitives';
 import { HQ } from '../../design/hq-shell';
+import useHarvestStore from '../../stores/harvestStore';
+import useBranchStore from '../../stores/branchStore';
+import useEmployeeStore from '../../stores/employeeStore';
+import useIssueStore from '../../stores/issueStore';
+import useAuthStore from '../../stores/authStore';
+import { supabase } from '../../lib/supabase';
 
 // 관리팀(본사) 대시보드 — 인터랙티브
 // 기간 탭 · 지점 막대 → 클릭 시 작물별 분해 드릴다운 · 승인 필터 · 지점 상세 모달
 
+const FARM_CODES = ['busan', 'jinju', 'hadong'];
+const BRANCH_ACCENTS = {
+  busan: { accent: T.primary, accentSoft: T.primarySoft },
+  jinju: { accent: T.success, accentSoft: T.successSoft },
+  hadong: { accent: T.warning, accentSoft: T.warningSoft },
+};
+const CROP_COLORS = {
+  토마토: '#E11D48', 완숙토마토: '#DC2626', 방울토마토: '#F97316',
+  딸기: '#EC4899', 파프리카: '#F59E0B',
+  오이: '#10B981', 미니오이: '#059669', 애호박: '#84CC16', 고추: '#EF4444',
+};
+
+// 상대 시간 포맷 (교훈 52: toLocaleString 표시용)
+function fmtAgo(iso) {
+  if (!iso) return '';
+  const diff = Math.floor((Date.now() - new Date(iso).getTime()) / 1000);
+  if (diff < 60) return '방금';
+  if (diff < 3600) return `${Math.floor(diff / 60)}분 전`;
+  if (diff < 86400) return `${Math.floor(diff / 3600)}시간 전`;
+  return `${Math.floor(diff / 86400)}일 전`;
+}
+
 function HQDashboardInteractive() {
+  const navigate = useNavigate();
   const [period, setPeriod] = useState('월');
-  const [drillBranch, setDrillBranch] = useState(null); // code or null
+  const [drillBranch, setDrillBranch] = useState(null);
   const [approvalFilter, setApprovalFilter] = useState('전체');
   const [branchModal, setBranchModal] = useState(null);
+  const [attendanceMap, setAttendanceMap] = useState({});
+  const [loading, setLoading] = useState(true);
 
-  // 지점 + 지점별 작물 구성
-  const branches = [
-    { code: 'busan', name: '부산LAB', mgr: '김재배', workers: 20, checkedIn: 18, late: 2, rate: 90,
-      harvest: 1240, harvestT: 1200, tbm: 100, accent: T.primary, accentSoft: T.primarySoft, status: 'active',
-      crops: [
-        { name: '토마토', v: 580, t: 560, c: '#E11D48' },
-        { name: '딸기', v: 360, t: 360, c: '#EC4899' },
-        { name: '파프리카', v: 300, t: 280, c: '#F59E0B' },
-      ],
-    },
-    { code: 'jinju', name: '진주HUB', mgr: '박지점', workers: 14, checkedIn: 13, late: 0, rate: 93,
-      harvest: 980, harvestT: 1100, tbm: 92, accent: T.success, accentSoft: T.successSoft, status: 'active',
-      crops: [
-        { name: '오이', v: 620, t: 700, c: '#10B981' },
-        { name: '애호박', v: 360, t: 400, c: '#84CC16' },
-      ],
-    },
-    { code: 'hadong', name: '하동HUB', mgr: '최책임', workers: 12, checkedIn: 10, late: 1, rate: 83,
-      harvest: 760, harvestT: 950, tbm: 75, accent: T.warning, accentSoft: T.warningSoft, status: 'alert',
-      crops: [
-        { name: '방울토마토', v: 480, t: 600, c: '#F97316' },
-        { name: '고추', v: 280, t: 350, c: '#DC2626' },
-      ],
-    },
-  ];
+  // store 구독
+  const records = useHarvestStore((s) => s.records);
+  const fetchCurrentMonth = useHarvestStore((s) => s.fetchCurrentMonth);
+  const dbBranches = useBranchStore((s) => s.branches);
+  const fetchBranches = useBranchStore((s) => s.fetchBranches);
+  const employees = useEmployeeStore((s) => s.employees);
+  const fetchEmployees = useEmployeeStore((s) => s.fetchEmployees);
+  const issues = useIssueStore((s) => s.issues);
+  const fetchIssues = useIssueStore((s) => s.fetchIssues);
+  const currentUser = useAuthStore((s) => s.currentUser);
 
-  // 기간별 스케일 배수 (같은 지점 구조 유지, 총량만 스케일)
+  useEffect(() => {
+    async function load() {
+      setLoading(true);
+      try {
+        await Promise.all([
+          fetchCurrentMonth(),
+          fetchBranches(),
+          fetchEmployees(currentUser),
+          fetchIssues(currentUser),
+        ]);
+        // 오늘 출근 현황 — join 없이 직접 쿼리 후 store 교차 (교훈 77: 로컬 날짜 포매팅)
+        const d = new Date();
+        const today = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+        const empBranchMap = useEmployeeStore.getState().employees.reduce(
+          (acc, e) => { acc[e.id] = e.branch; return acc; }, {},
+        );
+        const { data: attData } = await supabase
+          .from('attendance')
+          .select('employee_id, status')
+          .eq('date', today)
+          .not('check_in', 'is', null);
+        if (attData) {
+          const aMap = {};
+          attData.forEach((a) => {
+            const br = empBranchMap[a.employee_id];
+            if (!br || !FARM_CODES.includes(br)) return;
+            if (!aMap[br]) aMap[br] = { checkedIn: 0, late: 0 };
+            aMap[br].checkedIn++;
+            if (a.status === 'late') aMap[br].late++;
+          });
+          setAttendanceMap(aMap);
+        }
+      } catch (err) {
+        console.error('[DashboardInteractive] load error:', err);
+      } finally {
+        setLoading(false);
+      }
+    }
+    load();
+  }, []);
+
+  // 지점별 실데이터 branches 배열 (harvestStore currentMonth 기준 — 교훈 74)
+  const branches = useMemo(() => {
+    const byBranchMap = {};
+    const byCropMap = {};
+    records.forEach((r) => {
+      const br = r.employee?.branch;
+      const crop = r.crop?.name;
+      if (!br || !FARM_CODES.includes(br)) return;
+      byBranchMap[br] = (byBranchMap[br] || 0) + Number(r.quantity || 0);
+      if (crop) {
+        if (!byCropMap[br]) byCropMap[br] = {};
+        byCropMap[br][crop] = (byCropMap[br][crop] || 0) + Number(r.quantity || 0);
+      }
+    });
+
+    const workersByBranch = {};
+    const mgrByBranch = {};
+    employees.forEach((e) => {
+      if (!FARM_CODES.includes(e.branch)) return;
+      if (e.isActive) workersByBranch[e.branch] = (workersByBranch[e.branch] || 0) + 1;
+      // 지점장: farm_admin 중 첫 번째 실명 (재배팀 계정 제외)
+      if (e.role === 'farm_admin' && !mgrByBranch[e.branch] && !e.name.includes('재배팀')) {
+        mgrByBranch[e.branch] = e.name;
+      }
+    });
+
+    return FARM_CODES.map((code) => {
+      const dbB = dbBranches.find((b) => b.code === code) || {};
+      const harvest = Math.round(byBranchMap[code] || 0);
+      const harvestT = Number(dbB.monthlyHarvestTargetKg || 0) || 1;
+      const workers = workersByBranch[code] || 0;
+      const att = attendanceMap[code] || { checkedIn: 0, late: 0 };
+      const checkedIn = att.checkedIn;
+      const late = att.late;
+      const rate = workers > 0 ? Math.round((checkedIn / workers) * 100) : 0;
+      const ac = BRANCH_ACCENTS[code] || { accent: T.muted, accentSoft: T.bg };
+      const cropMap = byCropMap[code] || {};
+      const cropCount = Math.max(Object.keys(cropMap).length, 1);
+      const crops = Object.entries(cropMap)
+        .sort((a, b) => b[1] - a[1])
+        .map(([name, v]) => ({
+          name, v: Math.round(v),
+          t: Math.round(harvestT / cropCount),
+          c: CROP_COLORS[name] || '#6366F1',
+        }));
+      return {
+        code,
+        name: dbB.name || code,
+        mgr: mgrByBranch[code] || '—',
+        workers,
+        checkedIn,
+        late,
+        rate,
+        harvest,
+        harvestT,
+        tbm: 100,
+        ...ac,
+        status: harvest > 0 && (harvest / harvestT) < 0.7 ? 'alert' : 'active',
+        crops: crops.length > 0 ? crops : [{ name: '데이터 없음', v: 0, t: harvestT, c: T.muted }],
+      };
+    });
+  }, [records, dbBranches, employees, attendanceMap]);
+
+  // 실데이터 집계
+  const realMonthHarvest = useMemo(
+    () => records.reduce((s, r) => s + Number(r.quantity || 0), 0),
+    [records],
+  );
+  const totalTarget = useMemo(
+    () => dbBranches.filter((b) => FARM_CODES.includes(b.code)).reduce((s, b) => s + Number(b.monthlyHarvestTargetKg || 0), 0),
+    [dbBranches],
+  );
+  const openIssueCount = useMemo(() => issues.filter((i) => !i.isResolved).length, [issues]);
+
+  // 기간별 스케일 배수 (가동률/인건비는 하드코딩 유지 — HQ-DASHBOARD-INTERACTIVE-002)
   const periodMeta = {
-    '일': { mult: 0.048, label: '일간 · 4/22', kpiHarvest: 142, harvestT: 160, labor: '280', laborU: '만원', issue: 3, issueSub: '긴급 1', ga: 87, gaSub: '52 / 60명' },
-    '주': { mult: 0.24, label: '주간 · 4/20~26', kpiHarvest: 720, harvestT: 800, labor: '1,980', laborU: '만원', issue: 5, issueSub: '긴급 1 · 일반 4', ga: 89, gaSub: '평균 53 / 60명' },
-    '월': { mult: 1, label: '월간 · 2026년 4월', kpiHarvest: 2980, harvestT: 3250, labor: '8,420', laborU: '만원', issue: 7, issueSub: '긴급 2 · 일반 5', ga: 88, gaSub: '53 / 60명 평균' },
-    '분기': { mult: 3.1, label: '분기 · 2026 1Q', kpiHarvest: 9140, harvestT: 9800, labor: '2.52', laborU: '억원', issue: 18, issueSub: '해결 73%', ga: 90, gaSub: '54 / 60명' },
+    '일': { mult: 0.048, label: '일간 · 오늘', laborU: '만원', ga: 87, gaSub: '오늘 기준' },
+    '주': { mult: 0.24, label: '주간 · 이번 주', laborU: '만원', ga: 89, gaSub: '주간 평균' },
+    '월': { mult: 1, label: '월간 · 이번 달', laborU: '만원', ga: 88, gaSub: '월간 평균' },
+    '분기': { mult: 3.1, label: '분기 · 2026 2Q', laborU: '억원', ga: 90, gaSub: '분기 평균' },
   };
-  const pm = periodMeta[period];
+  const pmBase = periodMeta[period];
+  const pm = {
+    ...pmBase,
+    // 수확량: 월 실데이터 × 기간 배수 (교훈 52: toLocaleString 적용은 렌더에서)
+    kpiHarvest: Math.round(realMonthHarvest * pmBase.mult),
+    harvestT: totalTarget > 0 ? Math.round(totalTarget * pmBase.mult) : 3250,
+    // 인건비: 하드코딩 유지 (HQ-DASHBOARD-INTERACTIVE-002)
+    labor: period === '분기' ? '2.52' : period === '월' ? '8,420' : period === '주' ? '1,980' : '280',
+    // 미해결이슈: 실데이터
+    issue: openIssueCount,
+    issueSub: openIssueCount === 0 ? '이슈 없음' : `병해충 ${issues.filter((i) => !i.isResolved && i.type === '병해충').length}건 포함`,
+  };
 
-  // 승인 데이터
+  // 승인 허브 데이터 (하드코딩 — HQ-DASHBOARD-INTERACTIVE-003)
   const approvals = [
-    { id: 1, branch: '부산LAB', bc: T.primary, name: '김재배', tag: '근태', tagTone: 'primary', type: '연차 신청', detail: '4/23 (수) · 본인', time: '10분 전', urgent: false },
-    { id: 2, branch: '하동HUB', bc: T.warning, name: '최책임', tag: '예산', tagTone: 'warning', type: '설비 구매 요청', detail: '환기팬 2대 · 480만원', time: '42분 전', urgent: true },
-    { id: 3, branch: '진주HUB', bc: T.success, name: '박지점', tag: '인사', tagTone: 'info', type: '신규 작업자 등록', detail: '임시 3명 · 5/1~31', time: '1시간 전', urgent: false },
-    { id: 4, branch: '부산LAB', bc: T.primary, name: '김재배', tag: '자재', tagTone: 'success', type: '농약 재고 발주', detail: '총 120만원', time: '2시간 전', urgent: false },
-    { id: 5, branch: '하동HUB', bc: T.warning, name: '최책임', tag: '근태', tagTone: 'primary', type: '연장근무 승인', detail: '오늘 2명 · 각 2h', time: '3시간 전', urgent: false },
-    { id: 6, branch: '진주HUB', bc: T.success, name: '박지점', tag: '예산', tagTone: 'warning', type: '비료 추가 발주', detail: '총 340만원', time: '4시간 전', urgent: false },
-    { id: 7, branch: '부산LAB', bc: T.primary, name: '김재배', tag: '인사', tagTone: 'info', type: '계약직 재계약', detail: '2명 · 7/1 시행', time: '5시간 전', urgent: false },
+    { id: 1, branch: '부산LAB', bc: T.primary, name: '홍승표', tag: '근태', tagTone: 'primary', type: '연차 신청', detail: '오늘 · 본인', time: '10분 전', urgent: false },
+    { id: 2, branch: '하동HUB', bc: T.warning, name: '백남훈', tag: '예산', tagTone: 'warning', type: '설비 구매 요청', detail: '환기팬 2대 · 480만원', time: '42분 전', urgent: true },
+    { id: 3, branch: '진주HUB', bc: T.success, name: '김현회', tag: '인사', tagTone: 'info', type: '신규 작업자 등록', detail: '임시 3명 · 5/1~31', time: '1시간 전', urgent: false },
+    { id: 4, branch: '부산LAB', bc: T.primary, name: '홍승표', tag: '자재', tagTone: 'success', type: '농약 재고 발주', detail: '총 120만원', time: '2시간 전', urgent: false },
+    { id: 5, branch: '하동HUB', bc: T.warning, name: '백남훈', tag: '근태', tagTone: 'primary', type: '연장근무 승인', detail: '오늘 2명 · 각 2h', time: '3시간 전', urgent: false },
+    { id: 6, branch: '진주HUB', bc: T.success, name: '김현회', tag: '예산', tagTone: 'warning', type: '비료 추가 발주', detail: '총 340만원', time: '4시간 전', urgent: false },
+    { id: 7, branch: '부산LAB', bc: T.primary, name: '김현도', tag: '인사', tagTone: 'info', type: '계약직 재계약', detail: '2명 · 7/1 시행', time: '5시간 전', urgent: false },
   ];
   const approvalFiltered = approvalFilter === '전체' ? approvals : approvals.filter(a => a.tag === approvalFilter);
   const approvalCounts = {
@@ -63,6 +206,16 @@ function HQDashboardInteractive() {
     '자재': approvals.filter(a => a.tag === '자재').length,
   };
 
+  // 이슈피드용 보조 맵
+  const empMap = useMemo(
+    () => employees.reduce((acc, e) => { acc[e.id] = e; return acc; }, {}),
+    [employees],
+  );
+  const branchNameMap = useMemo(
+    () => dbBranches.reduce((acc, b) => { acc[b.code] = b.name; return acc; }, {}),
+    [dbBranches],
+  );
+
   return (
     <div style={{ flex: 1, overflow: 'auto', background: T.bg, position: 'relative' }}>
       <HQTopBarInteractive
@@ -70,22 +223,30 @@ function HQDashboardInteractive() {
         title="운영 리포트"
         period={period}
         onPeriodChange={setPeriod}
+        onNotice={() => navigate('/admin/hq/notices')}
       />
 
-      <div style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 20 }}>
+      {loading && (
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 80 }}>
+          <span style={{ fontSize: 13, color: T.mutedSoft }}>데이터 로딩 중...</span>
+        </div>
+      )}
+      {!loading && <div style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 20 }}>
 
         {/* KPI 4개 */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12 }}>
           {[
             { label: `${period === '일' ? '오늘' : period === '주' ? '이번 주' : period === '월' ? '이번 달' : '이번 분기'} 가동률`, value: pm.ga, unit: '%', sub: pm.gaSub, trend: '+2.1%p', tone: 'success' },
-            { label: `${period} 수확량`, value: typeof pm.kpiHarvest === 'number' ? pm.kpiHarvest.toLocaleString() : pm.kpiHarvest, unit: 'kg', sub: `목표 ${pm.harvestT.toLocaleString()}kg · ${Math.round(pm.kpiHarvest / pm.harvestT * 100)}%`, trend: '▲ 8%', tone: 'primary' },
-            { label: `${period} 인건비`, value: pm.labor, unit: pm.laborU, sub: '예산 대비 91%', trend: '−3.2%', tone: 'warning' },
-            { label: '미해결 이슈', value: pm.issue, unit: '건', sub: pm.issueSub, trend: '긴급', tone: 'danger' },
+            { label: `${period} 수확량`, value: pm.kpiHarvest.toLocaleString(), unit: 'kg', sub: `목표 ${pm.harvestT.toLocaleString()}kg · ${pm.harvestT > 0 ? Math.round(pm.kpiHarvest / pm.harvestT * 100) : 0}%`, trend: '실데이터', tone: 'primary' },
+            { label: `${period} 인건비`, value: pm.labor, unit: pm.laborU, sub: '예산 대비 91%', trend: '추정', tone: 'warning' },
+            { label: '미해결 이슈', value: pm.issue, unit: '건', sub: pm.issueSub, trend: pm.issue > 0 ? '확인 필요' : '정상', tone: pm.issue > 0 ? 'danger' : 'success' },
           ].map((k, i) => {
             const tones = { success: T.success, primary: HQ.accent, warning: T.warning, danger: T.danger };
             const softs = { success: T.successSoft, primary: HQ.accentSoft, warning: T.warningSoft, danger: T.dangerSoft };
+            const isClickable = k.label === '미해결 이슈';
             return (
-              <Card key={i} pad={18} style={{ position: 'relative', overflow: 'hidden' }}>
+              <Card key={i} pad={18} style={{ position: 'relative', overflow: 'hidden', cursor: isClickable ? 'pointer' : 'default' }}
+                onClick={isClickable ? () => navigate('/admin/hq/issues') : undefined}>
                 <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 3, background: tones[k.tone] }} />
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 14 }}>
                   <span style={{ fontSize: 12, color: T.muted, fontWeight: 600 }}>{k.label}</span>
@@ -108,7 +269,7 @@ function HQDashboardInteractive() {
               <h3 style={{ fontSize: 13, fontWeight: 700, color: T.text, margin: 0 }}>지점별 운영 현황</h3>
               <span style={{ fontSize: 11, color: T.mutedSoft }}>클릭하여 상세 보기</span>
             </div>
-            <span style={{ fontSize: 11, color: HQ.accent, fontWeight: 600, cursor: 'pointer' }}>지점 관리 →</span>
+            <span onClick={() => navigate('/admin/hq/branches')} style={{ fontSize: 11, color: HQ.accent, fontWeight: 600, cursor: 'pointer' }}>지점 관리 →</span>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12 }}>
             {branches.map((b) => (
@@ -156,8 +317,8 @@ function HQDashboardInteractive() {
 
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8, paddingTop: 12, borderTop: `1px solid ${T.borderSoft}` }}>
                     {[
-                      { l: '수확', v: Math.round(b.harvest * pm.mult), u: 'kg' },
-                      { l: '달성', v: Math.round(b.harvest / b.harvestT * 100), u: '%' },
+                      { l: '수확', v: Math.round(b.harvest * pmBase.mult).toLocaleString(), u: 'kg' },
+                      { l: '달성', v: b.harvestT > 0 ? Math.round(b.harvest / b.harvestT * 100) : 0, u: '%' },
                       { l: 'TBM', v: b.tbm, u: '%' },
                     ].map((s, i) => (
                       <div key={i}>
@@ -205,10 +366,10 @@ function HQDashboardInteractive() {
                   </div>
                   <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginTop: 8 }}>
                     <span style={{ fontSize: 24, fontWeight: 700, color: T.text, letterSpacing: -0.6, lineHeight: 1 }}>
-                      {Math.round(b.harvest * pm.mult).toLocaleString()}
+                      {Math.round(b.harvest * pmBase.mult).toLocaleString()}
                     </span>
                     <span style={{ fontSize: 13, color: T.mutedSoft }}>kg</span>
-                    <Pill tone="success">목표 대비 {Math.round(b.harvest / b.harvestT * 100)}%</Pill>
+                    <Pill tone="success">목표 대비 {b.harvestT > 0 ? Math.round(b.harvest / b.harvestT * 100) : 0}%</Pill>
                   </div>
                 </div>
               );
@@ -217,10 +378,10 @@ function HQDashboardInteractive() {
                 <h3 style={{ fontSize: 14, fontWeight: 700, color: T.text, margin: 0 }}>지점별 수확량 비교</h3>
                 <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginTop: 6 }}>
                   <span style={{ fontSize: 24, fontWeight: 700, color: T.text, letterSpacing: -0.6, lineHeight: 1 }}>
-                    {Math.round(branches.reduce((s, b) => s + b.harvest, 0) * pm.mult).toLocaleString()}
+                    {Math.round(branches.reduce((s, b) => s + b.harvest, 0) * pmBase.mult).toLocaleString()}
                   </span>
                   <span style={{ fontSize: 13, color: T.mutedSoft }}>kg</span>
-                  <Pill tone="success">목표 대비 {Math.round(pm.kpiHarvest / pm.harvestT * 100)}%</Pill>
+                  <Pill tone="success">목표 대비 {pm.harvestT > 0 ? Math.round(pm.kpiHarvest / pm.harvestT * 100) : 0}%</Pill>
                   <span style={{ marginLeft: 'auto', fontSize: 11, color: T.mutedSoft }}>막대 클릭 → 작물별 분해</span>
                 </div>
               </div>
@@ -228,9 +389,9 @@ function HQDashboardInteractive() {
 
             {/* 차트 */}
             {drillBranch ? (
-              <CropBarChart branch={branches.find(b => b.code === drillBranch)} mult={pm.mult} />
+              <CropBarChart branch={branches.find(b => b.code === drillBranch)} mult={pmBase.mult} />
             ) : (
-              <BranchBarChart branches={branches} mult={pm.mult} onDrill={setDrillBranch} />
+              <BranchBarChart branches={branches} mult={pmBase.mult} onDrill={setDrillBranch} />
             )}
           </Card>
 
@@ -241,7 +402,7 @@ function HQDashboardInteractive() {
                 <h3 style={{ fontSize: 14, fontWeight: 700, color: T.text, margin: 0 }}>승인 허브</h3>
                 <Pill tone="danger">{approvalFiltered.length}</Pill>
               </div>
-              <span style={{ fontSize: 11, color: HQ.accent, fontWeight: 600, cursor: 'pointer' }}>전체 →</span>
+              <span onClick={() => navigate('/admin/hq/approvals')} style={{ fontSize: 11, color: HQ.accent, fontWeight: 600, cursor: 'pointer' }}>전체 →</span>
             </div>
 
             <div style={{ display: 'flex', gap: 6, marginBottom: 12, fontSize: 11, flexWrap: 'wrap' }}>
@@ -302,18 +463,18 @@ function HQDashboardInteractive() {
 
         <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr 1fr', gap: 20 }}>
           <FinanceTrendCard />
-          <IssueFeedCard />
-          <NoticeMgmtCard />
+          <IssueFeedCard issues={issues} empMap={empMap} branchNameMap={branchNameMap} onViewAll={() => navigate('/admin/hq/issues')} />
+          <NoticeMgmtCard onNewNotice={() => navigate('/admin/hq/notices')} />
         </div>
-      </div>
+      </div>}
 
-      {branchModal && <BranchDetailModal branch={branchModal} onClose={() => setBranchModal(null)} mult={pm.mult} />}
+      {!loading && branchModal && <BranchDetailModal branch={branchModal} onClose={() => setBranchModal(null)} mult={pmBase.mult} />}
     </div>
   );
 }
 
 // ─── 상단바 ───
-function HQTopBarInteractive({ title, subtitle, period, onPeriodChange }) {
+function HQTopBarInteractive({ title, subtitle, period, onPeriodChange, onNotice }) {
   return (
     <div style={{
       display: 'flex', alignItems: 'center', justifyContent: 'space-between',
@@ -355,7 +516,7 @@ function HQTopBarInteractive({ title, subtitle, period, onPeriodChange }) {
           <Icon d={icons.bell} size={16} />
           <span style={{ position: 'absolute', top: 4, right: 4, width: 7, height: 7, borderRadius: 999, background: T.danger }} />
         </button>
-        {btnPrimary('전사 공지', icons.plus)}
+        {btnPrimary('전사 공지', icons.plus, onNotice)}
       </div>
     </div>
   );
@@ -395,10 +556,10 @@ function BranchBarChart({ branches, mult, onDrill }) {
         {branches.map(b => {
           const v = Math.round(b.harvest * mult);
           const tv = Math.round(b.harvestT * mult);
-          const h = (v / max) * CHART_H;
-          const th = (tv / max) * CHART_H;
+          const h = max > 0 ? (v / max) * CHART_H : 0;
+          const th = max > 0 ? (tv / max) * CHART_H : 0;
           const isHover = hover === b.code;
-          const pct = Math.round(v / tv * 100);
+          const pct = tv > 0 ? Math.round(v / tv * 100) : 0;
           return (
             <div key={b.code}
               style={{ flex: 1, display: 'flex', justifyContent: 'center', position: 'relative', height: '100%', cursor: 'pointer' }}
@@ -492,10 +653,10 @@ function CropBarChart({ branch, mult }) {
         {branch.crops.map(c => {
           const v = Math.round(c.v * mult);
           const tv = Math.round(c.t * mult);
-          const h = (v / max) * CHART_H;
-          const th = (tv / max) * CHART_H;
+          const h = max > 0 ? (v / max) * CHART_H : 0;
+          const th = max > 0 ? (tv / max) * CHART_H : 0;
           const isHover = hover === c.name;
-          const pct = Math.round(v / tv * 100);
+          const pct = tv > 0 ? Math.round(v / tv * 100) : 0;
           return (
             <div key={c.name}
               style={{ flex: 1, display: 'flex', justifyContent: 'center', position: 'relative', height: '100%' }}
@@ -539,7 +700,7 @@ function CropBarChart({ branch, mult }) {
 
       <div style={{ position: 'absolute', left: 40, right: 40, bottom: 16, display: 'flex', gap: 20 }}>
         {branch.crops.map(c => {
-          const pct = Math.round(c.v / c.t * 100);
+          const pct = c.t > 0 ? Math.round(c.v / c.t * 100) : 0;
           return (
             <div key={c.name} style={{ flex: 1, textAlign: 'center' }}>
               <div style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 11, fontWeight: 600, color: T.text }}>
@@ -557,7 +718,7 @@ function CropBarChart({ branch, mult }) {
   );
 }
 
-// ─── 하단 카드 3개 (간소화) ───
+// ─── 하단 카드 3개 ───
 function FinanceTrendCard() {
   return (
     <Card>
@@ -602,36 +763,43 @@ function FinanceTrendCard() {
   );
 }
 
-function IssueFeedCard() {
+// 이상 신고 피드 — 실데이터 (issueStore 경유)
+const TYPE_META = {
+  병해충: { tone: 'danger', bg: () => T.dangerSoft, border: () => T.danger },
+  시설이상: { tone: 'warning', bg: () => T.warningSoft, border: () => T.warning },
+  작물이상: { tone: 'info', bg: () => T.infoSoft, border: () => T.info },
+  기타: { tone: 'muted', bg: () => T.bg, border: () => T.borderSoft },
+};
+
+function IssueFeedCard({ issues, empMap, branchNameMap, onViewAll }) {
+  const recentOpen = issues.filter((i) => !i.isResolved).slice(0, 4);
   return (
     <Card>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <h3 style={{ fontSize: 14, fontWeight: 700, color: T.text, margin: 0 }}>전 지점 이상 신고</h3>
-          <Pill tone="danger">7</Pill>
+          <Pill tone="danger">{issues.filter((i) => !i.isResolved).length}</Pill>
         </div>
-        <span style={{ fontSize: 11, color: HQ.accent, fontWeight: 600, cursor: 'pointer' }}>전체 →</span>
+        <span onClick={onViewAll} style={{ fontSize: 11, color: HQ.accent, fontWeight: 600, cursor: 'pointer' }}>전체 →</span>
       </div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-        {[
-          { branch: '부산LAB', bc: T.primary, sev: 'critical', type: '병해충', place: 'B동 3열 · 딸기', who: '최수진', time: '8분 전', note: '잎 하면 흰색 반점 다수 확인' },
-          { branch: '하동HUB', bc: T.warning, sev: 'critical', type: '설비 고장', place: '환기창 2번', who: '이강모', time: '32분 전', note: '자동 개폐 반응 없음' },
-          { branch: '진주HUB', bc: T.success, sev: 'warning', type: 'EC 이상', place: 'C동 2열 · 오이', who: '자동감지', time: '1시간 전', note: 'EC 3.2 → 기준 초과' },
-          { branch: '부산LAB', bc: T.primary, sev: 'info', type: '작물 이상', place: 'A동 7열 · 토마토', who: '김수확', time: '2시간 전', note: '과실 일부 열과 발생' },
-        ].map((it, i) => {
-          const sevTone = { critical: 'danger', warning: 'warning', info: 'info' }[it.sev];
-          const sevBg = { critical: T.dangerSoft, warning: T.warningSoft, info: T.infoSoft }[it.sev];
-          const sevBorder = { critical: T.danger, warning: T.warning, info: T.info }[it.sev];
+        {recentOpen.length === 0 ? (
+          <div style={{ padding: 24, textAlign: 'center', color: T.mutedSoft, fontSize: 12 }}>미해결 이슈 없음</div>
+        ) : recentOpen.map((it) => {
+          const meta = TYPE_META[it.type] || TYPE_META['기타'];
+          const emp = empMap[it.workerId];
+          const brName = branchNameMap[emp?.branch] || emp?.branch || '—';
+          const brAccent = emp?.branch === 'busan' ? T.primary : emp?.branch === 'jinju' ? T.success : T.warning;
           return (
-            <div key={i} style={{ padding: '10px 12px', background: sevBg, borderRadius: 8, borderLeft: `3px solid ${sevBorder}` }}>
+            <div key={it.id} style={{ padding: '10px 12px', background: meta.bg(), borderRadius: 8, borderLeft: `3px solid ${meta.border()}` }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
-                <Dot c={it.bc} />
-                <span style={{ fontSize: 11, fontWeight: 700, color: T.muted }}>{it.branch}</span>
-                <Pill tone={sevTone} size="sm">{it.type}</Pill>
-                <span style={{ fontSize: 10, color: T.mutedSoft, marginLeft: 'auto' }}>{it.time}</span>
+                <Dot c={brAccent} />
+                <span style={{ fontSize: 11, fontWeight: 700, color: T.muted }}>{brName}</span>
+                <Pill tone={meta.tone} size="sm">{it.type}</Pill>
+                <span style={{ fontSize: 10, color: T.mutedSoft, marginLeft: 'auto' }}>{fmtAgo(it.createdAt)}</span>
               </div>
-              <div style={{ fontSize: 12, fontWeight: 600, color: T.text }}>{it.place}</div>
-              <div style={{ fontSize: 11, color: T.muted, marginTop: 2 }}>{it.who} — {it.note}</div>
+              <div style={{ fontSize: 12, fontWeight: 600, color: T.text }}>{it.comment || '—'}</div>
+              <div style={{ fontSize: 11, color: T.muted, marginTop: 2 }}>{emp?.name || '—'}</div>
             </div>
           );
         })}
@@ -640,12 +808,12 @@ function IssueFeedCard() {
   );
 }
 
-function NoticeMgmtCard() {
+function NoticeMgmtCard({ onNewNotice }) {
   return (
     <Card>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
         <h3 style={{ fontSize: 14, fontWeight: 700, color: T.text, margin: 0 }}>공지 · 정책 관리</h3>
-        <span style={{ fontSize: 11, color: HQ.accent, fontWeight: 600, cursor: 'pointer' }}>+ 새 공지</span>
+        <span onClick={onNewNotice} style={{ fontSize: 11, color: HQ.accent, fontWeight: 600, cursor: 'pointer' }}>+ 새 공지</span>
       </div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
         {[
@@ -674,7 +842,7 @@ function NoticeMgmtCard() {
         })}
       </div>
       <div style={{ marginTop: 12, paddingTop: 12, borderTop: `1px solid ${T.borderSoft}`, display: 'flex', justifyContent: 'space-between', fontSize: 11 }}>
-        <span style={{ color: T.mutedSoft }}>활성 <span style={{ color: T.text, fontWeight: 700 }}>8건</span></span>
+        <span style={{ color: T.mutedSoft }}>활성 <span style={{ color: T.text, fontWeight: 700 }}>4건</span></span>
         <span style={{ color: T.mutedSoft }}>평균 열람률 <span style={{ color: T.success, fontWeight: 700 }}>83%</span></span>
       </div>
     </Card>
@@ -743,7 +911,7 @@ function BranchDetailModal({ branch, onClose, mult }) {
               {branch.crops.map(c => {
                 const v = Math.round(c.v * mult);
                 const tv = Math.round(c.t * mult);
-                const pct = Math.round(c.v / c.t * 100);
+                const pct = c.t > 0 ? Math.round(c.v / c.t * 100) : 0;
                 return (
                   <div key={c.name} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                     <Dot c={c.c} />
@@ -768,7 +936,7 @@ function BranchDetailModal({ branch, onClose, mult }) {
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
               {[
                 { l: '총 수확량', v: Math.round(branch.harvest * mult).toLocaleString(), u: 'kg', sub: `목표 ${branch.harvestT.toLocaleString()}kg` },
-                { l: '목표 달성', v: Math.round(branch.harvest / branch.harvestT * 100), u: '%', sub: '▲ 전월 대비 +4%p' },
+                { l: '목표 달성', v: branch.harvestT > 0 ? Math.round(branch.harvest / branch.harvestT * 100) : 0, u: '%', sub: '이번 달 기준' },
                 { l: 'TBM 이수율', v: branch.tbm, u: '%', sub: branch.tbm === 100 ? '완료' : '미완료 있음' },
               ].map((s, i) => (
                 <div key={i} style={{ padding: 12, background: T.bg, borderRadius: 8 }}>

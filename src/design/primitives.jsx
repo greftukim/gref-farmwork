@@ -46,7 +46,7 @@ const Pill = ({ children, tone = 'muted', size = 'sm' }) => {
     danger: { bg: T.dangerSoft, fg: T.danger },
     info: { bg: T.infoSoft, fg: T.info },
   };
-  const c = tones[tone];
+  const c = tones[tone] || tones.muted;
   return <span style={{
     display: 'inline-flex', alignItems: 'center', gap: 4,
     padding: size === 'sm' ? '2px 8px' : '4px 10px',
