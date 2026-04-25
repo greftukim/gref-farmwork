@@ -2295,3 +2295,36 @@ grep 결과: scripts/*.cjs 19개에 `const OUT_DIR = path.join(..., 'regression_
 - 페이지가 데이터를 표시하지 않을 때: (1) 스토어 상태명 존재 확인, (2) 필드명 snakeToCamel 변환 결과 확인
 - 전역 store에 상태 추가하기보다 `useEffect(() => { fetchXxx().then(setLocal) }, [date])` 로컬 패턴이 더 단순
 - 필드명은 `fetchByDate` 반환 후 `snakeToCamel` 적용 결과를 grep으로 먼저 확인
+
+
+---
+
+## 교훈 94 — Supabase 중첩 쿼리빌더 안티패턴: .eq('col', supabase.from(...)) 는 동작하지 않는다
+
+세션 55 HQ-BRANCH-DETAIL-001: `finance_monthly` 조회 시 `branch_id` 조건을
+`supabase.from('branches').select('id').eq('code', branchId).single()` 를 `.eq('branch_id', ...)` 인자로 전달.
+이는 QueryBuilder 객체를 넘기는 것이라 Supabase JS SDK가 처리 불가 → finance 데이터 항상 null.
+
+**Why:** Supabase JS SDK v2는 서버사이드 서브쿼리를 클라이언트에서 합성해 주지 않는다.
+`.from(...).select()` 가 반환하는 것은 Promise가 아닌 QueryBuilder (빌더 패턴)이므로
+값으로 전달하면 [object Object]로 직렬화된다.
+
+**How to apply:**
+- branch_id 같은 FK 조건이 필요할 때: 2단계 쿼리 — (1) branches에서 id 조회, (2) 그 id로 finance_monthly 조회
+- 같은 useEffect 내에서 첫 번째 `.then()` 안에서 두 번째 쿼리 실행
+- 또는 branches 조회 때 `id, monthly_harvest_target_kg` 를 함께 select 해 1번 왕복으로 처리 (이번 구현 방식)
+
+---
+
+## 교훈 95 — useNavigate 미임포트 화면에서 페이지 이동 버튼 추가 시 react-router import 먼저 확인
+
+세션 55 _pages.jsx HQBranchesScreen "상세 →" 버튼: navigate 호출이 필요했으나
+_pages.jsx는 react-router-dom에서 아무것도 import 하지 않고 있었다.
+`useNavigate` import 추가 후 함수 컴포넌트 최상단에서 `const navigate = useNavigate()` 호출 필요.
+
+**Why:** _pages.jsx 는 다수의 HQ 페이지를 단일 파일에 모아둔 구조로, 라우팅 의존성이 없었다.
+새로운 navigate 추가 시 파일 상단 import 목록과 컴포넌트 내 훅 선언 두 곳 모두 수정해야 한다.
+
+**How to apply:**
+- 페이지 이동 버튼 추가 전: `grep useNavigate {파일명}` 으로 import 여부 먼저 확인
+- 없으면: import 라인 추가 + 컴포넌트 상단 `const navigate = useNavigate();` 동시에 추가

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { T, Card, Pill, Dot, Icon, icons, Avatar, btnPrimary, btnSecondary } from '../../design/primitives';
 import { HQ } from '../../design/hq-shell';
 import useEmployeeStore from '../../stores/employeeStore';
@@ -306,6 +307,7 @@ function HQApprovalsScreen() {
 // ② 지점 관리
 // ═══════════════════════════════════════════════════════════
 function HQBranchesScreen() {
+  const navigate = useNavigate();
   const employees = useEmployeeStore((s) => s.employees);
   const fetchEmployees = useEmployeeStore((s) => s.fetchEmployees);
   const records = useAttendanceStore((s) => s.records);
@@ -435,7 +437,7 @@ function HQBranchesScreen() {
                 </div>
                 <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
                   {b.status === 'alert' ? <Pill tone="warning">주의</Pill> : <Pill tone="success">정상</Pill>}
-                  <button onClick={() => alert(`${b.name} 지점 상세 페이지 준비 중입니다.`)} style={{ padding: '5px 10px', borderRadius: 6, border: `1px solid ${T.border}`, background: T.surface, color: T.muted, fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>상세 →</button>
+                  <button onClick={() => navigate(`/admin/hq/branches/${b.code}`)} style={{ padding: '5px 10px', borderRadius: 6, border: `1px solid ${T.border}`, background: T.surface, color: T.muted, fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>상세 →</button>
                   {/* BACKLOG: HQ-BRANCH-DETAIL-001 */}
                 </div>
               </div>

@@ -185,15 +185,15 @@ async function loginAs(page, username, password = 'rmfpvm001') {
   console.log('\n[SECTION R] HQ 전체 메뉴 회귀');
 
   const hqRoutes = [
-    ['/admin/hq/dashboard', '경영 현황'],
+    ['/admin/hq', '운영 리포트'],               // HQDashboardScreen: index route /admin/hq
     ['/admin/hq/interactive', '운영 리포트'],
     ['/admin/hq/employees', '직원 관리'],
     ['/admin/hq/branches', '지점 관리'],
     ['/admin/hq/approvals', '승인 허브'],
     ['/admin/hq/finance', '경영 지표'],
     ['/admin/hq/growth', '생육 비교'],
-    ['/admin/hq/performance', '성과 분석'],
-    ['/admin/hq/notices', '공지사항'],
+    ['/admin/hq/performance', '작업자 성과 관리'],  // PerfHeader title
+    ['/admin/hq/notices', '공지 · 정책'],       // HQPageHeader title
     ['/admin/hq/issues', '이상 신고'],
   ];
 

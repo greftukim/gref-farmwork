@@ -14,7 +14,6 @@ export default function EmployeesPage() {
   const employees = useEmployeeStore((s) => s.employees);
   const addEmployee = useEmployeeStore((s) => s.addEmployee);
   const updateEmployee = useEmployeeStore((s) => s.updateEmployee);
-  const removeEmployee = useEmployeeStore((s) => s.removeEmployee);
 
   const [q, setQ] = useState('');
   const [roleFilter, setRoleFilter] = useState('all');
