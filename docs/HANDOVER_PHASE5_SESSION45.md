@@ -3,7 +3,7 @@
 날짜: 2026-04-25  
 작업자: Claude Code (세션 45)  
 세션 목적: TASKS-WORKER-ID-MISMATCH-001 — orphan tasks 해소  
-마지막 커밋: (아래 커밋 후 갱신 예정)
+마지막 커밋: 33abf69
 
 ---
 
