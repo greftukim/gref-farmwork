@@ -1,4 +1,5 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import { T, Card, Pill, icons, btnSecondary } from '../../design/primitives';
 import { HQ } from '../../design/hq-shell';
 
@@ -8,20 +9,20 @@ import { HQ } from '../../design/hq-shell';
 const HQ_GR_DATA = {
   branches: [
     {
-      id: 'b1', name: '부산LAB', crops: [
+      id: 'busan', name: '부산LAB', crops: [
         { name: '토마토', health: 92, dev: +2, week: 8, plants: 8, open: 1 },
         { name: '딸기', health: 88, dev: -4, week: 6, plants: 6, open: 0 },
         { name: '파프리카', health: 84, dev: -9, week: 10, plants: 6, open: 2 },
       ],
     },
     {
-      id: 'b2', name: '진주HUB', crops: [
+      id: 'jinju', name: '진주HUB', crops: [
         { name: '오이', health: 94, dev: +3, week: 5, plants: 8, open: 0 },
         { name: '애호박', health: 91, dev: +1, week: 7, plants: 6, open: 1 },
       ],
     },
     {
-      id: 'b3', name: '하동HUB', crops: [
+      id: 'hadong', name: '하동HUB', crops: [
         { name: '방울토마토', health: 89, dev: -2, week: 9, plants: 8, open: 1 },
         { name: '고추', health: 78, dev: -12, week: 11, plants: 6, open: 3 },
       ],
@@ -30,6 +31,7 @@ const HQ_GR_DATA = {
 };
 
 function HQGrowthCompareScreen() {
+  const navigate = useNavigate();
   const toneByDev = (d) => Math.abs(d) <= 3 ? T.success : Math.abs(d) <= 8 ? T.warning : T.danger;
   const toneByHealth = (h) => h >= 90 ? T.success : h >= 80 ? T.warning : T.danger;
 
@@ -122,10 +124,9 @@ function HQGrowthCompareScreen() {
                   ))}
                 </div>
                 <div style={{ padding: '10px 16px', background: T.bg }}>
-                  <button onClick={() => alert('지점별 생육 상세 페이지 준비 중입니다.')} style={{ width: '100%', padding: '7px 0', borderRadius: 6, border: 0, background: T.surface, color: T.primary, fontSize: 11, fontWeight: 700, cursor: 'pointer', borderTop: `1px solid ${T.borderSoft}` }}>
+                  <button onClick={() => navigate(`/admin/hq/growth/branches/${b.id}`)} style={{ width: '100%', padding: '7px 0', borderRadius: 6, border: 0, background: T.surface, color: T.primary, fontSize: 11, fontWeight: 700, cursor: 'pointer', borderTop: `1px solid ${T.borderSoft}` }}>
                     지점 상세 보기 →
                   </button>
-                  {/* BACKLOG: HQ-GROWTH-BRANCH-DETAIL-001 */}
                 </div>
               </Card>
             );
@@ -159,7 +160,7 @@ function HQGrowthCompareScreen() {
               </tr>
             </thead>
             <tbody>
-              {HQ_GR_DATA.branches.flatMap(b => b.crops.map(c => ({ b: b.name, ...c }))).map((row, i) => {
+              {HQ_GR_DATA.branches.flatMap(b => b.crops.map(c => ({ b: b.name, bid: b.id, ...c }))).map((row, i) => {
                 const devPct = Math.min(Math.abs(row.dev) / 15 * 50, 50);
                 const tone = toneByDev(row.dev);
                 return (
@@ -191,7 +192,7 @@ function HQGrowthCompareScreen() {
                         : <span style={{ fontSize: 11, color: T.mutedSoft }}>—</span>}
                     </td>
                     <td style={{ padding: '10px 14px', textAlign: 'center' }}>
-                      <button style={{ padding: '4px 10px', borderRadius: 5, border: `1px solid ${T.border}`, background: T.surface, color: T.muted, fontSize: 11, cursor: 'pointer' }}>→</button>
+                      <button onClick={() => navigate(`/admin/hq/growth/branches/${row.bid}`)} style={{ padding: '4px 10px', borderRadius: 5, border: `1px solid ${T.border}`, background: T.surface, color: T.muted, fontSize: 11, cursor: 'pointer' }}>→</button>
                     </td>
                   </tr>
                 );

@@ -2364,3 +2364,20 @@ rejectRequest:  (id) => get().farmReview(id, false, null),
 - 누락 action 추가 전: store 파일 전체 읽고 기존 action 중 재활용 가능한 것 있는지 확인
 - 같은 DB 조작이면 래퍼 2줄이 재구현 30줄보다 낫다
 - 래퍼 인자 매핑 시 null 허용 여부 확인 (farm_reviewed_by: null → Supabase에서 허용)
+
+---
+
+## 교훈 98 — 자식 상세 라우트 구현 전 부모 mock id와 라우트 파라미터를 먼저 정렬할 것
+
+세션 57 HQ-GROWTH-BRANCH-DETAIL-001: GrowthCompare의 branches id가 'b1'/'b2'/'b3'(임의)이고
+라우트 파라미터는 `:branchId`(busan/jinju/hadong 기대)였다.
+상세 페이지를 구현하기 전 GrowthCompare mock 데이터 id를 'busan'/'jinju'/'hadong'으로 변경해야
+navigate + BRANCH_META lookup 이 정상 동작한다.
+
+**Why:** 부모 컴포넌트 mock 데이터 id와 라우트 파라미터 설계가 불일치하면
+`navigate(\`/growth/branches/${b.id}\`)` 가 잘못된 값을 전달하고
+자식 detail 페이지의 `BRANCH_META[branchId]`가 undefined를 반환한다.
+
+**How to apply:**
+- 상세 페이지 구현 시작 전: 부모 데이터 id → 라우트 key 일치 여부 먼저 점검
+- mock 데이터 id는 라우트 파라미터로 실제 사용될 값과 동일하게 설정 (의미있는 코드 권장)

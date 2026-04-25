@@ -26,6 +26,7 @@ import { HQDashboardInteractive } from './pages/hq/DashboardInteractive';
 import { HQGrowthCompareScreen } from './pages/hq/GrowthCompare';
 import { HQApprovalsScreen, HQBranchesScreen, HQEmployeesScreen, HQFinanceScreen, HQNoticesScreen, HQIssuesScreen } from './pages/hq/_pages';
 import { HQBranchDetailScreen } from './pages/hq/BranchDetail';
+import { HQGrowthBranchDetailScreen } from './pages/hq/GrowthBranchDetail';
 import { FloorPlanScreen } from './pages/FloorPlan';
 import { GrowthDashboardScreen, GrowthHeatmapScreen, GrowthInputScreen, GrowthMarkerDetailScreen } from './pages/Growth';
 import { BranchPerformanceScreen, HQPerformanceScreen, PerformanceCompareScreen, PerformanceDetailScreen } from './pages/Performance';
@@ -230,6 +231,7 @@ export default function App() {
               <Route path="approvals" element={<HQApprovalsScreen />} />
               <Route path="branches" element={<HQBranchesScreen />} />
               <Route path="branches/:branchId" element={<HQBranchDetailScreen />} />
+              <Route path="growth/branches/:branchId" element={<HQGrowthBranchDetailScreen />} />
               <Route path="employees" element={<HQEmployeesScreen />} />
               <Route path="finance" element={<HQFinanceScreen />} />
               <Route path="notices" element={<HQNoticesScreen />} />

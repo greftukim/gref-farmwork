@@ -173,7 +173,7 @@
 | HQ-FINANCE-CONSOLE-ERR-001 | BUG | wontfix | 세션 29 등록 → 세션 30 (2026-04-24) 재조사 | - | 세션 30 타겟 Playwright 재검증: console error 0건. 세션 29 감사 스크립트 오탐으로 판정 (React Router future flag warning이 error 분류된 것으로 추정). | docs/BACKLOG.md |
 | HQ-GROWTH-ALERT-SEND-001 | 기능 미구현 | partial | 세션 29 등록 → 세션 30 (2026-04-24) alert 연결 | - | GrowthCompare "지점 알림 발송" → alert('지점 알림 발송 기능 준비 중입니다.') 임시 처리. FCM 연동은 HQ-GROWTH-001 후 처리. | docs/BACKLOG.md |
 | HQ-BRANCH-DETAIL-001 | 기능 미구현 | resolved | 세션 30 (2026-04-24) | 세션 55 (2026-04-26) | `/admin/hq/branches/:branchId` 신규 라우트+페이지 신설 완료. KPI 4개(활성 인원/수확/TBM/수익), 작업자 현황 테이블, 재무 요약 카드 구현. Playwright PASS 61/0/0. | docs/BACKLOG.md |
-| HQ-GROWTH-BRANCH-DETAIL-001 | 기능 미구현 | open | 세션 30 (2026-04-24) | - | GrowthCompare "지점 상세 보기 →" 버튼 — alert('지점별 생육 상세 페이지 준비 중입니다.') 임시 처리. 지점별 생육 상세 뷰 미설계. HQ-GROWTH-001 연결 후 설계 검토. | docs/BACKLOG.md |
+| HQ-GROWTH-BRANCH-DETAIL-001 | 기능 미구현 | resolved | 세션 30 (2026-04-24) 등록 → 세션 57 (2026-04-26) 해소 | - | `/admin/hq/growth/branches/:branchId` 신규 라우트+페이지 신설 완료. mock crops 상세 테이블(건전도/편차/작기/이상 건) + 지점별 KPI 4개(건전도/표식주/이상/주의작물) + 주의 필요 섹션. GrowthCompare id b1/b2/b3→busan/jinju/hadong 수정 + navigate 연결. | docs/BACKLOG.md |
 | HQ-EMP-INACTIVE-DISPLAY-001 | UI 결정 | wontfix | 세션 29 등록 → 세션 30 (2026-04-24) 결정 | - | 태우님 결정: 현재 동작(비활성 직원 포함 전원 표시) 의도적 유지. KPI 카드에 "활성 X · 비활성 Y" 명시되어 있어 혼선 없음. 추후 상태 필터 추가 시 재검토 가능. | docs/BACKLOG.md |
 | FARM-DASH-DATE-001 | 하드코딩 | resolved | 세션 31 등록 → 세션 32 (2026-04-24) | - | AdminDashboard.jsx TopBar title 날짜 하드코딩 → useMemo + new Date() 동적 계산으로 수정. 회귀 PASS. | docs/AUDIT_SESSION31_FARM.md |
 | FARM-DASH-SCHED-HARDCODE-001 | 하드코딩 | resolved | 세션 31 등록 → 세션 32 (2026-04-24) | - | 스케줄 그리드 날짜/isToday 하드코딩 → weekDays useMemo(현재 주 월요일 기준 7일) 동적 계산으로 수정. 회귀 PASS. | docs/AUDIT_SESSION31_FARM.md |
@@ -208,6 +208,7 @@
 | STORE-MISSING-002 | BUG | resolved | 세션 55 (2026-04-26) | 세션 56 (2026-04-26) | leaveStore.approveRequest(id)/rejectRequest(id) 래퍼 추가 — 내부적으로 farmReview 호출. | docs/BACKLOG.md |
 | STORE-MISSING-003 | BUG | resolved | 세션 55 (2026-04-26) | 세션 56 (2026-04-26) | noticeStore.markRead(id,userId) 추가 (로컬 상태 — read_by DB컬럼 없음, 세션 내 읽음 처리). WorkerNoticePage n.content→n.body 수정(2곳). | docs/BACKLOG.md |
 | NOTICE-AUTH-001 | 인프라 공백 | open | 세션 56 (2026-04-26) | - | auth.users에 worker 계정 미존재 — /worker/* 라우트(WorkerNoticePage 등) E2E 테스트 불가. worker 계정 auth 통합 시 WorkerNoticePage markRead DB 영속화(read_by 컬럼 추가) 함께 진행 필요. RLS-WORKER-ROLE-TEST-001 관련. | docs/BACKLOG.md |
+| ISSUE-STATUS-COLUMN-001 | DB 부채 | open | 세션 56 (2026-04-26) | - | issues 테이블에 `status` 컬럼 없음 — issueStore.updateIssue 'in_progress' 로컬 상태만 유지, 새로고침 시 'pending'으로 복원. 영속화 필요 시 별 마이그레이션 세션에서 `status VARCHAR(20) DEFAULT 'pending'` 컬럼 추가. | docs/BACKLOG.md |
 
 ---
 
