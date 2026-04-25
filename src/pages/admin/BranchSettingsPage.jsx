@@ -233,6 +233,10 @@ export default function BranchSettingsPage() {
   const [schedLoading, setSchedLoading] = useState(false);
   const [schedSaving, setSchedSaving] = useState(false);
 
+  const [targetKg, setTargetKg] = useState('');
+  const [targetLoading, setTargetLoading] = useState(false);
+  const [targetSaving, setTargetSaving] = useState(false);
+
   // 기본 선택
   useEffect(() => {
     if (!selectedId && branches.length > 0) setSelectedId(branches[0].id);
@@ -274,6 +278,20 @@ export default function BranchSettingsPage() {
           });
         }
         setSchedLoading(false);
+      });
+  }, [selectedId, selected?.code]);
+
+  useEffect(() => {
+    if (!selected?.code) return;
+    setTargetLoading(true);
+    supabase
+      .from('branches')
+      .select('monthly_harvest_target_kg')
+      .eq('code', selected.code)
+      .single()
+      .then(({ data }) => {
+        setTargetKg(data?.monthly_harvest_target_kg != null ? String(data.monthly_harvest_target_kg) : '');
+        setTargetLoading(false);
       });
   }, [selectedId, selected?.code]);
 
@@ -341,6 +359,20 @@ export default function BranchSettingsPage() {
     setSchedSaving(false);
     if (error) showToast(`근무시간 저장 실패: ${error.message}`, 'danger');
     else showToast(`${selected.name} 근무시간이 저장되었습니다`);
+  };
+
+  const handleTargetSave = async () => {
+    if (!selected?.code || !canEditSchedule) return;
+    setTargetSaving(true);
+    const kg = Number(targetKg);
+    if (isNaN(kg) || kg < 0) { showToast('유효한 목표 수확량을 입력하세요', 'danger'); setTargetSaving(false); return; }
+    const { error } = await supabase
+      .from('branches')
+      .update({ monthly_harvest_target_kg: kg })
+      .eq('code', selected.code);
+    setTargetSaving(false);
+    if (error) showToast(`수확 목표 저장 실패: ${error.message}`, 'danger');
+    else showToast(`${selected.name} 월 수확 목표가 저장되었습니다`);
   };
 
   const toggleWorkday = (key) => {
@@ -783,6 +815,67 @@ export default function BranchSettingsPage() {
                     >
                       <Icon d={icons.check} size={13} c="#fff" sw={2.5} />
                       {schedSaving ? '저장 중...' : '근무시간 저장'}
+                    </button>
+                  </div>
+                )}
+              </Card>
+
+              {/* 수확 목표 설정 */}
+              <Card pad={0}>
+                <div style={{ padding: '14px 20px', borderBottom: `1px solid ${T.borderSoft}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <div>
+                    <h3 style={{ fontSize: 14, fontWeight: 700, color: T.text, margin: 0 }}>월 수확 목표</h3>
+                    <p style={{ fontSize: 11, color: T.mutedSoft, margin: '2px 0 0' }}>
+                      {canEditSchedule ? '이번 달 수확 목표(kg)를 설정합니다' : '읽기 전용 (HQ 관리자만 수정 가능)'}
+                    </p>
+                  </div>
+                  {!canEditSchedule && (
+                    <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 8px', background: T.bg, border: `1px solid ${T.border}`, borderRadius: 4, color: T.mutedSoft }}>읽기 전용</span>
+                  )}
+                </div>
+                {targetLoading ? (
+                  <div style={{ padding: 24, textAlign: 'center', color: T.mutedSoft, fontSize: 12 }}>로딩 중...</div>
+                ) : (
+                  <div style={{ padding: 20 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                      <input
+                        type="number"
+                        min="0"
+                        value={targetKg}
+                        onChange={(e) => canEditSchedule && setTargetKg(e.target.value)}
+                        disabled={!canEditSchedule}
+                        placeholder="예: 5000"
+                        style={{
+                          flex: 1, height: 38, padding: '0 12px', borderRadius: 8,
+                          border: `1px solid ${T.border}`, fontSize: 14, fontWeight: 600,
+                          color: T.text, background: canEditSchedule ? T.surface : T.bg,
+                          outline: 'none', cursor: canEditSchedule ? 'auto' : 'not-allowed',
+                          opacity: canEditSchedule ? 1 : 0.6,
+                        }}
+                      />
+                      <span style={{ fontSize: 13, color: T.muted, fontWeight: 600, whiteSpace: 'nowrap' }}>kg / 월</span>
+                    </div>
+                    {targetKg && Number(targetKg) > 0 && (
+                      <div style={{ marginTop: 10, padding: 10, background: accent.soft, borderRadius: 8, fontSize: 12, color: accent.text }}>
+                        목표: <strong>{Number(targetKg).toLocaleString()} kg</strong> (달성 시 KPI에 반영됩니다)
+                      </div>
+                    )}
+                  </div>
+                )}
+                {canEditSchedule && (
+                  <div style={{ padding: '12px 20px', borderTop: `1px solid ${T.borderSoft}`, background: T.bg, display: 'flex', justifyContent: 'flex-end' }}>
+                    <button
+                      onClick={handleTargetSave}
+                      disabled={targetSaving || targetLoading}
+                      style={{
+                        display: 'inline-flex', alignItems: 'center', gap: 6,
+                        height: 36, padding: '0 18px', borderRadius: 8,
+                        background: targetSaving ? T.mutedSoft : T.primary, color: '#fff', border: 0,
+                        fontSize: 13, fontWeight: 600, cursor: targetSaving ? 'not-allowed' : 'pointer',
+                      }}
+                    >
+                      <Icon d={icons.check} size={13} c="#fff" sw={2.5} />
+                      {targetSaving ? '저장 중...' : '목표 저장'}
                     </button>
                   </div>
                 )}

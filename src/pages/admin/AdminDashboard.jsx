@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Avatar, Card, Dot, Icon, Pill, T, TopBar, btnPrimary, btnSecondary, icons } from '../../design/primitives';
 import { useNavigate } from 'react-router-dom';
 import useTaskStore from '../../stores/taskStore';
@@ -12,6 +12,8 @@ import useCropStore from '../../stores/cropStore';
 import useZoneStore from '../../stores/zoneStore';
 import useCallStore from '../../stores/callStore';
 import useAuthStore from '../../stores/authStore';
+import useHarvestStore from '../../stores/harvestStore';
+import { supabase } from '../../lib/supabase';
 
 // 기존 코드와 동일한 UTC 기준 (attendanceStore.checkIn과 일치)
 const TODAY = new Date().toISOString().split('T')[0];
@@ -58,6 +60,37 @@ function AdminDashboardScreen() {
   const currentUser = useAuthStore((s) => s.currentUser);
   const navigate = useNavigate();
   const [processing, setProcessing] = useState(null);
+  const harvestRecords = useHarvestStore((s) => s.records);
+  const fetchHarvest = useHarvestStore((s) => s.fetchCurrentMonth);
+  const [harvestAchievePct, setHarvestAchievePct] = useState(null);
+
+  useEffect(() => {
+    fetchHarvest();
+  }, []);
+
+  useEffect(() => {
+    if (!employees.length) return;
+    supabase.from('branches').select('code, monthly_harvest_target_kg').then(({ data }) => {
+      if (!data) return;
+      const targetMap = {};
+      data.forEach((r) => { targetMap[r.code] = Number(r.monthly_harvest_target_kg) || 0; });
+      const branch = currentUser?.branch;
+      let totalHarvest = 0;
+      let totalTarget = 0;
+      harvestRecords.forEach((r) => {
+        const emp = employees.find((e) => e.id === r.employee_id);
+        if (!emp?.branch) return;
+        if (branch && emp.branch !== branch) return;
+        totalHarvest += Number(r.quantity || 0);
+      });
+      if (branch) {
+        totalTarget = targetMap[branch] || 0;
+      } else {
+        Object.values(targetMap).forEach((v) => { totalTarget += v; });
+      }
+      setHarvestAchievePct(totalTarget > 0 ? Math.round(totalHarvest / totalTarget * 100) : null);
+    });
+  }, [harvestRecords, employees, currentUser]);
 
   const todayStr = useMemo(() => {
     const d = new Date();
@@ -408,7 +441,7 @@ function AdminDashboardScreen() {
               ))}
             </div>
             <div style={{ paddingTop: 14, marginTop: 14, borderTop: `1px solid ${T.borderSoft}`, display: 'flex', justifyContent: 'space-between', fontSize: 11, color: T.mutedSoft }}>
-              <span>목표 대비 <span style={{ color: T.text, fontWeight: 700 }}>87%</span></span>
+              <span>이번 달 목표 대비 <span style={{ color: T.text, fontWeight: 700 }}>{harvestAchievePct !== null ? `${harvestAchievePct}%` : '—'}</span></span>
               <span onClick={() => navigate('/admin/stats')} style={{ color: T.primary, fontWeight: 600, cursor: 'pointer' }}>상세 분석 →</span>
             </div>
           </Card>

@@ -1,8 +1,10 @@
 // 지점별 성과 — /admin/branch-stats
-import React, { useMemo } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Avatar, Card, T, TopBar } from '../../design/primitives';
 import { usePerformanceData } from '../../hooks/usePerformanceData';
 import useEmployeeStore from '../../stores/employeeStore';
+import useHarvestStore from '../../stores/harvestStore';
+import { supabase } from '../../lib/supabase';
 
 const BRANCHES = ['busan', 'jinju', 'hadong'];
 const BRANCH_LABEL = { busan: '부산LAB', jinju: '진주HUB', hadong: '하동HUB' };
@@ -11,6 +13,32 @@ const BRANCH_COLOR = { busan: '#4F46E5', jinju: '#059669', hadong: '#D97706' };
 export default function BranchStatsPage() {
   const employees = useEmployeeStore((s) => s.employees);
   const { workers, loading } = usePerformanceData();
+  const harvestRecords = useHarvestStore((s) => s.records);
+  const fetchHarvest = useHarvestStore((s) => s.fetchCurrentMonth);
+  const [branchTargets, setBranchTargets] = useState({});
+
+  useEffect(() => {
+    fetchHarvest();
+    supabase
+      .from('branches')
+      .select('code, monthly_harvest_target_kg')
+      .then(({ data }) => {
+        if (!data) return;
+        const map = {};
+        data.forEach((r) => { map[r.code] = Number(r.monthly_harvest_target_kg) || 0; });
+        setBranchTargets(map);
+      });
+  }, []);
+
+  const monthlyHarvestByBranch = useMemo(() => {
+    const map = {};
+    harvestRecords.forEach((r) => {
+      const emp = employees.find((e) => e.id === r.employee_id);
+      if (!emp?.branch) return;
+      map[emp.branch] = (map[emp.branch] || 0) + Number(r.quantity || 0);
+    });
+    return map;
+  }, [harvestRecords, employees]);
 
   const branchStats = useMemo(() => {
     return BRANCHES.map((br) => {
@@ -20,9 +48,12 @@ export default function BranchStatsPage() {
         ? Math.round(brWorkers.reduce((s, w) => s + w.harvestPct, 0) / brWorkers.length)
         : 0;
       const totalWeekly = brWorkers.reduce((s, w) => s + w.stemsWeek, 0);
-      return { branch: br, headcount, avgPct, totalWeekly, count: brWorkers.length };
+      const monthlyHarvest = monthlyHarvestByBranch[br] || 0;
+      const targetKg = branchTargets[br] || 0;
+      const achievePct = targetKg > 0 ? Math.round(monthlyHarvest / targetKg * 100) : null;
+      return { branch: br, headcount, avgPct, totalWeekly, count: brWorkers.length, monthlyHarvest, targetKg, achievePct };
     });
-  }, [employees, workers]);
+  }, [employees, workers, monthlyHarvestByBranch, branchTargets]);
 
   const maxPct = Math.max(...branchStats.map((b) => b.avgPct), 1);
   const maxWeekly = Math.max(...branchStats.map((b) => b.totalWeekly), 1);
@@ -54,6 +85,7 @@ export default function BranchStatsPage() {
                 {[
                   { l: '평균 성과율', v: b.avgPct, unit: '%' },
                   { l: '주간 수확량 합계', v: b.totalWeekly, unit: 'kg/주' },
+                  { l: '이번 달 달성률', v: b.achievePct !== null ? b.achievePct : '—', unit: b.achievePct !== null ? '%' : '' },
                 ].map((m) => (
                   <div key={m.l}>
                     <div style={{ fontSize: 11, color: T.muted, fontWeight: 600, marginBottom: 4 }}>{m.l}</div>

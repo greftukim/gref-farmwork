@@ -1957,3 +1957,34 @@ SchedulePage/TaskBoardPage의 branch 필터는 반드시
 - taskStore.fetchTasks farm_admin 분기: `employees.select('id').eq('branch', branch).eq('is_active', true)`.
 - SchedulePage workers 필터: `employees.filter(e => e.role === 'worker' && e.isActive !== false)` —
   barsForDate는 이 worker id 목록에만 bar를 렌더링(비활성 worker task는 무시, 주석 추가됨).
+
+---
+
+## 교훈 74 — usePerformanceData는 전월 데이터 포함 ALL-TIME 집계 — 달성률엔 harvestStore.fetchCurrentMonth 사용
+
+`usePerformanceData` 훅은 `harvest_records` 전체를 집계한다(기간 필터 없음).
+월간 달성률(실적 / 목표) KPI를 계산하려면 반드시 `harvestStore.fetchCurrentMonth()`를
+호출하고 `harvestStore.records`를 사용해야 한다.
+
+**Why:** performance 데이터는 "누적 성과 순위"용으로 설계되었고,
+"이번 달 수확량"은 별도의 harvestStore 캐시에 독립적으로 관리된다.
+
+**How to apply:**
+- 달성률·이번 달 수확량 계산 → `useHarvestStore(s => s.records)` + `fetchCurrentMonth()`.
+- 성과율 랭킹·누적 비교 → `usePerformanceData`.
+- 두 가지를 같은 컴포넌트에서 동시에 쓸 때는 의존 스토어를 명확히 분리.
+
+---
+
+## 교훈 75 — branches 테이블 UPDATE RLS는 can_write() 포함 — 별도 정책 불필요
+
+`branches` 테이블의 authenticated UPDATE 정책은 `can_write()`를 호출하며,
+`can_write()`는 `farm_admin / hr_admin / master` 역할을 모두 포함한다.
+`monthly_harvest_target_kg` 컬럼 추가 후 별도 정책 없이 hr_admin이 UPDATE 가능하다.
+
+**Why:** can_write() 함수가 "write 권한 있는 역할" 전체를 커버하도록 설계되어 있음.
+신규 컬럼 추가 전에 pg_policies 조회로 기존 정책 커버리지를 반드시 확인해야 한다.
+
+**How to apply:**
+- 기존 테이블에 컬럼 추가 시: 추가 전 `pg_policies`로 UPDATE 정책 주체 확인.
+- `can_write()` 반환 역할 변경 시 영향 범위 전수 확인 필요.

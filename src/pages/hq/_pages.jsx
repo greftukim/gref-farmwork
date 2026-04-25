@@ -7,6 +7,7 @@ import useAuthStore from '../../stores/authStore';
 import useAttendanceStore from '../../stores/attendanceStore';
 import useNoticeStore from '../../stores/noticeStore';
 import useHarvestStore from '../../stores/harvestStore';
+import { supabase } from '../../lib/supabase';
 import EmployeeDetailModal from '../../components/employees/EmployeeDetailModal';
 import EmployeeEditModal from '../../components/employees/EmployeeEditModal';
 
@@ -307,6 +308,7 @@ function HQBranchesScreen() {
   const fetchRecords = useAttendanceStore((s) => s.fetchRecords);
   const harvestRecords = useHarvestStore((s) => s.records);
   const fetchHarvest = useHarvestStore((s) => s.fetchCurrentMonth);
+  const [branchTargets, setBranchTargets] = useState({});
 
   const today = new Date().toISOString().slice(0, 10);
 
@@ -314,6 +316,15 @@ function HQBranchesScreen() {
     if (employees.length === 0) fetchEmployees();
     fetchRecords();
     fetchHarvest();
+    supabase
+      .from('branches')
+      .select('code, monthly_harvest_target_kg')
+      .then(({ data }) => {
+        if (!data) return;
+        const map = {};
+        data.forEach((r) => { map[r.code] = Number(r.monthly_harvest_target_kg) || 0; });
+        setBranchTargets(map);
+      });
   }, []);
 
   // employee_id → 이번 달 수확량 합계 (harvestStore.records 기반)
@@ -357,7 +368,7 @@ function HQBranchesScreen() {
     const harvest = branchHarvest(code);
     return {
       code, name: d.name, short: d.short, mgr, phone: '—', address: '—',
-      workers, rate, harvest, harvestT: 0,
+      workers, rate, harvest, harvestT: branchTargets[code] || 0,
       crops: '—', area: '—',
       accent: d.accent, accentSoft: d.accentSoft, avatarC: d.avatarC,
       status: rate < 80 && workers > 0 ? 'alert' : 'active',
