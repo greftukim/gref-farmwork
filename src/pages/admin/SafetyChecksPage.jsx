@@ -1,24 +1,32 @@
 // TBM 안전점검 현황 — /admin/safety-checks
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Avatar, Card, Dot, Icon, Pill, T, TopBar, icons } from '../../design/primitives';
 import useSafetyCheckStore from '../../stores/safetyCheckStore';
 import useEmployeeStore from '../../stores/employeeStore';
 
 export default function SafetyChecksPage() {
-  const checks = useSafetyCheckStore((s) => s.checks);
+  const fetchByDate = useSafetyCheckStore((s) => s.fetchByDate);
   const employees = useEmployeeStore((s) => s.employees);
-  const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
-  const empMap = useMemo(() => Object.fromEntries(employees.map((e) => [e.id, e])), [employees]);
+  // 교훈 77: toISOString()은 UTC 기준 → KST 자정~오전 9시 날짜 어긋남, 로컬 포매팅 사용
+  const [date, setDate] = useState(() => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+  });
+  const [checks, setChecks] = useState([]);
+
+  useEffect(() => {
+    fetchByDate(date).then(setChecks).catch(console.error);
+  }, [date, fetchByDate]);
+
   const workers = useMemo(() => employees.filter((e) => e.role === 'worker' && e.isActive), [employees]);
 
-  const dayChecks = useMemo(() => (checks || []).filter((c) => c.date === date), [checks, date]);
   const rows = useMemo(() => workers.map((w) => {
-    const c = dayChecks.find((x) => x.employeeId === w.id);
+    const c = checks.find((x) => x.workerId === w.id);
     return { emp: w, check: c };
-  }), [workers, dayChecks]);
+  }), [workers, checks]);
 
   const done = rows.filter((r) => r.check).length;
-  const issues = rows.filter((r) => r.check?.hasIssue).length;
+  const approved = rows.filter((r) => r.check?.status === 'approved').length;
   const rate = workers.length ? Math.round((done / workers.length) * 100) : 0;
 
   return (
@@ -41,7 +49,7 @@ export default function SafetyChecksPage() {
           {[
             { l: '점검 완료', v: done, tone: T.success },
             { l: '미점검', v: workers.length - done, tone: T.warning },
-            { l: '이상 보고', v: issues, tone: T.danger },
+            { l: '승인 완료', v: approved, tone: T.primary },
           ].map((k, i) => (
             <Card key={i} pad={18} style={{ position: 'relative', overflow: 'hidden' }}>
               <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 3, background: k.tone }} />
@@ -64,9 +72,8 @@ export default function SafetyChecksPage() {
             <thead>
               <tr style={{ background: T.bg, textAlign: 'left', color: T.mutedSoft, fontSize: 11, fontWeight: 700, letterSpacing: 0.3 }}>
                 <th style={{ padding: '10px 20px' }}>작업자</th>
-                <th style={{ padding: '10px 12px' }}>점검 항목</th>
+                <th style={{ padding: '10px 12px' }}>유형</th>
                 <th style={{ padding: '10px 12px' }}>시각</th>
-                <th style={{ padding: '10px 12px' }}>특이사항</th>
                 <th style={{ padding: '10px 20px', textAlign: 'right' }}>상태</th>
               </tr>
             </thead>
@@ -82,14 +89,17 @@ export default function SafetyChecksPage() {
                       </div>
                     </div>
                   </td>
-                  <td style={{ padding: '12px', color: T.muted }}>{check ? `${(check.items || []).length}개 항목` : '—'}</td>
-                  <td style={{ padding: '12px', color: T.text, fontFamily: 'ui-monospace,monospace' }}>
-                    {check?.submittedAt ? new Date(check.submittedAt).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' }) : '—'}
+                  <td style={{ padding: '12px', color: T.muted }}>
+                    {check ? (check.checkType === 'pre_task' ? '작업 전' : check.checkType) : '—'}
                   </td>
-                  <td style={{ padding: '12px', color: T.muted, maxWidth: 240, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{check?.note || '—'}</td>
+                  <td style={{ padding: '12px', color: T.text, fontFamily: 'ui-monospace,monospace' }}>
+                    {check?.completedAt ? new Date(check.completedAt).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' }) : '—'}
+                  </td>
                   <td style={{ padding: '12px 20px', textAlign: 'right' }}>
                     {check
-                      ? check.hasIssue ? <Pill tone="danger"><Dot c={T.danger} />이상</Pill> : <Pill tone="success"><Dot c={T.success} />정상</Pill>
+                      ? check.status === 'approved'
+                        ? <Pill tone="success"><Dot c={T.success} />승인</Pill>
+                        : <Pill tone="info"><Dot c={T.info} />제출</Pill>
                       : <Pill tone="warning"><Dot c={T.warning} />미점검</Pill>}
                   </td>
                 </tr>

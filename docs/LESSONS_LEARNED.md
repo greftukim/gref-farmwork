@@ -2277,3 +2277,21 @@ grep 결과: scripts/*.cjs 19개에 `const OUT_DIR = path.join(..., 'regression_
 - 파일/폴더 이름 변경 전: `grep -r "old_path" scripts/` 로 의존성 전수 조사
 - 분류-a(스크립트 출력 경로) 4건 이상이면 이름 변경 대신 현재 구조 유지
 - 향후 신규 audit 스크립트는 `docs/regression/session{N}/` 패턴 사용 (소급 적용 불필요)
+
+---
+
+## 교훈 93 — store 구독 상태 미존재 시 undefined 조용히 통과 → 로컬 state + fetch 패턴 선호
+
+세션 54 TBM-COMPLETION-001: `useSafetyCheckStore((s) => s.checks)` 에서 `checks`가 스토어에 없어 항상 `undefined` 반환.
+페이지 렌더링은 정상이나 데이터 0건으로 빈 화면. 에러 없음 → 진단 어려움.
+
+추가로 필드 불일치(employeeId→workerId, submittedAt→completedAt, hasIssue/items/note 미존재)가 겹쳐
+모든 데이터 경로가 막혀 있었다.
+
+**Why:** Zustand에서 없는 key를 선택하면 `undefined` 반환, React는 조용히 렌더링한다.
+타입스크립트 미사용 프로젝트에서 스키마 드리프트가 무증상으로 누적된다.
+
+**How to apply:**
+- 페이지가 데이터를 표시하지 않을 때: (1) 스토어 상태명 존재 확인, (2) 필드명 snakeToCamel 변환 결과 확인
+- 전역 store에 상태 추가하기보다 `useEffect(() => { fetchXxx().then(setLocal) }, [date])` 로컬 패턴이 더 단순
+- 필드명은 `fetchByDate` 반환 후 `snakeToCamel` 적용 결과를 grep으로 먼저 확인
