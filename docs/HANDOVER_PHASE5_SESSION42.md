@@ -3,7 +3,7 @@
 날짜: 2026-04-25  
 작업자: Claude Code (세션 42)  
 세션 목적: WORK-STATS-PAGE-001 + BRANCH-STATS-PAGE-001 묶음 처리 + 앱 이름 FarmWork 교체  
-마지막 커밋: (커밋 후 기재)
+마지막 커밋: 79275bc
 
 ---
 
