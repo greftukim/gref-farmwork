@@ -3,7 +3,7 @@
 날짜: 2026-04-25  
 작업자: Claude Code (세션 40)  
 세션 목적: FARM-PERF-DATA-001 — Performance.jsx DB 연결 (harvest_records 기반)  
-마지막 커밋: (커밋 후 갱신 예정)
+마지막 커밋: 0fbc685
 
 ---
 
