@@ -8,6 +8,9 @@ import useEmployeeStore from '../../stores/employeeStore';
 import useIssueStore from '../../stores/issueStore';
 import useAuthStore from '../../stores/authStore';
 import { supabase } from '../../lib/supabase';
+import {
+  ComposedChart, Bar, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid,
+} from 'recharts';
 
 // 관리팀(본사) 대시보드 — 인터랙티브
 // 기간 탭 · 지점 막대 → 클릭 시 작물별 분해 드릴다운 · 승인 필터 · 지점 상세 모달
@@ -720,6 +723,60 @@ function CropBarChart({ branch, mult }) {
 
 // ─── 하단 카드 3개 ───
 function FinanceTrendCard() {
+  const [chartData, setChartData] = useState([]);
+  const [summary, setSummary] = useState({ revenue: 0, laborRate: '—', costPerKg: null });
+
+  useEffect(() => {
+    async function load() {
+      const now = new Date();
+      const currentYear = now.getFullYear();
+      const currentMonth = now.getMonth() + 1;
+      const [{ data: m }, { data: h }] = await Promise.all([
+        supabase.from('finance_monthly').select('year,month,revenue,labor_cost,material_cost,energy_cost,maintenance_cost,training_cost,other_cost').order('year,month'),
+        supabase.from('harvest_records').select('date,quantity'),
+      ]);
+      if (!m) return;
+      const map = {};
+      m.forEach(r => {
+        const k = `${r.year}-${String(r.month).padStart(2, '0')}`;
+        if (!map[k]) map[k] = { key: k, label: `${r.month}월`, revenue: 0, labor: 0, cost: 0 };
+        map[k].revenue += (r.revenue || 0);
+        map[k].labor += (r.labor_cost || 0);
+        map[k].cost += (r.labor_cost || 0) + (r.material_cost || 0) + (r.energy_cost || 0)
+          + (r.maintenance_cost || 0) + (r.training_cost || 0) + (r.other_cost || 0);
+      });
+      const sorted = Object.values(map).sort((a, b) => (a.key < b.key ? -1 : 1));
+      setChartData(sorted.slice(-7).map(d => ({
+        ...d,
+        revenue: Math.round(d.revenue / 10000),
+        labor: Math.round(d.labor / 10000),
+      })));
+      const ytd = m.filter(r => r.year === currentYear && r.month <= currentMonth);
+      const ytdRevenue = ytd.reduce((s, r) => s + (r.revenue || 0), 0);
+      const ytdLabor = ytd.reduce((s, r) => s + (r.labor_cost || 0), 0);
+      const ytdCost = ytd.reduce((s, r) =>
+        s + (r.labor_cost || 0) + (r.material_cost || 0) + (r.energy_cost || 0)
+        + (r.maintenance_cost || 0) + (r.training_cost || 0) + (r.other_cost || 0), 0);
+      const laborRate = ytdRevenue > 0 ? (ytdLabor / ytdRevenue * 100).toFixed(1) : '—';
+      let costPerKg = null;
+      if (h && h.length > 0) {
+        const ytdKg = h.filter(r => {
+          const d = new Date(r.date);
+          return d.getFullYear() === currentYear && d.getMonth() + 1 <= currentMonth;
+        }).reduce((s, r) => s + Number(r.quantity || 0), 0);
+        costPerKg = ytdKg > 0 ? Math.round(ytdCost / ytdKg) : null;
+      }
+      setSummary({ revenue: ytdRevenue, laborRate, costPerKg });
+    }
+    load();
+  }, []);
+
+  const revenueDisplay = summary.revenue >= 100000000
+    ? `${(summary.revenue / 100000000).toFixed(1)}억원`
+    : summary.revenue > 0
+      ? `${Math.round(summary.revenue / 10000).toLocaleString()}만원`
+      : '—';
+
   return (
     <Card>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 14 }}>
@@ -727,35 +784,52 @@ function FinanceTrendCard() {
           <h3 style={{ fontSize: 14, fontWeight: 700, color: T.text, margin: 0 }}>월별 경영 지표</h3>
           <div style={{ display: 'flex', gap: 14, marginTop: 8, fontSize: 11 }}>
             <span style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-              <span style={{ width: 10, height: 2, background: HQ.accent }} />
+              <span style={{ width: 10, height: 10, borderRadius: 2, background: HQ.accent, display: 'inline-block' }} />
               <span style={{ color: T.muted, fontWeight: 600 }}>수확액</span>
             </span>
             <span style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-              <span style={{ width: 10, height: 2, background: T.warning }} />
+              <span style={{ width: 10, height: 2, background: T.warning, display: 'inline-block' }} />
               <span style={{ color: T.muted, fontWeight: 600 }}>인건비</span>
             </span>
           </div>
         </div>
       </div>
       <div style={{ height: 140 }}>
-        <svg viewBox="0 0 420 140" width="100%" height="140" preserveAspectRatio="none">
-          {[0, 35, 70, 105, 140].map((y, i) => <line key={i} x1="0" y1={y} x2="420" y2={y} stroke={T.borderSoft} strokeWidth="1" />)}
-          <path d="M 0,90 L 60,75 L 120,65 L 180,55 L 240,48 L 300,38 L 360,30 L 420,28 L 420,140 L 0,140 Z" fill={HQ.accentSoft} />
-          <path d="M 0,90 L 60,75 L 120,65 L 180,55 L 240,48 L 300,38 L 360,30 L 420,28" fill="none" stroke={HQ.accent} strokeWidth="2.5" />
-          <path d="M 0,95 L 60,92 L 120,88 L 180,82 L 240,78 L 300,70 L 360,62 L 420,58" fill="none" stroke={T.warning} strokeWidth="2" strokeDasharray="4 3" />
-          <circle cx="420" cy="28" r="4" fill={HQ.accent} stroke="#fff" strokeWidth="2" />
-          <circle cx="420" cy="58" r="4" fill={T.warning} stroke="#fff" strokeWidth="2" />
-        </svg>
+        {chartData.length > 0 ? (
+          <ResponsiveContainer width="100%" height="100%">
+            <ComposedChart data={chartData} margin={{ top: 4, right: 4, bottom: 0, left: -20 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke={T.borderSoft} vertical={false} />
+              <XAxis dataKey="label" tick={{ fontSize: 9, fill: T.mutedSoft }} axisLine={false} tickLine={false} />
+              <YAxis
+                tickFormatter={v => v >= 1000 ? `${(v / 1000).toFixed(0)}억` : `${v}`}
+                tick={{ fontSize: 9, fill: T.mutedSoft }} axisLine={false} tickLine={false}
+              />
+              <Tooltip
+                formatter={(v, name) => [`${v.toLocaleString()}만원`, name === 'revenue' ? '수확액' : '인건비']}
+                contentStyle={{ fontSize: 10, borderRadius: 6, border: `1px solid ${T.border}` }}
+              />
+              <Bar dataKey="revenue" fill={HQ.accent} radius={[3, 3, 0, 0]} maxBarSize={28} opacity={0.8} />
+              <Line dataKey="labor" stroke={T.warning} strokeWidth={2} dot={{ r: 2, fill: T.warning, strokeWidth: 0 }} strokeDasharray="4 3" />
+            </ComposedChart>
+          </ResponsiveContainer>
+        ) : (
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: T.mutedSoft, fontSize: 12 }}>
+            로딩 중…
+          </div>
+        )}
       </div>
       <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: T.mutedSoft, padding: '0 2px', marginTop: 4 }}>
-        {['10월', '11월', '12월', '1월', '2월', '3월', '4월'].map(m => <span key={m}>{m}</span>)}
+        {chartData.map(d => <span key={d.key}>{d.label}</span>)}
       </div>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8, marginTop: 14, paddingTop: 12, borderTop: `1px solid ${T.borderSoft}` }}>
-        {[{ l: '수확액', v: '4.2억', sub: '▲ 18%' }, { l: '인건비율', v: '20%', sub: '−2%p' }, { l: 'kg당 원가', v: '2,740원', sub: '▼ 6%' }].map((s, i) => (
+        {[
+          { l: '수확액(YTD)', v: revenueDisplay },
+          { l: '인건비율(YTD)', v: summary.laborRate !== '—' ? `${summary.laborRate}%` : '—' },
+          { l: 'kg당 원가', v: summary.costPerKg !== null ? `${summary.costPerKg.toLocaleString()}원` : '—' },
+        ].map((s, i) => (
           <div key={i}>
             <div style={{ fontSize: 10, color: T.mutedSoft, fontWeight: 600 }}>{s.l}</div>
             <div style={{ fontSize: 15, fontWeight: 700, color: T.text, letterSpacing: -0.3, marginTop: 2 }}>{s.v}</div>
-            <div style={{ fontSize: 10, color: T.success, fontWeight: 600, marginTop: 1 }}>{s.sub}</div>
           </div>
         ))}
       </div>
