@@ -25,7 +25,7 @@ const CONTENTS = {
           <li>화면 하단 공유 버튼(⬆️) 탭</li>
           <li>"홈 화면에 추가" 선택</li>
           <li>"추가" 버튼 탭</li>
-          <li>홈 화면의 GREF FarmWork 아이콘으로 다시 접속</li>
+          <li>홈 화면의 FarmWork 아이콘으로 다시 접속</li>
         </ol>
       </>
     ),

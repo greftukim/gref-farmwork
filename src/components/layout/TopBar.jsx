@@ -11,7 +11,7 @@ export default function TopBar({ title }) {
 
   return (
     <header className="bg-white border-b border-gray-100 px-4 md:px-6 py-3 flex items-center justify-between min-h-[56px]">
-      <h1 className="text-base md:text-lg font-heading font-bold text-gray-900">{title || 'GREF FarmWork'}</h1>
+      <h1 className="text-base md:text-lg font-heading font-bold text-gray-900">{title || 'FarmWork'}</h1>
       <div className="flex items-center gap-2 md:gap-4">
         {/* 지점 선택: 모바일에서는 숨김 */}
         {isAdmin && (

@@ -13,7 +13,7 @@ export default function WorkStatsPage() {
   const [to, setTo] = useState(today);
 
   const empMap = useMemo(() => Object.fromEntries(employees.map((e) => [e.id, e])), [employees]);
-  const workers = employees.filter((e) => e.role === 'worker');
+  const workers = useMemo(() => employees.filter((e) => e.role === 'worker' && e.isActive), [employees]);
 
   const perWorker = useMemo(() => {
     return workers.map((w) => {

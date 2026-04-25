@@ -16,7 +16,7 @@ export default function InstallPromptBanner() {
             <span className="text-white text-xl font-bold">G</span>
           </div>
           <div>
-            <div className="font-bold text-gray-900 text-base">GREF FarmWork</div>
+            <div className="font-bold text-gray-900 text-base">FarmWork</div>
             <div className="text-xs text-gray-400">앱처럼 빠르게 사용하세요</div>
           </div>
         </div>

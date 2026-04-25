@@ -34,7 +34,7 @@ self.addEventListener('activate', (event) => {
 messaging.onBackgroundMessage((payload) => {
   console.log('[FCM SW] 백그라운드 메시지 수신:', JSON.stringify(payload));
 
-  const title = payload.notification?.title || 'GREF FarmWork';
+  const title = payload.notification?.title || 'FarmWork';
   const urgent = payload.data?.urgent === 'true';
 
   const options = {

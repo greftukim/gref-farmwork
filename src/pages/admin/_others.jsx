@@ -517,7 +517,7 @@ function LoginScreen() {
             <div style={{ width: 36, height: 36, borderRadius: 10, background: 'rgba(255,255,255,0.2)', backdropFilter: 'blur(10px)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <Icon d={icons.sprout} size={20} c="#fff" sw={2} />
             </div>
-            <span style={{ color: '#fff', fontWeight: 700, fontSize: 16 }}>GREF Farm</span>
+            <span style={{ color: '#fff', fontWeight: 700, fontSize: 16 }}>FarmWork</span>
           </div>
         </div>
         <div style={{ position: 'relative', color: '#fff' }}>
@@ -552,7 +552,7 @@ function LoginScreen() {
         <div style={{ width: '100%', maxWidth: 360 }}>
           <div style={{ marginBottom: 32 }}>
             <h2 style={{ fontSize: 24, fontWeight: 700, color: T.text, letterSpacing: -0.4, margin: 0 }}>로그인</h2>
-            <p style={{ fontSize: 13, color: T.muted, margin: '6px 0 0' }}>GREF Farm 인력관리 시스템에 접속합니다</p>
+            <p style={{ fontSize: 13, color: T.muted, margin: '6px 0 0' }}>FarmWork 인력관리 시스템에 접속합니다</p>
           </div>
           {/* 탭 */}
           <div style={{ display: 'flex', gap: 0, marginBottom: 24, background: T.bg, padding: 4, borderRadius: 8 }}>

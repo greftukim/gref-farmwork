@@ -44,7 +44,7 @@ export default function LoginPage() {
         {/* 로고 */}
         <div className="flex items-center justify-center gap-3 mb-10">
           <img src="/icons/icon-192.png" alt="GREF" className="w-10 h-10 rounded-xl" />
-          <span className="text-xl font-heading font-bold text-gray-900">GREF FarmWork</span>
+          <span className="text-xl font-heading font-bold text-gray-900">FarmWork</span>
         </div>
 
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
@@ -98,7 +98,7 @@ export default function LoginPage() {
           <img src="/images/login-bear.png" alt="" className="w-[120px] opacity-80" />
         </div>
         <p className="text-xs text-gray-400 text-center mt-4">
-          © GREF FarmWork · 대한제강 부산LAB
+          © FarmWork · 대한제강 부산LAB
         </p>
       </div>
     </div>

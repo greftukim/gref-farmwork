@@ -195,8 +195,9 @@
 | SCHED-REGISTER-001 | 기능 미구현 | open | 세션 37 (2026-04-24) | P3 | "스케줄 등록" 버튼 — 현재 alert("준비 중") 처리. 스케줄 수동 등록 모달(작업자·날짜·시간·작업유형) 구현 필요. tasks 테이블 insert 활용. | docs/BACKLOG.md |
 | TASKS-WORKER-ID-MISMATCH-001 | 데이터 정합 | open | 세션 40 (2026-04-25) | P2 | tasks.worker_id가 삭제된 시드_작업자01~03 UUID에만 연결됨 — 현재 활성 직원(employees.id)과 매핑 없음. tasks 296건 전부 고아 상태. SAM 기반 efficiency 계산 불가 원인. 해소 방법: (1) tasks.worker_id → employees.id 마이그레이션 UPDATE, 또는 (2) 신규 작업 등록 시 실 직원 연결 로직 구현. 우선 후자(SCHED-REGISTER-001) 선행 후 자연스럽게 해소. | docs/BACKLOG.md |
 | STATS-AGGREGATION-001 | 데이터 재연결 | resolved | 세션 31 (2026-04-24) 등록 → 세션 41 (2026-04-25) 해소 | - | StatsPage — performanceStore(영구 빈 배열 stub) 제거, usePerformanceData 훅 연결. KPI 카드: 평균 수확 성과율(%), 주간 최고 수확량(kg/주), 평가 인원(명). 랭킹: harvestPct 내림차순. farm_admin → 본인 지점 필터. performanceStore.js 삭제. Playwright PASS 62/63(WARN 1: farm_admin 분기 jhkim 불가). 커밋 세션 41. | docs/HANDOVER_PHASE5_SESSION41.md |
-| WORK-STATS-PAGE-001 | 검증 필요 | open | 세션 41 (2026-04-25) | P3 | /admin/work-stats — attendanceStore.fetchRecords() 사용. 세션 32에서 attendanceStore 지점 필터 추가됨. 실 동작 검증 미수행. 별 트랙 검증 세션 필요. | docs/BACKLOG.md |
-| BRANCH-STATS-PAGE-001 | 기능 미구현 | open | 세션 41 (2026-04-25) | P3 | /admin/branch-stats — "준비 중" stub 상태. 데이터 소스: harvest_records 지점별 + employees 지점별. 실데이터 연결 별 트랙 구현 필요. | docs/BACKLOG.md |
+| WORK-STATS-PAGE-001 | 검증·수정 | resolved | 세션 41 등록 → 세션 42 (2026-04-25) 해소 | - | /admin/work-stats — is_active 필터 누락(비활성 시드 포함) 수정 + attendance 시드 480건+ 투입(세션 42 migration). WorkStatsPage.jsx workers useMemo에 e.isActive 필터 추가. Playwright F-1~F-4 PASS. | docs/HANDOVER_PHASE5_SESSION42.md |
+| BRANCH-STATS-PAGE-001 | 기능 구현 | resolved | 세션 41 등록 → 세션 42 (2026-04-25) 해소 | - | /admin/branch-stats — "준비 중" stub 전면 재작성. usePerformanceData + useEmployeeStore 기반 3지점 KPI(활성 작업자/평균 성과율/주간 수확량) + 평균 성과율 비교 + 주간 수확량 비교 바 차트. Playwright G-1~G-4 PASS. | docs/HANDOVER_PHASE5_SESSION42.md |
+| BRANCH-WORK-SCHEDULE-UI-001 | 기능 미구현 | open | 세션 42 (2026-04-25) | P2 | branch_work_schedule_config 설정 UI — DB 테이블 신설 완료(세션 42 migration), 편집 UI 미구현. 지점별 근무시간(start/end_time)·근무요일(workdays) 수정 기능. HR 관리자 전용. 별 세션 처리. | docs/BACKLOG.md |
 
 ---
 

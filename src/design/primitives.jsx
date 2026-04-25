@@ -143,7 +143,7 @@ const Sidebar = ({ active = 'dashboard', onNavigate }) => {
             <Icon d={icons.sprout} size={18} sw={2} />
           </div>
           <div>
-            <div style={{ fontSize: 14, fontWeight: 700, color: T.text, letterSpacing: -0.2 }}>GREF Farm</div>
+            <div style={{ fontSize: 14, fontWeight: 700, color: T.text, letterSpacing: -0.2 }}>FarmWork</div>
             <div style={{ fontSize: 11, color: T.mutedSoft }}>부산LAB · 온실</div>
           </div>
         </div>

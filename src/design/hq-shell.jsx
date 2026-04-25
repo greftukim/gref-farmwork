@@ -49,7 +49,7 @@ const HQSidebar = ({ active = 'dashboard', onNavigate }) => {
             <Icon d={icons.sprout} size={18} sw={2} />
           </div>
           <div>
-            <div style={{ fontSize: 14, fontWeight: 700, color: T.text, letterSpacing: -0.2 }}>GREF Farm</div>
+            <div style={{ fontSize: 14, fontWeight: 700, color: T.text, letterSpacing: -0.2 }}>FarmWork</div>
             <div style={{ fontSize: 10, color: HQ.accent, fontWeight: 700, letterSpacing: 0.4 }}>HQ · 관리팀</div>
           </div>
         </div>

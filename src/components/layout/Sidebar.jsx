@@ -289,7 +289,7 @@ export default function Sidebar() {
           {currentUser?.name?.[0] || 'G'}
         </div>
         <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-300 whitespace-nowrap">
-          <p className="text-white font-bold text-sm">GREF FarmWork</p>
+          <p className="text-white font-bold text-sm">FarmWork</p>
           <p className="text-indigo-200 text-xs">{roleBadge || currentUser?.name || ''}</p>
         </div>
       </div>
