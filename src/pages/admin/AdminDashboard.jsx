@@ -107,9 +107,64 @@ function AdminDashboardScreen() {
     return Array.from({ length: 7 }, (_, i) => {
       const d = new Date(monday);
       d.setDate(monday.getDate() + i);
-      return { label: `${labels[i]} ${d.getDate()}`, isToday: d.toDateString() === today.toDateString() };
+      const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+      return { label: `${labels[i]} ${d.getDate()}`, isToday: d.toDateString() === today.toDateString(), dateStr, isFuture: d > today };
     });
   }, []);
+
+  // ─── 주간 수확 차트 ───
+  const weekChartData = useMemo(() => {
+    const branch = currentUser?.branch;
+    const dateMap = {};
+    harvestRecords.forEach((r) => {
+      if (branch && r.employee?.branch !== branch) return;
+      dateMap[r.date] = (dateMap[r.date] || 0) + Number(r.quantity || 0);
+    });
+    const bars = weekDays.map((wd) => ({
+      d: wd.label.split(' ')[0],
+      kg: Math.round((dateMap[wd.dateStr] || 0) * 10) / 10,
+      isToday: wd.isToday,
+      isFuture: wd.isFuture,
+    }));
+    const maxKg = Math.max(...bars.map((b) => b.kg), 1);
+    return bars.map((b) => ({ ...b, v: b.kg > 0 ? Math.max(4, Math.round(b.kg / maxKg * 100)) : 0 }));
+  }, [harvestRecords, weekDays, currentUser]);
+
+  const weekTotalKg = useMemo(
+    () => Math.round(weekChartData.reduce((s, b) => s + b.kg, 0)),
+    [weekChartData]
+  );
+
+  const weekTrend = useMemo(() => {
+    const branch = currentUser?.branch;
+    const now = new Date();
+    let thisWeek = 0, lastWeek = 0;
+    harvestRecords.forEach((r) => {
+      if (branch && r.employee?.branch !== branch) return;
+      const daysAgo = Math.floor((now - new Date(r.date)) / 86400000);
+      if (daysAgo < 7) thisWeek += Number(r.quantity || 0);
+      else if (daysAgo < 14) lastWeek += Number(r.quantity || 0);
+    });
+    if (lastWeek === 0) return null;
+    return Math.round((thisWeek - lastWeek) / lastWeek * 100);
+  }, [harvestRecords, currentUser]);
+
+  // ─── 주간 스케줄 ───
+  const weekScheduleData = useMemo(() => {
+    const branch = currentUser?.branch;
+    return weekDays.map((wd) => {
+      const dayTasks = tasks.filter((t) => {
+        if (t.date !== wd.dateStr) return false;
+        if (branch) {
+          const emp = employees.find((e) => e.id === t.workerId);
+          if (!emp || emp.branch !== branch) return false;
+        }
+        return true;
+      });
+      const types = [...new Set(dayTasks.map((t) => t.taskType || '').filter(Boolean))].slice(0, 3);
+      return { types, total: dayTasks.length };
+    });
+  }, [tasks, weekDays, employees, currentUser]);
 
   // ─── 룩업 맵 ───
   const empMap = useMemo(() => Object.fromEntries(employees.map((e) => [e.id, e])), [employees]);
@@ -410,33 +465,34 @@ function AdminDashboardScreen() {
 
         {/* 하단 3단 */}
         <div style={{ display: 'grid', gridTemplateColumns: '1.1fr 1fr 0.9fr', gap: 20 }}>
-          {/* 주간 성과 그래프 — Phase 2 연결 예정 */}
+          {/* 주간 성과 그래프 */}
           <Card>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
               <div>
-                <h3 style={{ fontSize: 14, fontWeight: 700, color: T.text, margin: 0 }}>이번 주 작업 성과</h3>
+                <h3 style={{ fontSize: 14, fontWeight: 700, color: T.text, margin: 0 }}>이번 주 수확량</h3>
                 <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginTop: 8 }}>
-                  <span style={{ fontSize: 30, fontWeight: 700, color: T.text, letterSpacing: -0.8, lineHeight: 1 }}>3,280</span>
+                  <span style={{ fontSize: 30, fontWeight: 700, color: T.text, letterSpacing: -0.8, lineHeight: 1 }}>{weekTotalKg.toLocaleString()}</span>
                   <span style={{ fontSize: 13, color: T.mutedSoft, fontWeight: 500 }}>kg</span>
-                  <Pill tone="success">▲ 12%</Pill>
+                  {weekTrend !== null && (
+                    <Pill tone={weekTrend >= 0 ? 'success' : 'danger'}>
+                      {weekTrend >= 0 ? `▲ ${weekTrend}%` : `▼ ${Math.abs(weekTrend)}%`}
+                    </Pill>
+                  )}
                 </div>
               </div>
             </div>
             <div style={{ display: 'flex', alignItems: 'flex-end', gap: 8, height: 110, padding: '0 4px' }}>
-              {[
-                { d: '월', v: 45 }, { d: '화', v: 62 }, { d: '수', v: 58 },
-                { d: '목', v: 78 }, { d: '금', v: 90, today: true }, { d: '토', v: 0 }, { d: '일', v: 0 },
-              ].map((b, i) => (
+              {weekChartData.map((b, i) => (
                 <div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, height: '100%' }}>
                   <div style={{ flex: 1, width: '100%', display: 'flex', alignItems: 'flex-end' }}>
                     <div style={{
                       width: '100%', height: `${b.v}%`,
-                      background: b.today ? T.primary : b.v > 0 ? T.primarySoft : T.borderSoft,
+                      background: b.isToday ? T.primary : b.kg > 0 ? T.primarySoft : T.borderSoft,
                       borderRadius: '4px 4px 0 0',
-                      border: b.today ? `1px solid ${T.primaryDark}` : 'none',
+                      border: b.isToday ? `1px solid ${T.primaryDark}` : 'none',
                     }} />
                   </div>
-                  <span style={{ fontSize: 10, color: b.today ? T.primary : T.mutedSoft, fontWeight: b.today ? 700 : 500 }}>{b.d}</span>
+                  <span style={{ fontSize: 10, color: b.isToday ? T.primary : T.mutedSoft, fontWeight: b.isToday ? 700 : 500 }}>{b.d}</span>
                 </div>
               ))}
             </div>
@@ -542,15 +598,7 @@ function AdminDashboardScreen() {
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 6 }}>
               {weekDays.map((day, i) => {
-                const items = [
-                  ['수확', 'TBM'],
-                  ['수확', 'TBM', '예찰'],
-                  ['수확', '적엽'],
-                  ['수확', 'EC측정'],
-                  ['수확', '방제'],
-                  [],
-                  [],
-                ][i];
+                const sched = weekScheduleData[i] || { types: [], total: 0 };
                 return (
                   <div key={i} style={{
                     padding: 8, borderRadius: 8,
@@ -562,14 +610,17 @@ function AdminDashboardScreen() {
                       {day.label}{day.isToday && <span style={{ marginLeft: 4, fontSize: 9 }}>오늘</span>}
                     </div>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-                      {items.map((t, j) => (
+                      {sched.types.map((type, j) => (
                         <div key={j} style={{
                           fontSize: 10, fontWeight: 600, padding: '3px 6px', borderRadius: 4,
                           background: T.surface,
                           color: T.text, border: `1px solid ${T.borderSoft}`,
-                        }}>{t}</div>
+                        }}>{type}</div>
                       ))}
-                      {items.length === 0 && <div style={{ fontSize: 10, color: T.mutedSoft, padding: '3px 0' }}>휴무</div>}
+                      {sched.total > sched.types.length && (
+                        <div style={{ fontSize: 10, color: T.primary, fontWeight: 600, padding: '2px 0' }}>+{sched.total - sched.types.length}건 더</div>
+                      )}
+                      {sched.total === 0 && <div style={{ fontSize: 10, color: T.mutedSoft, padding: '3px 0' }}>{day.isFuture ? '—' : '작업 없음'}</div>}
                     </div>
                   </div>
                 );

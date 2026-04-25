@@ -1988,3 +1988,47 @@ SchedulePage/TaskBoardPage의 branch 필터는 반드시
 **How to apply:**
 - 기존 테이블에 컬럼 추가 시: 추가 전 `pg_policies`로 UPDATE 정책 주체 확인.
 - `can_write()` 반환 역할 변경 시 영향 범위 전수 확인 필요.
+
+---
+
+## 교훈 76 — BranchSettingsPage 섹션은 selected 확정 후에만 렌더됨 — Playwright 폴링 필수
+
+`BranchSettingsPage`의 우측 편집 패널(근무시간 설정, 월 수확 목표 포함)은
+`{selected ? ... : null}` 조건 렌더다. `selected`는 branches 스토어 로드 →
+useEffect 내 `setSelectedId(branches[0].id)` 완료 이후에만 truthy가 된다.
+고정 `waitForTimeout(2000)`은 네트워크 지연이 조금만 길어져도 빈 DOM을 잡는다.
+
+**Why:** 세션 47 감사 스크립트에서 2초 고정 대기로 작성한 두 항목이 FAIL(회귀가 아닌
+스크립트 타이밍 오류)로 나온 사례.
+
+**How to apply:**
+- BranchSettingsPage 섹션을 Playwright로 검증할 때는 반드시 폴링 루프 사용:
+  ```js
+  const deadline = Date.now() + 8000;
+  let text = '';
+  while (Date.now() < deadline) {
+    text = await page.textContent('body').catch(() => '');
+    if (text.includes('근무시간 설정')) break;
+    await page.waitForTimeout(400);
+  }
+  ```
+- 일반 원칙: 조건부 렌더 섹션은 `textContent` 폴링, 항상-렌더 요소는 고정 대기 사용.
+
+---
+
+## 교훈 77 — dateStr 생성은 toISOString() 금지 — 로컬 날짜 직접 포매팅 사용
+
+`new Date().toISOString()`은 UTC 기준이므로 UTC+9 환경에서 한국 시간 기준
+"오늘" 날짜와 다를 수 있다(자정 이후 9시간 전까지 어제 날짜로 반환).
+주간 바 차트·스케줄 카드처럼 "오늘 날짜 == harvest_records.date" 매칭이 핵심인 경우
+반드시 로컬 시간으로 포매팅해야 한다.
+
+**Why:** harvestStore의 `r.date`는 DB YYYY-MM-DD(한국 기준 날짜)로 저장되는데,
+toISOString()이 UTC 날짜를 반환하면 당일 데이터를 어제 날짜에 매핑하는 버그 발생.
+
+**How to apply:**
+```js
+const d = new Date();
+const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+```
+- weekDays useMemo, 출퇴근 일자 비교, 일별 집계 모두 동일 패턴 적용.
