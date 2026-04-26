@@ -2381,3 +2381,21 @@ navigate + BRANCH_META lookup 이 정상 동작한다.
 **How to apply:**
 - 상세 페이지 구현 시작 전: 부모 데이터 id → 라우트 key 일치 여부 먼저 점검
 - mock 데이터 id는 라우트 파라미터로 실제 사용될 값과 동일하게 설정 (의미있는 코드 권장)
+
+
+---
+
+## 교훈 99 — worker 인증 아키텍처 조사 선행 — auth_user_id NULL ≠ E2E 블로커
+
+세션 58 NOTICE-AUTH-001 진단: auth_user_id=NULL이 곧 E2E 불가라고 가정했으나 틀림.
+worker 인증은 Supabase Auth 계정 없이 `loginWithDeviceToken` → `employees.device_token` → anon RLS로 동작한다.
+실제 블로커는 device_token NULL(20/24명)이었고, 20건 DB UPDATE로 해소.
+Playwright E2E는 addInitScript로 localStorage `gref-auth` 주입 → worker 세션 시뮬레이션.
+
+**Why:** 인증 방식을 코드(authStore.js) 직접 확인하지 않고 DB 컬럼(auth_user_id)만 보면
+블로커를 잘못 분류하고 불필요한 Supabase Auth 계정 생성 작업에 진입할 수 있다.
+
+**How to apply:**
+- worker 관련 인증 이슈 시: `authStore.js` loginWithDeviceToken / login 분기 먼저 읽기
+- auth_user_id=NULL ≠ 인증 불가 (device_token 방식은 Auth 미사용)
+- Playwright worker E2E: addInitScript(key='gref-auth', value={state:{currentUser,isAuthenticated,workerToken},version:0})
