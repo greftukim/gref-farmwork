@@ -230,6 +230,8 @@
 | HQ-PERF-ROUTE-MISMATCH-001 | BUG | resolved | 세션 68 (2026-04-26) | - | HQ 사이드바 "작업자 성과" 클릭 시 HQ_ROUTES.performance='/admin/hq/performance'(구형 Top5 카드)로 라우팅 → StatsPage('/admin/stats', 세션 67 재설계) 미반영. AdminLayout HQ_ROUTES.performance → '/admin/stats' + getHQActiveId() /admin/stats 분기 추가. Playwright X-1 PASS. | docs/BACKLOG.md |
 | P3-HQ-SIDEBAR-GROUPS-001 | UX 개선 | resolved | 세션 68 (2026-04-26) | - | HQSidebar 9개 메뉴 평면 나열 → 5개 그룹(대시보드/지점관리/인사직원/생산/승인리포트) 헤더 + 메뉴 중첩 구조로 재편. 지점 바로가기(부산LAB/진주HUB/하동HUB) 지점관리 그룹 내 들여쓰기 서브 항목으로 이동. 이모지 제거, 아이콘 유지, 라우트 매핑 불변. Playwright X-2 PASS. | docs/BACKLOG.md |
 | P3-DEAD-PERF-FILE-001 | 코드 부채 | open | 세션 68 (2026-04-26) | - | src/pages/admin/Performance.jsx (928줄, mock PERF_DATA) — App.jsx에서 미import, 완전 dead code. src/pages/Performance.jsx(909줄)가 실제 사용 중. 짧은 정리 세션에서 삭제 권장. | docs/BACKLOG.md |
+| P3-DEAD-GROWTH-FILE-001 | 코드 부채 | open | 세션 69 (2026-04-26) | - | src/pages/admin/Growth.jsx (834줄, GR_DATA 하드코딩) — App.jsx에서 미import, 완전 dead code. 실제 사용은 src/pages/Growth.jsx(useGrowthData 훅, 실데이터 연결). 짧은 정리 세션에서 삭제 권장. | docs/BACKLOG.md |
+| STATS-PERIOD-FILTER-001 | 기능 추가 | resolved | 세션 69 (2026-04-26) | - | StatsPage(성과 분석) 기간 필터 없음 → 이번 주/이번 달/전체 버튼 추가. usePerformanceData(dateFrom, dateTo) 파라미터화 — harvest_records 날짜 필터 적용. tasks speedPct는 전체 기간 유지. 교훈 77 적용(로컬 날짜). Playwright X-1 PASS. | docs/BACKLOG.md |
 
 ---
 

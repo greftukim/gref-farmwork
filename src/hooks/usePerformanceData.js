@@ -17,7 +17,7 @@ function getISOWeek(dateStr) {
   return Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
 }
 
-export function usePerformanceData() {
+export function usePerformanceData(dateFrom = null, dateTo = null) {
   const [sam, setSam] = useState({});
   const [workers, setWorkers] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -45,12 +45,15 @@ export function usePerformanceData() {
           .in('role', ['farm_admin', 'worker'])
           .eq('is_active', true);
 
-        // 3. Harvest records with crop names
-        const harvestRes = await supabase
+        // 3. Harvest records — 날짜 필터 적용 (null이면 전체 기간)
+        let harvestQuery = supabase
           .from('harvest_records')
           .select('employee_id, crop_id, date, quantity, crops(name)');
+        if (dateFrom) harvestQuery = harvestQuery.gte('date', dateFrom);
+        if (dateTo)   harvestQuery = harvestQuery.lte('date', dateTo);
+        const harvestRes = await harvestQuery;
 
-        // 4. Task speed data
+        // 4. Task speed data (전체 기간 — tasks에 date 컬럼 없음)
         const tasksRes = await supabase
           .from('tasks')
           .select('worker_id, duration_minutes, quantity')
@@ -175,7 +178,7 @@ export function usePerformanceData() {
       }
     }
     load();
-  }, []);
+  }, [dateFrom, dateTo]);
 
   return { sam, workers, loading };
 }

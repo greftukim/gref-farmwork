@@ -11,15 +11,36 @@ const BRANCH_OPTS = [
   { id: 'jinju', label: '진주HUB' },
   { id: 'hadong', label: '하동HUB' },
 ];
+const PERIOD_OPTS = ['이번 주', '이번 달', '전체'];
 
 const TIER_LABEL = { top: '우수', mid: '평균', low: '저성과' };
 const TIER_COLOR = { top: T.success, mid: T.primary, low: T.danger };
 const TIER_BG   = { top: T.successSoft ?? '#DCFCE7', mid: T.primarySoft ?? '#EEF2FF', low: T.dangerSoft ?? '#FEE2E2' };
 
+// 로컬 날짜 문자열 (교훈 77: toISOString UTC 함정 회피)
+function localDateStr(d = new Date()) {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+function getPeriodRange(period) {
+  const now = new Date();
+  if (period === '이번 달') {
+    return { dateFrom: localDateStr(new Date(now.getFullYear(), now.getMonth(), 1)), dateTo: localDateStr(now) };
+  }
+  if (period === '이번 주') {
+    const day = now.getDay(); // 0=일요일
+    const mon = new Date(now);
+    mon.setDate(now.getDate() - (day === 0 ? 6 : day - 1));
+    return { dateFrom: localDateStr(mon), dateTo: localDateStr(now) };
+  }
+  return { dateFrom: null, dateTo: null }; // 전체
+}
+
 export default function StatsPage() {
   const currentUser = useAuthStore((s) => s.currentUser);
-  const { workers: allWorkers, loading } = usePerformanceData();
+  const [period, setPeriod] = useState('전체');
   const [branchFilter, setBranchFilter] = useState('all');
+  const { dateFrom, dateTo } = useMemo(() => getPeriodRange(period), [period]);
+  const { workers: allWorkers, loading } = usePerformanceData(dateFrom, dateTo);
 
   const isFarmAdmin = currentUser?.role === 'farm_admin';
 
@@ -43,6 +64,22 @@ export default function StatsPage() {
   const lowWorkers = ranked.filter((w) => w.tier === 'low');
   const topSpeed = ranked.length ? Math.max(...ranked.map((w) => w.speedPct || 0)) : 0;
 
+  const periodBar = (
+    <div style={{ display: 'flex', gap: 0, padding: 3, background: T.bg, border: `1px solid ${T.border}`, borderRadius: 7 }}>
+      {PERIOD_OPTS.map(p => {
+        const on = period === p;
+        return (
+          <button key={p} onClick={() => setPeriod(p)} style={{
+            padding: '4px 12px', borderRadius: 5, border: 0, cursor: 'pointer',
+            background: on ? T.surface : 'transparent', color: on ? T.text : T.mutedSoft,
+            fontSize: 12, fontWeight: 600,
+            boxShadow: on ? '0 1px 2px rgba(0,0,0,0.06)' : 'none',
+          }}>{p}</button>
+        );
+      })}
+    </div>
+  );
+
   const filterBar = !isFarmAdmin && (
     <div style={{ display: 'flex', gap: 0, padding: 3, background: T.bg, border: `1px solid ${T.border}`, borderRadius: 7 }}>
       {BRANCH_OPTS.map(o => {
@@ -62,7 +99,12 @@ export default function StatsPage() {
   if (loading) {
     return (
       <div style={{ flex: 1, overflow: 'auto', background: T.bg, minWidth: 0 }}>
-        <TopBar subtitle="분석" title="성과 분석" />
+        <TopBar subtitle="분석" title="성과 분석" actions={
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+            {periodBar}
+            {filterBar}
+          </div>
+        } />
         <div style={{ padding: 60, textAlign: 'center', color: T.mutedSoft }}>로딩 중...</div>
       </div>
     );
@@ -70,7 +112,12 @@ export default function StatsPage() {
 
   return (
     <div style={{ flex: 1, overflow: 'auto', background: T.bg, minWidth: 0 }}>
-      <TopBar subtitle="분석" title="성과 분석" actions={filterBar} />
+      <TopBar subtitle="분석" title="성과 분석" actions={
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          {periodBar}
+          {filterBar}
+        </div>
+      } />
       <div style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 20 }}>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12 }}>
           {[
