@@ -127,5 +127,5 @@ export function usePerformanceData(dateFrom = null, dateTo = null) {
 ## 마지막 커밋
 
 ```
-(세션 69 커밋 해시 — 이 문서 포함 커밋 후 갱신 예정)
+24fd2f5 feat(session69): StatsPage 기간 필터(이번 주/이번 달/전체) 추가 + dead code 진단
 ```
