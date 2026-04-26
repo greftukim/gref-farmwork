@@ -2446,3 +2446,22 @@ CHECK 제약에서 조용히 차단된다. `information_schema.columns`에는 CH
 - 시드 INSERT 전 `SELECT pg_get_constraintdef(oid) FROM pg_constraint WHERE conrelid = 'public.테이블명'::regclass AND contype = 'c'` 실행
 - 유효 enum 값 확인 후 INSERT
 - 한국어 레이블이 화면에 표시되더라도 DB 컬럼 값은 영문 코드일 수 있음 (UI ≠ DB 값)
+
+## 교훈 103 — XLSX 내보내기 lib 분리 패턴 + Playwright 다운로드 이벤트 캡처
+
+세션 63 Tier 4 내보내기 구현: src/lib/approvalExcel.js, dashboardExcel.js 신규.
+dailyWorkLogExcel.js 패턴 재사용 → `XLSX.utils.aoa_to_sheet` + `XLSX.writeFile` 일관 적용.
+
+**Why:**
+1. 컴포넌트 파일에 XLSX 로직을 인라인 삽입하면 파일이 비대해지고 테스트가 어려워진다.
+   `src/lib/xxxExcel.js` 유틸로 분리하면 재사용·테스트·교체가 쉽다.
+2. Playwright에서 파일 다운로드를 검증하려면 context에 `acceptDownloads: true` 설정 후
+   `Promise.all([waitForEvent('download'), button.click()])` 패턴을 써야 한다.
+   순차 실행하면 클릭 전에 이벤트가 놓친다.
+
+**How to apply:**
+- 새 내보내기 기능: `src/lib/xxxExcel.js` 생성 → 컴포넌트에서 import
+- 파일명 규칙: `gref_{기능}_{YYYY-MM-DD}.xlsx`
+- 한글 컬럼 헤더 + aoa_to_sheet + book_new + writeFile 패턴
+- Playwright 검증: `acceptDownloads: true` + `Promise.all([waitForEvent('download', {timeout:10000}), click()])`
+- 파일 크기 검증: stat.size > 1000 (바이트) — 빈 파일 방지

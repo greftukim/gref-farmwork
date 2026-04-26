@@ -9,6 +9,7 @@ import useAttendanceStore from '../../stores/attendanceStore';
 import useNoticeStore from '../../stores/noticeStore';
 import useHarvestStore from '../../stores/harvestStore';
 import { supabase } from '../../lib/supabase';
+import { downloadApprovalExcel } from '../../lib/approvalExcel';
 import EmployeeDetailModal from '../../components/employees/EmployeeDetailModal';
 import EmployeeEditModal from '../../components/employees/EmployeeEditModal';
 import {
@@ -160,8 +161,8 @@ function HQApprovalsScreen() {
         subtitle="본사 · 지점장 요청 관리"
         title="승인 허브"
         actions={<>
-          {btnSecondary('내보내기', icons.chart, () => alert('승인 내역 내보내기 기능 준비 중입니다.'))}
-          {/* BACKLOG: HQ-APPROVAL-EXPORT-001 */}
+          {btnSecondary('내보내기', icons.chart, () => downloadApprovalExcel(requests, employees))}
+          {/* HQ-APPROVAL-EXPORT-001: gref_승인내역_YYYY-MM-DD.xlsx */}
           {btnPrimary('규칙 설정', icons.settings, () => alert('승인 규칙 설정 기능 준비 중입니다.'))}
           {/* BACKLOG: HQ-APPROVAL-RULE-001 */}
         </>}

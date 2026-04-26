@@ -14,6 +14,7 @@ import useCallStore from '../../stores/callStore';
 import useAuthStore from '../../stores/authStore';
 import useHarvestStore from '../../stores/harvestStore';
 import { supabase } from '../../lib/supabase';
+import { downloadDashboardExcel } from '../../lib/dashboardExcel';
 
 // 기존 코드와 동일한 UTC 기준 (attendanceStore.checkIn과 일치)
 const TODAY = new Date().toISOString().split('T')[0];
@@ -336,7 +337,7 @@ function AdminDashboardScreen() {
       <TopBar
         subtitle="재배팀"
         title={todayStr}
-        actions={<>{btnSecondary('내보내기', null, () => alert('대시보드 내보내기 기능 준비 중입니다.'))}{btnPrimary('새 작업 등록', icons.plus, () => navigate('/admin/tasks/new'))}</>}
+        actions={<>{btnSecondary('내보내기', null, () => downloadDashboardExcel({ todayStr, kpis, weekChartData, taskRows }))}{btnPrimary('새 작업 등록', icons.plus, () => navigate('/admin/tasks/new'))}</>}
       />
 
       <div style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 20 }}>
