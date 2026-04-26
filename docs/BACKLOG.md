@@ -210,6 +210,10 @@
 | NOTICE-AUTH-001 | 인프라 공백 | resolved | 세션 56 (2026-04-26) | 세션 58 (2026-04-26) | 아키텍처 오해 정정: worker는 Supabase Auth 미사용, device_token(anon RLS) 방식. device_token NULL 20명 → gen_random_uuid() DB UPDATE 완료(총 24/24명 보유). Playwright addInitScript(교훈 58)로 /worker/* E2E 전 라우트 PASS. | docs/BACKLOG.md |
 | WORKER-NOTICE-READ-001 | DB 부채 | open | 세션 58 (2026-04-26) | - | noticeStore.markRead 로컬 상태 전용 — notices 테이블에 read_by 컬럼 없음. 새로고침 시 읽음 상태 소실. 영속화 필요 시 `read_by UUID[] DEFAULT '{}'` 컬럼 추가 마이그레이션 + noticeStore.markRead DB UPDATE 연결. | docs/BACKLOG.md |
 | ISSUE-STATUS-COLUMN-001 | DB 부채 | open | 세션 56 (2026-04-26) | - | issues 테이블에 `status` 컬럼 없음 — issueStore.updateIssue 'in_progress' 로컬 상태만 유지, 새로고침 시 'pending'으로 복원. 영속화 필요 시 별 마이그레이션 세션에서 `status VARCHAR(20) DEFAULT 'pending'` 컬럼 추가. | docs/BACKLOG.md |
+| UI-PORT-LOGIN-001 | UI 이식 | resolved | 세션 59 (2026-04-26) | - | LoginPage.jsx 전면 재작성. 목업(screen-others.jsx LoginScreen) 이식. 2컬럼 레이아웃: 좌측 인디고 그래디언트 브랜드패널(로고+카피+통계그리드) + 우측 폼(관리자/작업자 탭, 로그인 유지, 비밀번호 찾기). 데이터 로직(login/navigate/error/loading) 완전 보존. Playwright PASS 53/53. | docs/BACKLOG.md |
+| UI-PORT-EMPLOYEES-001 | UI 이식 | open | 세션 59 (2026-04-26) | - | EmployeesPage.jsx 목업(screen-others.jsx EmployeesScreen) 이식 대기. App.jsx 주석 스왑 패턴 준비됨. | docs/BACKLOG.md |
+| UI-PORT-LEAVE-001 | UI 이식 | open | 세션 59 (2026-04-26) | - | LeavePage.jsx 목업(screen-others.jsx LeaveScreen) 이식 대기. App.jsx 주석 스왑 패턴 준비됨. | docs/BACKLOG.md |
+| UI-PORT-TASKS-001 | UI 이식 | open | 세션 59 (2026-04-26) | - | TaskPlanPage.jsx 목업(screen-others.jsx TasksScreen) 이식 대기. App.jsx 주석 스왑 패턴 준비됨. | docs/BACKLOG.md |
 
 ---
 
