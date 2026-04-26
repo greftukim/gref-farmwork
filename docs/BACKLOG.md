@@ -238,6 +238,7 @@
 | HQ-DASHBOARD-INTERACTIVE-003 | 기능 구현 | resolved | 세션 49 (2026-04-25) 등록 → 세션 70 (2026-04-26) 해소 | - | DashboardInteractive "승인 허브" → "승인 결재" 명칭 정정. 하드코딩 7건 제거, leaveStore.requests(pending) 실데이터 연결. useLeaveStore 추가 import. approvals useMemo(leaveRequests, employees) — 근태 실건수, 예산/인사/자재 0. Playwright X-3 PASS. | docs/BACKLOG.md |
 | HQ-PERF-ROUTE-REGRESSION-001 | BUG | resolved | 세션 72 (2026-04-26) | - | 세션 68 HQ-PERF-ROUTE-MISMATCH-001 해소 시 HQ_ROUTES.performance를 '/admin/stats'로 변경하여 /admin/hq/performance 라우트가 4세션간 dead 상태 유지. 세션 72에서 HQ_ROUTES.performance → '/admin/hq/performance' 복원 + getHQActiveId/getActiveGroup/Sidebar/BottomNav/AdminDashboard 6곳 정합성 정정. FARM_ROUTES.stats → '/admin/performance'로 수정. 교훈 121·122 적용. Playwright PASS 35 / FAIL 0 / WARN 0. | docs/HANDOVER_PHASE5_SESSION72.md |
 | P3-DEAD-STATS-PAGE-001 | 코드 부채 | resolved | 세션 72 (2026-04-26) | - | src/pages/admin/StatsPage.jsx — 사용자 지시로 폐기. App.jsx import + Route('stats') 제거 + git rm. /admin/stats 라우트 전체 제거. 관련 내부 링크 6곳 /admin/performance 또는 /admin/hq/performance로 교체. 교훈 123 적용. | docs/HANDOVER_PHASE5_SESSION72.md |
+| HQ-SIDEBAR-CLICK-UX-001 | UX 개선 | resolved | 세션 72.6 (2026-04-26) | - | HQ 사이드바 그룹 펼침 트리거: hover(onMouseEnter/Leave) → 클릭 토글 전환. hoveredGroup 상태 → openGroup 단일 변수(단일 펼침). useEffect(location.pathname) → 라우트 이동 시 활성 그룹 자동 펼침. 그룹 헤더 fontSize 10→12, 하위 항목 fontSize 13→14. 애니메이션 0.18s → maxHeight 0.25s + opacity 0.2s. 교훈 125 적용. Playwright PASS 37 / FAIL 0 / WARN 3(CSS전환감지한계). | docs/HANDOVER_PHASE5_SESSION72_6.md |
 
 ---
 

@@ -51,8 +51,11 @@ const HQSidebar = ({ active = 'dashboard', onNavigate }) => {
   const pendingLeaveCount = useLeaveStore((s) => s.requests.filter((r) => r.status === 'pending').length);
 
   const activeGroupId = getActiveGroup(location.pathname);
-  const [hoveredGroup, setHoveredGroup] = useState(null);
-  const isExpanded = (id) => id === activeGroupId || id === hoveredGroup;
+  const [openGroup, setOpenGroup] = useState(() => getActiveGroup(location.pathname));
+  useEffect(() => {
+    setOpenGroup(getActiveGroup(location.pathname));
+  }, [location.pathname]);
+  const isExpanded = (id) => id === openGroup;
 
   const GROUPS = [
     {
@@ -150,17 +153,15 @@ const HQSidebar = ({ active = 'dashboard', onNavigate }) => {
             <div
               key={g.id}
               style={{ marginTop: gi === 0 ? 4 : 2 }}
-              onMouseEnter={() => setHoveredGroup(g.id)}
-              onMouseLeave={() => setHoveredGroup(null)}
             >
-              {/* 그룹 헤더 — 클릭 시 모바일 토글 */}
+              {/* 그룹 헤더 — 클릭 토글 */}
               <div
-                onClick={() => setHoveredGroup((prev) => prev === g.id ? null : g.id)}
+                onClick={() => setOpenGroup((prev) => prev === g.id ? null : g.id)}
                 style={{
                   display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                  padding: '5px 8px', borderRadius: 6, cursor: 'pointer',
+                  padding: '6px 8px', borderRadius: 6, cursor: 'pointer',
                   color: isActiveGroup ? T.text : T.mutedSoft,
-                  fontSize: 10, fontWeight: 700, letterSpacing: 0.5,
+                  fontSize: 12, fontWeight: 700, letterSpacing: 0.3,
                   textTransform: 'uppercase', userSelect: 'none',
                 }}
               >
@@ -168,11 +169,12 @@ const HQSidebar = ({ active = 'dashboard', onNavigate }) => {
                 <Chevron open={open} />
               </div>
 
-              {/* 인라인 펼침 — max-height 트랜지션 */}
+              {/* 인라인 펼침 — max-height + opacity 트랜지션 */}
               <div style={{
-                maxHeight: open ? '300px' : '0',
+                maxHeight: open ? '400px' : '0',
+                opacity: open ? 1 : 0,
                 overflow: 'hidden',
-                transition: 'max-height 0.18s ease-out',
+                transition: 'max-height 0.25s ease-out, opacity 0.2s ease-out',
               }}>
                 {g.items.map((i) => {
                   const on = i.id === active;
@@ -185,7 +187,7 @@ const HQSidebar = ({ active = 'dashboard', onNavigate }) => {
                         padding: '7px 8px 7px 12px', borderRadius: 7, cursor: 'pointer',
                         background: on ? HQ.accentSoft : 'transparent',
                         color: on ? HQ.accentText : T.muted,
-                        fontSize: 13, fontWeight: on ? 600 : 500,
+                        fontSize: 14, fontWeight: on ? 600 : 500,
                         marginBottom: 1,
                       }}
                       onMouseEnter={(e) => { if (!on) e.currentTarget.style.background = T.bg; }}
