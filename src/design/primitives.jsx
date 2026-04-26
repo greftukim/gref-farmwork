@@ -147,7 +147,7 @@ const Sidebar = ({ active = 'dashboard', onNavigate }) => {
           </div>
         </div>
       </div>
-      <nav style={{ padding: 12, flex: 1, display: 'flex', flexDirection: 'column', gap: 2 }}>
+      <nav style={{ padding: 12, flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 2 }}>
         <div style={{ fontSize: 10, fontWeight: 700, color: T.mutedSoft, letterSpacing: 0.5, padding: '8px 12px 4px' }}>메뉴</div>
         {items.map(i => {
           const on = i.id === active;

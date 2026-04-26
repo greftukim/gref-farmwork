@@ -50,11 +50,19 @@ export function usePerformanceData() {
           .from('harvest_records')
           .select('employee_id, crop_id, date, quantity, crops(name)');
 
+        // 4. Task speed data
+        const tasksRes = await supabase
+          .from('tasks')
+          .select('worker_id, duration_minutes, quantity')
+          .not('duration_minutes', 'is', null)
+          .not('quantity', 'is', null);
+
         if (!empRes.data || !harvestRes.data) {
           setLoading(false);
           return;
         }
 
+        // Build harvest aggregates
         const records = harvestRes.data;
         const byEmp = {};
 
@@ -75,6 +83,27 @@ export function usePerformanceData() {
           }
         }
 
+        // Build task speed aggregates: totalQty / totalDur per worker
+        const tasksByEmp = {};
+        if (tasksRes.data) {
+          for (const t of tasksRes.data) {
+            if (!t.worker_id || !t.duration_minutes) continue;
+            if (!tasksByEmp[t.worker_id]) tasksByEmp[t.worker_id] = { totalQty: 0, totalDur: 0 };
+            tasksByEmp[t.worker_id].totalQty += Number(t.quantity) || 0;
+            tasksByEmp[t.worker_id].totalDur += Number(t.duration_minutes) || 0;
+          }
+        }
+
+        // Normalize speed to 100 (global average = 100)
+        const speedRates = Object.entries(tasksByEmp)
+          .filter(([, d]) => d.totalDur > 0)
+          .map(([id, d]) => ({ id, rate: d.totalQty / d.totalDur }));
+        const avgSpeed = speedRates.length > 0
+          ? speedRates.reduce((s, w) => s + w.rate, 0) / speedRates.length : 1;
+        const speedMap = Object.fromEntries(
+          speedRates.map(({ id, rate }) => [id, Math.round((rate / avgSpeed) * 100)])
+        );
+
         const totals = Object.values(byEmp).map(e => e.totalKg).filter(t => t > 0);
         const avgTotal = totals.length > 0 ? totals.reduce((a, b) => a + b, 0) / totals.length : 1;
 
@@ -86,7 +115,6 @@ export function usePerformanceData() {
           ),
         ].sort((a, b) => a - b);
         const last5Weeks = allWeekNums.slice(-5);
-        const weekSpan = last5Weeks.length || 1;
 
         const workersData = empRes.data
           .filter(e => byEmp[e.id])
@@ -115,6 +143,8 @@ export function usePerformanceData() {
               ? `${emp.created_at.slice(0, 4)}.${emp.created_at.slice(5, 7)}`
               : '미상';
             const branch = emp.branch || 'busan';
+            const speedPct = speedMap[emp.id] || 0;
+            const tier = speedPct >= 110 ? 'top' : speedPct >= 85 ? 'mid' : speedPct > 0 ? 'low' : null;
 
             return {
               id: emp.id,
@@ -127,11 +157,12 @@ export function usePerformanceData() {
               avatar: AVATAR_CYCLE[idx % AVATAR_CYCLE.length],
               efficiency: harvestPct,
               harvestPct,
-              speedStem: 0,
+              speedPct,
+              tier,
               stemsWeek,
               attendance,
-              pinned: harvestPct >= 115,
-              warn: harvestPct < 80 || attendance < 90,
+              pinned: speedPct >= 110,
+              warn: speedPct > 0 && speedPct < 85,
               weeklyTrend,
             };
           });

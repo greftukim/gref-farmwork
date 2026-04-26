@@ -12,6 +12,10 @@ const BRANCH_OPTS = [
   { id: 'hadong', label: '하동HUB' },
 ];
 
+const TIER_LABEL = { top: '우수', mid: '평균', low: '저성과' };
+const TIER_COLOR = { top: T.success, mid: T.primary, low: T.danger };
+const TIER_BG   = { top: T.successSoft ?? '#DCFCE7', mid: T.primarySoft ?? '#EEF2FF', low: T.dangerSoft ?? '#FEE2E2' };
+
 export default function StatsPage() {
   const currentUser = useAuthStore((s) => s.currentUser);
   const { workers: allWorkers, loading } = usePerformanceData();
@@ -30,15 +34,14 @@ export default function StatsPage() {
   }, [allWorkers, currentUser, branchFilter, isFarmAdmin]);
 
   const ranked = useMemo(
-    () => [...workers].sort((a, b) => b.harvestPct - a.harvestPct),
+    () => [...workers].sort((a, b) => (b.speedPct || 0) - (a.speedPct || 0)),
     [workers],
   );
 
-  const avgPct = ranked.length
-    ? Math.round(ranked.reduce((s, w) => s + w.harvestPct, 0) / ranked.length)
-    : 0;
-  const topWeekly = ranked.length ? Math.max(...ranked.map((w) => w.stemsWeek)) : 0;
-  const topPct = ranked[0]?.harvestPct || 0;
+  const topWorkers = ranked.filter((w) => w.tier === 'top');
+  const midWorkers = ranked.filter((w) => w.tier === 'mid');
+  const lowWorkers = ranked.filter((w) => w.tier === 'low');
+  const topSpeed = ranked.length ? Math.max(...ranked.map((w) => w.speedPct || 0)) : 0;
 
   const filterBar = !isFarmAdmin && (
     <div style={{ display: 'flex', gap: 0, padding: 3, background: T.bg, border: `1px solid ${T.border}`, borderRadius: 7 }}>
@@ -71,28 +74,31 @@ export default function StatsPage() {
       <div style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 20 }}>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12 }}>
           {[
-            { l: '평균 수확 성과율', v: avgPct, unit: '%', tone: T.primary },
-            { l: '주간 최고 수확량', v: topWeekly, unit: 'kg/주', tone: T.success },
-            { l: '평가 인원', v: ranked.length, unit: '명', tone: T.info },
+            { l: '우수 작업자', v: topWorkers.length, unit: '명', tone: T.success, soft: TIER_BG.top, sub: '속도 110% 이상' },
+            { l: '평균 작업자', v: midWorkers.length, unit: '명', tone: T.primary, soft: TIER_BG.mid, sub: '속도 85–109%' },
+            { l: '저성과 작업자', v: lowWorkers.length, unit: '명', tone: T.danger, soft: TIER_BG.low, sub: '속도 85% 미만' },
           ].map((k, i) => (
             <Card key={i} pad={18} style={{ position: 'relative', overflow: 'hidden' }}>
               <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 3, background: k.tone }} />
               <div style={{ fontSize: 12, color: T.muted, fontWeight: 600, marginBottom: 14 }}>{k.l}</div>
-              <div style={{ display: 'flex', alignItems: 'baseline', gap: 4 }}>
+              <div style={{ display: 'flex', alignItems: 'baseline', gap: 4, marginBottom: 8 }}>
                 <span style={{ fontSize: 36, fontWeight: 700, color: T.text, letterSpacing: -1, lineHeight: 1, fontFamily: 'ui-monospace,monospace' }}>{k.v}</span>
                 <span style={{ fontSize: 14, color: T.mutedSoft, fontWeight: 500 }}>{k.unit}</span>
               </div>
+              <div style={{ fontSize: 10, color: k.tone, fontWeight: 600, padding: '2px 8px', background: k.soft, borderRadius: 4, display: 'inline-block' }}>{k.sub}</div>
             </Card>
           ))}
         </div>
 
         <Card pad={0}>
-          <div style={{ padding: '14px 20px', borderBottom: `1px solid ${T.borderSoft}`, fontSize: 13, fontWeight: 700, color: T.text }}>수확 성과 랭킹</div>
+          <div style={{ padding: '14px 20px', borderBottom: `1px solid ${T.borderSoft}`, fontSize: 13, fontWeight: 700, color: T.text }}>작업 속도 랭킹</div>
           {ranked.length === 0 ? (
-            <div style={{ padding: 60, textAlign: 'center', color: T.mutedSoft }}>수확 데이터가 없습니다</div>
+            <div style={{ padding: 60, textAlign: 'center', color: T.mutedSoft }}>성과 데이터가 없습니다</div>
           ) : ranked.map((w, i) => {
-            const pct = topPct ? Math.round((w.harvestPct / topPct) * 100) : 0;
+            const barPct = topSpeed ? Math.round(((w.speedPct || 0) / topSpeed) * 100) : 0;
             const medal = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : null;
+            const tierColor = w.tier ? TIER_COLOR[w.tier] : T.muted;
+            const tierBg = w.tier ? TIER_BG[w.tier] : T.bg;
             return (
               <div key={w.id} style={{
                 padding: '14px 20px',
@@ -108,20 +114,26 @@ export default function StatsPage() {
                 }}>{medal || `#${i + 1}`}</div>
                 <Avatar name={w.name} color="indigo" size={36} />
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 3 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 3, flexWrap: 'wrap' }}>
                     <span style={{ fontSize: 13, fontWeight: 700, color: T.text }}>{w.name}</span>
                     <span style={{
                       fontSize: 10, fontWeight: 600, padding: '1px 6px', borderRadius: 4,
                       background: w.bc + '20', color: w.bc,
                     }}>{BRANCH_LABEL[w.branch] || w.branch}</span>
+                    {w.tier && (
+                      <span style={{
+                        fontSize: 10, fontWeight: 700, padding: '1px 6px', borderRadius: 4,
+                        background: tierBg, color: tierColor,
+                      }}>{TIER_LABEL[w.tier]}</span>
+                    )}
                   </div>
                   <div style={{ height: 5, background: T.bg, borderRadius: 3, overflow: 'hidden' }}>
-                    <div style={{ width: `${pct}%`, height: '100%', background: i < 3 ? T.warning : T.primary }} />
+                    <div style={{ width: `${barPct}%`, height: '100%', background: tierColor }} />
                   </div>
                 </div>
                 <div style={{ textAlign: 'right', minWidth: 90 }}>
-                  <div style={{ fontSize: 22, fontWeight: 700, color: T.text, letterSpacing: -0.4, fontFamily: 'ui-monospace,monospace', lineHeight: 1 }}>{w.harvestPct}</div>
-                  <div style={{ fontSize: 10, color: T.mutedSoft, marginTop: 3 }}>% · {w.stemsWeek}kg/주</div>
+                  <div style={{ fontSize: 22, fontWeight: 700, color: T.text, letterSpacing: -0.4, fontFamily: 'ui-monospace,monospace', lineHeight: 1 }}>{w.speedPct || '—'}</div>
+                  <div style={{ fontSize: 10, color: T.mutedSoft, marginTop: 3 }}>% 속도 · {w.stemsWeek}kg/주</div>
                 </div>
               </div>
             );

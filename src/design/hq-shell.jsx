@@ -25,17 +25,17 @@ const HQSidebar = ({ active = 'dashboard', onNavigate }) => {
   const currentUser = useAuthStore((s) => s.currentUser);
   const issues = useIssueStore((s) => s.issues);
   const openIssueCount = issues.filter((i) => !i.isResolved).length;
+  const pendingLeaveCount = useLeaveStore((s) => s.requests.filter((r) => r.status === 'pending').length);
   const items = [
     { id: 'dashboard', label: '본사 대시보드', icon: icons.dashboard },
     { id: 'branches', label: '지점 관리', icon: icons.location },
     { id: 'employees', label: '전사 직원', icon: icons.users },
     { id: 'performance', label: '작업자 성과', icon: icons.chart },
     { id: 'growth', label: '지점별 생육', icon: icons.sprout },
-    { id: 'approvals', label: '승인 허브', icon: icons.check, badge: 12 },
+    { id: 'approvals', label: '승인 허브', icon: icons.check, badge: pendingLeaveCount || null },
     { id: 'issues', label: '이상 신고', icon: icons.alert, badge: openIssueCount || null },
     { id: 'finance', label: '경영 지표', icon: icons.chart },
     { id: 'notice', label: '공지 · 정책', icon: icons.bell },
-    { id: 'settings', label: '시스템 설정', icon: icons.settings },
   ];
   return (
     <aside style={{
@@ -71,7 +71,7 @@ const HQSidebar = ({ active = 'dashboard', onNavigate }) => {
         </div>
       </div>
 
-      <nav style={{ padding: 12, flex: 1, display: 'flex', flexDirection: 'column', gap: 2 }}>
+      <nav style={{ padding: 12, flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 2 }}>
         <div style={{ fontSize: 10, fontWeight: 700, color: T.mutedSoft, letterSpacing: 0.5, padding: '8px 12px 4px' }}>관리 메뉴</div>
         {items.map(i => {
           const on = i.id === active;
@@ -96,15 +96,18 @@ const HQSidebar = ({ active = 'dashboard', onNavigate }) => {
         {/* 지점 퀵 스위처 */}
         <div style={{ fontSize: 10, fontWeight: 700, color: T.mutedSoft, letterSpacing: 0.5, padding: '16px 12px 4px' }}>지점 바로가기</div>
         {[
-          { n: '부산LAB', c: T.success, active: true },
+          { n: '부산LAB', c: T.success },
           { n: '진주HUB', c: T.primary },
           { n: '하동HUB', c: T.warning },
         ].map((b) => (
-          <div key={b.n} style={{
+          <div key={b.n} onClick={() => navigate('/admin/hq/branches')} style={{
             display: 'flex', alignItems: 'center', gap: 10,
             padding: '8px 12px', borderRadius: 8, cursor: 'pointer',
             color: T.muted, fontSize: 12, fontWeight: 500,
-          }}>
+          }}
+          onMouseEnter={(e) => { e.currentTarget.style.background = T.bg; }}
+          onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
+          >
             <Dot c={b.c} />
             <span style={{ flex: 1 }}>{b.n}</span>
             <Icon d={<polyline points="9 18 15 12 9 6"/>} size={12} c={T.mutedSoft} />
@@ -134,14 +137,11 @@ const HQSidebar = ({ active = 'dashboard', onNavigate }) => {
   );
 };
 
-// ─────── HQTopBar — 알림 벨 드롭다운 + 전역 검색 + 기간 피커 ───────
+// ─────── HQTopBar — 기간 피커 + 알림 벨 드롭다운 ───────
 const HQTopBar = ({ title, subtitle, actions, period, onPeriodChange }) => {
   const navigate = useNavigate();
   const [notifOpen, setNotifOpen] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [searchOpen, setSearchOpen] = useState(false);
   const notifRef = useRef(null);
-  const searchRef = useRef(null);
 
   // 알림 소스 데이터
   const leaveRequests = useLeaveStore((s) => s.requests);
@@ -195,24 +195,10 @@ const HQTopBar = ({ title, subtitle, actions, period, onPeriodChange }) => {
 
   const unreadCount = notifications.length;
 
-  // 검색 결과
-  const searchResults = useMemo(() => {
-    const q = searchQuery.trim().toLowerCase();
-    if (!q) return null;
-    const empMatches = employees
-      .filter((e) => e.name?.toLowerCase().includes(q) || e.username?.toLowerCase().includes(q))
-      .slice(0, 5);
-    const noticeMatches = notices
-      .filter((n) => n.title?.toLowerCase().includes(q))
-      .slice(0, 3);
-    return { empMatches, noticeMatches };
-  }, [searchQuery, employees, notices]);
-
   // 외부 클릭 시 드롭다운 닫기
   useEffect(() => {
     const handler = (e) => {
       if (notifRef.current && !notifRef.current.contains(e.target)) setNotifOpen(false);
-      if (searchRef.current && !searchRef.current.contains(e.target)) setSearchOpen(false);
     };
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
@@ -220,9 +206,6 @@ const HQTopBar = ({ title, subtitle, actions, period, onPeriodChange }) => {
 
   const activePeriod = period || '월';
   const PERIODS = ['일', '주', '월', '분기'];
-
-  const notifTypeIcon = { approval: icons.check, issue: '⚠', notice: icons.bell };
-  const notifTypeColor = { approval: HQ.accent, issue: T.warning, notice: T.primary };
 
   return (
     <div style={{
@@ -261,100 +244,7 @@ const HQTopBar = ({ title, subtitle, actions, period, onPeriodChange }) => {
           })}
         </div>
 
-        {/* ── 전역 검색 (TASK 2: GLOBAL-SEARCH-001) ── */}
-        <div ref={searchRef} style={{ position: 'relative' }}>
-          <div style={{
-            display: 'flex', alignItems: 'center', gap: 8,
-            padding: '8px 12px', background: T.bg, border: `1px solid ${searchOpen ? HQ.accent : T.border}`,
-            borderRadius: 8, width: 220, color: T.mutedSoft, fontSize: 13,
-            transition: 'border-color 0.15s',
-          }}>
-            <Icon d={icons.search} size={14} />
-            <input
-              placeholder="직원, 공지 검색"
-              value={searchQuery}
-              onChange={(e) => {
-                setSearchQuery(e.target.value);
-                setSearchOpen(e.target.value.trim().length > 0);
-              }}
-              onFocus={() => { if (searchQuery.trim()) setSearchOpen(true); }}
-              style={{ flex: 1, border: 0, outline: 'none', background: 'transparent', fontSize: 13, color: T.text }}
-            />
-            {searchQuery ? (
-              <span onClick={() => { setSearchQuery(''); setSearchOpen(false); }}
-                style={{ cursor: 'pointer', fontSize: 14, color: T.mutedSoft, lineHeight: 1 }}>✕</span>
-            ) : (
-              <span style={{ marginLeft: 'auto', fontSize: 10, padding: '2px 5px', background: T.surface, border: `1px solid ${T.border}`, borderRadius: 4, fontWeight: 600 }}>⌘K</span>
-            )}
-          </div>
-
-          {/* 검색 결과 드롭다운 */}
-          {searchOpen && searchResults && (
-            <div style={{
-              position: 'absolute', top: 'calc(100% + 6px)', left: 0, right: 0,
-              background: T.surface, border: `1px solid ${T.border}`, borderRadius: 10,
-              boxShadow: '0 8px 24px rgba(15,23,42,0.12)', zIndex: 200,
-              maxHeight: 320, overflow: 'auto',
-            }}>
-              {/* 직원 섹션 */}
-              {searchResults.empMatches.length > 0 && (
-                <div>
-                  <div style={{ padding: '8px 14px 4px', fontSize: 10, fontWeight: 700, color: T.mutedSoft, letterSpacing: 0.4 }}>
-                    직원 ({searchResults.empMatches.length})
-                  </div>
-                  {searchResults.empMatches.map((e) => (
-                    <div key={e.id} onClick={() => { navigate('/admin/hq/employees'); setSearchQuery(''); setSearchOpen(false); }}
-                      style={{
-                        display: 'flex', alignItems: 'center', gap: 10,
-                        padding: '8px 14px', cursor: 'pointer',
-                      }}
-                      onMouseEnter={(ev) => ev.currentTarget.style.background = T.bg}
-                      onMouseLeave={(ev) => ev.currentTarget.style.background = 'transparent'}
-                    >
-                      <div style={{
-                        width: 28, height: 28, borderRadius: 999, background: HQ.accentSoft,
-                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        fontSize: 12, fontWeight: 700, color: HQ.accentText, flexShrink: 0,
-                      }}>{e.name?.[0] || '?'}</div>
-                      <div>
-                        <div style={{ fontSize: 13, fontWeight: 600, color: T.text }}>{e.name}</div>
-                        <div style={{ fontSize: 10, color: T.mutedSoft }}>
-                          {e.branch || '—'} · {e.role === 'farm_admin' ? '재배팀장' : e.role === 'worker' ? '작업자' : e.role}
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-              {/* 공지 섹션 */}
-              {searchResults.noticeMatches.length > 0 && (
-                <div style={{ borderTop: searchResults.empMatches.length > 0 ? `1px solid ${T.borderSoft}` : 'none' }}>
-                  <div style={{ padding: '8px 14px 4px', fontSize: 10, fontWeight: 700, color: T.mutedSoft, letterSpacing: 0.4 }}>
-                    공지 ({searchResults.noticeMatches.length})
-                  </div>
-                  {searchResults.noticeMatches.map((n, i) => (
-                    <div key={i} onClick={() => { navigate('/admin/hq/notices'); setSearchQuery(''); setSearchOpen(false); }}
-                      style={{ padding: '8px 14px', cursor: 'pointer', fontSize: 13, color: T.text }}
-                      onMouseEnter={(ev) => ev.currentTarget.style.background = T.bg}
-                      onMouseLeave={(ev) => ev.currentTarget.style.background = 'transparent'}
-                    >
-                      <Icon d={icons.bell} size={12} c={T.mutedSoft} style={{ marginRight: 6 }} />
-                      {n.title}
-                    </div>
-                  ))}
-                </div>
-              )}
-              {/* 결과 없음 */}
-              {searchResults.empMatches.length === 0 && searchResults.noticeMatches.length === 0 && (
-                <div style={{ padding: '20px 14px', textAlign: 'center', fontSize: 12, color: T.mutedSoft }}>
-                  "{searchQuery}"에 대한 결과 없음
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-
-        {/* ── 알림 벨 드롭다운 (TASK 1: NOTIFICATION-DROPDOWN-001) ── */}
+        {/* ── 알림 벨 드롭다운 ── */}
         <div ref={notifRef} style={{ position: 'relative' }}>
           <button
             onClick={() => setNotifOpen((v) => !v)}

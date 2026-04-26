@@ -214,13 +214,19 @@
 | UI-PORT-EMPLOYEES-001 | UI 이식 | resolved | 세션 60 (2026-04-26) | - | EmployeesPage.jsx 전면 재작성. 직군 필터(전체/재배/관리/기타), 4 KPI 카드, 페이지네이션(PAGE_SIZE=8), 직원 등록 모달 보존. Playwright PASS 63/63. | docs/BACKLOG.md |
 | UI-PORT-LEAVE-001 | UI 이식 | resolved | 세션 60 (2026-04-26) | - | LeavePage.jsx 전면 재작성. 2컬럼 레이아웃(1fr 1.4fr): 좌측 승인 대기 카드 + 우측 팀 휴가 캘린더(월 이동). approveRequest/rejectRequest 완전 보존. Playwright PASS 63/63. | docs/BACKLOG.md |
 | UI-PORT-TASKS-001 | UI 이식 | resolved | 세션 61 (2026-04-26) | - | TaskBoardPage.jsx 기존 칸반 구현 활용 + 데이터 매핑 5건 수정(pending→planned/workerId/date/taskType/progress). App.jsx /admin/tasks 라우트 스왑. 통합 회귀 PASS 63/63. | docs/BACKLOG.md |
-| P2-PERF-SPEED-METRIC-001 | 기능 미구현 | open (운영 후) | 세션 66 (2026-04-26) 조사 | - | 평가 기준 수확량→작업 속도 전환. tasks.duration_minutes / quantity 전부 NULL — 실측 데이터 없음. 운영 중 데이터 누적 후 구현 예정. | docs/BACKLOG.md |
+| P2-PERF-SPEED-METRIC-001 | 기능 구현 | resolved | 세션 66 조사 → 세션 67 (2026-04-26) 구현 | - | 작업 속도 기반 성과 평가. tasks.duration_minutes/quantity 시드(361건) + usePerformanceData 속도 정규화(100기준) + StatsPage 우수/평균/저성과 KPI 카드 + 작업 속도 랭킹 재설계. Playwright X-D PASS. | docs/BACKLOG.md |
 | P2-SPEED-STANDARD-UI-001 | 기능 미구현 | open (운영 후) | 세션 66 (2026-04-26) 조사 | - | 작업 속도 기준 설정 UI (작물/작업 종류별 기준값 입력). P2-PERF-SPEED-METRIC-001 선행 필요 + 신규 테이블(task_speed_standards) 설계 미정. 운영 후 트랙. | docs/BACKLOG.md |
 | P2-STATS-BRANCH-FILTER-001 | 기능 추가 | resolved | 세션 66 (2026-04-26) | - | StatsPage(성과 분석) hr_admin/master용 지점 필터 드롭다운 추가. 전체/부산LAB/진주HUB/하동HUB 버튼. farm_admin은 기존 자동 필터 유지. Playwright X-3 PASS. | docs/BACKLOG.md |
 | P2-MENU-CLEANUP-001 | UX 개선 | resolved | 세션 66 (2026-04-26) | - | 사이드바 "작업자 성과"(/admin/performance) + "통계 분석"(/admin/stats) 중복 노출 해소. "작업자 성과" 메뉴 제거, "통계 분석" → "성과 분석" 이름 변경. AdminLayout FARM_ROUTES performance 항목 제거. Playwright X-4 PASS. | docs/BACKLOG.md |
 | P1-LEAVE-SILENT-FAIL | 버그 | resolved | 세션 65 (2026-04-26) | - | LeavePage.jsx fetchRequests on mount 누락 + 승인/반려 fire-and-forget 패턴. 수정: useEffect(fetchRequests(currentUser)) 추가, farmReview 직접 호출(reviewer ID 전달), 실패 시 alert 에러 피드백. Playwright W-1 reload-after-action DB 반영 확인. | docs/BACKLOG.md |
 | P1-ROLE-MKKIM-MSPARK | 데이터 오류 | resolved | 세션 65 (2026-04-26) | - | mkkim(김민국)/mspark(박민식) role='general' → farm 팀 UI(/admin) 라우팅 오분류. DB UPDATE role='hr_admin' (RETURNING 확인). 이후 /admin/hq 라우팅 + 인사관리 표시. Playwright W-2-1 PASS. | docs/BACKLOG.md |
-| P3-SEARCH-REMOVE | UX 개선 | resolved | 세션 65 (2026-04-26) | - | 관리자 페이지 TopBar 우상단 정적 검색란(기능 없음, ⌘K 표시만) 제거. primitives.jsx TopBar에서 해당 div 삭제. hq-shell.jsx HQTopBar 기능성 검색은 유지. Playwright W-3 PASS. | docs/BACKLOG.md |
+| P3-SEARCH-REMOVE | UX 개선 | resolved | 세션 65 (2026-04-26) | - | 관리자 페이지 TopBar 우상단 정적 검색란(기능 없음, ⌘K 표시만) 제거. primitives.jsx TopBar에서 해당 div 삭제. Playwright W-3 PASS. | docs/BACKLOG.md |
+| P3-HQ-BADGE-001 | BUG | resolved | 세션 67 (2026-04-26) | - | HQSidebar "승인 허브" badge 하드코딩=12 → leaveStore.requests 대기 건수 동적 연동. pendingLeaveCount || null 패턴. Playwright X-A-2 PASS. | docs/BACKLOG.md |
+| P3-HQ-SEARCH-REMOVE-001 | UX 개선 | resolved | 세션 67 (2026-04-26) | - | HQTopBar 전역 검색 입력창("직원, 공지 검색" + ⌘K) 제거. 관련 state(searchQuery/searchOpen/searchRef) + useMemo(searchResults) 일괄 정리. Playwright X-A-3 PASS. | docs/BACKLOG.md |
+| P3-HQ-LOGOUT-001 | UX | resolved | 세션 67 (2026-04-26) | - | HQSidebar + farm Sidebar nav에 flex:1 + overflow 미지정 → 메뉴 많을 시 로그아웃 버튼 화면 밖으로 밀림. overflowY:'auto' 추가. Playwright X-A-4 PASS. | docs/BACKLOG.md |
+| P3-HQ-SETTINGS-001 | UX | resolved | 세션 67 (2026-04-26) | - | HQSidebar "시스템 설정" 메뉴 항목 제거 (미구현 기능 노출 금지). Playwright X-A-1 PASS. | docs/BACKLOG.md |
+| P3-HQ-BRANCH-NAV-001 | UX | resolved | 세션 67 (2026-04-26) | - | HQSidebar 지점 바로가기(부산LAB/진주HUB/하동HUB) 클릭 무반응 → navigate('/admin/hq/branches') 연결 + hover 효과 추가. Playwright X-A-5 PASS. | docs/BACKLOG.md |
+| P2-TASK-SPEED-SEED-001 | 데이터 | resolved | 세션 67 (2026-04-26) | - | tasks.duration_minutes/quantity 361건 모두 NULL → 작업자 티어(부산 우수×2/평균×5/저성과×2, 하동 우수×2/평균×5/저성과×1, 진주 우수×1/평균×4/저성과×2) + 지점 차등(부산1.05/진주1.0/하동0.975) 시드 완료. | docs/BACKLOG.md |
 
 ---
 
