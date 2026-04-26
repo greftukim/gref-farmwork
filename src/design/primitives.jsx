@@ -206,15 +206,6 @@ const TopBar = ({ title, subtitle, actions }) => (
       <h1 style={{ fontSize: 22, fontWeight: 700, color: T.text, letterSpacing: -0.4, margin: 0 }}>{title}</h1>
     </div>
     <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-      <div style={{
-        display: 'flex', alignItems: 'center', gap: 8,
-        padding: '8px 12px', background: T.bg, border: `1px solid ${T.border}`,
-        borderRadius: 8, width: 260, color: T.mutedSoft, fontSize: 13,
-      }}>
-        <Icon d={icons.search} size={14} />
-        <span>검색 (직원, 작업, 구역...)</span>
-        <span style={{ marginLeft: 'auto', fontSize: 10, padding: '2px 5px', background: T.surface, border: `1px solid ${T.border}`, borderRadius: 4, fontWeight: 600 }}>⌘K</span>
-      </div>
       <button style={btnGhostStyle}>
         <Icon d={icons.bell} size={16} />
         <span style={{ position: 'absolute', top: 4, right: 4, width: 7, height: 7, borderRadius: 999, background: T.danger }} />

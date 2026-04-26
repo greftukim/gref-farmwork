@@ -2480,3 +2480,30 @@ outer span에는 onClick이 없어 클릭해도 다운로드 이벤트가 발생
   → textContent가 정확히 "X"인 가장 구체적인 요소를 찾는다 (outer span은 "텍스트 → X" 로 exact 불일치).
 - 또는 `locator('span[style*="cursor: pointer"]:has-text("X")')` 로 style 속성으로 구분.
 - button 대신 span/div에 onClick을 붙일 때 Playwright 테스트 작성 시 위 함정을 주의.
+
+## 교훈 105 — Playwright GO 판정 한계: 페이지 렌더+클릭 ≠ DB 반영
+
+세션 62 GO 판정이 사후 부정확으로 판명. LeavePage 승인 버튼 클릭 → UI에서 항목 사라짐(in-memory) → DB는 미반영. Playwright는 이 차이를 감지하지 못했다.
+
+**Why:**
+Playwright는 DOM 상태만 검증한다. 스토어 in-memory 업데이트와 DB UPDATE 성공은 서로 다른 이벤트다.
+fire-and-forget 패턴(`onClick={() => approveRequest(id)}`)은 await 없이 실행되므로 에러가 있어도 UI가 먼저 반응한다.
+세션 62 Playwright는 "승인 후 pending 건수 감소" 만 확인 → 실제로는 in-memory 변경을 보고 PASS로 처리.
+
+**How to apply:**
+- 상태 변경 기능(승인·반려·삭제) 검증 시 반드시 `page.reload()` 후 상태 재확인. reload-after-action 패턴.
+- `Promise.all([waitForEvent, click()])` 는 이벤트 기반 검증이지 DB 저장 검증이 아님.
+- 운영 진입 GO 판정 전 반드시 핵심 mutation(approve/reject/delete)에 reload 검증 포함.
+
+## 교훈 106 — LeavePage silent fail 3중 원인 구조
+
+세션 65 P1-LEAVE-SILENT-FAIL 분석: 단일 버그가 아닌 3중 구조.
+
+1. **fetchRequests on mount 누락**: 페이지 진입 시 DB에서 최신 데이터를 가져오지 않음 → farm_admin이 다른 브랜치 요청을 볼 수 있음 (stale 스토어 공유).
+2. **reviewer ID null 전달**: `approveRequest(id)` 래퍼가 `farmReview(id, true, null)` 호출 → `farm_reviewed_by = null`. 실제 null 허용이므로 DB 에러는 없지만 감사 추적 불가.
+3. **fire-and-forget + 에러 피드백 없음**: `onClick={() => approveRequest(id)}` 에서 반환값 무시 → DB UPDATE가 RLS에 의해 차단되어도 사용자에게 알림 없음.
+
+**How to apply:**
+- 데이터 변경 페이지: mount 시 항상 fetchXxx(currentUser) 호출.
+- store 래퍼가 아닌 farmReview 직접 호출로 reviewer ID를 명시적으로 전달.
+- 버튼 onClick: async handler → `const ok = await farmReview(...)` → `if (!ok) alert(...)`.

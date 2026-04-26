@@ -214,6 +214,9 @@
 | UI-PORT-EMPLOYEES-001 | UI 이식 | resolved | 세션 60 (2026-04-26) | - | EmployeesPage.jsx 전면 재작성. 직군 필터(전체/재배/관리/기타), 4 KPI 카드, 페이지네이션(PAGE_SIZE=8), 직원 등록 모달 보존. Playwright PASS 63/63. | docs/BACKLOG.md |
 | UI-PORT-LEAVE-001 | UI 이식 | resolved | 세션 60 (2026-04-26) | - | LeavePage.jsx 전면 재작성. 2컬럼 레이아웃(1fr 1.4fr): 좌측 승인 대기 카드 + 우측 팀 휴가 캘린더(월 이동). approveRequest/rejectRequest 완전 보존. Playwright PASS 63/63. | docs/BACKLOG.md |
 | UI-PORT-TASKS-001 | UI 이식 | resolved | 세션 61 (2026-04-26) | - | TaskBoardPage.jsx 기존 칸반 구현 활용 + 데이터 매핑 5건 수정(pending→planned/workerId/date/taskType/progress). App.jsx /admin/tasks 라우트 스왑. 통합 회귀 PASS 63/63. | docs/BACKLOG.md |
+| P1-LEAVE-SILENT-FAIL | 버그 | resolved | 세션 65 (2026-04-26) | - | LeavePage.jsx fetchRequests on mount 누락 + 승인/반려 fire-and-forget 패턴. 수정: useEffect(fetchRequests(currentUser)) 추가, farmReview 직접 호출(reviewer ID 전달), 실패 시 alert 에러 피드백. Playwright W-1 reload-after-action DB 반영 확인. | docs/BACKLOG.md |
+| P1-ROLE-MKKIM-MSPARK | 데이터 오류 | resolved | 세션 65 (2026-04-26) | - | mkkim(김민국)/mspark(박민식) role='general' → farm 팀 UI(/admin) 라우팅 오분류. DB UPDATE role='hr_admin' (RETURNING 확인). 이후 /admin/hq 라우팅 + 인사관리 표시. Playwright W-2-1 PASS. | docs/BACKLOG.md |
+| P3-SEARCH-REMOVE | UX 개선 | resolved | 세션 65 (2026-04-26) | - | 관리자 페이지 TopBar 우상단 정적 검색란(기능 없음, ⌘K 표시만) 제거. primitives.jsx TopBar에서 해당 div 삭제. hq-shell.jsx HQTopBar 기능성 검색은 유지. Playwright W-3 PASS. | docs/BACKLOG.md |
 
 ---
 

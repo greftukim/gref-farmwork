@@ -1,8 +1,9 @@
 // 휴가 관리 (공용) — /admin/leave
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Avatar, Card, Pill, T, TopBar, btnPrimary, btnSecondary, icons } from '../../design/primitives';
 import useLeaveStore from '../../stores/leaveStore';
 import useEmployeeStore from '../../stores/employeeStore';
+import useAuthStore from '../../stores/authStore';
 
 const TYPES = { annual: '연차', sick: '병가', personal: '개인', family: '경조사' };
 const AV_COLORS = ['indigo', 'emerald', 'amber', 'slate', 'rose'];
@@ -12,9 +13,23 @@ const leaveDays = (r) => r.days ?? DAY_MAP[r.type] ?? '-';
 
 export default function LeavePage() {
   const requests = useLeaveStore((s) => s.requests);
-  const approveRequest = useLeaveStore((s) => s.approveRequest);
-  const rejectRequest = useLeaveStore((s) => s.rejectRequest);
+  const fetchRequests = useLeaveStore((s) => s.fetchRequests);
+  const farmReview = useLeaveStore((s) => s.farmReview);
   const employees = useEmployeeStore((s) => s.employees);
+  const currentUser = useAuthStore((s) => s.currentUser);
+
+  useEffect(() => {
+    fetchRequests(currentUser);
+  }, []);
+
+  const handleApprove = async (id) => {
+    const ok = await farmReview(id, true, currentUser?.id);
+    if (!ok) alert('승인 처리에 실패했습니다. 권한을 확인해주세요.');
+  };
+  const handleReject = async (id) => {
+    const ok = await farmReview(id, false, currentUser?.id);
+    if (!ok) alert('반려 처리에 실패했습니다. 권한을 확인해주세요.');
+  };
 
   const [calMonth, setCalMonth] = useState(() => { const d = new Date(); d.setDate(1); return d; });
 
@@ -137,9 +152,9 @@ export default function LeavePage() {
                         </div>
                       </div>
                       <div style={{ display: 'flex', gap: 6 }}>
-                        <button onClick={() => rejectRequest?.(r.id)}
+                        <button onClick={() => handleReject(r.id)}
                           style={{ flex: 1, padding: '9px 0', border: `1px solid ${T.border}`, background: T.surface, borderRadius: 7, fontSize: 13, fontWeight: 600, color: T.muted, cursor: 'pointer' }}>반려</button>
-                        <button onClick={() => approveRequest?.(r.id)}
+                        <button onClick={() => handleApprove(r.id)}
                           style={{ flex: 2, padding: '9px 0', border: 0, background: T.primary, borderRadius: 7, fontSize: 13, fontWeight: 600, color: '#fff', cursor: 'pointer' }}>승인</button>
                       </div>
                     </div>
