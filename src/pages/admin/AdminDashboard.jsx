@@ -499,7 +499,7 @@ function AdminDashboardScreen() {
             </div>
             <div style={{ paddingTop: 14, marginTop: 14, borderTop: `1px solid ${T.borderSoft}`, display: 'flex', justifyContent: 'space-between', fontSize: 11, color: T.mutedSoft }}>
               <span>이번 달 목표 대비 <span style={{ color: T.text, fontWeight: 700 }}>{harvestAchievePct !== null ? `${harvestAchievePct}%` : '—'}</span></span>
-              <span onClick={() => navigate('/admin/stats')} style={{ color: T.primary, fontWeight: 600, cursor: 'pointer' }}>상세 분석 →</span>
+              <span onClick={() => navigate('/admin/performance')} style={{ color: T.primary, fontWeight: 600, cursor: 'pointer' }}>상세 분석 →</span>
             </div>
           </Card>
 

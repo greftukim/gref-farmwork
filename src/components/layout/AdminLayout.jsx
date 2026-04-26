@@ -26,7 +26,7 @@ const HQ_ROUTES = {
   branches: '/admin/hq/branches',
   employees: '/admin/hq/employees',
   leave: '/admin/hq/leave',
-  performance: '/admin/stats',
+  performance: '/admin/hq/performance',
   growth: '/admin/hq/growth',
   approvals: '/admin/hq/approvals',
   issues: '/admin/hq/issues',
@@ -37,7 +37,7 @@ const HQ_ROUTES = {
 
 function getHQActiveId(pathname) {
   if (pathname === '/admin/hq') return 'dashboard';
-  if (pathname.startsWith('/admin/stats')) return 'performance';
+  if (pathname.startsWith('/admin/hq/performance')) return 'performance';
   if (pathname.startsWith('/admin/hq/leave')) return 'leave';
   const entries = Object.entries(HQ_ROUTES).filter(([, v]) => v !== '/admin/hq');
   for (const [id, path] of entries) {
@@ -54,7 +54,7 @@ const FARM_ROUTES = {
   tasks: '/admin/tasks',
   floor: '/admin/floor',
   growth: '/admin/growth',
-  stats: '/admin/stats',
+  stats: '/admin/performance',
   notice: '/admin/notices',
 };
 

@@ -22,7 +22,7 @@ const HQ = {
 
 function getActiveGroup(pathname) {
   if (pathname === '/admin/hq') return 'g-dashboard';
-  if (pathname.startsWith('/admin/stats')) return 'g-perf';
+  if (pathname.startsWith('/admin/hq/performance')) return 'g-perf';
   if (pathname.startsWith('/admin/hq/finance')) return 'g-perf';
   if (pathname.startsWith('/admin/hq/employees')) return 'g-hr';
   if (pathname.startsWith('/admin/hq/leave')) return 'g-hr';

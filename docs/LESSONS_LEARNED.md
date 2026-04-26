@@ -2681,3 +2681,55 @@ periodMeta에 ga: 87/89/88/90 하드코딩이 있었으나, branches useMemo가 
 - `const realGa = totalWorkers > 0 ? Math.round((totalCheckedIn / totalWorkers) * 100) : null;`
 - null 시 "—" 표시 + "데이터 없음" trend 라벨, 실측 시 "실측" trend 라벨.
 - 기간(일/주/월/분기) 무관 오늘 출근 기준 표시 (attendance 쿼리가 today만 fetchhng하므로).
+
+## 교훈 121 — 라우트 경로 변경 시 6곳 동시 수정 원칙
+
+성과 분석 라우트가 세션 68에서 `/admin/hq/performance → /admin/stats`로 변경될 때 6곳 중 일부만 수정되어 사이드바/BottomNav/getHQActiveId/getActiveGroup이 서로 불일치하는 4세션 누적 회귀가 발생했다.
+
+**Why:**
+라우트 경로는 단일 소스가 아니라 다음 6곳에 분산된다:
+1. `HQ_ROUTES` (AdminLayout.jsx) — HQ 사이드바 navigate 대상
+2. `FARM_ROUTES` (AdminLayout.jsx) — Farm 사이드바 navigate 대상
+3. `getHQActiveId` (AdminLayout.jsx) — HQ 사이드바 active 상태 결정
+4. `getActiveGroup` (hq-shell.jsx) — HQ 사이드바 그룹 inline 펼침 결정
+5. Sidebar.jsx / AdminBottomNav.jsx — NavLink `to` 또는 moreItems `to`
+6. 내부 호출 navigate() — AdminDashboard 등 페이지 내 링크
+
+**How to apply:**
+- 라우트 경로를 변경할 때마다 `grep -rn "구-경로" src/` 실행 후 전체 치환.
+- 6곳 체크리스트를 사용하여 누락 여부 교차 확인.
+- 변경 후 `grep -rn "구-경로" src/` 결과 0건 검증 필수.
+
+## 교훈 122 — farm_admin 컨텍스트 내부 링크는 /admin/hq/* 사용 금지
+
+AdminDashboard.jsx(팜 대시보드, `/admin`)의 "상세 분석 →" 링크는 farm_admin 전용 컨텍스트에서 실행되므로 `/admin/hq/performance` 가 아닌 `/admin/performance`를 사용해야 한다.
+
+**Why:**
+PROTECTED-ROUTE-001: farm_admin 역할은 `/admin/hq/*` 라우트에 접근 시 redirect됨. AdminDashboard는 farm_admin + master/supervisor 공용이지만, "상세 분석 →" 링크의 목적지는 팜(지점) 성과 화면이어야 한다. HQ 성과 화면(`/admin/hq/performance`)은 HQ 사이드바 메뉴를 통해서만 접근한다.
+
+**How to apply:**
+- AdminDashboard, 팜 사이드바, BottomNav farmMoreItems에서 성과 분석 링크 → `/admin/performance` (BranchPerformanceScreen)
+- HQ 사이드바 클릭 → `/admin/hq/performance` (HQPerformanceScreen)
+- 두 경로는 독립적으로 유지되어야 하며 혼용 금지.
+
+## 교훈 123 — dead code 라우트는 세션 발견 즉시 폐기 — 방치 금지
+
+StatsPage.jsx가 세션 67~71 동안 유지되다가 세션 72에서 폐기됐다. 이 기간 동안 다른 6곳의 링크가 `/admin/stats`를 계속 참조했고, 세션 72에서 6곳 일괄 수정이 필요했다.
+
+**Why:**
+파일이 존재하면 라우트도 유지되어야 한다는 암묵적 전제가 형성된다. dead code 파일 + 라우트 + import는 원자 단위로 동시 폐기해야 한다. 발견 세션에서 폐기하지 않으면 다음 세션의 링크 오참조 확률이 높아진다.
+
+**How to apply:**
+- 페이지 파일이 Case X(import 0건, 라우트 참조 없음)로 확인된 즉시 같은 세션에서 git rm + App.jsx import/Route 제거 + 내부 링크 grep 수정.
+- "운영 후 폐기"는 DB 마이그레이션이 필요한 경우에만 예외 허용.
+
+## 교훈 124 — Phase 5 완료 기준 — 라우트 정합성 + Playwright GO + BACKLOG 명시
+
+Phase 5 세션 72에서 라우트 회귀 6곳 정정 + StatsPage 폐기 + Playwright PASS 35 / FAIL 0 / WARN 0으로 GO 판정. Phase 5 공식 종료.
+
+**Why:**
+Phase 완료 판정에는 "기능 완성"뿐 아니라 "누적 회귀 0건"이 필요하다. 세션 68에서 잘못 처리된 라우트 회귀가 4세션 동안 잠복했다가 Phase 5 종료 게이트에서 발견·정정됐다.
+
+**How to apply:**
+- 세션 종료 시 `grep -rn "구-경로\|구-라벨" src/` 로 잔존 회귀 0건 확인.
+- Phase 완료 게이트는 Playwright PASS + BACKLOG 미해결 부채 명시 + 라우트 정합성 3종 검증 후 선언.

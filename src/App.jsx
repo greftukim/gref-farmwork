@@ -61,7 +61,6 @@ import CropZonePage from './pages/admin/CropZonePage';
 import TaskBoardPage from './pages/admin/TaskBoardPage';
 import IssueCallPage from './pages/admin/IssueCallPage';
 import NoticePage from './pages/admin/NoticePage';
-import StatsPage from './pages/admin/StatsPage';
 import WorkStatsPage from './pages/admin/WorkStatsPage';
 import DailyReportPage from './pages/admin/DailyReportPage';
 import AttendanceStatusPage from './pages/admin/AttendanceStatusPage';
@@ -187,7 +186,6 @@ export default function App() {
             <Route path="crops" element={<CropZonePage />} />
             <Route path="tasks" element={<TaskBoardPage />} />
             <Route path="records" element={<IssueCallPage />} />
-            <Route path="stats" element={<StatsPage />} />
             <Route path="work-stats" element={<WorkStatsPage />} />
             <Route path="report" element={<DailyReportPage />} />
             <Route path="notices" element={<NoticePage />} />

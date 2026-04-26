@@ -40,7 +40,7 @@ const productionCategory = {
     { label: '작물 관리', to: '/admin/crops', icon: ICONS.crops },
     { label: '생육 조사', to: '/admin/survey', icon: ICONS.survey },
     { label: '신고·호출', to: '/admin/records', icon: ICONS.records },
-    { label: '성과 분석', to: '/admin/stats', icon: ICONS.stats },
+    { label: '성과 분석', to: '/admin/performance', icon: ICONS.stats },
     { label: '일일 보고서', to: '/admin/report', icon: ICONS.report },
   ],
 };
