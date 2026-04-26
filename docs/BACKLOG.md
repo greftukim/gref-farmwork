@@ -244,7 +244,7 @@
 | NOTIFICATION-STORE-001 | 기능 미구현 | open | 세션 73-B (2026-04-26) | - | MobileInboxScreen 퍼시스턴트 알림 이력 store 미존재. notificationStore는 toast 전용(6~10초 자동 소멸)이라 인박스로 사용 불가. Case Z' Option 1 적용: leaveStore(pending) + issueStore(미해결)로 조합. 실 알림 이력이 필요하면 별도 notification_history 테이블 + store 설계 필요. | docs/BACKLOG.md |
 | MOBILE-FLOOR-001 | 기능 미구현 | open | 세션 73-B (2026-04-26) | - | MobileFloorScreen Track C hold — attendanceStore 실시간 체크인 + taskStore 작업 진행 상태 미연결. MiniFloorPlan SVG도 하드코딩. Track C 작업 시 실 데이터로 교체. | docs/BACKLOG.md |
 | MOBILE-PERF-001 | 기능 미구현 | open | 세션 73-B (2026-04-26) | - | MobilePerfScreen Track C hold — harvestStore / performanceStore 실 연결 보류. Top 5 순위 및 작업 유형별 효율 모두 mock 데이터. Track C 작업 시 실 데이터로 교체. | docs/BACKLOG.md |
-| MOBILE-AUTO-DETECT-001 | 기능 미구현 | open | 세션 73-C (2026-04-27) | - | 관리자 모바일 자동 감지 미구현. /admin 로그인 시 PC 버전(AdminDashboard) 렌더 — useMediaQuery/userAgent 기반 리디렉션 없음. 모바일에서 /admin/m/home으로 자동 전환하는 로직 필요. 분량 M. AppRedirect 또는 AdminLayout 진입 시 감지 처리 설계 필요. | docs/BACKLOG.md |
+| MOBILE-AUTO-DETECT-001 | 기능 미구현 | resolved | 세션 73-C (2026-04-27) | - | 관리자 모바일 자동 감지 미구현. AdminLayout useEffect: window.innerWidth < 768(Tailwind md) + /admin/m/* 미진입 시 /admin/m/home 자동 전환. AdminBottomNav는 /admin/m/* 진입 시 숨김(AdminMobileShell 자체 탭바 사용). AdminMobileShell 탭 클릭 navigate 연결(TAB_ROUTES). | docs/BACKLOG.md |
 | QR-ISSUE-001 | 기능 미구현 | resolved | 세션 73-C (2026-04-27) | - | 작업자 QR 로그인 토큰 발급 UI 미구현. employees.device_token + loginWithDeviceToken 백엔드 완성돼있었으나 관리자 발급 화면 없음 → 운영 진입 차단. EmployeesPage 작업자 행 "QR" 버튼 + 모달(qrcode.react QRCodeSVG) + employeeStore.issueDeviceToken 추가로 해소. | docs/BACKLOG.md |
 
 ---

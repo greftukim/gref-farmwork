@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { T, Icon, icons } from '../../design/primitives';
 import { HQ } from '../../design/hq-shell';
 import useEmployeeStore from '../../stores/employeeStore';
@@ -44,7 +45,16 @@ const MA = {
 };
 
 // ─────── Shell ───────
+const TAB_ROUTES = {
+  home:    '/admin/m/home',
+  approve: '/admin/m/approve',
+  floor:   '/admin/m/floor',
+  perf:    '/admin/m/perf',
+  more:    '/admin/m/more',
+};
+
 function AdminMobileShell({ role = 'farm', active = 'home', children, title, showHeader = false, badge }) {
+  const navigate = useNavigate();
   const accent = role === 'hq' ? HQ.accent : T.primary;
   const accentDark = role === 'hq' ? HQ.accentDark : T.primaryDark;
   const accentSoft = role === 'hq' ? HQ.accentSoft : T.primarySoft;
@@ -53,10 +63,10 @@ function AdminMobileShell({ role = 'farm', active = 'home', children, title, sho
 
   const tabs = [
     { id: 'home',    label: '홈',    d: icons.dashboard },
-    { id: 'approve', label: '승인',  d: icons.check, badge: 7 },
+    { id: 'approve', label: '승인',  d: icons.check },
     { id: 'floor',   label: '현황',  d: icons.location },
     { id: 'perf',    label: '성과',  d: icons.chart },
-    { id: 'more',    label: '더보기', d: 'M4 6h16M4 12h16M4 18h16' },
+    { id: 'more',    label: '더보기', d: icons.more },
   ];
 
   return (
@@ -89,18 +99,9 @@ function AdminMobileShell({ role = 'farm', active = 'home', children, title, sho
         {tabs.map(t => {
           const on = t.id === active;
           return (
-            <div key={t.id} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, padding: '6px 0', cursor: 'pointer', position: 'relative' }}>
+            <div key={t.id} onClick={() => navigate(TAB_ROUTES[t.id])} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, padding: '6px 0', cursor: 'pointer', position: 'relative' }}>
               <div style={{ position: 'relative' }}>
                 <Icon d={t.d} size={20} c={on ? accent : MA.mutedSoft} sw={on ? 2.2 : 1.8} />
-                {t.badge && (
-                  <span style={{
-                    position: 'absolute', top: -4, right: -8,
-                    minWidth: 16, height: 16, borderRadius: 999,
-                    background: MA.danger, color: '#fff', fontSize: 9, fontWeight: 700,
-                    display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 4px',
-                    border: '2px solid #fff',
-                  }}>{t.badge}</span>
-                )}
               </div>
               <div style={{ fontSize: 10, fontWeight: on ? 700 : 500, color: on ? accent : MA.mutedSoft }}>{t.label}</div>
             </div>

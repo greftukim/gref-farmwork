@@ -15,6 +15,7 @@ import {
   onForegroundMessage,
 } from '../../lib/firebase';
 import PWAInstallGuideModal from '../PWAInstallGuideModal';
+import InstallPromptBanner from '../common/InstallPromptBanner';
 import { getGuideType } from '../../lib/deviceDetect';
 import ChatbotFab from '../chatbot/ChatbotFab';
 import ChatbotPanel from '../chatbot/ChatbotPanel';
@@ -131,6 +132,17 @@ export default function AdminLayout() {
     return unsub;
   }, [addNotification]);
 
+  // MOBILE-AUTO-DETECT-001: 모바일 진입 시 /admin/m/home 자동 전환
+  // Tailwind md = 768px 기준. /admin/m/* 이미 접속 중이면 재진입 방지.
+  useEffect(() => {
+    if (window.innerWidth < 768 && !location.pathname.startsWith('/admin/m')) {
+      navigate('/admin/m/home', { replace: true });
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const isMobileRoute = location.pathname.startsWith('/admin/m');
+
   const handleNavigate = (id) => {
     const path = FARM_ROUTES[id];
     if (path) navigate(path);
@@ -143,22 +155,23 @@ export default function AdminLayout() {
 
   return (
     <div style={{ display: 'flex', height: '100vh', overflow: 'hidden', fontFamily: 'Pretendard, system-ui', background: T.bg }}>
-      {/* md 미만: 사이드바 숨김 (AdminBottomNav 사용) */}
+      {/* md 미만 또는 모바일 라우트: 사이드바 숨김 */}
       <div className="hidden md:flex">
-        {team === 'farm' ? (
+        {!isMobileRoute && (team === 'farm' ? (
           <Sidebar active={activeId} onNavigate={handleNavigate} />
         ) : (
           <HQSidebar active={getHQActiveId(location.pathname)} onNavigate={handleHQNavigate} />
-        )}
+        ))}
       </div>
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0, overflow: 'hidden' }}>
-        <main style={{ flex: 1, overflow: 'auto' }} className="pb-24 md:pb-0">
+        <main style={{ flex: 1, overflow: 'auto' }} className={isMobileRoute ? '' : 'pb-24 md:pb-0'}>
           <Outlet />
         </main>
       </div>
-      {/* 모바일 하단 네비 (md 미만에서만 표시) */}
-      <AdminBottomNav />
+      {/* AdminBottomNav — /admin/m/* 에서는 AdminMobileShell 자체 탭바 사용 */}
+      {!isMobileRoute && <AdminBottomNav />}
       <ToastContainer />
+      <InstallPromptBanner />
       <PWAInstallGuideModal guideType={guideType} onClose={closeGuide} />
       {/*
         챗봇 영역 — 임시 숨김 처리 (세션 73).
