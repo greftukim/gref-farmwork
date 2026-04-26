@@ -26,16 +26,46 @@ const HQSidebar = ({ active = 'dashboard', onNavigate }) => {
   const issues = useIssueStore((s) => s.issues);
   const openIssueCount = issues.filter((i) => !i.isResolved).length;
   const pendingLeaveCount = useLeaveStore((s) => s.requests.filter((r) => r.status === 'pending').length);
-  const items = [
-    { id: 'dashboard', label: '본사 대시보드', icon: icons.dashboard },
-    { id: 'branches', label: '지점 관리', icon: icons.location },
-    { id: 'employees', label: '전사 직원', icon: icons.users },
-    { id: 'performance', label: '작업자 성과', icon: icons.chart },
-    { id: 'growth', label: '지점별 생육', icon: icons.sprout },
-    { id: 'approvals', label: '승인 허브', icon: icons.check, badge: pendingLeaveCount || null },
-    { id: 'issues', label: '이상 신고', icon: icons.alert, badge: openIssueCount || null },
-    { id: 'finance', label: '경영 지표', icon: icons.chart },
-    { id: 'notice', label: '공지 · 정책', icon: icons.bell },
+  const groups = [
+    {
+      label: '대시보드',
+      items: [
+        { id: 'dashboard', label: '본사 대시보드', icon: icons.dashboard },
+        { id: 'finance', label: '경영 지표', icon: icons.chart },
+      ],
+    },
+    {
+      label: '지점 관리',
+      items: [
+        { id: 'branches', label: '지점 관리', icon: icons.location },
+      ],
+      branches: [
+        { n: '부산LAB', c: T.success },
+        { n: '진주HUB', c: T.primary },
+        { n: '하동HUB', c: T.warning },
+      ],
+    },
+    {
+      label: '인사/직원',
+      items: [
+        { id: 'employees', label: '전사 직원', icon: icons.users },
+        { id: 'performance', label: '작업자 성과', icon: icons.chart },
+      ],
+    },
+    {
+      label: '생산',
+      items: [
+        { id: 'growth', label: '지점별 생육', icon: icons.sprout },
+      ],
+    },
+    {
+      label: '승인/리포트',
+      items: [
+        { id: 'approvals', label: '승인 허브', icon: icons.check, badge: pendingLeaveCount || null },
+        { id: 'issues', label: '이상 신고', icon: icons.alert, badge: openIssueCount || null },
+        { id: 'notice', label: '공지 · 정책', icon: icons.bell },
+      ],
+    },
   ];
   return (
     <aside style={{
@@ -71,46 +101,50 @@ const HQSidebar = ({ active = 'dashboard', onNavigate }) => {
         </div>
       </div>
 
-      <nav style={{ padding: 12, flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 2 }}>
-        <div style={{ fontSize: 10, fontWeight: 700, color: T.mutedSoft, letterSpacing: 0.5, padding: '8px 12px 4px' }}>관리 메뉴</div>
-        {items.map(i => {
-          const on = i.id === active;
-          return (
-            <div key={i.id} onClick={() => onNavigate && onNavigate(i.id)} style={{
-              display: 'flex', alignItems: 'center', gap: 10,
-              padding: '9px 12px', borderRadius: 8, cursor: 'pointer',
-              background: on ? HQ.accentSoft : 'transparent',
-              color: on ? HQ.accentText : T.muted,
-              fontSize: 13, fontWeight: on ? 600 : 500,
-            }}>
-              <Icon d={i.icon} size={16} sw={on ? 2.2 : 1.8} />
-              <span style={{ flex: 1 }}>{i.label}</span>
-              {i.badge && <span style={{
-                background: T.danger, color: '#fff', fontSize: 10, fontWeight: 700,
-                padding: '1px 6px', borderRadius: 999,
-              }}>{i.badge}</span>}
-            </div>
-          );
-        })}
+      <nav style={{ padding: '8px 12px', flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
+        {groups.map((g, gi) => (
+          <div key={g.label} style={{ marginTop: gi === 0 ? 4 : 12 }}>
+            <div style={{
+              fontSize: 10, fontWeight: 700, color: T.mutedSoft,
+              letterSpacing: 0.6, padding: '4px 8px 4px',
+              textTransform: 'uppercase',
+            }}>{g.label}</div>
 
-        {/* 지점 퀵 스위처 */}
-        <div style={{ fontSize: 10, fontWeight: 700, color: T.mutedSoft, letterSpacing: 0.5, padding: '16px 12px 4px' }}>지점 바로가기</div>
-        {[
-          { n: '부산LAB', c: T.success },
-          { n: '진주HUB', c: T.primary },
-          { n: '하동HUB', c: T.warning },
-        ].map((b) => (
-          <div key={b.n} onClick={() => navigate('/admin/hq/branches')} style={{
-            display: 'flex', alignItems: 'center', gap: 10,
-            padding: '8px 12px', borderRadius: 8, cursor: 'pointer',
-            color: T.muted, fontSize: 12, fontWeight: 500,
-          }}
-          onMouseEnter={(e) => { e.currentTarget.style.background = T.bg; }}
-          onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
-          >
-            <Dot c={b.c} />
-            <span style={{ flex: 1 }}>{b.n}</span>
-            <Icon d={<polyline points="9 18 15 12 9 6"/>} size={12} c={T.mutedSoft} />
+            {g.items.map(i => {
+              const on = i.id === active;
+              return (
+                <div key={i.id} onClick={() => onNavigate && onNavigate(i.id)} style={{
+                  display: 'flex', alignItems: 'center', gap: 10,
+                  padding: '8px 8px', borderRadius: 7, cursor: 'pointer',
+                  background: on ? HQ.accentSoft : 'transparent',
+                  color: on ? HQ.accentText : T.muted,
+                  fontSize: 13, fontWeight: on ? 600 : 500,
+                  marginBottom: 1,
+                }}>
+                  <Icon d={i.icon} size={15} sw={on ? 2.2 : 1.8} />
+                  <span style={{ flex: 1 }}>{i.label}</span>
+                  {i.badge && <span style={{
+                    background: T.danger, color: '#fff', fontSize: 10, fontWeight: 700,
+                    padding: '1px 6px', borderRadius: 999,
+                  }}>{i.badge}</span>}
+                </div>
+              );
+            })}
+
+            {g.branches && g.branches.map((b) => (
+              <div key={b.n} onClick={() => navigate('/admin/hq/branches')} style={{
+                display: 'flex', alignItems: 'center', gap: 8,
+                padding: '6px 8px 6px 24px', borderRadius: 7, cursor: 'pointer',
+                color: T.muted, fontSize: 12, fontWeight: 500, marginBottom: 1,
+              }}
+              onMouseEnter={(e) => { e.currentTarget.style.background = T.bg; }}
+              onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
+              >
+                <Dot c={b.c} />
+                <span style={{ flex: 1 }}>{b.n}</span>
+                <Icon d={<polyline points="9 18 15 12 9 6"/>} size={11} c={T.mutedSoft} />
+              </div>
+            ))}
           </div>
         ))}
       </nav>

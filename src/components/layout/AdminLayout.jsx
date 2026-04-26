@@ -25,7 +25,7 @@ const HQ_ROUTES = {
   dashboard: '/admin/hq',
   branches: '/admin/hq/branches',
   employees: '/admin/hq/employees',
-  performance: '/admin/hq/performance',
+  performance: '/admin/stats',
   growth: '/admin/hq/growth',
   approvals: '/admin/hq/approvals',
   issues: '/admin/hq/issues',
@@ -36,6 +36,7 @@ const HQ_ROUTES = {
 
 function getHQActiveId(pathname) {
   if (pathname === '/admin/hq') return 'dashboard';
+  if (pathname.startsWith('/admin/stats')) return 'performance';
   const entries = Object.entries(HQ_ROUTES).filter(([, v]) => v !== '/admin/hq');
   for (const [id, path] of entries) {
     if (pathname.startsWith(path)) return id;
