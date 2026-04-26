@@ -1,4 +1,4 @@
-import React, { useMemo, useEffect } from 'react';
+import React, { useMemo, useEffect, useState } from 'react';
 import { T, Icon, icons } from '../../design/primitives';
 import { HQ } from '../../design/hq-shell';
 import {
@@ -9,6 +9,8 @@ import useAuthStore from '../../stores/authStore';
 import useEmployeeStore from '../../stores/employeeStore';
 import useLeaveStore from '../../stores/leaveStore';
 import useIssueStore from '../../stores/issueStore';
+import useAttendanceStore from '../../stores/attendanceStore';
+import { usePerformanceData } from '../../hooks/usePerformanceData';
 
 // ─── 헬퍼 ────────────────────────────────────────────────────────────
 const LEAVE_LABEL = {
@@ -281,19 +283,43 @@ const ApprovalCard = ({ data, stackIdx = 0, accent }) => {
 };
 
 // ═══════════════════════════════════════════════════════════
-// ④ 평면도 탭 — Track C hold (mock 데이터)
-// MOBILE-FLOOR-001: attendanceStore + taskStore 실 연결 보류
+// ④ 평면도 탭 — attendanceStore 출근 인원 + 준비 중 안내
+// PC-FLOOR-DATA-001: PC 평면도도 floor-schema.js mock
+// MOBILE-FLOOR-001: QR 위치 추적 Tier 6 예정
 // ═══════════════════════════════════════════════════════════
 function MobileFloorScreen({ role = 'farm' }) {
+  const currentUser = useAuthStore((s) => s.currentUser);
+  const records = useAttendanceStore((s) => s.records);
+  const fetchRecords = useAttendanceStore((s) => s.fetchRecords);
+  const employees = useEmployeeStore((s) => s.employees);
+
+  useEffect(() => {
+    if (currentUser) fetchRecords(currentUser);
+  }, [currentUser]);
+
+  const today = new Date().toISOString().split('T')[0];
+  const branch = currentUser?.branch;
+
+  const todayStats = useMemo(() => {
+    const branchEmps = employees.filter((e) => e.isActive && (!branch || e.branch === branch));
+    const todayRecs = records.filter((r) => r.date === today);
+    const checkedInIds = new Set(todayRecs.filter((r) => r.checkIn).map((r) => r.employeeId));
+    return {
+      total: branchEmps.length,
+      present: branchEmps.filter((e) => checkedInIds.has(e.id)).length,
+      absent: branchEmps.filter((e) => !checkedInIds.has(e.id)).length,
+    };
+  }, [records, employees, today, branch]);
+
   return (
     <AdminMobileShell role={role} active="floor">
       {({ accent }) => (
-        <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-          <div style={{
-            background: MA.card, borderBottom: `1px solid ${MA.border}`,
-            padding: '10px 14px', display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0,
-          }}>
-            <div style={{ fontSize: 17, fontWeight: 700, color: MA.text, letterSpacing: -0.3 }}>실시간 현황</div>
+        <div style={{ padding: '12px 14px 16px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', marginBottom: 16 }}>
+            <div>
+              <div style={{ fontSize: 20, fontWeight: 700, color: MA.text, letterSpacing: -0.4 }}>작업 현황</div>
+              <div style={{ fontSize: 12, color: MA.muted, marginTop: 2 }}>오늘 출근 기준</div>
+            </div>
             <div style={{ flex: 1 }} />
             <div style={{
               padding: '5px 10px', borderRadius: 999, background: T.successSoft,
@@ -304,150 +330,78 @@ function MobileFloorScreen({ role = 'farm' }) {
             </div>
           </div>
 
-          <div style={{ padding: '10px 14px 0', display: 'flex', gap: 6, overflowX: 'auto', flexShrink: 0 }}>
-            {['1cmp', '2cmp', '3cmp', '4cmp'].map((d, i) => (
-              <span key={d} style={{
-                padding: '7px 14px', borderRadius: 999, whiteSpace: 'nowrap',
-                background: i === 0 ? accent : MA.card, color: i === 0 ? '#fff' : MA.muted,
-                fontSize: 12, fontWeight: 700, border: i === 0 ? 'none' : `1px solid ${MA.border}`,
-              }}>{d}</span>
-            ))}
+          <div style={{ display: 'flex', gap: 6, marginBottom: 16 }}>
+            <StatTile label="출근" value={String(todayStats.present)} sub="명 출근 완료" tone="success" accent={accent} />
+            <StatTile label="미출근" value={String(todayStats.absent)} sub="명 미확인" tone="warning" accent={accent} />
+            <StatTile label="전체" value={String(todayStats.total)} sub="명 재적" tone="primary" accent={accent} />
           </div>
 
-          <div style={{ padding: '10px 14px 8px', display: 'flex', gap: 6, flexShrink: 0 }}>
-            <StatTile label="작업중" value="6" sub="골 기준" tone="primary" accent={accent} />
-            <StatTile label="일시정지" value="1" sub="휴식 중" tone="warning" accent={accent} />
-            <StatTile label="완료" value="8" sub="오늘 / 10골" tone="success" accent={accent} />
-          </div>
-
-          <div style={{ padding: '0 14px', flexShrink: 0 }}>
-            <div style={{
-              background: MA.card, borderRadius: 8, padding: 12, position: 'relative',
-              height: 250, overflow: 'hidden', border: `1px solid ${MA.border}`,
-            }}>
+          <CardBlock title="평면도 현황">
+            <div style={{ padding: '24px 0', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10 }}>
               <div style={{
-                position: 'absolute', top: 10, left: 10, zIndex: 2,
-                padding: '4px 9px', borderRadius: 999, background: 'rgba(15,23,42,0.7)',
-                color: '#fff', fontSize: 10, fontWeight: 600,
-                display: 'flex', alignItems: 'center', gap: 5,
+                width: 52, height: 52, borderRadius: 14, background: `${accent}18`,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
               }}>
-                <Icon d={icons.plus} size={10} c="#fff" sw={2.2} />
-                핀치줌 · 드래그
+                <Icon d={icons.location} size={24} c={accent} sw={1.8} />
               </div>
-              <MiniFloorPlan accent={accent} />
-              <div style={{ position: 'absolute', bottom: 10, right: 10, background: 'rgba(255,255,255,0.95)', borderRadius: 8, padding: '6px 9px', display: 'flex', gap: 10 }}>
-                <LegendItem c={accent} l="작업중" />
-                <LegendItem c={MA.warn} l="일시정지" />
-                <LegendItem c={MA.mutedSoft} l="빈 골" />
+              <div style={{ fontSize: 15, fontWeight: 700, color: MA.text }}>평면도 뷰 준비 중</div>
+              <div style={{ fontSize: 12, color: MA.muted, textAlign: 'center', lineHeight: 1.6, maxWidth: 240 }}>
+                QR 위치 추적 기능과 함께<br />Tier 6에서 공개됩니다
+              </div>
+              <div style={{ fontSize: 11, color: MA.mutedSoft, padding: '4px 10px', borderRadius: 999, background: MA.bg, fontWeight: 600, marginTop: 4 }}>
+                MOBILE-FLOOR-001
               </div>
             </div>
-          </div>
-
-          <div style={{ padding: '12px 14px 14px', flex: 1, overflow: 'auto' }}>
-            <div style={{ fontSize: 13, fontWeight: 700, color: MA.text, marginBottom: 8 }}>현재 작업 중 (7)</div>
-            <div style={{ background: MA.card, borderRadius: 8, padding: '2px 14px', border: `1px solid ${MA.border}` }}>
-              {[
-                { g: '1cmp · 3골', w: '김민국', task: '적엽', p: 62, time: '43분', state: 'work' },
-                { g: '1cmp · 5골', w: '이영희', task: '유인', p: 28, time: '12분', state: 'work' },
-                { g: '2cmp · 2골', w: '박서준', task: '적엽', p: 85, time: '1h 12분', state: 'work' },
-                { g: '2cmp · 7골', w: '최수민', task: '수확', p: 45, time: '26분', state: 'pause' },
-                { g: '3cmp · 1골', w: '정수아', task: '적엽', p: 18, time: '8분', state: 'work' },
-              ].map((r, i, arr) => (
-                <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '11px 0', borderBottom: i < arr.length - 1 ? `1px solid ${MA.divider}` : 'none' }}>
-                  <div style={{
-                    width: 32, height: 32, borderRadius: 999,
-                    background: r.state === 'pause' ? MA.warn : accent,
-                    color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    fontSize: 12, fontWeight: 700, flexShrink: 0,
-                  }}>{r.w.charAt(0)}</div>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                      <span style={{ fontSize: 13, fontWeight: 700, color: MA.text }}>{r.w}</span>
-                      <span style={{ fontSize: 11, color: MA.muted }}>· {r.task}</span>
-                      {r.state === 'pause' && <Chip tone="warn">일시정지</Chip>}
-                    </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 4 }}>
-                      <span style={{ fontSize: 11, color: MA.muted, minWidth: 80 }}>{r.g}</span>
-                      <div style={{ flex: 1, height: 4, background: MA.bg, borderRadius: 999, overflow: 'hidden' }}>
-                        <div style={{ width: `${r.p}%`, height: '100%', background: r.state === 'pause' ? MA.warn : accent, borderRadius: 999 }} />
-                      </div>
-                      <span style={{ fontSize: 10, color: MA.mutedSoft, fontWeight: 600, width: 30, textAlign: 'right' }}>{r.p}%</span>
-                    </div>
-                  </div>
-                  <div style={{ fontSize: 10, color: MA.mutedSoft, fontWeight: 600 }}>{r.time}</div>
-                </div>
-              ))}
-            </div>
-          </div>
+          </CardBlock>
         </div>
       )}
     </AdminMobileShell>
   );
 }
 
-const LegendItem = ({ c, l }) => (
-  <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-    <Dot c={c} />
-    <span style={{ fontSize: 10, color: MA.muted, fontWeight: 600 }}>{l}</span>
-  </div>
-);
-
-const MiniFloorPlan = ({ accent }) => {
-  const gutters = 10;
-  const gols = 10;
-  const cellW = 14;
-  const cellH = 150;
-  const workerPositions = [
-    { col: 2, phase: 0.6, tone: 'work' },
-    { col: 4, phase: 0.3, tone: 'work' },
-    { col: 6, phase: 0.85, tone: 'pause' },
-    { col: 8, phase: 0.2, tone: 'work' },
-  ];
-  return (
-    <svg viewBox="0 0 320 210" style={{ width: '100%', height: '100%' }} preserveAspectRatio="xMidYMid meet">
-      <rect x={10} y={15} width={300} height={170} fill="none" stroke={MA.border} strokeWidth="1.5" strokeDasharray="3,3" rx={6} />
-      {Array.from({ length: gutters + gols }).map((_, i) => {
-        const x = 14 + i * cellW;
-        const isGutter = i % 2 === 0;
-        return (
-          <g key={i}>
-            {isGutter ? (
-              <rect x={x} y={20} width={cellW - 2} height={cellH} fill={T.successSoft} stroke={T.success} strokeWidth="0.8" rx={2} />
-            ) : (
-              <rect x={x} y={20} width={cellW - 2} height={cellH} fill={MA.bg} stroke={MA.border} strokeWidth="0.6" rx={2} />
-            )}
-            {isGutter && (
-              <text x={x + (cellW - 2) / 2} y={16} fontSize="6" fill={MA.muted} textAnchor="middle" fontWeight="700">
-                {gutters - Math.floor(i / 2)}
-              </text>
-            )}
-          </g>
-        );
-      })}
-      <rect x={10} y={175} width={300} height={12} fill={MA.bg} stroke={MA.border} strokeWidth="0.8" rx={2} />
-      <text x={160} y={184} fontSize="7" fill={MA.mutedSoft} textAnchor="middle" fontWeight="600">복도</text>
-      {workerPositions.map((w, i) => {
-        const x = 14 + (w.col * 2 + 1) * cellW + (cellW - 2) / 2;
-        const y = 20 + (1 - w.phase) * cellH;
-        const color = w.tone === 'pause' ? MA.warn : MA.success;
-        return (
-          <g key={i}>
-            <circle cx={x} cy={y} r={7} fill={color} stroke="#fff" strokeWidth="2" />
-            <text x={x} y={y + 2.5} fontSize="7" fill="#fff" textAnchor="middle" fontWeight="700">
-              {['김', '이', '최', '정'][i]}
-            </text>
-          </g>
-        );
-      })}
-    </svg>
-  );
-};
-
 // ═══════════════════════════════════════════════════════════
-// ⑤ 성과 탭 — Track C hold (mock 데이터)
-// MOBILE-PERF-001: harvestStore / performanceStore 실 연결 보류
+// ⑤ 성과 탭 — usePerformanceData 실 데이터 연결
+// MOBILE-PERF-001: resolved (세션 73-C)
 // ═══════════════════════════════════════════════════════════
+const PERF_PERIODS = ['일', '주', '월', '분기'];
+
 function MobilePerfScreen({ role = 'farm' }) {
+  const [periodIdx, setPeriodIdx] = useState(1);
+
+  const dateFrom = useMemo(() => {
+    const now = new Date();
+    if (periodIdx === 0) return now.toISOString().split('T')[0];
+    if (periodIdx === 1) {
+      const day = now.getDay();
+      const mon = new Date(now);
+      mon.setDate(now.getDate() - (day === 0 ? 6 : day - 1));
+      return mon.toISOString().split('T')[0];
+    }
+    if (periodIdx === 2) {
+      return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
+    }
+    return null;
+  }, [periodIdx]);
+
+  const { workers, loading } = usePerformanceData(dateFrom, null);
+
+  const top5 = useMemo(
+    () => [...workers].sort((a, b) => b.harvestPct - a.harvestPct).slice(0, 5),
+    [workers],
+  );
+
+  const branchAvg = useMemo(() => {
+    const map = {};
+    for (const w of workers) {
+      if (!map[w.branch]) map[w.branch] = { sum: 0, cnt: 0 };
+      map[w.branch].sum += w.harvestPct;
+      map[w.branch].cnt += 1;
+    }
+    return Object.fromEntries(
+      Object.entries(map).map(([b, d]) => [b, d.cnt > 0 ? Math.round(d.sum / d.cnt) : 0]),
+    );
+  }, [workers]);
+
   return (
     <AdminMobileShell role={role} active="perf">
       {({ accent }) => (
@@ -455,96 +409,96 @@ function MobilePerfScreen({ role = 'farm' }) {
           <div style={{ display: 'flex', alignItems: 'center', marginBottom: 12 }}>
             <div>
               <div style={{ fontSize: 20, fontWeight: 700, color: MA.text, letterSpacing: -0.4 }}>작업자 성과</div>
-              <div style={{ fontSize: 12, color: MA.muted, marginTop: 2 }}>이번 주 · 토마토 정규화 기준</div>
+              <div style={{ fontSize: 12, color: MA.muted, marginTop: 2 }}>수확량 기준 정규화 (평균=100)</div>
             </div>
           </div>
 
-          <div style={{ display: 'flex', gap: 6, marginBottom: 10, overflowX: 'auto' }}>
-            {['일', '주', '월', '분기'].map((t, i) => (
-              <span key={t} style={{
-                padding: '6px 14px', borderRadius: 999,
-                background: i === 1 ? MA.text : MA.card, color: i === 1 ? '#fff' : MA.muted,
-                fontSize: 12, fontWeight: 700, border: i === 1 ? 'none' : `1px solid ${MA.border}`,
-              }}>{t}</span>
-            ))}
-            <div style={{ flex: 1 }} />
-            <span style={{ padding: '6px 12px', borderRadius: 999, background: MA.card, border: `1px solid ${MA.border}`, fontSize: 12, fontWeight: 600, color: MA.text, whiteSpace: 'nowrap' }}>토마토 ▾</span>
-          </div>
-
-          <div style={{ display: 'flex', gap: 6, marginBottom: 12, overflowX: 'auto' }}>
-            {[
-              { l: '표준 효율', k: 'eff', on: true },
-              { l: '시간당 주', k: 'perHr' },
-              { l: '주간 거터', k: 'weekG' },
-              { l: '주간 수확', k: 'weekK' },
-            ].map((m) => (
-              <span key={m.k} style={{
-                padding: '6px 12px', borderRadius: 999, whiteSpace: 'nowrap',
-                background: m.on ? accent : MA.card, color: m.on ? '#fff' : MA.muted,
-                fontSize: 12, fontWeight: 700, border: m.on ? 'none' : `1px solid ${MA.border}`,
-              }}>{m.l}</span>
+          <div style={{ display: 'flex', gap: 6, marginBottom: 14, overflowX: 'auto' }}>
+            {PERF_PERIODS.map((t, i) => (
+              <span
+                key={t}
+                onClick={() => setPeriodIdx(i)}
+                style={{
+                  padding: '6px 14px', borderRadius: 999, cursor: 'pointer',
+                  background: i === periodIdx ? MA.text : MA.card,
+                  color: i === periodIdx ? '#fff' : MA.muted,
+                  fontSize: 12, fontWeight: 700,
+                  border: i === periodIdx ? 'none' : `1px solid ${MA.border}`,
+                  userSelect: 'none',
+                }}
+              >{t}</span>
             ))}
           </div>
 
-          <CardBlock title="표준 효율 Top 5" pad={0}>
-            {[
-              { r: 1, n: '김민국', v: '128', u: '%', sub: '평균 114 · 부산LAB', delta: '+6', branch: 'busan' },
-              { r: 2, n: '박서준', v: '122', u: '%', sub: '평균 114 · 부산LAB', delta: '+4', branch: 'busan' },
-              { r: 3, n: '정수아', v: '119', u: '%', sub: '평균 114 · 진주HUB', delta: '+2', branch: 'jinju' },
-              { r: 4, n: '이영희', v: '115', u: '%', sub: '평균 114 · 부산LAB', delta: '+1', branch: 'busan' },
-              { r: 5, n: '최수민', v: '112', u: '%', sub: '평균 114 · 하동HUB', delta: '0', branch: 'hadong' },
-            ].map((p, i) => {
-              const branchMeta = D_BRANCH_META[p.branch] || { accent: MA.muted };
-              const rankBg = p.r === 1 ? T.warningSoft : p.r === 2 ? T.mutedSoft : p.r === 3 ? '#FED7AA' : MA.bg;
-              const rankFg = p.r === 1 ? T.warning : p.r === 2 ? MA.muted : p.r === 3 ? '#C2410C' : MA.mutedSoft;
-              return (
-                <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 14px', borderBottom: i < 4 ? `1px solid ${MA.divider}` : 'none' }}>
-                  <div style={{
-                    width: 28, height: 28, borderRadius: 8,
-                    background: rankBg, color: rankFg,
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    fontSize: 12, fontWeight: 800, flexShrink: 0,
-                  }}>{p.r}</div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                    <Dot c={branchMeta.accent} />
-                  </div>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: 14, fontWeight: 700, color: MA.text, letterSpacing: -0.2 }}>{p.n}</div>
-                    <div style={{ fontSize: 11, color: MA.muted, marginTop: 1 }}>{p.sub}</div>
-                  </div>
-                  <div style={{ textAlign: 'right' }}>
-                    <div style={{ display: 'flex', alignItems: 'baseline', gap: 2, justifyContent: 'flex-end' }}>
-                      <span style={{ fontSize: 18, fontWeight: 700, color: MA.text, letterSpacing: -0.3 }}>{p.v}</span>
-                      <span style={{ fontSize: 11, color: MA.muted, fontWeight: 600 }}>{p.u}</span>
+          {loading ? (
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: 240 }}>
+              <div style={{
+                width: 28, height: 28, borderRadius: 999,
+                border: `3px solid ${accent}`, borderTopColor: 'transparent',
+                animation: 'spin 0.8s linear infinite',
+              }} />
+            </div>
+          ) : workers.length === 0 ? (
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: 240, gap: 10 }}>
+              <Icon d={icons.chart} size={36} c={MA.mutedSoft} sw={1.5} />
+              <div style={{ fontSize: 15, fontWeight: 700, color: MA.text }}>성과 데이터 없음</div>
+              <div style={{ fontSize: 12, color: MA.muted }}>선택한 기간에 수확 기록이 없습니다</div>
+            </div>
+          ) : (
+            <>
+              <CardBlock title={`수확량 Top ${top5.length}`} pad={0}>
+                {top5.map((p, i) => {
+                  const branchMeta = D_BRANCH_META[p.branch] || { accent: MA.muted, name: p.branch };
+                  const rankBg = i === 0 ? T.warningSoft : i === 1 ? T.mutedSoft : i === 2 ? '#FED7AA' : MA.bg;
+                  const rankFg = i === 0 ? T.warning : i === 1 ? MA.muted : i === 2 ? '#C2410C' : MA.mutedSoft;
+                  const delta = p.harvestPct - 100;
+                  return (
+                    <div key={p.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 14px', borderBottom: i < top5.length - 1 ? `1px solid ${MA.divider}` : 'none' }}>
+                      <div style={{
+                        width: 28, height: 28, borderRadius: 8,
+                        background: rankBg, color: rankFg,
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        fontSize: 12, fontWeight: 800, flexShrink: 0,
+                      }}>{i + 1}</div>
+                      <Dot c={branchMeta.accent} />
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: 14, fontWeight: 700, color: MA.text, letterSpacing: -0.2 }}>{p.name}</div>
+                        <div style={{ fontSize: 11, color: MA.muted, marginTop: 1 }}>{branchMeta.name} · {p.crop}</div>
+                      </div>
+                      <div style={{ textAlign: 'right' }}>
+                        <div style={{ display: 'flex', alignItems: 'baseline', gap: 2, justifyContent: 'flex-end' }}>
+                          <span style={{ fontSize: 18, fontWeight: 700, color: MA.text, letterSpacing: -0.3 }}>{p.harvestPct}</span>
+                          <span style={{ fontSize: 11, color: MA.muted, fontWeight: 600 }}>%</span>
+                        </div>
+                        <span style={{ fontSize: 10, color: delta >= 0 ? MA.success : MA.danger, fontWeight: 700 }}>
+                          {delta >= 0 ? '+' : ''}{delta}%p
+                        </span>
+                      </div>
                     </div>
-                    <span style={{ fontSize: 10, color: MA.success, fontWeight: 700 }}>{p.delta}%p</span>
-                  </div>
-                </div>
-              );
-            })}
-          </CardBlock>
+                  );
+                })}
+              </CardBlock>
 
-          <div style={{ padding: '4px 0 8px', textAlign: 'center' }}>
-            <span style={{ fontSize: 12, color: MA.muted, fontWeight: 600 }}>하위 5명 보기 ▾</span>
-          </div>
+              <div style={{ height: 14 }} />
 
-          <CardBlock title="작업 유형별 평균 효율">
-            {[
-              { t: '적엽', v: 118, w: '12명' },
-              { t: '수확', v: 109, w: '8명' },
-              { t: '유인', v: 95, w: '15명' },
-              { t: '선별·포장', v: 112, w: '5명' },
-            ].map((r, i) => (
-              <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 0', borderBottom: i < 3 ? `1px solid ${MA.divider}` : 'none' }}>
-                <div style={{ fontSize: 13, fontWeight: 600, color: MA.text, width: 70 }}>{r.t}</div>
-                <div style={{ flex: 1, height: 6, background: MA.bg, borderRadius: 999, overflow: 'hidden', position: 'relative' }}>
-                  <div style={{ width: `${Math.min(r.v, 150) / 150 * 100}%`, height: '100%', background: r.v >= 110 ? MA.success : r.v >= 100 ? accent : MA.warn, borderRadius: 999 }} />
-                  <div style={{ position: 'absolute', left: `${100 / 150 * 100}%`, top: 0, bottom: 0, width: 1, background: MA.mutedSoft }} />
-                </div>
-                <div style={{ fontSize: 12, fontWeight: 700, color: MA.text, width: 36, textAlign: 'right' }}>{r.v}%</div>
-              </div>
-            ))}
-          </CardBlock>
+              <CardBlock title="지점별 평균 수확량">
+                {Object.entries(D_BRANCH_META).map(([key, meta], i, arr) => {
+                  const avg = branchAvg[key] || 0;
+                  return (
+                    <div key={key} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 0', borderBottom: i < arr.length - 1 ? `1px solid ${MA.divider}` : 'none' }}>
+                      <Dot c={meta.accent} />
+                      <div style={{ fontSize: 13, fontWeight: 600, color: MA.text, width: 60 }}>{meta.name}</div>
+                      <div style={{ flex: 1, height: 6, background: MA.bg, borderRadius: 999, overflow: 'hidden', position: 'relative' }}>
+                        <div style={{ width: `${Math.min(avg, 200) / 200 * 100}%`, height: '100%', background: avg >= 110 ? MA.success : avg >= 90 ? accent : MA.warn, borderRadius: 999 }} />
+                        <div style={{ position: 'absolute', left: '50%', top: 0, bottom: 0, width: 1, background: MA.mutedSoft }} />
+                      </div>
+                      <div style={{ fontSize: 12, fontWeight: 700, color: MA.text, width: 40, textAlign: 'right' }}>{avg > 0 ? `${avg}%` : '—'}</div>
+                    </div>
+                  );
+                })}
+              </CardBlock>
+            </>
+          )}
         </div>
       )}
     </AdminMobileShell>
