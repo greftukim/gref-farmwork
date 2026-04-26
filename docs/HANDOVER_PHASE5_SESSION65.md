@@ -168,4 +168,4 @@ P1 핫픽스 완료. GO 판정 조건:
 
 ## 마지막 커밋
 
-*(커밋 후 채워짐)*
+`56f545c` fix(session65): P1 핫픽스 — LeavePage silent fail 해소 + mkkim/mspark 역할 정정 + 검색란 제거 (PASS 34/0/1)
