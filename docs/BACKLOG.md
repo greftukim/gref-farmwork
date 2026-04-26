@@ -241,6 +241,9 @@
 | HQ-SIDEBAR-CLICK-UX-001 | UX 개선 | resolved | 세션 72.6 (2026-04-26) | - | HQ 사이드바 그룹 펼침 트리거: hover(onMouseEnter/Leave) → 클릭 토글 전환. hoveredGroup 상태 → openGroup 단일 변수(단일 펼침). useEffect(location.pathname) → 라우트 이동 시 활성 그룹 자동 펼침. 그룹 헤더 fontSize 10→12, 하위 항목 fontSize 13→14. 애니메이션 0.18s → maxHeight 0.25s + opacity 0.2s. 교훈 125 적용. Playwright PASS 37 / FAIL 0 / WARN 3(CSS전환감지한계). | docs/HANDOVER_PHASE5_SESSION72_6.md |
 | LABOR-COST-001 | 데이터 미연결 | open | 세션 73 (2026-04-26) | - | MobileAdminHomeHQ KPI "이번달 인건비" — finance_monthly 테이블 미연결, "추정" 라벨 + 하드코딩 0원 표시. PC DashboardInteractive와 동일 처리(HQ-FINANCE-001 Phase3 이후). HQ-FINANCE-003 입력UI 완료 후 연결. | docs/BACKLOG.md |
 | TASK-MOBILE-001 | 기능 미구현 | open | 세션 73 (2026-04-26) | - | MobileAdminHomeFarm "오늘 작업 진행" — taskStore 승인 Store 목록에 포함되지 않아 placeholder("—") 표시. farm_admin 모바일 홈 진행 작업 카드 실연결 보류. 승인된 작업자 그룹 별 taskStore 필터 설계 후 처리. | docs/BACKLOG.md |
+| NOTIFICATION-STORE-001 | 기능 미구현 | open | 세션 73-B (2026-04-26) | - | MobileInboxScreen 퍼시스턴트 알림 이력 store 미존재. notificationStore는 toast 전용(6~10초 자동 소멸)이라 인박스로 사용 불가. Case Z' Option 1 적용: leaveStore(pending) + issueStore(미해결)로 조합. 실 알림 이력이 필요하면 별도 notification_history 테이블 + store 설계 필요. | docs/BACKLOG.md |
+| MOBILE-FLOOR-001 | 기능 미구현 | open | 세션 73-B (2026-04-26) | - | MobileFloorScreen Track C hold — attendanceStore 실시간 체크인 + taskStore 작업 진행 상태 미연결. MiniFloorPlan SVG도 하드코딩. Track C 작업 시 실 데이터로 교체. | docs/BACKLOG.md |
+| MOBILE-PERF-001 | 기능 미구현 | open | 세션 73-B (2026-04-26) | - | MobilePerfScreen Track C hold — harvestStore / performanceStore 실 연결 보류. Top 5 순위 및 작업 유형별 효율 모두 mock 데이터. Track C 작업 시 실 데이터로 교체. | docs/BACKLOG.md |
 
 ---
 

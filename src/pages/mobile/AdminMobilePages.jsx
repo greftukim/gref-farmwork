@@ -1,11 +1,91 @@
-import React from 'react';
-import { Icon, icons } from '../../design/primitives';
-import { AdminMobileShell, MA, StatTile, CardBlock, Chip } from './AdminMobile';
+import React, { useMemo, useEffect } from 'react';
+import { T, Icon, icons } from '../../design/primitives';
+import { HQ } from '../../design/hq-shell';
+import {
+  AdminMobileShell, MA, D_BRANCH_META,
+  StatTile, CardBlock, Chip, Dot,
+} from './AdminMobile';
+import useAuthStore from '../../stores/authStore';
+import useEmployeeStore from '../../stores/employeeStore';
+import useLeaveStore from '../../stores/leaveStore';
+import useIssueStore from '../../stores/issueStore';
+
+// ─── 헬퍼 ────────────────────────────────────────────────────────────
+const LEAVE_LABEL = {
+  annual: '연차 휴가', sick: '병가', personal: '개인 사정',
+  special: '특별 휴가', half: '반차',
+};
+const leaveLabel = (t) => LEAVE_LABEL[t] || t || '휴가';
+
+const W_KO = ['일', '월', '화', '수', '목', '금', '토'];
+const fmtDate = (s) => {
+  if (!s) return '—';
+  const d = new Date(s);
+  return `${d.getFullYear()}.${String(d.getMonth() + 1).padStart(2, '0')}.${String(d.getDate()).padStart(2, '0')} (${W_KO[d.getDay()]})`;
+};
+
+const daysBetween = (s, e) => {
+  if (!s || !e) return 1;
+  return Math.max(1, Math.round((new Date(e) - new Date(s)) / 86400000) + 1);
+};
+
+const relTime = (ts) => {
+  if (!ts) return '—';
+  const d = Date.now() - new Date(ts).getTime();
+  if (d < 60000) return '방금';
+  if (d < 3600000) return `${Math.floor(d / 60000)}분 전`;
+  if (d < 86400000) return `${Math.floor(d / 3600000)}시간 전`;
+  return `${Math.floor(d / 86400000)}일 전`;
+};
 
 // ═══════════════════════════════════════════════════════════
-// ③ 승인 탭 — Tinder식 스와이프 카드
+// ③ 승인 탭 — leaveStore 실 데이터 + Tinder 카드 스택
 // ═══════════════════════════════════════════════════════════
 function MobileApprovalScreen({ role = 'farm' }) {
+  const currentUser = useAuthStore((s) => s.currentUser);
+  const employees = useEmployeeStore((s) => s.employees);
+  const requests = useLeaveStore((s) => s.requests);
+  const fetchRequests = useLeaveStore((s) => s.fetchRequests);
+  const farmReview = useLeaveStore((s) => s.farmReview);
+
+  useEffect(() => {
+    if (currentUser) fetchRequests(currentUser);
+  }, [currentUser]);
+
+  const pending = useMemo(
+    () => requests.filter((r) => r.status === 'pending'),
+    [requests],
+  );
+
+  const getEmp = (id) => employees.find((e) => e.id === id);
+
+  const buildCardData = (req) => {
+    if (!req) return null;
+    const emp = getEmp(req.employeeId);
+    const meta = D_BRANCH_META[emp?.branch] || { name: emp?.branch || '—', accent: MA.muted, accentSoft: MA.bg };
+    return {
+      type: leaveLabel(req.leaveType),
+      who: emp?.name || '—',
+      roleLabel: emp?.role === 'farm_admin' ? '지점장' : '작업자',
+      branch: meta.name,
+      meta,
+      date: `${fmtDate(req.startDate)} — ${fmtDate(req.endDate)}`,
+      days: daysBetween(req.startDate, req.endDate),
+      reason: req.reason || '—',
+      balance: { used: 5, total: 15 },
+      submitted: relTime(req.createdAt),
+    };
+  };
+
+  const topData = buildCardData(pending[0]);
+  const stack2Data = buildCardData(pending[1]);
+  const stack3Data = buildCardData(pending[2]);
+
+  const handleAction = (approved) => {
+    if (!pending[0] || !currentUser) return;
+    farmReview(pending[0].id, approved, currentUser.id);
+  };
+
   return (
     <AdminMobileShell role={role} active="approve">
       {({ accent }) => (
@@ -14,157 +94,185 @@ function MobileApprovalScreen({ role = 'farm' }) {
           <div style={{ display: 'flex', alignItems: 'center' }}>
             <div>
               <div style={{ fontSize: 20, fontWeight: 700, color: MA.text, letterSpacing: -0.4 }}>승인 대기</div>
-              <div style={{ fontSize: 12, color: MA.muted, marginTop: 2 }}>7건 남음 · 스와이프로 빠른 처리</div>
+              <div style={{ fontSize: 12, color: MA.muted, marginTop: 2 }}>
+                {pending.length > 0 ? `${pending.length}건 남음 · 스와이프로 빠른 처리` : '대기 중인 승인 없음'}
+              </div>
             </div>
             <div style={{ flex: 1 }} />
-            <button style={{ padding: '7px 11px', borderRadius: 9, background: MA.card, border: `1px solid ${MA.border}`, fontSize: 11, fontWeight: 600, color: MA.text, display: 'flex', alignItems: 'center', gap: 5 }}>
+            <button style={{
+              padding: '7px 11px', borderRadius: 9, background: MA.card,
+              border: `1px solid ${MA.border}`, fontSize: 11, fontWeight: 600,
+              color: MA.text, display: 'flex', alignItems: 'center', gap: 5,
+            }}>
               <Icon d={icons.filter} size={12} c={MA.text} sw={2} />
               필터
             </button>
           </div>
 
-          {/* 유형 필터 칩 */}
+          {/* APPROVAL-CATEGORY-001: 예산/인사/자재 카테고리 미구현 — 휴가만 활성 */}
           <div style={{ display: 'flex', gap: 6, overflowX: 'auto', paddingBottom: 4 }}>
-            {['전체 7', '휴가 3', '연장 2', 'TBM 1', '경조사 1'].map((t, i) => (
-              <span key={i} style={{
+            <span style={{
+              padding: '6px 12px', borderRadius: 999, whiteSpace: 'nowrap',
+              background: MA.text, color: '#fff', fontSize: 12, fontWeight: 600,
+            }}>{`전체 ${pending.length}`}</span>
+            <span style={{
+              padding: '6px 12px', borderRadius: 999, whiteSpace: 'nowrap',
+              background: MA.card, color: MA.muted, fontSize: 12, fontWeight: 600,
+              border: `1px solid ${MA.border}`,
+            }}>{`휴가 ${pending.length}`}</span>
+            {/* APPROVAL-CATEGORY-001 fallback: 카테고리 미구현 → 비활성 */}
+            {['예산', '인사', '자재'].map((c) => (
+              <span key={c} style={{
                 padding: '6px 12px', borderRadius: 999, whiteSpace: 'nowrap',
-                background: i === 0 ? MA.text : MA.card, color: i === 0 ? '#fff' : MA.muted,
-                fontSize: 12, fontWeight: 600, border: i === 0 ? 'none' : `1px solid ${MA.border}`,
-              }}>{t}</span>
+                background: MA.card, color: MA.mutedSoft, fontSize: 12, fontWeight: 600,
+                border: `1px solid ${MA.border}`, opacity: 0.5,
+              }}>{`${c} 0`}</span>
             ))}
           </div>
 
           {/* 카드 스택 */}
-          <div style={{ position: 'relative', height: 410, marginTop: 4 }}>
-            {/* 뒤 카드 2개 */}
-            <ApprovalCard stackIdx={2} data={{ type: '연장근무', who: '최수민', branch: '부산LAB' }} accent={accent} />
-            <ApprovalCard stackIdx={1} data={{ type: '휴가', who: '정수아', branch: '부산LAB' }} accent={accent} />
-            {/* 최상단 카드 */}
-            <ApprovalCard stackIdx={0} accent={accent} data={{
-              type: '연차 휴가',
-              who: '김민국',
-              role: '반장 · A동',
-              branch: '부산LAB',
-              date: '2026.04.28 (화) — 2026.04.30 (목)',
-              days: 3,
-              reason: '가족 경조사로 인한 연차 사용 요청드립니다. 업무 인수인계는 이영희 반장에게 완료했습니다.',
-              balance: { used: 4, total: 15 },
-              submitted: '2시간 전',
-            }} />
-          </div>
+          {pending.length === 0 ? (
+            <div style={{
+              display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+              height: 300, gap: 10,
+            }}>
+              <Icon d={icons.check} size={36} c={MA.success} sw={1.5} />
+              <div style={{ fontSize: 16, fontWeight: 700, color: MA.text }}>모두 처리 완료</div>
+              <div style={{ fontSize: 12, color: MA.muted }}>대기 중인 승인 요청이 없습니다</div>
+            </div>
+          ) : (
+            <>
+              <div style={{ position: 'relative', height: 410, marginTop: 4 }}>
+                {stack3Data && <ApprovalCard stackIdx={2} data={stack3Data} accent={accent} />}
+                {stack2Data && <ApprovalCard stackIdx={1} data={stack2Data} accent={accent} />}
+                <ApprovalCard stackIdx={0} accent={accent} data={topData} />
+              </div>
 
-          {/* 액션 버튼 */}
-          <div style={{ display: 'flex', justifyContent: 'space-around', alignItems: 'center', padding: '10px 30px', marginTop: 2 }}>
-            <button style={{
-              width: 52, height: 52, borderRadius: 999, border: `2px solid ${MA.danger}`,
-              background: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 12px rgba(220,38,38,0.15)',
-            }}>
-              <Icon d="M18 6L6 18M6 6l12 12" size={22} c={MA.danger} sw={2.4} />
-            </button>
-            <button style={{
-              width: 44, height: 44, borderRadius: 999, border: `1.5px solid ${MA.border}`,
-              background: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center',
-            }}>
-              <Icon d={icons.chat} size={18} c={MA.muted} sw={2} />
-            </button>
-            <button style={{
-              width: 52, height: 52, borderRadius: 999, border: 'none',
-              background: MA.success, display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 14px rgba(16,185,129,0.35)',
-            }}>
-              <Icon d={icons.check} size={22} c="#fff" sw={2.6} />
-            </button>
-          </div>
+              {/* 액션 버튼 */}
+              <div style={{ display: 'flex', justifyContent: 'space-around', alignItems: 'center', padding: '10px 30px', marginTop: 2 }}>
+                <button
+                  onClick={() => handleAction(false)}
+                  style={{
+                    width: 52, height: 52, borderRadius: 999, border: `2px solid ${MA.danger}`,
+                    background: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    boxShadow: '0 4px 12px rgba(220,38,38,0.15)',
+                  }}>
+                  <Icon d={icons.x} size={22} c={MA.danger} sw={2.4} />
+                </button>
+                <button style={{
+                  width: 44, height: 44, borderRadius: 999, border: `1.5px solid ${MA.border}`,
+                  background: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                }}>
+                  <Icon d={icons.chat} size={18} c={MA.muted} sw={2} />
+                </button>
+                <button
+                  onClick={() => handleAction(true)}
+                  style={{
+                    width: 52, height: 52, borderRadius: 999, border: 'none',
+                    background: MA.success, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    boxShadow: '0 4px 14px rgba(16,185,129,0.35)',
+                  }}>
+                  <Icon d={icons.check} size={22} c="#fff" sw={2.6} />
+                </button>
+              </div>
 
-          {/* 하단 가이드 */}
-          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: MA.mutedSoft, padding: '0 22px' }}>
-            <span>← 반려</span>
-            <span>댓글</span>
-            <span>승인 →</span>
-          </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: MA.mutedSoft, padding: '0 22px' }}>
+                <span>← 반려</span>
+                <span>댓글</span>
+                <span>승인 →</span>
+              </div>
+            </>
+          )}
         </div>
       )}
     </AdminMobileShell>
   );
 }
 
-// 승인 카드 컴포넌트
 const ApprovalCard = ({ data, stackIdx = 0, accent }) => {
   const isTop = stackIdx === 0;
   const scale = 1 - stackIdx * 0.04;
   const offsetY = stackIdx * 8;
   const opacity = 1 - stackIdx * 0.25;
+
   const toneByType = (t) => {
-    if (t.includes('휴가') || t.includes('연차')) return { bg: '#DBEAFE', fg: '#1D4ED8', label: '휴가' };
-    if (t.includes('연장')) return { bg: '#FEF3C7', fg: '#B45309', label: '연장' };
-    if (t.includes('TBM')) return { bg: '#E0E7FF', fg: '#4338CA', label: 'TBM' };
-    return { bg: '#F1F5F9', fg: MA.muted, label: '기타' };
+    if (!t) return { bg: T.primarySoft, fg: T.primary, label: '휴가' };
+    if (t.includes('휴가') || t.includes('연차') || t.includes('반차')) return { bg: T.infoSoft, fg: T.info, label: '휴가' };
+    if (t.includes('병가')) return { bg: T.dangerSoft, fg: T.danger, label: '병가' };
+    if (t.includes('개인')) return { bg: T.primarySoft, fg: T.primary, label: '개인' };
+    return { bg: T.successSoft, fg: T.success, label: '특별' };
   };
-  const tone = toneByType(data.type);
+
+  const tone = toneByType(data?.type);
+  const meta = data?.meta || { accent: MA.muted, accentSoft: MA.bg };
 
   return (
     <div style={{
       position: 'absolute', inset: 0,
-      background: MA.card, borderRadius: 18,
-      boxShadow: isTop ? '0 20px 40px rgba(15,23,42,0.15), 0 4px 10px rgba(15,23,42,0.08)' : '0 6px 20px rgba(15,23,42,0.08)',
+      background: MA.card, borderRadius: 8,
+      boxShadow: isTop
+        ? '0 20px 40px rgba(15,23,42,0.15), 0 4px 10px rgba(15,23,42,0.08)'
+        : '0 6px 20px rgba(15,23,42,0.08)',
       padding: isTop ? 20 : 0,
       transform: `scale(${scale}) translateY(${offsetY}px)`,
       opacity,
       zIndex: 10 - stackIdx,
       overflow: 'hidden',
     }}>
-      {!isTop ? null : (
+      {!isTop || !data ? null : (
         <>
-          {/* 상단 배지 */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14 }}>
             <span style={{ padding: '4px 10px', borderRadius: 999, background: tone.bg, color: tone.fg, fontSize: 11, fontWeight: 700 }}>{tone.label}</span>
-            <span style={{ fontSize: 11, color: MA.mutedSoft }}>· {data.branch}</span>
+            <Dot c={meta.accent} />
+            <span style={{ fontSize: 11, color: MA.muted }}>{data.branch}</span>
             <div style={{ flex: 1 }} />
             <span style={{ fontSize: 11, color: MA.mutedSoft }}>{data.submitted}</span>
           </div>
 
-          {/* 제목 & 작성자 */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
             <div style={{
-              width: 46, height: 46, borderRadius: 999, background: accent, color: '#fff',
+              width: 46, height: 46, borderRadius: 999, background: meta.accent, color: '#fff',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               fontSize: 18, fontWeight: 700, letterSpacing: -0.3,
             }}>{data.who.charAt(0)}</div>
             <div style={{ flex: 1 }}>
               <div style={{ fontSize: 17, fontWeight: 700, color: MA.text, letterSpacing: -0.3 }}>{data.who}</div>
-              <div style={{ fontSize: 11, color: MA.muted, marginTop: 2 }}>{data.role}</div>
+              <div style={{ fontSize: 11, color: MA.muted, marginTop: 2 }}>{data.roleLabel}</div>
             </div>
           </div>
 
           <div style={{ height: 1, background: MA.divider, margin: '0 -20px 14px' }} />
 
-          {/* 내용 블록 */}
           <div style={{ fontSize: 20, fontWeight: 700, color: MA.text, letterSpacing: -0.4, marginBottom: 4 }}>{data.type}</div>
           <div style={{ fontSize: 13, color: MA.text, fontWeight: 600, marginBottom: 12 }}>{data.date}</div>
 
           <div style={{ display: 'flex', gap: 8, marginBottom: 14 }}>
-            <div style={{ flex: 1, background: MA.bg, borderRadius: 10, padding: 10 }}>
+            <div style={{ flex: 1, background: MA.bg, borderRadius: 8, padding: 10 }}>
               <div style={{ fontSize: 10, color: MA.mutedSoft, fontWeight: 600 }}>신청 일수</div>
-              <div style={{ fontSize: 18, fontWeight: 700, color: MA.text, marginTop: 2 }}>{data.days}<span style={{ fontSize: 11, color: MA.muted, fontWeight: 600, marginLeft: 3 }}>일</span></div>
+              <div style={{ fontSize: 18, fontWeight: 700, color: MA.text, marginTop: 2 }}>
+                {data.days}<span style={{ fontSize: 11, color: MA.muted, fontWeight: 600, marginLeft: 3 }}>일</span>
+              </div>
             </div>
-            <div style={{ flex: 1, background: MA.bg, borderRadius: 10, padding: 10 }}>
+            <div style={{ flex: 1, background: MA.bg, borderRadius: 8, padding: 10 }}>
               <div style={{ fontSize: 10, color: MA.mutedSoft, fontWeight: 600 }}>잔여 연차</div>
-              <div style={{ fontSize: 18, fontWeight: 700, color: MA.text, marginTop: 2 }}>{data.balance.total - data.balance.used}<span style={{ fontSize: 11, color: MA.muted, fontWeight: 600, marginLeft: 3 }}>/ {data.balance.total}</span></div>
+              <div style={{ fontSize: 18, fontWeight: 700, color: MA.text, marginTop: 2 }}>
+                {data.balance.total - data.balance.used}
+                <span style={{ fontSize: 11, color: MA.muted, fontWeight: 600, marginLeft: 3 }}>/ {data.balance.total}</span>
+              </div>
             </div>
           </div>
 
-          {/* 사유 */}
-          <div style={{ background: MA.bg, borderRadius: 10, padding: 12, marginBottom: 12 }}>
+          <div style={{ background: MA.bg, borderRadius: 8, padding: 12, marginBottom: 12 }}>
             <div style={{ fontSize: 10, color: MA.mutedSoft, fontWeight: 600, marginBottom: 4 }}>사유</div>
             <div style={{ fontSize: 12, color: MA.text, lineHeight: 1.55 }}>{data.reason}</div>
           </div>
 
-          {/* 가이드 */}
           <div style={{
             display: 'flex', alignItems: 'center', gap: 8, padding: '8px 10px',
-            background: '#F0FDF4', borderRadius: 8,
+            background: T.successSoft, borderRadius: 8,
           }}>
             <Icon d={icons.check} size={12} c={MA.success} sw={2.4} />
-            <span style={{ fontSize: 11, color: '#065F46', fontWeight: 600 }}>동일 기간 다른 휴가 겹치지 않음</span>
+            <span style={{ fontSize: 11, color: MA.success, fontWeight: 600 }}>동일 기간 다른 휴가 겹치지 않음</span>
           </div>
         </>
       )}
@@ -173,14 +281,14 @@ const ApprovalCard = ({ data, stackIdx = 0, accent }) => {
 };
 
 // ═══════════════════════════════════════════════════════════
-// ④ 평면도 탭 — 모바일 핀치줌 뷰
+// ④ 평면도 탭 — Track C hold (mock 데이터)
+// MOBILE-FLOOR-001: attendanceStore + taskStore 실 연결 보류
 // ═══════════════════════════════════════════════════════════
 function MobileFloorScreen({ role = 'farm' }) {
   return (
     <AdminMobileShell role={role} active="floor">
       {({ accent }) => (
         <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-          {/* 동 선택 탭 */}
           <div style={{
             background: MA.card, borderBottom: `1px solid ${MA.border}`,
             padding: '10px 14px', display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0,
@@ -188,11 +296,11 @@ function MobileFloorScreen({ role = 'farm' }) {
             <div style={{ fontSize: 17, fontWeight: 700, color: MA.text, letterSpacing: -0.3 }}>실시간 현황</div>
             <div style={{ flex: 1 }} />
             <div style={{
-              padding: '5px 10px', borderRadius: 999, background: '#F0FDF4',
+              padding: '5px 10px', borderRadius: 999, background: T.successSoft,
               display: 'flex', alignItems: 'center', gap: 5,
             }}>
-              <span style={{ width: 6, height: 6, borderRadius: 999, background: MA.success }} />
-              <span style={{ fontSize: 10, color: '#065F46', fontWeight: 700 }}>실시간</span>
+              <Dot c={MA.success} />
+              <span style={{ fontSize: 10, color: MA.success, fontWeight: 700 }}>실시간</span>
             </div>
           </div>
 
@@ -206,34 +314,27 @@ function MobileFloorScreen({ role = 'farm' }) {
             ))}
           </div>
 
-          {/* KPI */}
           <div style={{ padding: '10px 14px 8px', display: 'flex', gap: 6, flexShrink: 0 }}>
             <StatTile label="작업중" value="6" sub="골 기준" tone="primary" accent={accent} />
             <StatTile label="일시정지" value="1" sub="휴식 중" tone="warning" accent={accent} />
             <StatTile label="완료" value="8" sub="오늘 / 10골" tone="success" accent={accent} />
           </div>
 
-          {/* 평면도 (핀치줌 영역) */}
           <div style={{ padding: '0 14px', flexShrink: 0 }}>
             <div style={{
-              background: MA.card, borderRadius: 14, padding: 12, position: 'relative',
-              height: 250, overflow: 'hidden',
+              background: MA.card, borderRadius: 8, padding: 12, position: 'relative',
+              height: 250, overflow: 'hidden', border: `1px solid ${MA.border}`,
             }}>
-              {/* 핀치줌 안내 */}
               <div style={{
                 position: 'absolute', top: 10, left: 10, zIndex: 2,
                 padding: '4px 9px', borderRadius: 999, background: 'rgba(15,23,42,0.7)',
                 color: '#fff', fontSize: 10, fontWeight: 600,
                 display: 'flex', alignItems: 'center', gap: 5,
               }}>
-                <Icon d="M15 3h6v6M14 10l6.1-6.1M9 21H3v-6M10 14l-6.1 6.1" size={10} c="#fff" sw={2.2} />
+                <Icon d={icons.plus} size={10} c="#fff" sw={2.2} />
                 핀치줌 · 드래그
               </div>
-
-              {/* 미니 평면도 SVG */}
-              <MiniFloorPlan />
-
-              {/* 하단 범례 */}
+              <MiniFloorPlan accent={accent} />
               <div style={{ position: 'absolute', bottom: 10, right: 10, background: 'rgba(255,255,255,0.95)', borderRadius: 8, padding: '6px 9px', display: 'flex', gap: 10 }}>
                 <LegendItem c={accent} l="작업중" />
                 <LegendItem c={MA.warn} l="일시정지" />
@@ -242,10 +343,9 @@ function MobileFloorScreen({ role = 'farm' }) {
             </div>
           </div>
 
-          {/* 작업 중 리스트 */}
           <div style={{ padding: '12px 14px 14px', flex: 1, overflow: 'auto' }}>
             <div style={{ fontSize: 13, fontWeight: 700, color: MA.text, marginBottom: 8 }}>현재 작업 중 (7)</div>
-            <div style={{ background: MA.card, borderRadius: 14, padding: '2px 14px' }}>
+            <div style={{ background: MA.card, borderRadius: 8, padding: '2px 14px', border: `1px solid ${MA.border}` }}>
               {[
                 { g: '1cmp · 3골', w: '김민국', task: '적엽', p: 62, time: '43분', state: 'work' },
                 { g: '1cmp · 5골', w: '이영희', task: '유인', p: 28, time: '12분', state: 'work' },
@@ -287,13 +387,12 @@ function MobileFloorScreen({ role = 'farm' }) {
 
 const LegendItem = ({ c, l }) => (
   <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-    <span style={{ width: 8, height: 8, borderRadius: 999, background: c }} />
+    <Dot c={c} />
     <span style={{ fontSize: 10, color: MA.muted, fontWeight: 600 }}>{l}</span>
   </div>
 );
 
-// 간소화 평면도 SVG
-const MiniFloorPlan = () => {
+const MiniFloorPlan = ({ accent }) => {
   const gutters = 10;
   const gols = 10;
   const cellW = 14;
@@ -306,35 +405,31 @@ const MiniFloorPlan = () => {
   ];
   return (
     <svg viewBox="0 0 320 210" style={{ width: '100%', height: '100%' }} preserveAspectRatio="xMidYMid meet">
-      {/* 동 경계 */}
-      <rect x={10} y={15} width={300} height={170} fill="none" stroke="#E5E7EB" strokeWidth="1.5" strokeDasharray="3,3" rx={6} />
-      {/* 거터 + 골 교차 */}
+      <rect x={10} y={15} width={300} height={170} fill="none" stroke={MA.border} strokeWidth="1.5" strokeDasharray="3,3" rx={6} />
       {Array.from({ length: gutters + gols }).map((_, i) => {
         const x = 14 + i * cellW;
         const isGutter = i % 2 === 0;
         return (
           <g key={i}>
             {isGutter ? (
-              <rect x={x} y={20} width={cellW - 2} height={cellH} fill="#D1FAE5" stroke="#6EE7B7" strokeWidth="0.8" rx={2} />
+              <rect x={x} y={20} width={cellW - 2} height={cellH} fill={T.successSoft} stroke={T.success} strokeWidth="0.8" rx={2} />
             ) : (
-              <rect x={x} y={20} width={cellW - 2} height={cellH} fill="#FAFAFA" stroke="#E5E7EB" strokeWidth="0.6" rx={2} />
+              <rect x={x} y={20} width={cellW - 2} height={cellH} fill={MA.bg} stroke={MA.border} strokeWidth="0.6" rx={2} />
             )}
             {isGutter && (
-              <text x={x + (cellW - 2) / 2} y={16} fontSize="6" fill="#6B7280" textAnchor="middle" fontWeight="700">
+              <text x={x + (cellW - 2) / 2} y={16} fontSize="6" fill={MA.muted} textAnchor="middle" fontWeight="700">
                 {gutters - Math.floor(i / 2)}
               </text>
             )}
           </g>
         );
       })}
-      {/* 복도 (하단) */}
-      <rect x={10} y={175} width={300} height={12} fill="#F3F4F6" stroke="#E5E7EB" strokeWidth="0.8" rx={2} />
-      <text x={160} y={184} fontSize="7" fill="#9CA3AF" textAnchor="middle" fontWeight="600">복도</text>
-      {/* 작업자 아이콘 */}
+      <rect x={10} y={175} width={300} height={12} fill={MA.bg} stroke={MA.border} strokeWidth="0.8" rx={2} />
+      <text x={160} y={184} fontSize="7" fill={MA.mutedSoft} textAnchor="middle" fontWeight="600">복도</text>
       {workerPositions.map((w, i) => {
         const x = 14 + (w.col * 2 + 1) * cellW + (cellW - 2) / 2;
         const y = 20 + (1 - w.phase) * cellH;
-        const color = w.tone === 'pause' ? '#F59E0B' : '#10B981';
+        const color = w.tone === 'pause' ? MA.warn : MA.success;
         return (
           <g key={i}>
             <circle cx={x} cy={y} r={7} fill={color} stroke="#fff" strokeWidth="2" />
@@ -349,7 +444,8 @@ const MiniFloorPlan = () => {
 };
 
 // ═══════════════════════════════════════════════════════════
-// ⑤ 성과 탭 — 지표별 Top 5
+// ⑤ 성과 탭 — Track C hold (mock 데이터)
+// MOBILE-PERF-001: harvestStore / performanceStore 실 연결 보류
 // ═══════════════════════════════════════════════════════════
 function MobilePerfScreen({ role = 'farm' }) {
   return (
@@ -363,7 +459,6 @@ function MobilePerfScreen({ role = 'farm' }) {
             </div>
           </div>
 
-          {/* 기간·작물 필터 */}
           <div style={{ display: 'flex', gap: 6, marginBottom: 10, overflowX: 'auto' }}>
             {['일', '주', '월', '분기'].map((t, i) => (
               <span key={t} style={{
@@ -376,14 +471,13 @@ function MobilePerfScreen({ role = 'farm' }) {
             <span style={{ padding: '6px 12px', borderRadius: 999, background: MA.card, border: `1px solid ${MA.border}`, fontSize: 12, fontWeight: 600, color: MA.text, whiteSpace: 'nowrap' }}>토마토 ▾</span>
           </div>
 
-          {/* 지표 선택 */}
           <div style={{ display: 'flex', gap: 6, marginBottom: 12, overflowX: 'auto' }}>
             {[
               { l: '표준 효율', k: 'eff', on: true },
               { l: '시간당 주', k: 'perHr' },
               { l: '주간 거터', k: 'weekG' },
               { l: '주간 수확', k: 'weekK' },
-            ].map(m => (
+            ].map((m) => (
               <span key={m.k} style={{
                 padding: '6px 12px', borderRadius: 999, whiteSpace: 'nowrap',
                 background: m.on ? accent : MA.card, color: m.on ? '#fff' : MA.muted,
@@ -392,44 +486,48 @@ function MobilePerfScreen({ role = 'farm' }) {
             ))}
           </div>
 
-          {/* Top 5 카드 */}
           <CardBlock title="표준 효율 Top 5" pad={0}>
             {[
-              { r: 1, n: '김민국', v: '128', u: '%', sub: '평균 114 · 부산LAB', delta: '+6' },
-              { r: 2, n: '박서준', v: '122', u: '%', sub: '평균 114 · 부산LAB', delta: '+4' },
-              { r: 3, n: '정수아', v: '119', u: '%', sub: '평균 114 · 진주HUB', delta: '+2' },
-              { r: 4, n: '이영희', v: '115', u: '%', sub: '평균 114 · 부산LAB', delta: '+1' },
-              { r: 5, n: '최수민', v: '112', u: '%', sub: '평균 114 · 하동HUB', delta: '0' },
-            ].map((p, i) => (
-              <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 14px', borderBottom: i < 4 ? `1px solid ${MA.divider}` : 'none' }}>
-                <div style={{
-                  width: 28, height: 28, borderRadius: 8,
-                  background: p.r === 1 ? '#FEF3C7' : p.r === 2 ? '#F1F5F9' : p.r === 3 ? '#FED7AA' : MA.bg,
-                  color: p.r === 1 ? '#B45309' : p.r === 2 ? MA.muted : p.r === 3 ? '#C2410C' : MA.mutedSoft,
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  fontSize: 12, fontWeight: 800, flexShrink: 0,
-                }}>{p.r}</div>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 14, fontWeight: 700, color: MA.text, letterSpacing: -0.2 }}>{p.n}</div>
-                  <div style={{ fontSize: 11, color: MA.muted, marginTop: 1 }}>{p.sub}</div>
-                </div>
-                <div style={{ textAlign: 'right' }}>
-                  <div style={{ display: 'flex', alignItems: 'baseline', gap: 2, justifyContent: 'flex-end' }}>
-                    <span style={{ fontSize: 18, fontWeight: 700, color: MA.text, letterSpacing: -0.3 }}>{p.v}</span>
-                    <span style={{ fontSize: 11, color: MA.muted, fontWeight: 600 }}>{p.u}</span>
+              { r: 1, n: '김민국', v: '128', u: '%', sub: '평균 114 · 부산LAB', delta: '+6', branch: 'busan' },
+              { r: 2, n: '박서준', v: '122', u: '%', sub: '평균 114 · 부산LAB', delta: '+4', branch: 'busan' },
+              { r: 3, n: '정수아', v: '119', u: '%', sub: '평균 114 · 진주HUB', delta: '+2', branch: 'jinju' },
+              { r: 4, n: '이영희', v: '115', u: '%', sub: '평균 114 · 부산LAB', delta: '+1', branch: 'busan' },
+              { r: 5, n: '최수민', v: '112', u: '%', sub: '평균 114 · 하동HUB', delta: '0', branch: 'hadong' },
+            ].map((p, i) => {
+              const branchMeta = D_BRANCH_META[p.branch] || { accent: MA.muted };
+              const rankBg = p.r === 1 ? T.warningSoft : p.r === 2 ? T.mutedSoft : p.r === 3 ? '#FED7AA' : MA.bg;
+              const rankFg = p.r === 1 ? T.warning : p.r === 2 ? MA.muted : p.r === 3 ? '#C2410C' : MA.mutedSoft;
+              return (
+                <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 14px', borderBottom: i < 4 ? `1px solid ${MA.divider}` : 'none' }}>
+                  <div style={{
+                    width: 28, height: 28, borderRadius: 8,
+                    background: rankBg, color: rankFg,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    fontSize: 12, fontWeight: 800, flexShrink: 0,
+                  }}>{p.r}</div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <Dot c={branchMeta.accent} />
                   </div>
-                  <span style={{ fontSize: 10, color: MA.success, fontWeight: 700 }}>{p.delta}%p</span>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 14, fontWeight: 700, color: MA.text, letterSpacing: -0.2 }}>{p.n}</div>
+                    <div style={{ fontSize: 11, color: MA.muted, marginTop: 1 }}>{p.sub}</div>
+                  </div>
+                  <div style={{ textAlign: 'right' }}>
+                    <div style={{ display: 'flex', alignItems: 'baseline', gap: 2, justifyContent: 'flex-end' }}>
+                      <span style={{ fontSize: 18, fontWeight: 700, color: MA.text, letterSpacing: -0.3 }}>{p.v}</span>
+                      <span style={{ fontSize: 11, color: MA.muted, fontWeight: 600 }}>{p.u}</span>
+                    </div>
+                    <span style={{ fontSize: 10, color: MA.success, fontWeight: 700 }}>{p.delta}%p</span>
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </CardBlock>
 
-          {/* 하위 Top 5 토글 */}
           <div style={{ padding: '4px 0 8px', textAlign: 'center' }}>
             <span style={{ fontSize: 12, color: MA.muted, fontWeight: 600 }}>하위 5명 보기 ▾</span>
           </div>
 
-          {/* 작업별 미니 차트 */}
           <CardBlock title="작업 유형별 평균 효율">
             {[
               { t: '적엽', v: 118, w: '12명' },
@@ -454,10 +552,32 @@ function MobilePerfScreen({ role = 'farm' }) {
 }
 
 // ═══════════════════════════════════════════════════════════
-// ⑥ 더보기 탭
+// ⑥ 더보기 탭 — 8그룹 메뉴 + 실 store 건수
 // ═══════════════════════════════════════════════════════════
 function MobileMoreScreen({ role = 'farm' }) {
+  const currentUser = useAuthStore((s) => s.currentUser);
+  const employees = useEmployeeStore((s) => s.employees);
+  const requests = useLeaveStore((s) => s.requests);
+  const issues = useIssueStore((s) => s.issues);
+
   const isHQ = role === 'hq';
+
+  const activeCount = useMemo(
+    () => employees.filter((e) => e.isActive).length,
+    [employees],
+  );
+  const pendingLeaves = useMemo(
+    () => requests.filter((r) => r.status === 'pending').length,
+    [requests],
+  );
+  const unresolvedIssues = useMemo(
+    () => issues.filter((i) => i.status !== 'resolved').length,
+    [issues],
+  );
+
+  const name = currentUser?.name || (isHQ ? '관리팀' : '지점장');
+  const roleDisplay = isHQ ? '관리팀 · 본사' : `재배팀 · ${currentUser?.branch ? (D_BRANCH_META[currentUser.branch]?.name || '부산LAB') : '부산LAB'}`;
+
   return (
     <AdminMobileShell role={role} active="more">
       {({ accent, roleLabel }) => (
@@ -465,122 +585,193 @@ function MobileMoreScreen({ role = 'farm' }) {
           <div style={{ fontSize: 20, fontWeight: 700, color: MA.text, letterSpacing: -0.4, marginBottom: 14 }}>더보기</div>
 
           {/* 프로필 카드 */}
-          <div style={{ background: MA.card, borderRadius: 14, padding: 16, marginBottom: 16, display: 'flex', alignItems: 'center', gap: 14 }}>
+          <div style={{ background: MA.card, borderRadius: 8, padding: 16, marginBottom: 16, display: 'flex', alignItems: 'center', gap: 14, border: `1px solid ${MA.border}` }}>
             <div style={{
               width: 52, height: 52, borderRadius: 999, background: accent, color: '#fff',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               fontSize: 20, fontWeight: 700, letterSpacing: -0.3,
-            }}>{isHQ ? '이' : '박'}</div>
+            }}>{name.charAt(0)}</div>
             <div style={{ flex: 1 }}>
-              <div style={{ fontSize: 16, fontWeight: 700, color: MA.text }}>{isHQ ? '이차장' : '박지점장'}</div>
-              <div style={{ fontSize: 12, color: MA.muted, marginTop: 2 }}>{roleLabel}</div>
+              <div style={{ fontSize: 16, fontWeight: 700, color: MA.text }}>{name}</div>
+              <div style={{ fontSize: 12, color: MA.muted, marginTop: 2 }}>{roleDisplay}</div>
             </div>
-            <Icon d="M9 18l6-6-6-6" size={16} c={MA.mutedSoft} sw={2} />
+            <Icon d={icons.down} size={16} c={MA.mutedSoft} sw={2} />
           </div>
 
-          {/* 섹션 1: 업무 */}
-          <div style={{ fontSize: 11, color: MA.mutedSoft, fontWeight: 700, padding: '0 4px 6px', letterSpacing: 0.5 }}>업무</div>
-          <CardBlock pad={0}>
-            {[
-              { l: '공지 작성 / 발송', d: icons.bell, tone: MA.blue, badge: null },
-              { l: isHQ ? '지점 관리' : '작업 배정 보드', d: icons.clipboard, tone: accent, badge: null },
-              { l: isHQ ? '전사 직원' : '지점 직원 관리', d: icons.users, tone: '#7C3AED', badge: '52' },
-              { l: '생육조사 결과', d: icons.leaf, tone: MA.success, badge: '이번주' },
-              { l: '휴가 / 근태 캘린더', d: icons.calendar, tone: '#DB2777', badge: null },
-            ].map((r, i, arr) => (
-              <MoreRow key={i} {...r} divider={i < arr.length - 1} />
-            ))}
-          </CardBlock>
+          {/* 그룹 1: 대시보드 */}
+          <MenuSection label="대시보드">
+            <MoreRow l="본사 대시보드" d={icons.dashboard} tone={isHQ ? HQ.accent : accent} divider={false} />
+          </MenuSection>
 
-          {/* 섹션 2: 알림 & 설정 */}
-          <div style={{ fontSize: 11, color: MA.mutedSoft, fontWeight: 700, padding: '12px 4px 6px', letterSpacing: 0.5 }}>알림 & 설정</div>
-          <CardBlock pad={0}>
-            {[
-              { l: '알림 인박스', d: icons.bell, tone: MA.danger, badge: '3' },
-              { l: '푸시 알림 설정', d: icons.bell, tone: MA.muted, toggle: true },
-              { l: '언어 / 지역', d: icons.target, tone: MA.muted, right: '한국어' },
-              { l: '데이터 / 저장공간', d: icons.dashboard, tone: MA.muted, right: null },
-            ].map((r, i, arr) => (
-              <MoreRow key={i} {...r} divider={i < arr.length - 1} />
-            ))}
-          </CardBlock>
+          {/* 그룹 2: 성과 */}
+          <MenuSection label="성과">
+            <MoreRow l="경영 지표" d={icons.chart} tone={MA.blue} />
+            <MoreRow l="성과 분석" d={icons.target} tone={accent} divider={false} />
+          </MenuSection>
 
-          {/* 섹션 3: 기타 */}
-          <div style={{ fontSize: 11, color: MA.mutedSoft, fontWeight: 700, padding: '12px 4px 6px', letterSpacing: 0.5 }}>기타</div>
-          <CardBlock pad={0}>
-            {[
-              { l: '도움말 / 문의', d: icons.chat, tone: MA.muted },
-              { l: '앱 정보 · v1.0.0', d: icons.target, tone: MA.muted },
-              { l: '로그아웃', d: "M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1", tone: MA.danger },
-            ].map((r, i, arr) => (
-              <MoreRow key={i} {...r} divider={i < arr.length - 1} />
-            ))}
-          </CardBlock>
+          {/* 그룹 3: 직원/근태 관리 */}
+          <MenuSection label="직원/근태 관리">
+            <MoreRow l={isHQ ? '전사 직원' : '지점 직원 관리'} d={icons.users} tone={accent} badge={activeCount > 0 ? `${activeCount}` : null} />
+            <MoreRow l="휴가 관리" d={icons.calendar} tone={MA.blue} badge={pendingLeaves > 0 ? `${pendingLeaves}` : null} divider={false} />
+          </MenuSection>
+
+          {/* 그룹 4: 생산 */}
+          <MenuSection label="생산">
+            <MoreRow l="지점별 생육" d={icons.leaf} tone={MA.success} divider={false} />
+          </MenuSection>
+
+          {/* 그룹 5: 승인 결재 */}
+          <MenuSection label="승인 결재">
+            <MoreRow l="승인 결재" d={icons.clipboard} tone={accent} badge={pendingLeaves > 0 ? `${pendingLeaves}` : null} divider={false} />
+          </MenuSection>
+
+          {/* 그룹 6: 운영/이슈 */}
+          <MenuSection label="운영/이슈">
+            <MoreRow l="이상 신고" d={icons.alert} tone={MA.danger} badge={unresolvedIssues > 0 ? `${unresolvedIssues}` : null} divider={false} />
+          </MenuSection>
+
+          {/* 그룹 7: 공지/정책 */}
+          <MenuSection label="공지/정책">
+            <MoreRow l="공지·정책" d={icons.bell} tone={MA.blue} divider={false} />
+          </MenuSection>
+
+          {/* 그룹 8: 지점 관리 */}
+          <MenuSection label="지점 관리">
+            <MoreRow l="지점 관리" d={icons.location} tone={accent} divider={false} />
+          </MenuSection>
+
+          {/* 앱 설정 */}
+          <MenuSection label="설정">
+            <MoreRow l="푸시 알림 설정" d={icons.bell} tone={MA.muted} toggle />
+            <MoreRow l="도움말 / 문의" d={icons.chat} tone={MA.muted} />
+            <MoreRow l="앱 정보 · v1.0.0" d={icons.target} tone={MA.muted} />
+            <MoreRow l="로그아웃" d={icons.logout} tone={MA.danger} divider={false} />
+          </MenuSection>
         </div>
       )}
     </AdminMobileShell>
   );
 }
 
+const MenuSection = ({ label, children }) => (
+  <div style={{ marginBottom: 12 }}>
+    <div style={{ fontSize: 11, color: MA.mutedSoft, fontWeight: 700, padding: '0 4px 6px', letterSpacing: 0.5 }}>{label.toUpperCase()}</div>
+    <div style={{ background: MA.card, borderRadius: 8, padding: '2px 14px', border: `1px solid ${MA.border}` }}>
+      {children}
+    </div>
+  </div>
+);
+
 const MoreRow = ({ l, d, tone, badge, right, toggle, divider = true }) => (
   <div style={{
-    display: 'flex', alignItems: 'center', gap: 12, padding: '12px 14px',
+    display: 'flex', alignItems: 'center', gap: 12, padding: '12px 0',
     borderBottom: divider ? `1px solid ${MA.divider}` : 'none',
   }}>
-    <div style={{ width: 32, height: 32, borderRadius: 8, background: `${tone}15`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+    <div style={{ width: 32, height: 32, borderRadius: 8, background: `${tone}18`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
       <Icon d={d} size={15} c={tone} sw={2} />
     </div>
     <div style={{ flex: 1, fontSize: 14, fontWeight: 600, color: MA.text, letterSpacing: -0.2 }}>{l}</div>
-    {badge && <span style={{ padding: '3px 8px', borderRadius: 999, background: `${MA.danger}15`, color: MA.danger, fontSize: 10, fontWeight: 700 }}>{badge}</span>}
+    {badge && <span style={{ padding: '3px 8px', borderRadius: 999, background: `${MA.danger}18`, color: MA.danger, fontSize: 10, fontWeight: 700 }}>{badge}</span>}
     {right && <span style={{ fontSize: 12, color: MA.muted }}>{right}</span>}
     {toggle && (
       <div style={{ width: 36, height: 22, borderRadius: 999, background: MA.primary, position: 'relative' }}>
         <div style={{ width: 18, height: 18, borderRadius: 999, background: '#fff', position: 'absolute', top: 2, right: 2, boxShadow: '0 1px 3px rgba(0,0,0,0.15)' }} />
       </div>
     )}
-    {!toggle && !right && <Icon d="M9 18l6-6-6-6" size={14} c={MA.mutedSoft} sw={2} />}
+    {!toggle && !right && <Icon d={icons.down} size={14} c={MA.mutedSoft} sw={2} />}
   </div>
 );
 
 // ═══════════════════════════════════════════════════════════
-// ⑦ 알림 인박스 (풀스크린 모달)
+// ⑦ 알림 인박스 — Case Z' Option 1
+// NOTIFICATION-STORE-001: 퍼시스턴트 알림 이력 store 미존재
+//   notificationStore는 toast 전용 (6~10초 자동 소멸)
+//   → leaveStore(pending) + issueStore(미해결)로 조합
 // ═══════════════════════════════════════════════════════════
 function MobileInboxScreen({ role = 'farm' }) {
+  const employees = useEmployeeStore((s) => s.employees);
+  const requests = useLeaveStore((s) => s.requests);
+  const issues = useIssueStore((s) => s.issues);
+
+  const issueItems = useMemo(
+    () =>
+      issues
+        .filter((i) => i.status !== 'resolved')
+        .slice(0, 3)
+        .map((i) => {
+          const meta = D_BRANCH_META[i.branch] || { name: i.branch || '—', accent: MA.danger };
+          return {
+            d: icons.alert,
+            tone: MA.danger,
+            title: i.title || '이상 신고',
+            sub: `미해결 · ${meta.name}`,
+            time: relTime(i.createdAt),
+            unread: true,
+          };
+        }),
+    [issues],
+  );
+
+  const approvalItems = useMemo(
+    () =>
+      requests
+        .filter((r) => r.status === 'pending')
+        .slice(0, 5)
+        .map((r) => {
+          const emp = employees.find((e) => e.id === r.employeeId);
+          const meta = D_BRANCH_META[emp?.branch] || { name: emp?.branch || '—', accent: MA.blue };
+          return {
+            d: icons.clipboard,
+            tone: MA.blue,
+            title: `${leaveLabel(r.leaveType)} 신청 · ${emp?.name || '—'}`,
+            sub: `${fmtDate(r.startDate)} ~ ${fmtDate(r.endDate)} · ${meta.name}`,
+            time: relTime(r.createdAt),
+            unread: true,
+          };
+        }),
+    [requests, employees],
+  );
+
+  const totalCount = issueItems.length + approvalItems.length;
+
   return (
-    <AdminMobileShell role={role} active="home" showHeader title="알림" badge>
+    <AdminMobileShell role={role} active="home" showHeader title="알림" badge={totalCount > 0}>
       {() => (
         <div style={{ padding: '0 0 16px' }}>
-          {/* 필터 */}
           <div style={{ padding: '10px 14px 8px', display: 'flex', gap: 6, overflowX: 'auto' }}>
-            {['전체 12', '긴급 2', '승인 7', '일반 3'].map((t, i) => (
-              <span key={t} style={{
-                padding: '6px 12px', borderRadius: 999, whiteSpace: 'nowrap',
-                background: i === 0 ? MA.text : MA.card, color: i === 0 ? '#fff' : MA.muted,
-                fontSize: 12, fontWeight: 700, border: i === 0 ? 'none' : `1px solid ${MA.border}`,
-              }}>{t}</span>
-            ))}
+            <span style={{
+              padding: '6px 12px', borderRadius: 999, whiteSpace: 'nowrap',
+              background: MA.text, color: '#fff', fontSize: 12, fontWeight: 700,
+            }}>{`전체 ${totalCount}`}</span>
+            <span style={{
+              padding: '6px 12px', borderRadius: 999, whiteSpace: 'nowrap',
+              background: MA.card, color: MA.muted, fontSize: 12, fontWeight: 700,
+              border: `1px solid ${MA.border}`,
+            }}>{`이슈 ${issueItems.length}`}</span>
+            <span style={{
+              padding: '6px 12px', borderRadius: 999, whiteSpace: 'nowrap',
+              background: MA.card, color: MA.muted, fontSize: 12, fontWeight: 700,
+              border: `1px solid ${MA.border}`,
+            }}>{`승인 ${approvalItems.length}`}</span>
           </div>
 
-          {/* 알림 리스트 */}
           <div style={{ padding: '0 14px' }}>
-            {/* 긴급 */}
-            <InboxGroup label="긴급 · 즉시 응답" items={[
-              { icon: icons.bell, tone: MA.danger, title: '긴급 호출 · B동 3번 골', sub: '이영희 · 설비 이상', time: '2분 전', unread: true, highlight: true },
-              { icon: icons.bell, tone: MA.danger, title: '이상 신고 · 해충 발견', sub: '김민국 · A동 2번 골', time: '25분 전', unread: true },
-            ]} />
-
-            {/* 승인 요청 */}
-            <InboxGroup label="승인 요청" items={[
-              { icon: icons.clipboard, tone: MA.blue, title: '연차 휴가 신청 · 김민국', sub: '4/28 ~ 4/30 (3일)', time: '2시간 전', unread: true },
-              { icon: icons.clipboard, tone: MA.warn, title: '연장근무 · 최수민', sub: '오늘 · 2시간', time: '3시간 전', unread: true },
-              { icon: icons.clipboard, tone: '#7C3AED', title: 'TBM 승인 · 안전점검', sub: '반장 제출', time: '오전 9:12', unread: false },
-            ]} />
-
-            {/* 오늘 */}
-            <InboxGroup label="오늘" items={[
-              { icon: icons.check, tone: MA.success, title: '수확 작업 완료 · B동', sub: '최수민 외 3명 · 845kg', time: '오전 11:30', unread: false },
-              { icon: icons.users, tone: MA.muted, title: '지각 알림 · 이영희', sub: '08:12 · 12분', time: '오전 8:15', unread: false },
-            ]} />
+            {totalCount === 0 ? (
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: 240, gap: 10 }}>
+                <Icon d={icons.bell} size={36} c={MA.mutedSoft} sw={1.5} />
+                <div style={{ fontSize: 16, fontWeight: 700, color: MA.text }}>새 알림 없음</div>
+                <div style={{ fontSize: 12, color: MA.muted }}>미해결 이슈나 대기 중인 승인이 없습니다</div>
+              </div>
+            ) : (
+              <>
+                {issueItems.length > 0 && (
+                  <InboxGroup label="미해결 이슈" items={issueItems} />
+                )}
+                {approvalItems.length > 0 && (
+                  <InboxGroup label="승인 요청" items={approvalItems} />
+                )}
+              </>
+            )}
           </div>
         </div>
       )}
@@ -591,20 +782,18 @@ function MobileInboxScreen({ role = 'farm' }) {
 const InboxGroup = ({ label, items }) => (
   <div style={{ marginBottom: 14 }}>
     <div style={{ fontSize: 11, color: MA.mutedSoft, fontWeight: 700, padding: '6px 4px', letterSpacing: 0.5 }}>{label.toUpperCase()}</div>
-    <div style={{ background: MA.card, borderRadius: 14, padding: '2px 14px' }}>
+    <div style={{ background: MA.card, borderRadius: 8, padding: '2px 14px', border: `1px solid ${MA.border}` }}>
       {items.map((r, i) => (
         <div key={i} style={{
           display: 'flex', alignItems: 'flex-start', gap: 12, padding: '12px 0',
           borderBottom: i < items.length - 1 ? `1px solid ${MA.divider}` : 'none',
-          background: r.highlight ? 'linear-gradient(90deg, rgba(220,38,38,0.04), transparent)' : 'transparent',
-          marginLeft: r.highlight ? -14 : 0, marginRight: r.highlight ? -14 : 0, paddingLeft: r.highlight ? 14 : 0, paddingRight: r.highlight ? 14 : 0,
         }}>
           <div style={{
-            width: 34, height: 34, borderRadius: 10, background: `${r.tone}15`,
+            width: 34, height: 34, borderRadius: 8, background: `${r.tone}18`,
             display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
             position: 'relative',
           }}>
-            <Icon d={r.icon} size={15} c={r.tone} sw={2.2} />
+            <Icon d={r.d} size={15} c={r.tone} sw={2.2} />
             {r.unread && <span style={{ position: 'absolute', top: -2, right: -2, width: 8, height: 8, borderRadius: 999, background: MA.danger, border: '2px solid #fff' }} />}
           </div>
           <div style={{ flex: 1, minWidth: 0 }}>
