@@ -1,0 +1,51 @@
+-- ============================================================================
+-- 세션 74-B: 평면도 + QR 위치 추적 시스템 — DB 마이그레이션 (참조 문서)
+-- 작성일: 2026-04-27
+--
+-- ⚠ 적용 상태 메모:
+--   greenhouses / qr_codes / qr_scans / employees.speed_factor 가
+--   Supabase 대시보드에서 이미 생성돼있어 apply_migration이 42P07 오류로 실패.
+--   → 교훈 126, 127 참조.
+--   실제 적용 내용: qr_codes 시드 92행만 execute_sql로 패치 (2026-04-27).
+--
+-- 실제 DB 스키마 현황 (조회 기준 2026-04-27):
+--   greenhouses: 4행 존재 (1cmp/2cmp/3cmp/4cmp, 부산LAB)
+--   qr_codes: 92행 시드 완료 (골당 F+B QR 2개 × 46골)
+--   qr_scans: 0행 (실 스캔 데이터 대기 중)
+--   employees.speed_factor: 41명 전원 1.0 (nullable, 계획은 NOT NULL)
+--
+-- 계획 vs 실제 스키마 차이:
+--   qr_codes.label → 실제 DB는 `note` 컬럼 (앱 코드 미사용, 무시)
+--   qr_codes 추가 컬럼: status TEXT DEFAULT 'active', issued_at DATE (앱 미사용)
+--   qr_scans 추가 컬럼: task_id UUID FK→tasks (앱 미사용)
+--   qr_scans.scan_type CHECK: ('start','half','complete','switch') — 'pause','resume' 미포함 (74-C에서 추가)
+--   qr_codes.greenhouse_id FK: CASCADE (계획 RESTRICT) — 기존 유지
+--   employees.speed_factor: nullable (계획 NOT NULL) — 앱에서 ?? 1.0 fallback 처리 중
+--
+-- 롤백 (비상 시):
+--   BEGIN;
+--   DROP TABLE IF EXISTS public.qr_scans CASCADE;
+--   DROP TABLE IF EXISTS public.qr_codes CASCADE;
+--   DROP TABLE IF EXISTS public.greenhouses CASCADE;
+--   ALTER TABLE public.employees DROP COLUMN IF EXISTS speed_factor;
+--   COMMIT;
+-- ============================================================================
+
+-- 아래 SQL은 계획 원본 (실제 적용 시 일부 항목 이미 존재):
+
+-- ── 참조: 실제 적용된 seed 패치 (execute_sql로 직접 실행) ────────────────────
+-- DO $$
+-- DECLARE r RECORD; g INT; cnt INT := 0;
+-- BEGIN
+--   FOR r IN SELECT id, code, gols FROM public.greenhouses WHERE branch='busan' ORDER BY code LOOP
+--     FOR g IN 1..r.gols LOOP
+--       INSERT INTO public.qr_codes (greenhouse_id, gol, side, note, status)
+--       VALUES (r.id, g, 'F', r.code||'-'||LPAD(g::TEXT,2,'0')||'-F', 'active'),
+--              (r.id, g, 'B', r.code||'-'||LPAD(g::TEXT,2,'0')||'-B', 'active')
+--       ON CONFLICT (greenhouse_id, gol, side) DO NOTHING;
+--       cnt := cnt + 2;
+--     END LOOP;
+--   END LOOP;
+--   RAISE NOTICE 'QR 시드 완료: %개', cnt;
+-- END $$;
+-- 결과: 92행 삽입 확인

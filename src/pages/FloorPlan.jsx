@@ -11,12 +11,12 @@ const FloorCtx = createContext({ HOUSE_CONFIG: [], FIELD_STATE: { timestamp: '-'
 // ═══════════════════════════════════════════════════════════
 
 const getWorker = (id, workersMap) => workersMap.find(w => w.id === id);
+const nowMin = () => { const d = new Date(); return d.getHours() * 60 + d.getMinutes(); };
+
 const timeAgo = (hhmm) => {
   if (!hhmm) return '-';
   const [h, m] = hhmm.split(':').map(Number);
-  const now = 10 * 60 + 25; // 10:25
-  const then = h * 60 + m;
-  const diff = now - then;
+  const diff = nowMin() - (h * 60 + m);
   if (diff < 0) return '지금';
   if (diff < 60) return `${diff}분 전`;
   return `${Math.floor(diff / 60)}시간 ${diff % 60}분 전`;
@@ -25,7 +25,7 @@ const timeAgo = (hhmm) => {
 const minSinceScan = (hhmm) => {
   if (!hhmm) return 0;
   const [h, m] = hhmm.split(':').map(Number);
-  return Math.max(0, (10 * 60 + 25) - (h * 60 + m));
+  return Math.max(0, nowMin() - (h * 60 + m));
 };
 
 // ─────── 위치 보간 로직 ───────
@@ -322,7 +322,7 @@ function FloorPlanScreen() {
   const [house, setHouse] = useState('1cmp');
   const [selectedGol, setSelectedGol] = useState(null);
   const [timeMode, setTimeMode] = useState('live');
-  const [historyTime, setHistoryTime] = useState(625);
+  const [historyTime, setHistoryTime] = useState(nowMin);
   const navigate = useNavigate();
 
   if (loading) return <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: T.mutedSoft, fontSize: 14 }}>로딩 중...</div>;
@@ -384,7 +384,7 @@ function FloorPlanScreen() {
       {timeMode === 'history' && (
         <div style={{ background: T.bg, borderBottom: `1px solid ${T.border}`, padding: '10px 32px', display: 'flex', alignItems: 'center', gap: 14 }}>
           <div style={{ fontSize: 11, fontWeight: 700, color: T.text }}>오늘 타임라인</div>
-          <input type="range" min={480} max={625} step={5} value={historyTime} onChange={(e) => setHistoryTime(Number(e.target.value))} style={{ flex: 1 }} />
+          <input type="range" min={480} max={nowMin()} step={5} value={historyTime} onChange={(e) => setHistoryTime(Number(e.target.value))} style={{ flex: 1 }} />
           <div style={{ padding: '4px 10px', background: T.primary, color: '#fff', borderRadius: 5, fontSize: 12, fontWeight: 700, fontFamily: 'ui-monospace, monospace', minWidth: 60, textAlign: 'center' }}>
             {fmtMin(historyTime)}
           </div>

@@ -60,7 +60,7 @@ export default function QrScanPage() {
       qr_code_id: qrCode.id,
       employee_id: currentUser?.id,
       scanned_at: new Date().toISOString(),
-      scan_type: 'task_start',
+      scan_type: 'start',
     }).select('id, scanned_at, scan_type, qr_code_id').single();
 
     if (error) {
