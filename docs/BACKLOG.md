@@ -213,7 +213,7 @@
 | UI-PORT-LOGIN-001 | UI 이식 | resolved | 세션 59 (2026-04-26) | - | LoginPage.jsx 전면 재작성. 목업(screen-others.jsx LoginScreen) 이식. 2컬럼 레이아웃: 좌측 인디고 그래디언트 브랜드패널(로고+카피+통계그리드) + 우측 폼(관리자/작업자 탭, 로그인 유지, 비밀번호 찾기). 데이터 로직(login/navigate/error/loading) 완전 보존. Playwright PASS 53/53. | docs/BACKLOG.md |
 | UI-PORT-EMPLOYEES-001 | UI 이식 | resolved | 세션 60 (2026-04-26) | - | EmployeesPage.jsx 전면 재작성. 직군 필터(전체/재배/관리/기타), 4 KPI 카드, 페이지네이션(PAGE_SIZE=8), 직원 등록 모달 보존. Playwright PASS 63/63. | docs/BACKLOG.md |
 | UI-PORT-LEAVE-001 | UI 이식 | resolved | 세션 60 (2026-04-26) | - | LeavePage.jsx 전면 재작성. 2컬럼 레이아웃(1fr 1.4fr): 좌측 승인 대기 카드 + 우측 팀 휴가 캘린더(월 이동). approveRequest/rejectRequest 완전 보존. Playwright PASS 63/63. | docs/BACKLOG.md |
-| UI-PORT-TASKS-001 | UI 이식 | open | 세션 59 (2026-04-26) | - | TaskPlanPage.jsx 목업(screen-others.jsx TasksScreen) 이식 대기. App.jsx 주석 스왑 패턴 준비됨. | docs/BACKLOG.md |
+| UI-PORT-TASKS-001 | UI 이식 | resolved | 세션 61 (2026-04-26) | - | TaskBoardPage.jsx 기존 칸반 구현 활용 + 데이터 매핑 5건 수정(pending→planned/workerId/date/taskType/progress). App.jsx /admin/tasks 라우트 스왑. 통합 회귀 PASS 63/63. | docs/BACKLOG.md |
 
 ---
 

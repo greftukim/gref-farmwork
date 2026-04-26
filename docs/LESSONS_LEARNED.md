@@ -2416,3 +2416,18 @@ Playwright PASS 53/53 — 데이터 로직 회귀 0건.
 - 이식 전: 현재 파일의 "데이터 레이어"(useAuthStore, useState, form submit, navigate) 목록 작성
 - 이식 후: 해당 목록을 하나씩 체크 — 모두 신규 JSX에 그대로 연결됐는지
 - Playwright 에러 메시지 어서션은 Supabase 에러 문자열(English) 포함 검사 필요 ('Invalid' 등 대소문자 확인)
+
+## 교훈 101 — Kanban/보드 UI에서 DB status 값과 열 ID(column ID)는 별개다
+
+세션 61 TaskBoardPage 조사: DB `status` 값은 `pending/in_progress/completed`이나
+Kanban 열 ID는 `planned/assigned/in_progress/completed`로 설계됨.
+`byStatus` 그룹핑에서 `pending` 작업이 전부 묵살(silently dropped)되어 169건이 화면에 안 보이는 상태였다.
+
+**Why:** snakeToCamel은 필드 *이름*을 변환하지만 필드 *값*은 변환하지 않는다.
+DB에서 오는 status 문자열은 UI 열 ID와 반드시 일치하지 않으며,
+`map[s]` 조회 실패가 무음 silently drop이라 버그를 눈치채기 어렵다.
+
+**How to apply:**
+- Kanban 구현 전 DB 실측으로 status 값 목록 확인 (`GROUP BY status`)
+- 열 ID와 DB 값이 다르면 명시적 매핑 레이어 필수: `const colOf = (s) => (s === 'pending' ? 'planned' : s) || 'planned'`
+- 기존 구현 파일(`TaskBoardPage.jsx` 등) 먼저 확인 후 신규 작성 여부 결정 — 이미 더 좋은 구현이 있을 수 있다

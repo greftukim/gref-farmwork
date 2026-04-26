@@ -60,8 +60,10 @@ export default function TaskBoardPage() {
 
   const byStatus = useMemo(() => {
     const map = { planned: [], assigned: [], in_progress: [], completed: [] };
+    // DB value 'pending' → Kanban column 'planned'
+    const colOf = (s) => (s === 'pending' ? 'planned' : s) || 'planned';
     filtered.forEach((t) => {
-      const s = t.status || 'planned';
+      const s = colOf(t.status);
       if (map[s]) map[s].push(t);
     });
     return map;
@@ -162,8 +164,8 @@ export default function TaskBoardPage() {
                     </div>
                   ) : items.map((t) => {
                     const p = PRIORITY[t.priority] || PRIORITY.medium;
-                    const assignees = (t.assignees || []).map((id) => empMap[id]).filter(Boolean);
-                    const progress = t.progress ?? (t.status === 'completed' ? 100 : 0);
+                    const assignees = t.workerId ? [empMap[t.workerId]].filter(Boolean) : [];
+                    const progress = t.progress ?? (t.status === 'completed' ? 100 : t.status === 'in_progress' ? 50 : 0);
                     return (
                       <div key={t.id}
                         draggable
@@ -183,11 +185,11 @@ export default function TaskBoardPage() {
                             fontSize: 9, fontWeight: 700, padding: '2px 6px', borderRadius: 3,
                             background: p.soft, color: p.fg, flexShrink: 0,
                           }}>{p.l}</span>
-                          {t.crop && (
+                          {t.taskType && (
                             <span style={{
                               fontSize: 9, fontWeight: 600, padding: '2px 6px', borderRadius: 3,
                               background: T.bg, color: T.muted,
-                            }}>{t.crop}</span>
+                            }}>{t.taskType}</span>
                           )}
                         </div>
 
@@ -206,10 +208,10 @@ export default function TaskBoardPage() {
 
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 10, color: T.mutedSoft }}>
-                            {t.dueDate && (
+                            {t.date && (
                               <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3, fontFamily: 'ui-monospace,monospace', fontWeight: 600 }}>
                                 <Icon d={icons.calendar} size={10} c={T.mutedSoft} sw={2} />
-                                {fmtDate(t.dueDate)}
+                                {fmtDate(t.date)}
                               </span>
                             )}
                             {t.zone && (

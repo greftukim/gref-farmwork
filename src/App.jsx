@@ -57,10 +57,7 @@ import SchedulePage from './pages/admin/SchedulePage';
 
 import CropZonePage from './pages/admin/CropZonePage';
 
-// 구 버전 (현재 활성)
-import TaskPlanPage from './pages/admin/TaskPlanPage';
-// 신 버전 (디자인 교체 후 주석 스왑) — /admin/tasks 라우트에 연결
-// import { TasksScreen as TaskPlanPage } from './pages/_others';
+// UI-PORT-TASKS-001 완료 — TaskBoardPage 칸반으로 스왑 (세션 61)
 import TaskBoardPage from './pages/admin/TaskBoardPage';
 import IssueCallPage from './pages/admin/IssueCallPage';
 import NoticePage from './pages/admin/NoticePage';
@@ -188,8 +185,7 @@ export default function App() {
             <Route path="leave-approval" element={<LeaveApprovalRoute />} />
             <Route path="schedule" element={<SchedulePage />} />
             <Route path="crops" element={<CropZonePage />} />
-            <Route path="tasks" element={<TaskPlanPage />} />
-            <Route path="board" element={<TaskBoardPage />} />
+            <Route path="tasks" element={<TaskBoardPage />} />
             <Route path="records" element={<IssueCallPage />} />
             <Route path="stats" element={<StatsPage />} />
             <Route path="work-stats" element={<WorkStatsPage />} />
