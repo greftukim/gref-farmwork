@@ -1,5 +1,6 @@
 // 직원 관리 — /admin/employees
 import React, { useMemo, useState } from 'react';
+import { QRCodeSVG } from 'qrcode.react';
 import { Avatar, Card, Dot, Icon, Pill, T, TopBar, btnPrimary, btnSecondary, icons } from '../../design/primitives';
 import useEmployeeStore from '../../stores/employeeStore';
 
@@ -16,12 +17,15 @@ export default function EmployeesPage() {
   const employees = useEmployeeStore((s) => s.employees);
   const addEmployee = useEmployeeStore((s) => s.addEmployee);
   const updateEmployee = useEmployeeStore((s) => s.updateEmployee);
+  const issueDeviceToken = useEmployeeStore((s) => s.issueDeviceToken);
 
   const [q, setQ] = useState('');
   const [jobFilter, setJobFilter] = useState('전체');
   const [page, setPage] = useState(0);
   const [showAdd, setShowAdd] = useState(false);
   const [draft, setDraft] = useState({ name: '', role: 'worker', jobType: '', employmentType: 'regular', phone: '' });
+  const [qrTarget, setQrTarget] = useState(null); // { id, name, token }
+  const [qrLoading, setQrLoading] = useState(false);
 
   const filtered = useMemo(() => {
     const s = q.trim();
@@ -45,6 +49,30 @@ export default function EmployeesPage() {
     setDraft({ name: '', role: 'worker', jobType: '', employmentType: 'regular', phone: '' });
     setShowAdd(false);
   };
+
+  const handleIssueQr = async (emp) => {
+    setQrLoading(true);
+    const result = await issueDeviceToken(emp.id);
+    setQrLoading(false);
+    if (result?.token) {
+      setQrTarget({ id: emp.id, name: emp.name, token: result.token });
+    }
+  };
+
+  const handleReissueQr = async () => {
+    if (!qrTarget) return;
+    if (!window.confirm(`${qrTarget.name}의 QR을 재발급하면 기존 QR은 즉시 무효화됩니다. 계속하시겠습니까?`)) return;
+    setQrLoading(true);
+    const result = await issueDeviceToken(qrTarget.id);
+    setQrLoading(false);
+    if (result?.token) {
+      setQrTarget((prev) => ({ ...prev, token: result.token }));
+    }
+  };
+
+  const qrUrl = qrTarget
+    ? `${window.location.origin}/auth?token=${qrTarget.token}`
+    : '';
 
   return (
     <div style={{ flex: 1, overflow: 'auto', background: T.bg, minWidth: 0 }}>
@@ -130,12 +158,24 @@ export default function EmployeesPage() {
                       : <Pill tone="muted">비활성</Pill>}
                   </td>
                   <td style={{ padding: '12px 16px', textAlign: 'right' }}>
-                    <button
-                      onClick={() => updateEmployee?.(e.id, { isActive: !e.isActive })}
-                      style={{ height: 26, padding: '0 10px', borderRadius: 6, border: `1px solid ${T.border}`, background: T.surface, fontSize: 11, fontWeight: 600, color: T.muted, cursor: 'pointer' }}
-                    >
-                      {e.isActive ? '비활성화' : '활성화'}
-                    </button>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 6 }}>
+                      {e.role === 'worker' && (
+                        <button
+                          onClick={() => handleIssueQr(e)}
+                          title="QR 발급"
+                          style={{ height: 26, padding: '0 10px', borderRadius: 6, border: `1px solid ${T.border}`, background: T.surface, fontSize: 11, fontWeight: 600, color: T.primary, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}
+                        >
+                          <Icon d={icons.plus} size={10} c={T.primary} sw={2.5} />
+                          QR
+                        </button>
+                      )}
+                      <button
+                        onClick={() => updateEmployee?.(e.id, { isActive: !e.isActive })}
+                        style={{ height: 26, padding: '0 10px', borderRadius: 6, border: `1px solid ${T.border}`, background: T.surface, fontSize: 11, fontWeight: 600, color: T.muted, cursor: 'pointer' }}
+                      >
+                        {e.isActive ? '비활성화' : '활성화'}
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -160,6 +200,58 @@ export default function EmployeesPage() {
           </div>
         </Card>
       </div>
+
+      {/* QR 발급 모달 */}
+      {qrTarget && (
+        <div onClick={() => setQrTarget(null)} style={{ position: 'fixed', inset: 0, background: 'rgba(15,23,42,0.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50 }}>
+          <Card onClick={(e) => e.stopPropagation()} pad={28} style={{ width: 380, maxWidth: '92vw', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16 }}>
+            <div style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <div>
+                <div style={{ fontSize: 15, fontWeight: 700, color: T.text }}>QR 로그인 코드</div>
+                <div style={{ fontSize: 12, color: T.muted, marginTop: 2 }}>{qrTarget.name} · 작업자</div>
+              </div>
+              <button onClick={() => setQrTarget(null)} style={{ width: 28, height: 28, borderRadius: 6, border: `1px solid ${T.border}`, background: T.surface, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <Icon d={icons.x} size={13} c={T.muted} sw={2} />
+              </button>
+            </div>
+
+            <div style={{ padding: 16, background: T.bg, borderRadius: 10, border: `1px solid ${T.border}` }}>
+              <QRCodeSVG
+                value={qrUrl}
+                size={200}
+                level="M"
+                includeMargin={false}
+                style={{ display: 'block' }}
+              />
+            </div>
+
+            <div style={{ width: '100%', background: T.bg, borderRadius: 8, padding: '10px 12px' }}>
+              <div style={{ fontSize: 10, color: T.mutedSoft, fontWeight: 600, marginBottom: 4 }}>QR URL</div>
+              <div style={{ fontSize: 11, color: T.muted, fontFamily: 'ui-monospace,monospace', wordBreak: 'break-all', lineHeight: 1.5 }}>{qrUrl}</div>
+            </div>
+
+            <div style={{ width: '100%', background: T.warningSoft, borderRadius: 8, padding: '8px 12px' }}>
+              <div style={{ fontSize: 11, color: T.warning, fontWeight: 600 }}>재발급 시 기존 QR은 즉시 무효화됩니다</div>
+            </div>
+
+            <div style={{ display: 'flex', gap: 8, width: '100%' }}>
+              <button
+                onClick={handleReissueQr}
+                disabled={qrLoading}
+                style={{ flex: 1, height: 36, borderRadius: 7, border: `1px solid ${T.border}`, background: T.surface, color: T.muted, fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
+              >
+                재발급
+              </button>
+              <button
+                onClick={() => navigator.clipboard?.writeText(qrUrl)}
+                style={{ flex: 1, height: 36, borderRadius: 7, border: 0, background: T.text, color: T.surface, fontSize: 13, fontWeight: 700, cursor: 'pointer' }}
+              >
+                URL 복사
+              </button>
+            </div>
+          </Card>
+        </div>
+      )}
 
       {/* 직원 등록 모달 */}
       {showAdd && (

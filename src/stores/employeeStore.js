@@ -74,6 +74,23 @@ const useEmployeeStore = create((set, get) => ({
 
     return { data };
   },
+
+  // 작업자 QR 로그인 토큰 발급/재발급
+  // 생성된 token → /auth?token={token} URL → QRCodeSVG 렌더링
+  issueDeviceToken: async (id) => {
+    const token = crypto.randomUUID();
+    const { data, error } = await supabase
+      .from('employees')
+      .update({ device_token: token })
+      .eq('id', id)
+      .select()
+      .single();
+    if (!error && data) {
+      set((s) => ({ employees: s.employees.map((e) => (e.id === id ? snakeToCamel(data) : e)) }));
+      return { token };
+    }
+    return { error };
+  },
 }));
 
 export default useEmployeeStore;
