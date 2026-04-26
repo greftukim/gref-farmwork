@@ -316,6 +316,7 @@ function HQBranchesScreen() {
   const harvestRecords = useHarvestStore((s) => s.records);
   const fetchHarvest = useHarvestStore((s) => s.fetchCurrentMonth);
   const [branchTargets, setBranchTargets] = useState({});
+  const [contactBranch, setContactBranch] = useState(null);
 
   const today = new Date().toISOString().slice(0, 10);
 
@@ -455,7 +456,7 @@ function HQBranchesScreen() {
                     </div>
                     <div style={{ fontSize: 11, color: T.mutedSoft, marginTop: 2 }}>{b.phone}</div>
                   </div>
-                  <button style={{ padding: '6px 10px', borderRadius: 6, border: 0, background: HQ.accent, color: '#fff', fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>연락</button>
+                  <button onClick={() => setContactBranch(b)} style={{ padding: '6px 10px', borderRadius: 6, border: 0, background: HQ.accent, color: '#fff', fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>연락</button>
                 </div>
 
                 {/* 정보 그리드 */}
@@ -511,6 +512,53 @@ function HQBranchesScreen() {
           </Card>
         </div>
       </div>
+
+      {/* HQ-BRANCH-CONTACT-001: 지점 연락 모달 */}
+      {contactBranch && (
+        <div onClick={() => setContactBranch(null)} style={{
+          position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', zIndex: 9000,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+        }}>
+          <div onClick={e => e.stopPropagation()} style={{
+            background: T.surface, borderRadius: 16, width: 360, padding: 24,
+            boxShadow: '0 8px 32px rgba(0,0,0,0.18)',
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <div style={{
+                  width: 40, height: 40, borderRadius: 10, background: contactBranch.accent, color: '#fff',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  fontSize: 13, fontWeight: 700,
+                }}>{contactBranch.short}</div>
+                <div>
+                  <div style={{ fontSize: 15, fontWeight: 700, color: T.text }}>{contactBranch.name}</div>
+                  <div style={{ fontSize: 11, color: T.mutedSoft }}>지점 연락처</div>
+                </div>
+              </div>
+              <button onClick={() => setContactBranch(null)} style={{
+                border: 0, background: 'transparent', cursor: 'pointer', fontSize: 18, color: T.mutedSoft,
+              }}>×</button>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              {[
+                { l: '지점장', v: contactBranch.mgr },
+                { l: '직원 수', v: `${contactBranch.workers}명` },
+                { l: '출근률', v: `${contactBranch.rate}%` },
+                { l: '이번달 수확', v: `${contactBranch.harvest.toLocaleString()} kg` },
+              ].map((row, i) => (
+                <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingBottom: 10, borderBottom: `1px solid ${T.borderSoft}` }}>
+                  <span style={{ fontSize: 12, color: T.mutedSoft, fontWeight: 600 }}>{row.l}</span>
+                  <span style={{ fontSize: 13, fontWeight: 700, color: T.text }}>{row.v}</span>
+                </div>
+              ))}
+              <div style={{ marginTop: 4, padding: 10, background: T.bg, borderRadius: 8, fontSize: 11, color: T.mutedSoft }}>
+                전화번호·주소 정보는 DB에 미등록 상태입니다.
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -1162,8 +1210,8 @@ function HQFinanceScreen() {
                 );
               })}
             </div>
-            {btnSecondary('PDF 내보내기', icons.chart, () => alert('재무 PDF 내보내기 기능 준비 중입니다.'))}
-            {/* BACKLOG: HQ-FINANCE-PDF-EXPORT-001 */}
+            {btnSecondary('PDF 내보내기', icons.chart, () => window.print())}
+            {/* HQ-FINANCE-PDF-EXPORT-001: window.print() — @media print in index.css */}
           </>
         }
       />

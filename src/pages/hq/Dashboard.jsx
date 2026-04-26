@@ -9,6 +9,7 @@ import useNoticeStore from '../../stores/noticeStore';
 import useAuthStore from '../../stores/authStore';
 import useAttendanceStore from '../../stores/attendanceStore';
 import useHarvestStore from '../../stores/harvestStore';
+import { downloadHQReportExcel, downloadCropReportExcel } from '../../lib/hqReportExcel';
 
 const D_BRANCH_META = {
   busan:        { name: '부산LAB',  dot: T.primary,   avatar: 'blue',    accent: T.primary,   accentSoft: T.primarySoft  },
@@ -209,7 +210,7 @@ function HQDashboardScreen() {
         period={period}
         onPeriodChange={setPeriod}
         actions={<>
-          {btnSecondary('리포트 내보내기', icons.chart, () => alert('리포트 내보내기 기능 준비 중입니다.'))}
+          {btnSecondary('리포트 내보내기', icons.chart, () => downloadHQReportExcel(branches, totalWorkers, totalCheckedIn, totalHarvest))}
           {btnPrimary('전사 공지 작성', icons.plus, () => navigate('/admin/hq/notices'))}
         </>}
       />
@@ -468,7 +469,7 @@ function HQDashboardScreen() {
 
             <div style={{ marginTop: 18, paddingTop: 14, borderTop: `1px solid ${T.borderSoft}`, display: 'flex', justifyContent: 'space-between', fontSize: 11, color: T.mutedSoft }}>
               <span>전년 동월 대비 <span style={{ fontWeight: 700 }}>—</span></span>
-              <span>작물별 상세 분석 → <span onClick={() => alert('작물별 상세 분석 보고서 준비 중입니다.')} style={{ color: HQ.accent, fontWeight: 600, cursor: 'pointer' }}>보고서 열기</span></span>
+              <span>작물별 상세 분석 → <span onClick={() => downloadCropReportExcel(branchCropData, trendData, selectedCrop)} style={{ color: HQ.accent, fontWeight: 600, cursor: 'pointer' }}>보고서 열기</span></span>
             </div>
           </Card>
 

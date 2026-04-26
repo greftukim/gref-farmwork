@@ -19,3 +19,21 @@
   from { transform: translateX(100%); opacity: 0; }
   to { transform: translateX(0); opacity: 1; }
 }
+
+/* HQ-FINANCE-PDF-EXPORT-001: window.print() 인쇄 최적화 */
+@media print {
+  /* 사이드바·탑바·버튼 숨김 */
+  nav, aside, header,
+  [class*="sidebar"], [class*="topbar"], [class*="nav"],
+  button, .no-print { display: none !important; }
+
+  /* 전체 너비 출력 */
+  body, #root { margin: 0; padding: 0; }
+  * { box-shadow: none !important; }
+
+  /* 차트(SVG) 인쇄 보정 */
+  svg { overflow: visible; }
+
+  /* 페이지 나누기 방지 */
+  .recharts-wrapper, .card { break-inside: avoid; }
+}

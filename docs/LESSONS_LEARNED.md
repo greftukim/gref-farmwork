@@ -2465,3 +2465,18 @@ dailyWorkLogExcel.js 패턴 재사용 → `XLSX.utils.aoa_to_sheet` + `XLSX.writ
 - 한글 컬럼 헤더 + aoa_to_sheet + book_new + writeFile 패턴
 - Playwright 검증: `acceptDownloads: true` + `Promise.all([waitForEvent('download', {timeout:10000}), click()])`
 - 파일 크기 검증: stat.size > 1000 (바이트) — 빈 파일 방지
+
+## 교훈 104 — Playwright `span:has-text` + `.first()` 함정 — outer/inner span 중복 선택
+
+세션 64 V-5 첫 실행 FAIL: `span:has-text("보고서 열기").first()`가 outer span을 반환해 onClick 미발동.
+
+**Why:**
+JSX 구조 `<span>텍스트 → <span onClick={fn}>보고서 열기</span></span>` 에서,
+Playwright `span:has-text("X").first()`는 DOM 트리 순서상 outer span이 먼저 오므로 outer를 선택한다.
+outer span에는 onClick이 없어 클릭해도 다운로드 이벤트가 발생하지 않는다.
+
+**How to apply:**
+- 중첩 span에서 내부 onClick 요소를 타겟팅할 때 `getByText('X', { exact: true })` 사용.
+  → textContent가 정확히 "X"인 가장 구체적인 요소를 찾는다 (outer span은 "텍스트 → X" 로 exact 불일치).
+- 또는 `locator('span[style*="cursor: pointer"]:has-text("X")')` 로 style 속성으로 구분.
+- button 대신 span/div에 onClick을 붙일 때 Playwright 테스트 작성 시 위 함정을 주의.
