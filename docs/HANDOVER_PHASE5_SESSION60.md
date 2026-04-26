@@ -122,4 +122,4 @@ PASS 63 / FAIL 0 / WARN 0 / TOTAL 63
 
 ## 마지막 커밋
 
-`(이번 세션 커밋 후 업데이트)`
+`9c24c42` feat(session60): Tier 5 EmployeesPage + LeavePage 이식 — PASS 63/63

@@ -6,6 +6,9 @@ import useEmployeeStore from '../../stores/employeeStore';
 
 const TYPES = { annual: '연차', sick: '병가', personal: '개인', family: '경조사' };
 const AV_COLORS = ['indigo', 'emerald', 'amber', 'slate', 'rose'];
+// DB에 days 컬럼 없음 — type에서 파생
+const DAY_MAP = { '연차': 1, '오전반차': 0.5, '오후반차': 0.5, '출장': 0, '대휴': 1, annual: 1, sick: 1, personal: 1, family: 1 };
+const leaveDays = (r) => r.days ?? DAY_MAP[r.type] ?? '-';
 
 export default function LeavePage() {
   const requests = useLeaveStore((s) => s.requests);
@@ -126,7 +129,7 @@ export default function LeavePage() {
                       <div style={{ padding: 12, background: T.bg, borderRadius: 8, marginBottom: 10 }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, marginBottom: 6 }}>
                           <span style={{ color: T.muted }}>기간</span>
-                          <span style={{ color: T.text, fontWeight: 700, fontFamily: 'ui-monospace,monospace' }}>{r.date} · {r.days}일</span>
+                          <span style={{ color: T.text, fontWeight: 700, fontFamily: 'ui-monospace,monospace' }}>{r.date} · {leaveDays(r)}일</span>
                         </div>
                         <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12 }}>
                           <span style={{ color: T.muted }}>사유</span>
