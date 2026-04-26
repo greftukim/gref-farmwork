@@ -239,6 +239,8 @@
 | HQ-PERF-ROUTE-REGRESSION-001 | BUG | resolved | 세션 72 (2026-04-26) | - | 세션 68 HQ-PERF-ROUTE-MISMATCH-001 해소 시 HQ_ROUTES.performance를 '/admin/stats'로 변경하여 /admin/hq/performance 라우트가 4세션간 dead 상태 유지. 세션 72에서 HQ_ROUTES.performance → '/admin/hq/performance' 복원 + getHQActiveId/getActiveGroup/Sidebar/BottomNav/AdminDashboard 6곳 정합성 정정. FARM_ROUTES.stats → '/admin/performance'로 수정. 교훈 121·122 적용. Playwright PASS 35 / FAIL 0 / WARN 0. | docs/HANDOVER_PHASE5_SESSION72.md |
 | P3-DEAD-STATS-PAGE-001 | 코드 부채 | resolved | 세션 72 (2026-04-26) | - | src/pages/admin/StatsPage.jsx — 사용자 지시로 폐기. App.jsx import + Route('stats') 제거 + git rm. /admin/stats 라우트 전체 제거. 관련 내부 링크 6곳 /admin/performance 또는 /admin/hq/performance로 교체. 교훈 123 적용. | docs/HANDOVER_PHASE5_SESSION72.md |
 | HQ-SIDEBAR-CLICK-UX-001 | UX 개선 | resolved | 세션 72.6 (2026-04-26) | - | HQ 사이드바 그룹 펼침 트리거: hover(onMouseEnter/Leave) → 클릭 토글 전환. hoveredGroup 상태 → openGroup 단일 변수(단일 펼침). useEffect(location.pathname) → 라우트 이동 시 활성 그룹 자동 펼침. 그룹 헤더 fontSize 10→12, 하위 항목 fontSize 13→14. 애니메이션 0.18s → maxHeight 0.25s + opacity 0.2s. 교훈 125 적용. Playwright PASS 37 / FAIL 0 / WARN 3(CSS전환감지한계). | docs/HANDOVER_PHASE5_SESSION72_6.md |
+| LABOR-COST-001 | 데이터 미연결 | open | 세션 73 (2026-04-26) | - | MobileAdminHomeHQ KPI "이번달 인건비" — finance_monthly 테이블 미연결, "추정" 라벨 + 하드코딩 0원 표시. PC DashboardInteractive와 동일 처리(HQ-FINANCE-001 Phase3 이후). HQ-FINANCE-003 입력UI 완료 후 연결. | docs/BACKLOG.md |
+| TASK-MOBILE-001 | 기능 미구현 | open | 세션 73 (2026-04-26) | - | MobileAdminHomeFarm "오늘 작업 진행" — taskStore 승인 Store 목록에 포함되지 않아 placeholder("—") 표시. farm_admin 모바일 홈 진행 작업 카드 실연결 보류. 승인된 작업자 그룹 별 taskStore 필터 설계 후 처리. | docs/BACKLOG.md |
 
 ---
 
