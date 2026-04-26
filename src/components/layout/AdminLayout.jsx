@@ -161,11 +161,12 @@ export default function AdminLayout() {
       <ToastContainer />
       <PWAInstallGuideModal guideType={guideType} onClose={closeGuide} />
       {/*
-        챗봇 영역.
+        챗봇 영역 — 임시 숨김 처리 (세션 73).
+        재활성화: 아래 두 줄 주석 해제.
         z-index 값으로 레이어 보장: FAB z-[60] < Panel z-[70] < Toast z-[100].
       */}
-      <ChatbotFab />
-      <ChatbotPanel />
+      {/* <ChatbotFab /> */}
+      {/* <ChatbotPanel /> */}
     </div>
   );
 }
