@@ -34,13 +34,6 @@ function getActiveGroup(pathname) {
   return 'g-dashboard';
 }
 
-const Chevron = ({ open }) => (
-  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2"
-    style={{ transform: open ? 'rotate(0deg)' : 'rotate(-90deg)', transition: 'transform 0.2s ease', flexShrink: 0, opacity: 0.5 }}>
-    <polyline points="6 9 12 15 18 9"/>
-  </svg>
-);
-
 const HQSidebar = ({ active = 'dashboard', onNavigate }) => {
   const location = useLocation();
   const navigate = useNavigate();
@@ -51,11 +44,6 @@ const HQSidebar = ({ active = 'dashboard', onNavigate }) => {
   const pendingLeaveCount = useLeaveStore((s) => s.requests.filter((r) => r.status === 'pending').length);
 
   const activeGroupId = getActiveGroup(location.pathname);
-  const [openGroup, setOpenGroup] = useState(() => getActiveGroup(location.pathname));
-  useEffect(() => {
-    setOpenGroup(getActiveGroup(location.pathname));
-  }, [location.pathname]);
-  const isExpanded = (id) => id === openGroup;
 
   const GROUPS = [
     {
@@ -116,133 +104,119 @@ const HQSidebar = ({ active = 'dashboard', onNavigate }) => {
       width: 240, background: T.surface, borderRight: `1px solid ${T.border}`,
       display: 'flex', flexDirection: 'column', flexShrink: 0,
     }}>
-      <div style={{ padding: '20px 20px 16px', borderBottom: `1px solid ${T.borderSoft}` }}>
+      <div style={{ padding: '16px 20px 12px', borderBottom: `1px solid ${T.borderSoft}` }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <div style={{
-            width: 32, height: 32, borderRadius: 8,
+            width: 30, height: 30, borderRadius: 8,
             background: `linear-gradient(135deg, ${HQ.accent}, ${HQ.accentDark})`,
             display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff',
           }}>
-            <Icon d={icons.sprout} size={18} sw={2} />
+            <Icon d={icons.sprout} size={16} sw={2} />
           </div>
           <div>
-            <div style={{ fontSize: 14, fontWeight: 700, color: T.text, letterSpacing: -0.2 }}>FarmWork</div>
+            <div style={{ fontSize: 13, fontWeight: 700, color: T.text, letterSpacing: -0.2 }}>FarmWork</div>
             <div style={{ fontSize: 10, color: HQ.accent, fontWeight: 700, letterSpacing: 0.4 }}>HQ · 관리팀</div>
           </div>
         </div>
       </div>
 
       {/* 팀 스위처 */}
-      <div style={{ padding: '12px 12px 0' }}>
+      <div style={{ padding: '8px 12px 0' }}>
         <div style={{
           display: 'flex', background: T.bg, borderRadius: 8, padding: 3, fontSize: 11, fontWeight: 600,
         }}>
           <span style={{
-            flex: 1, textAlign: 'center', padding: '6px 8px', borderRadius: 6,
+            flex: 1, textAlign: 'center', padding: '5px 8px', borderRadius: 6,
             background: T.surface, color: T.text, boxShadow: '0 1px 2px rgba(15,23,42,0.08)',
           }}>관리팀</span>
-          <span style={{ flex: 1, textAlign: 'center', padding: '6px 8px', color: T.mutedSoft }}>재배팀</span>
+          <span style={{ flex: 1, textAlign: 'center', padding: '5px 8px', color: T.mutedSoft }}>재배팀</span>
         </div>
       </div>
 
-      <nav style={{ padding: '8px 12px', flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
+      {/* 메뉴 — 항상 펼침, 스크롤 없음 */}
+      <nav style={{ padding: '6px 12px', flex: 1, display: 'flex', flexDirection: 'column' }}>
         {GROUPS.map((g, gi) => {
-          const open = isExpanded(g.id);
           const isActiveGroup = g.id === activeGroupId;
           return (
-            <div
-              key={g.id}
-              style={{ marginTop: gi === 0 ? 4 : 2 }}
-            >
-              {/* 그룹 헤더 — 클릭 토글 */}
-              <div
-                onClick={() => setOpenGroup((prev) => prev === g.id ? null : g.id)}
-                style={{
-                  display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                  padding: '6px 8px', borderRadius: 6, cursor: 'pointer',
-                  color: isActiveGroup ? T.text : T.mutedSoft,
-                  fontSize: 12, fontWeight: 700, letterSpacing: 0.3,
-                  textTransform: 'uppercase', userSelect: 'none',
-                }}
-              >
-                <span>{g.label}</span>
-                <Chevron open={open} />
-              </div>
-
-              {/* 인라인 펼침 — max-height + opacity 트랜지션 */}
+            <div key={g.id} style={{ marginTop: gi === 0 ? 2 : 0 }}>
+              {/* 그룹 레이블 — 구분용, 클릭 없음 */}
               <div style={{
-                maxHeight: open ? '400px' : '0',
-                opacity: open ? 1 : 0,
-                overflow: 'hidden',
-                transition: 'max-height 0.25s ease-out, opacity 0.2s ease-out',
+                padding: '4px 8px 2px',
+                fontSize: 9, fontWeight: 700, letterSpacing: 0.6,
+                textTransform: 'uppercase', userSelect: 'none',
+                color: isActiveGroup ? HQ.accent : T.mutedSoft,
               }}>
-                {g.items.map((i) => {
-                  const on = i.id === active;
-                  return (
-                    <div
-                      key={i.id}
-                      onClick={() => onNavigate && onNavigate(i.id)}
-                      style={{
-                        display: 'flex', alignItems: 'center', gap: 10,
-                        padding: '7px 8px 7px 12px', borderRadius: 7, cursor: 'pointer',
-                        background: on ? HQ.accentSoft : 'transparent',
-                        color: on ? HQ.accentText : T.muted,
-                        fontSize: 14, fontWeight: on ? 600 : 500,
-                        marginBottom: 1,
-                      }}
-                      onMouseEnter={(e) => { if (!on) e.currentTarget.style.background = T.bg; }}
-                      onMouseLeave={(e) => { if (!on) e.currentTarget.style.background = 'transparent'; }}
-                    >
-                      <Icon d={i.icon} size={15} sw={on ? 2.2 : 1.8} />
-                      <span style={{ flex: 1 }}>{i.label}</span>
-                      {i.badge && <span style={{
-                        background: T.danger, color: '#fff', fontSize: 10, fontWeight: 700,
-                        padding: '1px 6px', borderRadius: 999,
-                      }}>{i.badge}</span>}
-                    </div>
-                  );
-                })}
-
-                {g.branches && g.branches.map((b) => (
-                  <div
-                    key={b.n}
-                    onClick={() => navigate('/admin/hq/branches')}
-                    style={{
-                      display: 'flex', alignItems: 'center', gap: 8,
-                      padding: '6px 8px 6px 24px', borderRadius: 7, cursor: 'pointer',
-                      color: T.muted, fontSize: 12, fontWeight: 500, marginBottom: 1,
-                    }}
-                    onMouseEnter={(e) => { e.currentTarget.style.background = T.bg; }}
-                    onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
-                  >
-                    <Dot c={b.c} />
-                    <span style={{ flex: 1 }}>{b.n}</span>
-                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" style={{ opacity: 0.4 }}>
-                      <polyline points="9 18 15 12 9 6"/>
-                    </svg>
-                  </div>
-                ))}
+                {g.label}
               </div>
+
+              {/* 하위 항목 — 항상 표시 */}
+              {g.items.map((i) => {
+                const on = i.id === active;
+                return (
+                  <div
+                    key={i.id}
+                    onClick={() => onNavigate && onNavigate(i.id)}
+                    style={{
+                      display: 'flex', alignItems: 'center', gap: 9,
+                      padding: '5px 8px 5px 10px', borderRadius: 6, cursor: 'pointer',
+                      background: on ? HQ.accentSoft : 'transparent',
+                      color: on ? HQ.accentText : T.muted,
+                      fontSize: 13, fontWeight: on ? 600 : 500,
+                      marginBottom: 1,
+                    }}
+                    onMouseEnter={(e) => { if (!on) e.currentTarget.style.background = T.bg; }}
+                    onMouseLeave={(e) => { if (!on) e.currentTarget.style.background = 'transparent'; }}
+                  >
+                    <Icon d={i.icon} size={14} sw={on ? 2.2 : 1.8} />
+                    <span style={{ flex: 1 }}>{i.label}</span>
+                    {i.badge && <span style={{
+                      background: T.danger, color: '#fff', fontSize: 10, fontWeight: 700,
+                      padding: '1px 6px', borderRadius: 999,
+                    }}>{i.badge}</span>}
+                  </div>
+                );
+              })}
+
+              {g.branches && g.branches.map((b) => (
+                <div
+                  key={b.n}
+                  onClick={() => navigate('/admin/hq/branches')}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: 7,
+                    padding: '4px 8px 4px 22px', borderRadius: 6, cursor: 'pointer',
+                    color: T.muted, fontSize: 11, fontWeight: 500, marginBottom: 1,
+                  }}
+                  onMouseEnter={(e) => { e.currentTarget.style.background = T.bg; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
+                >
+                  <Dot c={b.c} />
+                  <span style={{ flex: 1 }}>{b.n}</span>
+                  <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" style={{ opacity: 0.4 }}>
+                    <polyline points="9 18 15 12 9 6"/>
+                  </svg>
+                </div>
+              ))}
             </div>
           );
         })}
       </nav>
 
-      <div style={{ padding: 12, borderTop: `1px solid ${T.borderSoft}` }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 10px 4px' }}>
-          <Avatar name={currentUser?.name?.[0] || '관'} size={32} c="slate" />
+      {/* 하단 사용자 + 로그아웃 — 항상 보임 */}
+      <div style={{ padding: '8px 12px 10px', borderTop: `1px solid ${T.borderSoft}`, flexShrink: 0 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '4px 10px 4px' }}>
+          <Avatar name={currentUser?.name?.[0] || '관'} size={28} c="slate" />
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontSize: 13, fontWeight: 600, color: T.text }}>{currentUser?.name || '관리자'}</div>
-            <div style={{ fontSize: 11, color: T.mutedSoft, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{currentUser?.username ? `@${currentUser.username}` : '관리자'}</div>
+            <div style={{ fontSize: 12, fontWeight: 600, color: T.text }}>{currentUser?.name || '관리자'}</div>
+            <div style={{ fontSize: 10, color: T.mutedSoft, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{currentUser?.username ? `@${currentUser.username}` : '관리자'}</div>
           </div>
         </div>
         <div
           onClick={async () => { await logout(); navigate('/login'); }}
-          style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 10px', borderRadius: 6, cursor: 'pointer', color: T.danger, fontSize: 12, fontWeight: 600 }}
+          style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 10px', borderRadius: 6, cursor: 'pointer', color: T.danger, fontSize: 12, fontWeight: 600 }}
           onMouseEnter={(e) => { e.currentTarget.style.background = T.dangerSoft; }}
           onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
         >
-          <Icon d={icons.logout} size={14} c={T.danger} sw={2} />
+          <Icon d={icons.logout} size={13} c={T.danger} sw={2} />
           <span>로그아웃</span>
         </div>
       </div>

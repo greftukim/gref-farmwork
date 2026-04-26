@@ -413,7 +413,11 @@ function HQDashboardScreen() {
             ) : (
               /* ── 지점별 그룹 막대 차트 (3지점 가로 배치, 지점당 작물 2개) ── */
               <div style={{ display: 'flex', flexDirection: 'row', gap: 16, marginTop: 8 }}>
-                {branches.map((b) => {
+                {(() => {
+                  const maxCrops = Math.max(...branches.map((b) => (BRANCH_CROPS[b.code] || []).length));
+                  const barGap = 6;
+                  const barW = `calc((100% - ${(maxCrops - 1) * barGap}px) / ${maxCrops})`;
+                  return branches.map((b) => {
                   const cropMap = branchCropData[b.code] || {};
                   const crops = BRANCH_CROPS[b.code] || [];
                   const colors = CROP_COLORS[b.code] || { main: b.accent, sub: b.accentSoft };
@@ -429,15 +433,15 @@ function HQDashboardScreen() {
                           {b.harvest > 0 ? Number(b.harvest.toFixed(1)).toLocaleString() : '—'} kg
                         </span>
                       </div>
-                      {/* 두 개 막대 (메인 + 보조 작물) */}
-                      <div style={{ display: 'flex', gap: 6 }}>
+                      {/* 막대 — 모든 지점 동일 너비 (최대 작물 수 기준) */}
+                      <div style={{ display: 'flex', gap: barGap }}>
                         {crops.map((crop, ci) => {
                           const qty = cropMap[crop] || 0;
                           const color = ci === 0 ? colors.main : ci === 1 ? colors.sub : (colors.sub2 || colors.sub);
                           const heightPct = qty > 0 ? Math.max(qty / barMax * 100, 6) : 0;
                           return (
                             <div key={crop} onClick={() => setSelectedCrop({ branch: b.code, crop })}
-                              style={{ flex: 1, cursor: 'pointer' }}
+                              style={{ width: barW, flexShrink: 0, cursor: 'pointer' }}
                               title={`${crop}: ${qty > 0 ? Number(qty.toFixed(1)).toLocaleString() : '—'} kg — 클릭하면 추이 보기`}
                             >
                               <div style={{
@@ -463,7 +467,8 @@ function HQDashboardScreen() {
                       </div>
                     </div>
                   );
-                })}
+                  });
+                })()}
               </div>
             )}
 
