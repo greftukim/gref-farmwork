@@ -124,8 +124,7 @@ const Sidebar = ({ active = 'dashboard', onNavigate }) => {
     { id: 'tasks', label: '작업 관리', icon: icons.clipboard },
     { id: 'floor', label: '실시간 평면도', icon: icons.map || icons.dashboard },
     { id: 'growth', label: '생육조사', icon: icons.sprout },
-    { id: 'performance', label: '작업자 성과', icon: icons.chart },
-    { id: 'stats', label: '통계 분석', icon: icons.chart },
+    { id: 'stats', label: '성과 분석', icon: icons.chart },
     { id: 'notice', label: '공지사항', icon: icons.bell },
   ];
   return (

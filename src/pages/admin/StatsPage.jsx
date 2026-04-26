@@ -1,21 +1,33 @@
 // 성과 분석 — /admin/stats
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Avatar, Card, T, TopBar } from '../../design/primitives';
 import { usePerformanceData } from '../../hooks/usePerformanceData';
 import useAuthStore from '../../stores/authStore';
 
 const BRANCH_LABEL = { busan: '부산LAB', jinju: '진주HUB', hadong: '하동HUB' };
+const BRANCH_OPTS = [
+  { id: 'all', label: '전체 지점' },
+  { id: 'busan', label: '부산LAB' },
+  { id: 'jinju', label: '진주HUB' },
+  { id: 'hadong', label: '하동HUB' },
+];
 
 export default function StatsPage() {
   const currentUser = useAuthStore((s) => s.currentUser);
   const { workers: allWorkers, loading } = usePerformanceData();
+  const [branchFilter, setBranchFilter] = useState('all');
+
+  const isFarmAdmin = currentUser?.role === 'farm_admin';
 
   const workers = useMemo(() => {
-    if (currentUser?.role === 'farm_admin' && currentUser?.branch) {
+    if (isFarmAdmin && currentUser?.branch) {
       return allWorkers.filter((w) => w.branch === currentUser.branch);
     }
+    if (branchFilter !== 'all') {
+      return allWorkers.filter((w) => w.branch === branchFilter);
+    }
     return allWorkers;
-  }, [allWorkers, currentUser]);
+  }, [allWorkers, currentUser, branchFilter, isFarmAdmin]);
 
   const ranked = useMemo(
     () => [...workers].sort((a, b) => b.harvestPct - a.harvestPct),
@@ -28,10 +40,26 @@ export default function StatsPage() {
   const topWeekly = ranked.length ? Math.max(...ranked.map((w) => w.stemsWeek)) : 0;
   const topPct = ranked[0]?.harvestPct || 0;
 
+  const filterBar = !isFarmAdmin && (
+    <div style={{ display: 'flex', gap: 0, padding: 3, background: T.bg, border: `1px solid ${T.border}`, borderRadius: 7 }}>
+      {BRANCH_OPTS.map(o => {
+        const on = branchFilter === o.id;
+        return (
+          <button key={o.id} onClick={() => setBranchFilter(o.id)} style={{
+            padding: '4px 14px', borderRadius: 5, border: 0, cursor: 'pointer',
+            background: on ? T.surface : 'transparent', color: on ? T.text : T.mutedSoft,
+            fontSize: 12, fontWeight: 600,
+            boxShadow: on ? '0 1px 2px rgba(0,0,0,0.06)' : 'none',
+          }}>{o.label}</button>
+        );
+      })}
+    </div>
+  );
+
   if (loading) {
     return (
       <div style={{ flex: 1, overflow: 'auto', background: T.bg, minWidth: 0 }}>
-        <TopBar subtitle="분석" title="작업자 성과 분석" />
+        <TopBar subtitle="분석" title="성과 분석" />
         <div style={{ padding: 60, textAlign: 'center', color: T.mutedSoft }}>로딩 중...</div>
       </div>
     );
@@ -39,7 +67,7 @@ export default function StatsPage() {
 
   return (
     <div style={{ flex: 1, overflow: 'auto', background: T.bg, minWidth: 0 }}>
-      <TopBar subtitle="분석" title="작업자 성과 분석" />
+      <TopBar subtitle="분석" title="성과 분석" actions={filterBar} />
       <div style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 20 }}>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12 }}>
           {[

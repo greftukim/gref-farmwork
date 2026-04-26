@@ -2507,3 +2507,30 @@ fire-and-forget 패턴(`onClick={() => approveRequest(id)}`)은 await 없이 실
 - 데이터 변경 페이지: mount 시 항상 fetchXxx(currentUser) 호출.
 - store 래퍼가 아닌 farmReview 직접 호출로 reviewer ID를 명시적으로 전달.
 - 버튼 onClick: async handler → `const ok = await farmReview(...)` → `if (!ok) alert(...)`.
+
+## 교훈 107 — farm 사이드바 vs HQ 사이드바 분리 구조 인식
+
+세션 66 X-4: jhkim(hr_admin)으로 farm 사이드바 메뉴 변경을 검증 → FAIL.
+이유: jhkim은 로그인 시 `setTeam('hq')` → AdminLayout에서 `HQSidebar`(hq-shell.jsx) 사용. `primitives.jsx Sidebar`는 team='farm'인 사용자(farm_admin)만 봄.
+
+**Why:**
+AdminLayout은 `useTeamStore(s => s.team)`으로 Sidebar / HQSidebar 분기.
+hr_admin은 team='hq'로 설정되어 HQ 사이드바 사용 → farm 사이드바 변경 영향 없음.
+
+**How to apply:**
+- farm Sidebar(primitives.jsx) 변경 검증: farm_admin 계정(hdkim 등) 사용.
+- HQSidebar(hq-shell.jsx) 변경 검증: hr_admin/master 계정(jhkim 등) 사용.
+- Playwright에서 사이드바 어서션 시 해당 역할 계정으로 로그인 후 aside 셀렉터 명시.
+
+## 교훈 108 — 작업 속도 평가 전 DB 실측 필수
+
+세션 66 Task 0: "#1 평가 기준 변경(수확량→작업 속도)" 분량 산정 전에 DB 실측.
+결과: tasks.duration_minutes, quantity 전부 NULL. 작업 속도 계산 불가.
+
+**Why:**
+DB 컬럼이 존재해도(스키마에는 있음) 실제 데이터가 없으면 의미 있는 KPI를 만들 수 없다.
+CLAUDE.md 작업 원칙 "DB 상태 의존 값은 직접 조회 우선" 재확인.
+
+**How to apply:**
+- 데이터 기반 KPI 변경 전: `SELECT column, COUNT(*)  WHERE column IS NOT NULL FROM table` 로 실데이터 유무 확인 먼저.
+- 데이터 없으면 "운영 후 트랙 이전" — 빈 데이터 위에 UI만 만드는 것은 비용 낭비.

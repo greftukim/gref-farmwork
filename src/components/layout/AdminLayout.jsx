@@ -51,7 +51,6 @@ const FARM_ROUTES = {
   tasks: '/admin/tasks',
   floor: '/admin/floor',
   growth: '/admin/growth',
-  performance: '/admin/performance',
   stats: '/admin/stats',
   notice: '/admin/notices',
 };

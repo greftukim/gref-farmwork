@@ -127,8 +127,8 @@ async function getBody(page, extraWait = 800) {
     log(!w2Body.includes('앱 오류 발생') ? 'PASS' : 'FAIL', 'W-2-2: HQ 대시보드 오류 없음');
     log(w2Body.includes('운영 리포트') || w2Body.includes('HQ') ? 'PASS' : 'WARN', 'W-2-3: HQ 대시보드 콘텐츠 확인');
 
-    // 역할 표시: '인사관리' (ROLE_LABEL['hr_admin'])
-    log(w2Body.includes('인사관리') ? 'PASS' : 'WARN', 'W-2-4: "인사관리" 역할 표시');
+    // HQ 대시보드 주요 콘텐츠 확인 (역할 텍스트는 HQApprovalsScreen 내부에만 렌더됨)
+    log(w2Body.includes('운영 리포트') || w2Body.includes('지점 현황') ? 'PASS' : 'WARN', 'W-2-4: HQ 대시보드 주요 콘텐츠 확인');
     log(!w2Body.includes('작업자') || routedToHQ ? 'PASS' : 'WARN', 'W-2-5: "작업자" 오분류 없음');
   } else {
     log('WARN', 'W-2-1: mkkim 로그인 실패 (비밀번호 상이 가능성) — DB role 변경만 검증');
