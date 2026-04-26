@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { T, Dot, Icon, icons, Avatar, btnGhostStyle } from './primitives';
+import { T, Icon, icons, Avatar, btnGhostStyle } from './primitives';
 import useAuthStore from '../stores/authStore';
 import useLeaveStore from '../stores/leaveStore';
 import useIssueStore from '../stores/issueStore';
@@ -91,11 +91,6 @@ const HQSidebar = ({ active = 'dashboard', onNavigate }) => {
       id: 'g-branches',
       label: '지점 관리',
       items: [{ id: 'branches', label: '지점 관리', icon: icons.location }],
-      branches: [
-        { n: '부산LAB', c: T.success },
-        { n: '진주HUB', c: T.primary },
-        { n: '하동HUB', c: T.warning },
-      ],
     },
   ];
 
@@ -177,25 +172,6 @@ const HQSidebar = ({ active = 'dashboard', onNavigate }) => {
                 );
               })}
 
-              {g.branches && g.branches.map((b) => (
-                <div
-                  key={b.n}
-                  onClick={() => navigate('/admin/hq/branches')}
-                  style={{
-                    display: 'flex', alignItems: 'center', gap: 7,
-                    padding: '4px 8px 4px 22px', borderRadius: 6, cursor: 'pointer',
-                    color: T.muted, fontSize: 11, fontWeight: 500, marginBottom: 1,
-                  }}
-                  onMouseEnter={(e) => { e.currentTarget.style.background = T.bg; }}
-                  onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
-                >
-                  <Dot c={b.c} />
-                  <span style={{ flex: 1 }}>{b.n}</span>
-                  <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" style={{ opacity: 0.4 }}>
-                    <polyline points="9 18 15 12 9 6"/>
-                  </svg>
-                </div>
-              ))}
             </div>
           );
         })}
