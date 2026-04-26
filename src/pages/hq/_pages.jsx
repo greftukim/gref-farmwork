@@ -159,7 +159,7 @@ function HQApprovalsScreen() {
     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
       <HQPageHeader
         subtitle="본사 · 지점장 요청 관리"
-        title="승인 허브"
+        title="승인 결재"
         actions={<>
           {btnSecondary('내보내기', icons.chart, () => downloadApprovalExcel(requests, employees))}
           {/* HQ-APPROVAL-EXPORT-001: gref_승인내역_YYYY-MM-DD.xlsx */}

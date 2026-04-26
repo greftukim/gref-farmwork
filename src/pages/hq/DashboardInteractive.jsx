@@ -6,6 +6,7 @@ import useHarvestStore from '../../stores/harvestStore';
 import useBranchStore from '../../stores/branchStore';
 import useEmployeeStore from '../../stores/employeeStore';
 import useIssueStore from '../../stores/issueStore';
+import useLeaveStore from '../../stores/leaveStore';
 import useAuthStore from '../../stores/authStore';
 import { supabase } from '../../lib/supabase';
 import {
@@ -16,6 +17,9 @@ import {
 // 기간 탭 · 지점 막대 → 클릭 시 작물별 분해 드릴다운 · 승인 필터 · 지점 상세 모달
 
 const FARM_CODES = ['busan', 'jinju', 'hadong'];
+const LEAVE_TYPE_KO = { annual: '연차', sick: '병가', personal: '개인', family: '경조사' };
+const BRANCH_LABEL_MAP = { busan: '부산LAB', jinju: '진주HUB', hadong: '하동HUB' };
+const BRANCH_BC = { busan: T.primary, jinju: T.success, hadong: T.warning };
 const BRANCH_ACCENTS = {
   busan: { accent: T.primary, accentSoft: T.primarySoft },
   jinju: { accent: T.success, accentSoft: T.successSoft },
@@ -55,6 +59,7 @@ function HQDashboardInteractive() {
   const fetchEmployees = useEmployeeStore((s) => s.fetchEmployees);
   const issues = useIssueStore((s) => s.issues);
   const fetchIssues = useIssueStore((s) => s.fetchIssues);
+  const leaveRequests = useLeaveStore((s) => s.requests);
   const currentUser = useAuthStore((s) => s.currentUser);
 
   useEffect(() => {
@@ -192,21 +197,34 @@ function HQDashboardInteractive() {
     issueSub: openIssueCount === 0 ? '이슈 없음' : `병해충 ${issues.filter((i) => !i.isResolved && i.type === '병해충').length}건 포함`,
   };
 
-  // 승인 허브 데이터 (하드코딩 — HQ-DASHBOARD-INTERACTIVE-003)
-  const approvals = [
-    { id: 1, branch: '부산LAB', bc: T.primary, name: '홍승표', tag: '근태', tagTone: 'primary', type: '연차 신청', detail: '오늘 · 본인', time: '10분 전', urgent: false },
-    { id: 2, branch: '하동HUB', bc: T.warning, name: '백남훈', tag: '예산', tagTone: 'warning', type: '설비 구매 요청', detail: '환기팬 2대 · 480만원', time: '42분 전', urgent: true },
-    { id: 3, branch: '진주HUB', bc: T.success, name: '김현회', tag: '인사', tagTone: 'info', type: '신규 작업자 등록', detail: '임시 3명 · 5/1~31', time: '1시간 전', urgent: false },
-    { id: 4, branch: '부산LAB', bc: T.primary, name: '홍승표', tag: '자재', tagTone: 'success', type: '농약 재고 발주', detail: '총 120만원', time: '2시간 전', urgent: false },
-    { id: 5, branch: '하동HUB', bc: T.warning, name: '백남훈', tag: '근태', tagTone: 'primary', type: '연장근무 승인', detail: '오늘 2명 · 각 2h', time: '3시간 전', urgent: false },
-    { id: 6, branch: '진주HUB', bc: T.success, name: '김현회', tag: '예산', tagTone: 'warning', type: '비료 추가 발주', detail: '총 340만원', time: '4시간 전', urgent: false },
-    { id: 7, branch: '부산LAB', bc: T.primary, name: '김현도', tag: '인사', tagTone: 'info', type: '계약직 재계약', detail: '2명 · 7/1 시행', time: '5시간 전', urgent: false },
-  ];
-  const approvalFiltered = approvalFilter === '전체' ? approvals : approvals.filter(a => a.tag === approvalFilter);
+  // 승인 결재 실데이터 (HQ-DASHBOARD-INTERACTIVE-003)
+  const approvals = useMemo(() => {
+    const pending = leaveRequests.filter((r) => r.status === 'pending');
+    return pending.map((r) => {
+      const emp = employees.find((e) => e.id === r.employeeId);
+      const branch = emp?.branch || '';
+      return {
+        id: r.id,
+        branch: BRANCH_LABEL_MAP[branch] || branch || '—',
+        bc: BRANCH_BC[branch] || T.primary,
+        name: emp?.name || '직원',
+        tag: '근태',
+        tagTone: 'primary',
+        type: `${LEAVE_TYPE_KO[r.type] || r.type || '휴가'} 신청`,
+        detail: r.date || '—',
+        time: fmtAgo(r.createdAt),
+        urgent: false,
+      };
+    });
+  }, [leaveRequests, employees]);
+
+  const approvalFiltered = approvalFilter === '전체' ? approvals : approvals.filter((a) => a.tag === approvalFilter);
   const approvalCounts = {
-    '전체': approvals.length, '근태': approvals.filter(a => a.tag === '근태').length,
-    '예산': approvals.filter(a => a.tag === '예산').length, '인사': approvals.filter(a => a.tag === '인사').length,
-    '자재': approvals.filter(a => a.tag === '자재').length,
+    '전체': approvals.length,
+    '근태': approvals.length,
+    '예산': 0,
+    '인사': 0,
+    '자재': 0,
   };
 
   // 이슈피드용 보조 맵
@@ -398,11 +416,11 @@ function HQDashboardInteractive() {
             )}
           </Card>
 
-          {/* 승인 허브 */}
+          {/* 승인 결재 */}
           <Card>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <h3 style={{ fontSize: 14, fontWeight: 700, color: T.text, margin: 0 }}>승인 허브</h3>
+                <h3 style={{ fontSize: 14, fontWeight: 700, color: T.text, margin: 0 }}>승인 결재</h3>
                 <Pill tone="danger">{approvalFiltered.length}</Pill>
               </div>
               <span onClick={() => navigate('/admin/hq/approvals')} style={{ fontSize: 11, color: HQ.accent, fontWeight: 600, cursor: 'pointer' }}>전체 →</span>

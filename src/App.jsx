@@ -229,6 +229,7 @@ export default function App() {
               <Route path="branches/:branchId" element={<HQBranchDetailScreen />} />
               <Route path="growth/branches/:branchId" element={<HQGrowthBranchDetailScreen />} />
               <Route path="employees" element={<HQEmployeesScreen />} />
+              <Route path="leave" element={<LeavePage />} />
               <Route path="finance" element={<HQFinanceScreen />} />
               <Route path="notices" element={<HQNoticesScreen />} />
               <Route path="issues" element={<HQIssuesScreen />} />

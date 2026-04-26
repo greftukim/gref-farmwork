@@ -17,6 +17,8 @@ export default function LeavePage() {
   const farmReview = useLeaveStore((s) => s.farmReview);
   const employees = useEmployeeStore((s) => s.employees);
   const currentUser = useAuthStore((s) => s.currentUser);
+  const isHRAdmin = currentUser?.role === 'hr_admin' || currentUser?.role === 'master';
+  const [branchFilter, setBranchFilter] = useState('all');
 
   useEffect(() => {
     fetchRequests(currentUser);
@@ -35,22 +37,28 @@ export default function LeavePage() {
 
   const empMap = useMemo(() => Object.fromEntries(employees.map((e) => [e.id, e])), [employees]);
 
+  const filteredRequests = useMemo(() => {
+    if (!isHRAdmin || branchFilter === 'all') return requests || [];
+    const branchEmpIds = new Set(employees.filter((e) => e.branch === branchFilter).map((e) => e.id));
+    return (requests || []).filter((r) => branchEmpIds.has(r.employeeId));
+  }, [requests, employees, isHRAdmin, branchFilter]);
+
   const counts = useMemo(() => {
     const now = new Date();
     const ym = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
     return {
-      pending: (requests || []).filter((r) => r.status === 'pending').length,
-      approved: (requests || []).filter((r) => r.status === 'approved').length,
-      thisMonth: (requests || []).filter((r) => (r.date || '').startsWith(ym)).length,
-      all: requests?.length || 0,
+      pending: filteredRequests.filter((r) => r.status === 'pending').length,
+      approved: filteredRequests.filter((r) => r.status === 'approved').length,
+      thisMonth: filteredRequests.filter((r) => (r.date || '').startsWith(ym)).length,
+      all: filteredRequests.length,
     };
-  }, [requests]);
+  }, [filteredRequests]);
 
   const pendingList = useMemo(() =>
-    (requests || [])
+    filteredRequests
       .filter((r) => r.status === 'pending')
       .sort((a, b) => (a.date || '').localeCompare(b.date || '')),
-    [requests]
+    [filteredRequests]
   );
 
   const calInfo = useMemo(() => {
@@ -66,7 +74,7 @@ export default function LeavePage() {
   const leaveDots = useMemo(() => {
     const { y, m } = calInfo;
     const map = {};
-    (requests || []).forEach((r, idx) => {
+    filteredRequests.forEach((r, idx) => {
       if (!r.date) return;
       const d = new Date(r.date);
       if (d.getFullYear() !== y || d.getMonth() !== m) return;
@@ -90,7 +98,21 @@ export default function LeavePage() {
   return (
     <div style={{ flex: 1, overflow: 'auto', background: T.bg, minWidth: 0 }}>
       <TopBar subtitle="인사 관리" title="휴가 신청 관리" actions={
-        <div style={{ display: 'flex', gap: 8 }}>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          {isHRAdmin && (
+            <div style={{ display: 'flex', gap: 0, padding: 3, background: T.bg, border: `1px solid ${T.border}`, borderRadius: 7 }}>
+              {[{ id: 'all', label: '전체' }, { id: 'busan', label: '부산LAB' }, { id: 'jinju', label: '진주HUB' }, { id: 'hadong', label: '하동HUB' }].map((o) => {
+                const on = branchFilter === o.id;
+                return (
+                  <button key={o.id} onClick={() => setBranchFilter(o.id)} style={{
+                    padding: '4px 12px', borderRadius: 5, border: 0, cursor: 'pointer',
+                    background: on ? T.surface : 'transparent', color: on ? T.text : T.mutedSoft,
+                    fontSize: 12, fontWeight: 600, boxShadow: on ? '0 1px 2px rgba(0,0,0,0.06)' : 'none',
+                  }}>{o.label}</button>
+                );
+              })}
+            </div>
+          )}
           {btnSecondary('휴가 현황 엑셀')}
           {btnPrimary('휴가 등록', icons.plus)}
         </div>

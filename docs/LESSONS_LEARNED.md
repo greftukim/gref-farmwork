@@ -2616,3 +2616,42 @@ src/pages/admin/Performance.jsx(928줄, mock PERF_DATA)가 App.jsx에서 미impo
 **How to apply:**
 - 컴포넌트 파일을 새 위치로 이식/재작성할 때: 구 파일을 같은 커밋에서 삭제하거나, 삭제 불가 시 BACKLOG에 P3-DEAD-*-001로 즉시 등록.
 - Track 3 메타 점검 시 동일 export명을 가진 파일이 2개 이상인지 Grep으로 확인.
+
+## 교훈 116 — HQ 사이드바 인라인 펼침 패턴 — 활성 그룹 자동 + hover 확장
+
+세션 70에서 HQSidebar를 8그룹 인라인 펼침으로 재정정. getActiveGroup(pathname)으로 활성 그룹 결정, hoveredGroup state로 hover 시 추가 그룹 펼침, max-height transition으로 애니메이션.
+
+**Why:**
+그룹 헤더만 보여주는 평면 구조(세션 68)는 현재 페이지를 명시적으로 강조하지 못함. 인라인 펼침이 활성 그룹을 자동 노출하므로 별도 강조 불필요.
+
+**How to apply:**
+- 활성 그룹: `getActiveGroup(location.pathname)` → 라우트 prefix 매핑.
+- 항상 펼침: `isExpanded = groupId === activeGroupId || groupId === hoveredGroup`
+- 그룹 wrapper에 onMouseEnter/Leave → hoveredGroup setState.
+- 모바일 fallback: onClick on 그룹 헤더 → hoveredGroup 토글.
+- max-height: open ? '300px' : '0' + transition: 'max-height 0.18s ease-out'.
+
+## 교훈 117 — LeavePage HR Admin 지점 필터 패턴
+
+세션 70에서 LeavePage에 hr_admin/master용 지점 필터 추가. leaveStore.fetchRequests(null) → 전체 조회. isHRAdmin 분기 + branchFilter state + filteredRequests useMemo.
+
+**Why:**
+hr_admin이 /admin/hq/leave 진입 시 전체 지점 휴가를 볼 수 있어야 하는데, farm_admin 분기만 있었음. leaveStore는 currentUser가 null이면 전체 조회하도록 이미 설계되어 있었음.
+
+**How to apply:**
+- isHRAdmin = `role === 'hr_admin' || role === 'master'`
+- 브랜치 필터 useMemo: `isHRAdmin && branchFilter !== 'all' ? employees 필터 → employeeIds → requests 필터`
+- TopBar actions에 필터 바 hr_admin 전용 렌더.
+- farm_admin은 기존 동작 그대로 유지 (leaveStore branch 필터).
+
+## 교훈 118 — 보고 누락 차단 — 미처리·누락 항목도 명시적으로 보고
+
+세션 보고에서 처리된 항목만 나열하고 미처리·누락은 묵시적으로 생략하는 패턴 발견. 사용자 관점에서 "처리됨"만 보이면 "나머지는 다 됐겠지"라고 오해할 수 있음.
+
+**Why:**
+목업 원본(#9)에 분기/직접선택 옵션이 있었으나, 세션 69 구현에서 이번주/이번달/전체 3개로 단순화됨. 이 결정이 HANDOVER에 명시되지 않아 세션 70 메타 점검에서 재발견됨.
+
+**How to apply:**
+- 지시서 대비 실제 구현 차이는 HANDOVER에 명시: "의도된 단순화" 또는 "미구현 + BACKLOG 등록".
+- #9 StatsPage 분기/직접선택: 의도된 단순화로 처리 (이번 주/이번 달/전체 3개 유지).
+- Playwright 보고 시 처리 섹션 외 "미처리 항목" 섹션 포함 권장.

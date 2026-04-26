@@ -232,6 +232,9 @@
 | P3-DEAD-PERF-FILE-001 | 코드 부채 | open | 세션 68 (2026-04-26) | - | src/pages/admin/Performance.jsx (928줄, mock PERF_DATA) — App.jsx에서 미import, 완전 dead code. src/pages/Performance.jsx(909줄)가 실제 사용 중. 짧은 정리 세션에서 삭제 권장. | docs/BACKLOG.md |
 | P3-DEAD-GROWTH-FILE-001 | 코드 부채 | open | 세션 69 (2026-04-26) | - | src/pages/admin/Growth.jsx (834줄, GR_DATA 하드코딩) — App.jsx에서 미import, 완전 dead code. 실제 사용은 src/pages/Growth.jsx(useGrowthData 훅, 실데이터 연결). 짧은 정리 세션에서 삭제 권장. | docs/BACKLOG.md |
 | STATS-PERIOD-FILTER-001 | 기능 추가 | resolved | 세션 69 (2026-04-26) | - | StatsPage(성과 분석) 기간 필터 없음 → 이번 주/이번 달/전체 버튼 추가. usePerformanceData(dateFrom, dateTo) 파라미터화 — harvest_records 날짜 필터 적용. tasks speedPct는 전체 기간 유지. 교훈 77 적용(로컬 날짜). Playwright X-1 PASS. | docs/BACKLOG.md |
+| HQ-SIDEBAR-INLINE-001 | UX 개선 | resolved | 세션 70 (2026-04-26) | - | HQSidebar 5그룹 평면 → 8그룹(대시보드/성과/직원근태관리/생산/승인결재/운영이슈/공지정책/지점관리) 인라인 펼침. getActiveGroup(pathname) → 활성 그룹 자동 펼침. hoveredGroup useState → 호버 시 추가 펼침. max-height 0.18s ease-out 트랜지션. onClick 모바일 토글 fallback. "승인 허브" → "승인 결재" 명칭 정정. Playwright X-1 PASS. | docs/BACKLOG.md |
+| HQ-LEAVE-HQ-ACCESS-001 | 기능 추가 | resolved | 세션 70 (2026-04-26) | - | /admin/hq/leave 라우트 신설(App.jsx 내 HQ 그룹) + HQSidebar "직원/근태 관리" 그룹에 "휴가 관리" 항목 추가. LeavePage hr_admin/master 접근 시 전체 지점 데이터 조회(leaveStore null currentUser 패스스루). TopBar 지점 필터 바(전체/부산LAB/진주HUB/하동HUB) hr_admin 전용 노출. Playwright X-2 PASS. | docs/BACKLOG.md |
+| HQ-DASHBOARD-INTERACTIVE-003 | 기능 구현 | resolved | 세션 49 (2026-04-25) 등록 → 세션 70 (2026-04-26) 해소 | - | DashboardInteractive "승인 허브" → "승인 결재" 명칭 정정. 하드코딩 7건 제거, leaveStore.requests(pending) 실데이터 연결. useLeaveStore 추가 import. approvals useMemo(leaveRequests, employees) — 근태 실건수, 예산/인사/자재 0. Playwright X-3 PASS. | docs/BACKLOG.md |
 
 ---
 

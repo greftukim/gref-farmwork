@@ -473,11 +473,11 @@ function HQDashboardScreen() {
             </div>
           </Card>
 
-          {/* 승인 허브 */}
+          {/* 승인 결재 */}
           <Card>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <h3 style={{ fontSize: 14, fontWeight: 700, color: T.text, margin: 0 }}>승인 허브</h3>
+                <h3 style={{ fontSize: 14, fontWeight: 700, color: T.text, margin: 0 }}>승인 결재</h3>
                 <Pill tone="danger">{pendingCount}</Pill>
               </div>
               <span onClick={() => navigate('/admin/hq/approvals')} style={{ fontSize: 11, color: HQ.accent, fontWeight: 600, cursor: 'pointer' }}>전체 →</span>
