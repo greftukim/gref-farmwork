@@ -177,21 +177,30 @@ function HQDashboardInteractive() {
   );
   const openIssueCount = useMemo(() => issues.filter((i) => !i.isResolved).length, [issues]);
 
-  // 기간별 스케일 배수 (가동률/인건비는 하드코딩 유지 — HQ-DASHBOARD-INTERACTIVE-002)
+  // 기간별 스케일 배수 (인건비 추정 유지 — HQ-DASHBOARD-INTERACTIVE-002 해소)
   const periodMeta = {
-    '일': { mult: 0.048, label: '일간 · 오늘', laborU: '만원', ga: 87, gaSub: '오늘 기준' },
-    '주': { mult: 0.24, label: '주간 · 이번 주', laborU: '만원', ga: 89, gaSub: '주간 평균' },
-    '월': { mult: 1, label: '월간 · 이번 달', laborU: '만원', ga: 88, gaSub: '월간 평균' },
-    '분기': { mult: 3.1, label: '분기 · 2026 2Q', laborU: '억원', ga: 90, gaSub: '분기 평균' },
+    '일': { mult: 0.048, label: '일간 · 오늘', laborU: '만원' },
+    '주': { mult: 0.24, label: '주간 · 이번 주', laborU: '만원' },
+    '월': { mult: 1, label: '월간 · 이번 달', laborU: '만원' },
+    '분기': { mult: 3.1, label: '분기 · 2026 2Q', laborU: '억원' },
   };
   const pmBase = periodMeta[period];
+
+  // 가동률: attendanceMap 오늘 실측 기반 (기간 무관 — 오늘 출근 기준)
+  const totalWorkers = branches.reduce((s, b) => s + b.workers, 0);
+  const totalCheckedIn = branches.reduce((s, b) => s + b.checkedIn, 0);
+  const realGa = totalWorkers > 0 ? Math.round((totalCheckedIn / totalWorkers) * 100) : null;
+
   const pm = {
     ...pmBase,
     // 수확량: 월 실데이터 × 기간 배수 (교훈 52: toLocaleString 적용은 렌더에서)
     kpiHarvest: Math.round(realMonthHarvest * pmBase.mult),
     harvestT: totalTarget > 0 ? Math.round(totalTarget * pmBase.mult) : 3250,
-    // 인건비: 하드코딩 유지 (HQ-DASHBOARD-INTERACTIVE-002)
+    // 인건비: 추정치 유지 (payroll DB 미연결)
     labor: period === '분기' ? '2.52' : period === '월' ? '8,420' : period === '주' ? '1,980' : '280',
+    // 가동률: 실측 또는 빈 상태 표시
+    ga: realGa !== null ? realGa : '—',
+    gaSub: realGa !== null ? '오늘 출근 실측' : '출근 기록 없음',
     // 미해결이슈: 실데이터
     issue: openIssueCount,
     issueSub: openIssueCount === 0 ? '이슈 없음' : `병해충 ${issues.filter((i) => !i.isResolved && i.type === '병해충').length}건 포함`,
@@ -257,7 +266,7 @@ function HQDashboardInteractive() {
         {/* KPI 4개 */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12 }}>
           {[
-            { label: `${period === '일' ? '오늘' : period === '주' ? '이번 주' : period === '월' ? '이번 달' : '이번 분기'} 가동률`, value: pm.ga, unit: '%', sub: pm.gaSub, trend: '+2.1%p', tone: 'success' },
+            { label: `${period === '일' ? '오늘' : period === '주' ? '이번 주' : period === '월' ? '이번 달' : '이번 분기'} 가동률`, value: pm.ga, unit: realGa !== null ? '%' : '', sub: pm.gaSub, trend: realGa !== null ? '실측' : '데이터 없음', tone: realGa !== null ? 'success' : 'warning' },
             { label: `${period} 수확량`, value: pm.kpiHarvest.toLocaleString(), unit: 'kg', sub: `목표 ${pm.harvestT.toLocaleString()}kg · ${pm.harvestT > 0 ? Math.round(pm.kpiHarvest / pm.harvestT * 100) : 0}%`, trend: '실데이터', tone: 'primary' },
             { label: `${period} 인건비`, value: pm.labor, unit: pm.laborU, sub: '예산 대비 91%', trend: '추정', tone: 'warning' },
             { label: '미해결 이슈', value: pm.issue, unit: '건', sub: pm.issueSub, trend: pm.issue > 0 ? '확인 필요' : '정상', tone: pm.issue > 0 ? 'danger' : 'success' },

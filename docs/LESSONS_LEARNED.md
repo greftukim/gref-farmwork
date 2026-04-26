@@ -2655,3 +2655,29 @@ hr_admin이 /admin/hq/leave 진입 시 전체 지점 휴가를 볼 수 있어야
 - 지시서 대비 실제 구현 차이는 HANDOVER에 명시: "의도된 단순화" 또는 "미구현 + BACKLOG 등록".
 - #9 StatsPage 분기/직접선택: 의도된 단순화로 처리 (이번 주/이번 달/전체 3개 유지).
 - Playwright 보고 시 처리 섹션 외 "미처리 항목" 섹션 포함 권장.
+
+## 교훈 119 — 사이드바 라벨 vs 페이지 H1 명칭 주기적 동기화 필요
+
+HQSidebar의 메뉴 라벨("작업자 성과")과 실제 페이지 TopBar H1("성과 분석")이 불일치하면 사용자가 해당 메뉴를 찾지 못하거나 다른 페이지로 오인한다.
+
+**Why:**
+세션 66~67 StatsPage 재설계 시 페이지 H1을 "성과 분석"으로 변경했으나 사이드바 라벨은 "작업자 성과"로 남아 세션 71에서 사용자 점검으로 발견됨.
+
+**How to apply:**
+- 페이지 H1(TopBar title)을 변경할 때 사이드바 hq-shell.jsx 라벨도 함께 확인·동기화.
+- 사이드바 라벨은 페이지 H1과 동일하거나 그 상위 개념(축약) 이어야 함.
+- 변경 후 grep으로 잔존 구형 라벨 0건 확인 필수.
+
+## 교훈 120 — DashboardInteractive 가동률 실측 연결 패턴
+
+HQDashboardInteractive의 가동률 KPI는 이미 fetching하는 attendanceMap을 재사용하여 실측값을 계산할 수 있다.
+
+**Why:**
+periodMeta에 ga: 87/89/88/90 하드코딩이 있었으나, branches useMemo가 이미 attendanceMap에서 각 지점별 checkedIn/workers를 계산하고 있었다. 이를 집계하면 전체 가동률을 실측값으로 표시 가능.
+
+**How to apply:**
+- `const totalWorkers = branches.reduce((s, b) => s + b.workers, 0);`
+- `const totalCheckedIn = branches.reduce((s, b) => s + b.checkedIn, 0);`
+- `const realGa = totalWorkers > 0 ? Math.round((totalCheckedIn / totalWorkers) * 100) : null;`
+- null 시 "—" 표시 + "데이터 없음" trend 라벨, 실측 시 "실측" trend 라벨.
+- 기간(일/주/월/분기) 무관 오늘 출근 기준 표시 (attendance 쿼리가 today만 fetchhng하므로).

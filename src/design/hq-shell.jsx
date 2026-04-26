@@ -65,7 +65,7 @@ const HQSidebar = ({ active = 'dashboard', onNavigate }) => {
       label: '성과',
       items: [
         { id: 'finance', label: '경영 지표', icon: icons.chart },
-        { id: 'performance', label: '작업자 성과', icon: icons.chart },
+        { id: 'performance', label: '성과 분석', icon: icons.chart },
       ],
     },
     {
