@@ -266,6 +266,7 @@
 | DASHBOARD-OT-BRANCH-FILTER-001 | BUG | open | 세션 75-A.1 (2026-04-27) | - | 75-A.1 작업 중 추가 발견: leaveStore.fetchRequests(currentUser)는 farm_admin 브랜치 필터 적용, overtimeStore.fetchRequests()는 인자 없이 전체 OT 반환 → farm_admin 화면에서 leave는 자기 지점만, OT는 전 지점이 보일 가능성. 본 트랙 범위 외. 75-B 또는 별 트랙에서 점검. | docs/BACKLOG.md |
 | TASK-PRIORITY-FILTER-001 | 기능 | resolved (이미 구현) | 세션 75-B (2026-04-27) 등록·즉시 X케이스 분류 | - | Task 0 정찰에서 #5 우선순위 필터를 Y케이스(부분 구현)로 분류했으나 75-B 진입 후 재확인 결과 TaskBoardPage.jsx에 priorityFilter state(line 43) + filter 조건(line 55) + 칩 토글 UI(line 96-111, 전체/높음/보통/낮음) 모두 완비되어 있는 X케이스(이미 구현). 코드 변경 0건. 정찰 분류 정정 기록. | docs/HANDOVER_SESSION75B.md |
 | PERF-DETAIL-WORKER-ROUTING-001 | BUG | resolved | 세션 75-B (2026-04-27) 등록·즉시해소 | - | PerformanceDetailScreen이 항상 `[...allWorkers].sort()[0]`로 최상위 1명만 표시하여 "상세 →" 버튼이 어떤 워커에 대해서도 동일 화면을 띄움. PerfTable의 navigate 호출에 `state: { workerId: w.id }` 전달 + DetailScreen에서 useLocation 수신 + useMemo로 워커 필터링 + workerId 없거나 미발견 시 fallback(최상위) 또는 빈 상태 메시지 처리. | docs/HANDOVER_SESSION75B.md |
+| LEAVE-DATE-FILTER-001 | 기능 | resolved | 세션 75-C (2026-04-27) 등록·즉시해소 | - | LeavePage에 연도·월 필터 부재 → 누적 데이터 증가 시 탐색 불편 예상. yearFilter/monthFilter state + filteredRequests 조건 추가 + TopBar actions에 셀렉트 2개(연도 동적 생성·월 1~12) 배치. 기준 컬럼 = leave_requests.date(휴가 일자, NOT NULL). 기본값 '전체' — 데이터 누락 사고 방지. 교훈 132 적용 첫 트랙(LeavePage 전수 grep 3종 = state·filter·키워드 모두 0건 확인 후 Z케이스 진행). | docs/HANDOVER_SESSION75C.md |
 
 ---
 

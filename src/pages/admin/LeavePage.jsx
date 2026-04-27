@@ -19,6 +19,8 @@ export default function LeavePage() {
   const currentUser = useAuthStore((s) => s.currentUser);
   const isHRAdmin = currentUser?.role === 'hr_admin' || currentUser?.role === 'master';
   const [branchFilter, setBranchFilter] = useState('all');
+  const [yearFilter, setYearFilter] = useState('all');
+  const [monthFilter, setMonthFilter] = useState('all');
 
   useEffect(() => {
     fetchRequests(currentUser);
@@ -38,10 +40,33 @@ export default function LeavePage() {
   const empMap = useMemo(() => Object.fromEntries(employees.map((e) => [e.id, e])), [employees]);
 
   const filteredRequests = useMemo(() => {
-    if (!isHRAdmin || branchFilter === 'all') return requests || [];
-    const branchEmpIds = new Set(employees.filter((e) => e.branch === branchFilter).map((e) => e.id));
-    return (requests || []).filter((r) => branchEmpIds.has(r.employeeId));
-  }, [requests, employees, isHRAdmin, branchFilter]);
+    let list = requests || [];
+    if (isHRAdmin && branchFilter !== 'all') {
+      const branchEmpIds = new Set(employees.filter((e) => e.branch === branchFilter).map((e) => e.id));
+      list = list.filter((r) => branchEmpIds.has(r.employeeId));
+    }
+    if (yearFilter !== 'all' || monthFilter !== 'all') {
+      list = list.filter((r) => {
+        if (!r.date) return false;
+        const d = new Date(r.date);
+        const y = d.getFullYear();
+        const m = d.getMonth() + 1;
+        if (yearFilter !== 'all' && y !== Number(yearFilter)) return false;
+        if (monthFilter !== 'all' && m !== Number(monthFilter)) return false;
+        return true;
+      });
+    }
+    return list;
+  }, [requests, employees, isHRAdmin, branchFilter, yearFilter, monthFilter]);
+
+  const yearOptions = useMemo(() => {
+    const years = new Set();
+    (requests || []).forEach((r) => {
+      if (r.date) years.add(new Date(r.date).getFullYear());
+    });
+    years.add(new Date().getFullYear());
+    return [...years].sort((a, b) => b - a);
+  }, [requests]);
 
   const counts = useMemo(() => {
     const now = new Date();
@@ -113,6 +138,24 @@ export default function LeavePage() {
               })}
             </div>
           )}
+          <select value={yearFilter} onChange={(e) => setYearFilter(e.target.value)} style={{
+            height: 30, padding: '0 8px', borderRadius: 6, border: `1px solid ${T.border}`,
+            background: T.surface, color: T.text, fontSize: 12, fontWeight: 600, cursor: 'pointer',
+          }}>
+            <option value="all">전체 연도</option>
+            {yearOptions.map((y) => (
+              <option key={y} value={y}>{y}년</option>
+            ))}
+          </select>
+          <select value={monthFilter} onChange={(e) => setMonthFilter(e.target.value)} style={{
+            height: 30, padding: '0 8px', borderRadius: 6, border: `1px solid ${T.border}`,
+            background: T.surface, color: T.text, fontSize: 12, fontWeight: 600, cursor: 'pointer',
+          }}>
+            <option value="all">전체 월</option>
+            {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => (
+              <option key={m} value={m}>{m}월</option>
+            ))}
+          </select>
           {btnSecondary('휴가 현황 엑셀')}
           {btnPrimary('휴가 등록', icons.plus)}
         </div>
