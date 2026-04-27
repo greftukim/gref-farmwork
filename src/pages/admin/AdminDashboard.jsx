@@ -56,6 +56,7 @@ function AdminDashboardScreen() {
   const zones = useZoneStore((s) => s.zones);
   const calls = useCallStore((s) => s.calls);
   const farmReview = useLeaveStore((s) => s.farmReview);
+  const fetchLeaveRequests = useLeaveStore((s) => s.fetchRequests);
   const approveOT = useOvertimeStore((s) => s.approveRequest);
   const rejectOT = useOvertimeStore((s) => s.rejectRequest);
   const currentUser = useAuthStore((s) => s.currentUser);
@@ -68,6 +69,10 @@ function AdminDashboardScreen() {
   useEffect(() => {
     fetchHarvest();
   }, []);
+
+  useEffect(() => {
+    if (currentUser) fetchLeaveRequests(currentUser);
+  }, [currentUser]);
 
   useEffect(() => {
     if (!employees.length) return;

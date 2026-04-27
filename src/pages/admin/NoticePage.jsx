@@ -37,7 +37,7 @@ export default function NoticePage() {
   const deleteNotice = useNoticeStore((s) => s.deleteNotice);
 
   const [editing, setEditing] = useState(null); // null | 'new' | id
-  const [form, setForm] = useState({ title: '', content: '', priority: 'normal' });
+  const [form, setForm] = useState({ title: '', body: '', priority: 'normal' });
   const [filter, setFilter] = useState('all');
   const [searchQ, setSearchQ] = useState('');
 
@@ -45,7 +45,7 @@ export default function NoticePage() {
     const q = searchQ.trim();
     return [...notices]
       .filter((n) => filter === 'all' || n.priority === filter)
-      .filter((n) => !q || n.title.includes(q) || (n.content || '').includes(q))
+      .filter((n) => !q || n.title.includes(q) || (n.body || '').includes(q))
       .sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
   }, [notices, filter, searchQ]);
 
@@ -56,16 +56,16 @@ export default function NoticePage() {
   }, [notices]);
 
   const startNew = () => {
-    setForm({ title: '', content: '', priority: 'normal' });
+    setForm({ title: '', body: '', priority: 'normal' });
     setEditing('new');
   };
   const startEdit = (n) => {
-    setForm({ title: n.title, content: n.content || '', priority: n.priority || 'normal' });
+    setForm({ title: n.title, body: n.body || '', priority: n.priority || 'normal' });
     setEditing(n.id);
   };
   const cancel = () => {
     setEditing(null);
-    setForm({ title: '', content: '', priority: 'normal' });
+    setForm({ title: '', body: '', priority: 'normal' });
   };
   const save = async () => {
     if (!form.title.trim()) return alert('제목을 입력해 주세요');
@@ -176,13 +176,13 @@ export default function NoticePage() {
                           }}>{p.l}</span>
                           <h3 style={{ fontSize: 14, fontWeight: 700, color: T.text, margin: 0 }}>{n.title}</h3>
                         </div>
-                        {n.content && (
+                        {n.body && (
                           <p style={{
                             fontSize: 13, color: T.muted, margin: '0 0 8px 0',
                             lineHeight: 1.5,
                             display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical',
                             overflow: 'hidden',
-                          }}>{n.content}</p>
+                          }}>{n.body}</p>
                         )}
                         <div style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 11, color: T.mutedSoft }}>
                           <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
@@ -261,7 +261,7 @@ export default function NoticePage() {
 
               <div>
                 <label style={{ fontSize: 11, fontWeight: 700, color: T.muted, display: 'block', marginBottom: 6 }}>내용</label>
-                <textarea value={form.content} onChange={(e) => setForm({ ...form, content: e.target.value })}
+                <textarea value={form.body} onChange={(e) => setForm({ ...form, body: e.target.value })}
                   placeholder="공지 내용"
                   rows={8}
                   style={{

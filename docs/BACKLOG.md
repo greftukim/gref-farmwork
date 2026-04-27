@@ -259,6 +259,10 @@
 | P3-FLOORPLAN-BTN-IMPORT-001 | BUG | resolved | 세션 74-D 회귀 → 세션 74-F (2026-04-27) 해소 | - | FloorPlan.jsx 74-D 작업 중 btnSecondary import 누락. GolDetail 패널 "작업자 재배정"/"생육 상세" 버튼 ReferenceError. FLOOR-PAGE-ERROR-001 수정 시 동반 해소. | docs/HANDOVER_SESSION74F.md |
 | FLOOR-NULL-GUARD-AUDIT-001 | 코드 품질 | resolved | 세션 74-G (2026-04-27) 등록·즉시해소 | - | FloorPlan.jsx 전체 task./worker. 참조 전수 grep 감사. 발견 4곳 null-guard 일괄 적용: (A) allWorking progress bar task.color, (B) GolDetail 작업유형 뱃지 task.color/label, (C) ACTIVE_ASSIGNMENTS map task.color×2/label. 교훈 131 신설. | docs/HANDOVER_SESSION74G.md |
 | ERROR-BOUNDARY-PAGE-001 | UX 부채 | open | 세션 74-G (2026-04-27) | 운영 후 트랙 | 1개 페이지 크래시 → 전역 ErrorBoundary → "앱 오류 발생 / 초기화 후 로그인" 화면 + 전 페이지 접근 차단. 페이지별 ErrorBoundary 도입으로 크래시 격리 필요(FloorPlan, QrScanPage 등 위험도 높은 페이지 우선). 별 트랙. | docs/HANDOVER_SESSION74G.md |
+| NOTICE-BODY-BUG-001 | BUG | resolved | 세션 75-A (2026-04-27) 등록·즉시해소 | - | 공지사항 form state key `content`와 noticeStore가 기대하는 `body` 키 불일치로 INSERT/UPDATE 시 `body: undefined` 전달. notices.body NOT NULL 제약 때문에 form 제출 자체가 항상 실패해 왔던 Critical 버그(DB 시드 5건만 정상 본문 보유). NoticePage.jsx form key + 목록 렌더 + 검색 필터 + textarea 바인딩 8곳 일괄 `body`로 통일(Option B). | docs/HANDOVER_SESSION75A.md |
+| DASHBOARD-STALE-001 | BUG | resolved | 세션 75-A (2026-04-27) 등록·즉시해소 | - | AdminDashboard가 leaveStore.requests 구독만 하고 fetchRequests 호출이 없어 앱 최초 진입 시 승인 대기 카운트가 0으로 표시되는 문제(LeavePage 진입 후에야 정상화). fetchLeaveRequests useEffect 추가(currentUser 의존성). overtimeStore의 동일 패턴 부채는 NOTICE-AUTHOR-MISMATCH-001과 함께 이월 검토. | docs/HANDOVER_SESSION75A.md |
+| NOTICE-AUTHOR-MISMATCH-001 | BUG | open | 세션 75-A (2026-04-27) | - | 75-A 정찰 중 추가 발견: NoticePage가 `authorId`/`createdAt` 키로 form 제출, 그러나 noticeStore.addNotice는 `created_by: notice.createdBy`로 읽음 → DB created_by 컬럼 항상 null. 본 트랙 범위 외(form-store 키 통일 트랙으로 이월). | docs/BACKLOG.md |
+| DASHBOARD-OT-STALE-001 | BUG | open | 세션 75-A (2026-04-27) | - | AdminDashboard pendingCount = leave + overtime 합산. 75-A에서 leaveStore fetchRequests만 추가, overtimeStore도 동일 stale 패턴 가능성 존재. 75-B 또는 별 트랙에서 점검. | docs/BACKLOG.md |
 
 ---
 
