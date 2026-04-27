@@ -1,7 +1,7 @@
 import React, { useState, useContext, createContext, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { QRCodeSVG } from 'qrcode.react';
-import { Card, Pill, T, icons } from '../design/primitives';
+import { Card, Pill, T, icons, btnSecondary } from '../design/primitives';
 import { useFloorData } from '../hooks/useFloorData';
 import { supabase } from '../lib/supabase';
 
@@ -697,7 +697,7 @@ function FloorPlanScreen() {
                 <div style={{ maxHeight: 360, overflow: 'auto' }}>
                   {allWorking.map(g => {
                     const w = getWorker(g.currentWorker, WORKERS_MAP);
-                    const task = TASK_TYPES[g.taskType];
+                    const task = g.taskType ? TASK_TYPES[g.taskType] : null;
                     const pos = predictPosition(g, { TASK_TYPES, WORKER_SPEED_FACTOR, GOL_LENGTH_M });
                     const pct = pos ? Math.round((g.progress === 50 ? 50 : 0) + pos.frac * 50) : 0;
                     return (
@@ -720,7 +720,7 @@ function FloorPlanScreen() {
                                 </>
                               ) : (
                                 <>
-                                  <span style={{ padding: '1px 5px', borderRadius: 3, background: task.color, color: '#fff', fontSize: 9, fontWeight: 700 }}>{task.label}</span>
+                                  {task && <span style={{ padding: '1px 5px', borderRadius: 3, background: task.color, color: '#fff', fontSize: 9, fontWeight: 700 }}>{task.label}</span>}
                                   {pos && <span>잔여 약 {Math.round(pos.estRemaining)}분</span>}
                                   {(g.pauseTotalMin > 0) && <span style={{ color: '#CA8A04' }}>누적 휴식 {g.pauseTotalMin}분</span>}
                                 </>
