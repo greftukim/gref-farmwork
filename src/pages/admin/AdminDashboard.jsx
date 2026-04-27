@@ -59,6 +59,7 @@ function AdminDashboardScreen() {
   const fetchLeaveRequests = useLeaveStore((s) => s.fetchRequests);
   const approveOT = useOvertimeStore((s) => s.approveRequest);
   const rejectOT = useOvertimeStore((s) => s.rejectRequest);
+  const fetchOvertimeRequests = useOvertimeStore((s) => s.fetchRequests);
   const currentUser = useAuthStore((s) => s.currentUser);
   const navigate = useNavigate();
   const [processing, setProcessing] = useState(null);
@@ -71,7 +72,10 @@ function AdminDashboardScreen() {
   }, []);
 
   useEffect(() => {
-    if (currentUser) fetchLeaveRequests(currentUser);
+    if (currentUser) {
+      fetchLeaveRequests(currentUser);
+      fetchOvertimeRequests(currentUser);
+    }
   }, [currentUser]);
 
   useEffect(() => {

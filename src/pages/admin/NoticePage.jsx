@@ -70,7 +70,7 @@ export default function NoticePage() {
   const save = async () => {
     if (!form.title.trim()) return alert('제목을 입력해 주세요');
     if (editing === 'new') {
-      await addNotice({ ...form, authorId: currentUser?.id, createdAt: new Date().toISOString() });
+      await addNotice({ ...form, createdBy: currentUser?.id, createdAt: new Date().toISOString() });
     } else {
       await updateNotice(editing, form);
     }
