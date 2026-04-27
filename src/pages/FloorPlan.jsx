@@ -731,7 +731,7 @@ function FloorPlanScreen() {
                           <span style={{ fontSize: 11, fontWeight: 700, color: T.text, fontVariantNumeric: 'tabular-nums' }}>{pct}%</span>
                         </div>
                         <div style={{ marginTop: 6, height: 3, background: T.borderSoft, borderRadius: 999, overflow: 'hidden' }}>
-                          <div style={{ width: `${pct}%`, height: '100%', background: g.pausedAt ? '#CA8A04' : task.color, transition: 'width 0.5s' }} />
+                          <div style={{ width: `${pct}%`, height: '100%', background: g.pausedAt ? '#CA8A04' : (task ? task.color : '#94A3B8'), transition: 'width 0.5s' }} />
                         </div>
                       </div>
                     );
@@ -755,12 +755,12 @@ function FloorPlanScreen() {
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                           <span style={{ fontSize: 12, fontWeight: 700, color: T.text }}>{a.house}</span>
-                          <span style={{ padding: '1px 6px', borderRadius: 3, background: task.color, color: '#fff', fontSize: 9, fontWeight: 700 }}>{task.label}</span>
+                          <span style={{ padding: '1px 6px', borderRadius: 3, background: task ? task.color : '#94A3B8', color: '#fff', fontSize: 9, fontWeight: 700 }}>{task?.label}</span>
                         </div>
                         <span style={{ fontSize: 11, fontWeight: 700, color: T.text, fontVariantNumeric: 'tabular-nums' }}>{a.completedGols}/{a.gols}골</span>
                       </div>
                       <div style={{ height: 4, background: T.borderSoft, borderRadius: 999, overflow: 'hidden' }}>
-                        <div style={{ width: `${pct}%`, height: '100%', background: task.color }} />
+                        <div style={{ width: `${pct}%`, height: '100%', background: task ? task.color : '#94A3B8' }} />
                       </div>
                       <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 4, fontSize: 10, color: T.mutedSoft }}>
                         <span>{a.workers.length}명 · {a.startAt} 시작</span>
@@ -872,7 +872,7 @@ function GolDetail({ g, cfg, onClose }) {
                 <div style={{ fontSize: 13, fontWeight: 700, color: T.text }}>{worker.name}</div>
                 <div style={{ fontSize: 11, color: T.mutedSoft }}>{worker.role} · 속도 계수 ×{WORKER_SPEED_FACTOR[worker.id]?.toFixed(2)}</div>
               </div>
-              <span style={{ padding: '3px 8px', borderRadius: 5, background: task.color, color: '#fff', fontSize: 10, fontWeight: 700 }}>{task.label}</span>
+              {task && <span style={{ padding: '3px 8px', borderRadius: 5, background: task.color, color: '#fff', fontSize: 10, fontWeight: 700 }}>{task.label}</span>}
             </div>
             <div style={{ marginTop: 10, display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8, fontSize: 11 }}>
               <div>
