@@ -253,6 +253,10 @@
 | WORKER-QR-CTA-001 | UX 개선 | resolved | 세션 74-C (2026-04-27) 등록·해소 | - | 작업자 홈 화면 QR 스캔 진입 경로 신설. WorkerHome.jsx에 gradient CTA 카드 추가(빠른 액션 그리드 하단). useNavigate → /worker/m/qr-scan. 옵션 A2(홈 CTA 버튼) 채택. | docs/HANDOVER_SESSION74C.md |
 | QR-CODE-LABEL-GEN-001 | 기능 미구현 | resolved | 세션 74-D (2026-04-27) 등록·해소 | - | 평면도 QR 관리 모드 + QR 라벨 PDF 일괄 내보내기. FloorPlan.jsx: qrManageMode 토글 + F/B 마커 SVG 오버레이(클릭→QRCodeSVG 팝업) + PDF 내보내기 버튼. exportQrPdf(): canvas 기반 라벨(70×70mm, 3×3/A4) + jspdf 동적 import. qrcode 패키지 신규 추가. | docs/HANDOVER_SESSION74D.md |
 | QR-SCAN-TYPE-CHECK-001 | 기술 부채 | resolved | 세션 74-B 이월 → 세션 74-D (2026-04-27) 해소 | - | qr_scans.scan_type CHECK constraint에 pause/resume 누락. ALTER TABLE DROP+ADD로 6종(start/half/complete/switch/pause/resume) 확장. apply_migration 적용 + pg_constraint 검증 완료. | docs/HANDOVER_SESSION74D.md |
+| DEMO-SEED-FLOOR-001 | 데이터 | resolved | 세션 74-E (2026-04-27) 등록·해소 | - | /admin/floor 평면도 실데이터 부재 — qr_scans 데모 시드 98건(부산 작업자 9명 × 4동 × 46골, CURRENT_DATE 기준) 투입. scan_type 분포: start=40/half=31/complete=23/pause=2/resume=2. 멱등성: 오늘+9명 한정 DELETE→INSERT. 파일: supabase/seeds/demo_qr_scans_today.sql. | docs/HANDOVER_SESSION74E.md |
+| DEMO-SEED-DASHBOARD-001 | 데이터 | resolved | 세션 74-F (2026-04-27) 등록·해소 | - | /admin 대시보드 KPI 0값 — attendance 9건(오늘 출근 07:55~08:07, check_out=null) + harvest_records 3건(토마토 95kg/딸기 38kg/파프리카 72kg, 합계 205kg) 시드 투입. 멱등성: 오늘+해당 작업자 한정. 파일: supabase/seeds/demo_attendance_today.sql, demo_harvest_week.sql. | docs/HANDOVER_SESSION74F.md |
+| FLOOR-PAGE-ERROR-001 | BUG | resolved | 세션 74-F (2026-04-27) 등록·해소 | - | /admin/floor 빈 화면(TypeError). 원인: buildFieldStateFromScans() taskType=null → TASK_TYPES[null].color 크래시 + btnSecondary import 누락(ReferenceError). 수정 3줄: (1) btnSecondary import 복원, (2) task = g.taskType ? TASK_TYPES[g.taskType] : null 널 가드, (3) {task && <span>} 조건부 렌더. 빌드 0 에러. 커밋: 64755a0. | docs/HANDOVER_SESSION74F.md |
+| P3-FLOORPLAN-BTN-IMPORT-001 | BUG | resolved | 세션 74-D 회귀 → 세션 74-F (2026-04-27) 해소 | - | FloorPlan.jsx 74-D 작업 중 btnSecondary import 누락. GolDetail 패널 "작업자 재배정"/"생육 상세" 버튼 ReferenceError. FLOOR-PAGE-ERROR-001 수정 시 동반 해소. | docs/HANDOVER_SESSION74F.md |
 
 ---
 
