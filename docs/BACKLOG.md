@@ -251,6 +251,8 @@
 | ASSIGNMENT-PLAN-001 | 기능 미구현 | open | 세션 74-B (2026-04-27) | Tier 6 | 골 작업 사전 배정 기능(ACTIVE_ASSIGNMENTS) — useFloorData.js에서 항상 [] 반환. assignments 테이블 + 관리자 배정 UI(어느 동 몇 번골을 누구에게 배정) + 작업자 앱 표시(내 배정 골 목록) 포함. 별 트랙. | docs/HANDOVER_SESSION74B.md |
 | QR-SCAN-FLOW-001 | 기능 미구현 | resolved | 세션 74-C (2026-04-27) 등록·해소 | - | QrScanPage F/B/F-again 3단계 scan_type 자동 판정. 같은 온실+골 sibling QR ID 조회 → 당일 이전 스캔 기록 → last scan_type 기준 start/half/complete 결정. 성공 메시지도 단계 반영(작업 시작/중간/완료). | docs/HANDOVER_SESSION74C.md |
 | WORKER-QR-CTA-001 | UX 개선 | resolved | 세션 74-C (2026-04-27) 등록·해소 | - | 작업자 홈 화면 QR 스캔 진입 경로 신설. WorkerHome.jsx에 gradient CTA 카드 추가(빠른 액션 그리드 하단). useNavigate → /worker/m/qr-scan. 옵션 A2(홈 CTA 버튼) 채택. | docs/HANDOVER_SESSION74C.md |
+| QR-CODE-LABEL-GEN-001 | 기능 미구현 | resolved | 세션 74-D (2026-04-27) 등록·해소 | - | 평면도 QR 관리 모드 + QR 라벨 PDF 일괄 내보내기. FloorPlan.jsx: qrManageMode 토글 + F/B 마커 SVG 오버레이(클릭→QRCodeSVG 팝업) + PDF 내보내기 버튼. exportQrPdf(): canvas 기반 라벨(70×70mm, 3×3/A4) + jspdf 동적 import. qrcode 패키지 신규 추가. | docs/HANDOVER_SESSION74D.md |
+| QR-SCAN-TYPE-CHECK-001 | 기술 부채 | resolved | 세션 74-B 이월 → 세션 74-D (2026-04-27) 해소 | - | qr_scans.scan_type CHECK constraint에 pause/resume 누락. ALTER TABLE DROP+ADD로 6종(start/half/complete/switch/pause/resume) 확장. apply_migration 적용 + pg_constraint 검증 완료. | docs/HANDOVER_SESSION74D.md |
 
 ---
 

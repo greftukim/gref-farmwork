@@ -1,7 +1,9 @@
-import React, { useState, useContext, createContext } from 'react';
+import React, { useState, useContext, createContext, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Card, Pill, T, btnSecondary, icons } from '../design/primitives';
+import { QRCodeSVG } from 'qrcode.react';
+import { Card, Pill, T, icons } from '../design/primitives';
 import { useFloorData } from '../hooks/useFloorData';
+import { supabase } from '../lib/supabase';
 
 const FloorCtx = createContext({ HOUSE_CONFIG: [], FIELD_STATE: { timestamp: '-', gols: [] }, TASK_TYPES: {}, WORKERS_MAP: [], WORKER_SPEED_FACTOR: {}, GOL_LENGTH_M: 20, ACTIVE_ASSIGNMENTS: [] });
 
@@ -77,8 +79,97 @@ const golColor = (g) => {
   return { bg: '#F8FAFC', border: '#E2E8F0', text: T.mutedSoft };
 };
 
+// ─────── QR 라벨 PDF 내보내기 ───────
+async function exportQrPdf(qrCodesList, cfg) {
+  const [{ jsPDF }, QRCode] = await Promise.all([
+    import('jspdf'),
+    import('qrcode'),
+  ]);
+
+  const sorted = [...qrCodesList].sort((a, b) =>
+    a.gol !== b.gol ? a.gol - b.gol : a.side.localeCompare(b.side)
+  );
+
+  const LW = 70, LH = 70, COLS = 3;
+  const marginY = (297 - 3 * LH) / 2; // ~43.5mm 상하 중앙
+  const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+  const CSIZE = 700; // 700px = 70mm @ 10px/mm
+
+  const drawCutGuides = () => {
+    doc.setLineDashPattern([2, 2], 0);
+    doc.setDrawColor(180, 180, 180);
+    // 수직 절단선 — 상하 여백 구간
+    [70, 140].forEach(cx => {
+      doc.line(cx, 2, cx, marginY - 2);
+      doc.line(cx, marginY + 3 * LH + 2, cx, 295);
+    });
+    // 수평 절단선 — 좌우 여백 구간 없음(라벨이 전폭), 대신 위아래 표시
+    [1, 2].forEach(r => {
+      const cy = marginY + r * LH;
+      doc.line(0, cy, 4, cy);
+      doc.line(206, cy, 210, cy);
+    });
+    doc.setLineDashPattern([], 0);
+  };
+
+  drawCutGuides();
+
+  for (let i = 0; i < sorted.length; i++) {
+    const qr = sorted[i];
+    const pos = i % 9;
+    if (pos === 0 && i > 0) { doc.addPage(); drawCutGuides(); }
+
+    const col = pos % COLS;
+    const row = Math.floor(pos / COLS);
+    const x = col * LW;
+    const y = marginY + row * LH;
+    const isFront = qr.side === 'F';
+
+    const canvas = document.createElement('canvas');
+    canvas.width = CSIZE;
+    canvas.height = CSIZE;
+    const ctx = canvas.getContext('2d');
+
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, CSIZE, CSIZE);
+
+    ctx.strokeStyle = '#cbd5e1';
+    ctx.lineWidth = 5;
+    ctx.strokeRect(2.5, 2.5, CSIZE - 5, CSIZE - 5);
+
+    ctx.fillStyle = isFront ? '#3B82F6' : '#F59E0B';
+    ctx.fillRect(0, 0, CSIZE, 68);
+
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold 36px "Malgun Gothic","Apple SD Gothic Neo",sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText(isFront ? '앞 (F)' : '뒤 (B)', CSIZE / 2, 46);
+
+    const qrDataUrl = await QRCode.toDataURL(qr.id, { width: 560, margin: 1, errorCorrectionLevel: 'M' });
+    await new Promise((res) => {
+      const img = new Image();
+      img.onload = () => { ctx.drawImage(img, 70, 72, 560, 560); res(); };
+      img.src = qrDataUrl;
+    });
+
+    ctx.fillStyle = '#0f172a';
+    ctx.font = 'bold 38px "Malgun Gothic","Apple SD Gothic Neo",sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText(
+      `${cfg.name || cfg.id}  ${qr.gol}골  ${isFront ? '앞' : '뒤'}`,
+      CSIZE / 2, CSIZE - 20
+    );
+
+    doc.addImage(canvas.toDataURL('image/png'), 'PNG', x, y, LW, LH);
+  }
+
+  const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+  const safeName = (cfg.name || cfg.id).replace(/\s+/g, '_');
+  doc.save(`qr-labels_${safeName}_${dateStr}.pdf`);
+}
+
 // ─────── 평면도 SVG (복도=하단) ───────
-function GreenhousePlan({ house, onSelectGol, selectedGol }) {
+function GreenhousePlan({ house, onSelectGol, selectedGol, qrManageMode = false, qrCodesList = [], onQrPreview = null }) {
   const { HOUSE_CONFIG, FIELD_STATE, TASK_TYPES, WORKERS_MAP, WORKER_SPEED_FACTOR, GOL_LENGTH_M } = useContext(FloorCtx);
   const cfg = HOUSE_CONFIG.find(h => h.id === house);
   const gols = FIELD_STATE.gols.filter(g => g.house === house);
@@ -232,6 +323,29 @@ function GreenhousePlan({ house, onSelectGol, selectedGol }) {
               {(g.lastScan === 'F' || g.lastScan === 'F-again') && <circle cx={it.x + it.w / 2} cy={plantBot - 24} r="1.5" fill="#fff" />}
             </g>
 
+            {/* QR 관리 모드 — 클릭 가능한 F/B 마커 */}
+            {qrManageMode && (() => {
+              const cx = it.x + it.w / 2;
+              const fCode = qrCodesList.find(qr => qr.gol === it.n && qr.side === 'F');
+              const bCode = qrCodesList.find(qr => qr.gol === it.n && qr.side === 'B');
+              return (
+                <g>
+                  {bCode && (
+                    <g onClick={(e) => { e.stopPropagation(); onQrPreview?.(bCode); }} style={{ cursor: 'pointer' }}>
+                      <rect x={cx - 10} y={plantTop - 16} width="20" height="14" rx="3" fill="#F59E0B" stroke="#fff" strokeWidth="1.5" opacity="0.95" />
+                      <text x={cx} y={plantTop - 5} textAnchor="middle" fontSize="8" fill="#fff" fontWeight="800">B</text>
+                    </g>
+                  )}
+                  {fCode && (
+                    <g onClick={(e) => { e.stopPropagation(); onQrPreview?.(fCode); }} style={{ cursor: 'pointer' }}>
+                      <rect x={cx - 10} y={plantBot + 4} width="20" height="14" rx="3" fill="#3B82F6" stroke="#fff" strokeWidth="1.5" opacity="0.95" />
+                      <text x={cx} y={plantBot + 14} textAnchor="middle" fontSize="8" fill="#fff" fontWeight="800">F</text>
+                    </g>
+                  )}
+                </g>
+              );
+            })()}
+
             {/* 이상 표시 */}
             {g.hasIssue && (
               <g>
@@ -323,7 +437,33 @@ function FloorPlanScreen() {
   const [selectedGol, setSelectedGol] = useState(null);
   const [timeMode, setTimeMode] = useState('live');
   const [historyTime, setHistoryTime] = useState(nowMin);
+  const [qrManageMode, setQrManageMode] = useState(false);
+  const [qrCodes, setQrCodes] = useState([]);
+  const [qrPreview, setQrPreview] = useState(null);
+  const [pdfLoading, setPdfLoading] = useState(false);
   const navigate = useNavigate();
+
+  useEffect(() => {
+    if (!qrManageMode || qrCodes.length > 0) return;
+    supabase
+      .from('qr_codes')
+      .select('id, gol, side, note, greenhouse_id, greenhouses(code, name)')
+      .eq('status', 'active')
+      .order('gol')
+      .then(({ data }) => { if (data) setQrCodes(data); });
+  }, [qrManageMode]);
+
+  const houseQrCodes = useMemo(
+    () => qrCodes.filter(qr => qr.greenhouses?.code === house),
+    [qrCodes, house]
+  );
+
+  const handleExportPdf = async () => {
+    const targetCfg = HOUSE_CONFIG.find(h => h.id === house) ?? HOUSE_CONFIG[0];
+    if (!houseQrCodes.length || !targetCfg) return;
+    setPdfLoading(true);
+    try { await exportQrPdf(houseQrCodes, targetCfg); } finally { setPdfLoading(false); }
+  };
 
   if (loading) return <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: T.mutedSoft, fontSize: 14 }}>로딩 중...</div>;
   if (!HOUSE_CONFIG.length) return <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: T.mutedSoft, fontSize: 14 }}>데이터가 없습니다</div>;
@@ -376,7 +516,36 @@ function FloorPlanScreen() {
               <span style={{ color: T.mutedSoft }}>현재 시각</span>{' '}
               <strong style={{ color: T.text, fontFamily: 'ui-monospace, monospace' }}>{FIELD_STATE.timestamp.split(' ')[1]}</strong>
             </div>
-            {btnSecondary('QR 관리', icons.camera, () => alert('QR 관리 기능은 준비 중입니다'))}
+            <button onClick={() => { setQrManageMode(m => !m); setQrPreview(null); }} style={{
+              padding: '7px 13px', border: `1px solid ${qrManageMode ? T.primary : T.border}`,
+              borderRadius: 7, cursor: 'pointer', fontSize: 12, fontWeight: 700,
+              background: qrManageMode ? T.primary : T.surface,
+              color: qrManageMode ? '#fff' : T.text,
+              display: 'flex', alignItems: 'center', gap: 6,
+            }}>
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round">
+                <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/>
+                <rect x="3" y="14" width="7" height="7"/>
+                <line x1="14" y1="14" x2="14" y2="21"/><line x1="17" y1="14" x2="17" y2="17"/>
+                <line x1="20" y1="17" x2="20" y2="21"/>
+              </svg>
+              QR 관리
+            </button>
+            {qrManageMode && (
+              <button onClick={handleExportPdf} disabled={pdfLoading || !houseQrCodes.length} style={{
+                padding: '7px 13px', border: `1px solid ${T.border}`,
+                borderRadius: 7, cursor: houseQrCodes.length ? 'pointer' : 'default',
+                fontSize: 12, fontWeight: 700,
+                background: T.surface, color: houseQrCodes.length ? T.text : T.mutedSoft,
+                display: 'flex', alignItems: 'center', gap: 6,
+              }}>
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round">
+                  <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
+                  <polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
+                </svg>
+                {pdfLoading ? 'PDF 생성 중...' : `PDF 내보내기 (${houseQrCodes.length}개)`}
+              </button>
+            )}
           </div>
         </div>
       </div>
@@ -460,14 +629,58 @@ function FloorPlanScreen() {
                 <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}><span style={{ width: 10, height: 10, background: 'linear-gradient(#D1FAE5, #A7F3D0)', border: '1px solid #10B981' }} />거터</span>
               </div>
             </div>
-            <div style={{ padding: 16 }}>
-              <GreenhousePlan house={house} onSelectGol={setSelectedGol} selectedGol={selectedGol} />
+            <div style={{ padding: 16, position: 'relative' }}>
+              <GreenhousePlan
+                house={house}
+                onSelectGol={setSelectedGol}
+                selectedGol={selectedGol}
+                qrManageMode={qrManageMode}
+                qrCodesList={houseQrCodes}
+                onQrPreview={setQrPreview}
+              />
+              {/* QR 미리보기 팝업 */}
+              {qrPreview && (
+                <div style={{
+                  position: 'absolute', top: 10, right: 10,
+                  background: '#fff', borderRadius: 14, padding: 16, zIndex: 20,
+                  boxShadow: '0 8px 32px rgba(0,0,0,0.18)',
+                  border: `2px solid ${qrPreview.side === 'F' ? '#3B82F6' : '#F59E0B'}`,
+                  minWidth: 228,
+                }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+                    <span style={{ fontSize: 13, fontWeight: 700, color: T.text }}>
+                      {qrPreview.greenhouses?.name || ''} {qrPreview.gol}골 {qrPreview.side === 'F' ? '앞' : '뒤'}
+                    </span>
+                    <button onClick={() => setQrPreview(null)} style={{
+                      border: 0, background: 'transparent', cursor: 'pointer', fontSize: 18,
+                      color: T.muted, padding: '0 4px', lineHeight: 1,
+                    }}>×</button>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'center' }}>
+                    <QRCodeSVG value={qrPreview.id} size={190} includeMargin />
+                  </div>
+                  <div style={{ fontSize: 9, color: T.mutedSoft, marginTop: 8, textAlign: 'center', fontFamily: 'ui-monospace,monospace', wordBreak: 'break-all' }}>
+                    {qrPreview.id}
+                  </div>
+                  <div style={{ marginTop: 8, padding: '4px 8px', borderRadius: 6, background: qrPreview.side === 'F' ? '#EFF6FF' : '#FFFBEB', textAlign: 'center' }}>
+                    <span style={{ fontSize: 11, fontWeight: 700, color: qrPreview.side === 'F' ? '#3B82F6' : '#F59E0B' }}>
+                      {qrPreview.side === 'F' ? '■ 앞 (파란 stripe)' : '■ 뒤 (노란 stripe)'}
+                    </span>
+                  </div>
+                </div>
+              )}
             </div>
             {/* 설명 푸터 */}
             <div style={{ padding: '10px 16px', borderTop: `1px solid ${T.borderSoft}`, background: T.bg, fontSize: 11, color: T.muted, display: 'flex', gap: 16, flexWrap: 'wrap' }}>
               <span><strong style={{ color: T.text }}>●</strong> 아이콘 = 예측 위치 (QR 스캔 시각 + 작업 표준속도 × 개인 계수)</span>
               <span><strong style={{ color: T.text }}>▲</strong> 화살표 = 이동 방향</span>
               <span><strong style={{ color: T.text }}>┃</strong> 점선 = 이동 자취</span>
+              {qrManageMode && (
+                <>
+                  <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}><span style={{ width: 10, height: 10, borderRadius: 2, background: '#3B82F6' }} /><span style={{ color: '#3B82F6', fontWeight: 700 }}>F</span> = 앞 QR (클릭→미리보기)</span>
+                  <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}><span style={{ width: 10, height: 10, borderRadius: 2, background: '#F59E0B' }} /><span style={{ color: '#F59E0B', fontWeight: 700 }}>B</span> = 뒤 QR (클릭→미리보기)</span>
+                </>
+              )}
             </div>
           </Card>
 
