@@ -3,7 +3,7 @@
 **세션**: 74-G  
 **날짜**: 2026-04-27  
 **범위**: FloorPlan.jsx task null 누수 잔존 위치 전수 grep 감사 + 일괄 수정  
-**마지막 커밋**: `TBD`
+**마지막 커밋**: `383c4f1` fix(session74-G): FloorPlan task null-guard 일괄 회수 (4곳)
 
 ---
 
