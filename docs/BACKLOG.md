@@ -264,6 +264,8 @@
 | NOTICE-AUTHOR-MISMATCH-001 | BUG | resolved | 세션 75-A 등록 → 75-A.1 (2026-04-27) 해소 | - | NoticePage가 `authorId` 키로 form 제출, noticeStore.addNotice는 `created_by: notice.createdBy`로 읽음 → DB created_by 컬럼 항상 null. 75-A.1: form key `authorId` → `createdBy` 통일(Option B 패턴 재적용). 기존 시드 5건 created_by=null 잔존(복구는 사용자 결정 보류). | docs/HANDOVER_SESSION75A1.md |
 | DASHBOARD-OT-STALE-001 | BUG | resolved | 세션 75-A 등록 → 75-A.1 (2026-04-27) 해소 | - | AdminDashboard가 overtimeStore.requests 구독만 하고 fetchRequests 호출 누락 → pendingCount 합산에서 OT 부분 stale. 75-A.1: 75-A에서 추가한 useEffect에 fetchOvertimeRequests(currentUser) 통합 호출(Option I). | docs/HANDOVER_SESSION75A1.md |
 | DASHBOARD-OT-BRANCH-FILTER-001 | BUG | open | 세션 75-A.1 (2026-04-27) | - | 75-A.1 작업 중 추가 발견: leaveStore.fetchRequests(currentUser)는 farm_admin 브랜치 필터 적용, overtimeStore.fetchRequests()는 인자 없이 전체 OT 반환 → farm_admin 화면에서 leave는 자기 지점만, OT는 전 지점이 보일 가능성. 본 트랙 범위 외. 75-B 또는 별 트랙에서 점검. | docs/BACKLOG.md |
+| TASK-PRIORITY-FILTER-001 | 기능 | resolved (이미 구현) | 세션 75-B (2026-04-27) 등록·즉시 X케이스 분류 | - | Task 0 정찰에서 #5 우선순위 필터를 Y케이스(부분 구현)로 분류했으나 75-B 진입 후 재확인 결과 TaskBoardPage.jsx에 priorityFilter state(line 43) + filter 조건(line 55) + 칩 토글 UI(line 96-111, 전체/높음/보통/낮음) 모두 완비되어 있는 X케이스(이미 구현). 코드 변경 0건. 정찰 분류 정정 기록. | docs/HANDOVER_SESSION75B.md |
+| PERF-DETAIL-WORKER-ROUTING-001 | BUG | resolved | 세션 75-B (2026-04-27) 등록·즉시해소 | - | PerformanceDetailScreen이 항상 `[...allWorkers].sort()[0]`로 최상위 1명만 표시하여 "상세 →" 버튼이 어떤 워커에 대해서도 동일 화면을 띄움. PerfTable의 navigate 호출에 `state: { workerId: w.id }` 전달 + DetailScreen에서 useLocation 수신 + useMemo로 워커 필터링 + workerId 없거나 미발견 시 fallback(최상위) 또는 빈 상태 메시지 처리. | docs/HANDOVER_SESSION75B.md |
 
 ---
 

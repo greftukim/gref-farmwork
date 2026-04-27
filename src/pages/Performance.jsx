@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useMemo, useState } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { HQ } from '../design/hq-shell';
 import { usePerformanceData } from '../hooks/usePerformanceData';
 import { Avatar, Card, Dot, Icon, Pill, T, btnSecondary, icons } from '../design/primitives';
@@ -349,7 +349,7 @@ const PerfTable = ({ workers, onSelect, selected, compareMode }) => {
                   {w.attendance}%
                 </td>
                 <td style={{ padding: '10px 16px', textAlign: 'right' }}>
-                  <button onClick={() => navigate('/admin/performance/detail')} style={{ padding: '4px 10px', borderRadius: 6, border: `1px solid ${T.border}`, background: T.surface, color: T.muted, fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>상세 →</button>
+                  <button onClick={() => navigate('/admin/performance/detail', { state: { workerId: w.id } })} style={{ padding: '4px 10px', borderRadius: 6, border: `1px solid ${T.border}`, background: T.surface, color: T.muted, fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>상세 →</button>
                 </td>
               </tr>
             );
@@ -566,6 +566,16 @@ function BranchPerformanceScreen() {
 function PerformanceDetailScreen() {
   const { sam, workers: allWorkers, loading } = usePerformanceData();
   const [weekWork, setWeekWork] = useState('전체');
+  const location = useLocation();
+  const workerId = location.state?.workerId;
+
+  const w = useMemo(() => {
+    if (!allWorkers.length) return null;
+    if (workerId) {
+      return allWorkers.find((x) => x.id === workerId) ?? null;
+    }
+    return [...allWorkers].sort((a, b) => b.harvestPct - a.harvestPct)[0] ?? null;
+  }, [allWorkers, workerId]);
 
   if (loading) {
     return <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: T.mutedSoft, fontSize: 14 }}>로딩 중...</div>;
@@ -573,8 +583,9 @@ function PerformanceDetailScreen() {
   if (!allWorkers.length) {
     return <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: T.mutedSoft, fontSize: 14 }}>수확 데이터가 없습니다</div>;
   }
-
-  const w = [...allWorkers].sort((a, b) => b.harvestPct - a.harvestPct)[0];
+  if (!w) {
+    return <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: T.mutedSoft, fontSize: 14 }}>해당 작업자 데이터를 찾을 수 없습니다</div>;
+  }
   const WEEK_TYPES = ['전체', '정식', '유인', '적엽', '수확', '선별·포장'];
   const weeks = w.weeklyTrend && w.weeklyTrend.length > 0 ? w.weeklyTrend : [
     { w: '13주', eff: 95, harv: 90 }, { w: '14주', eff: 98, harv: 93 },
