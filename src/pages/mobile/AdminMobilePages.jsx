@@ -11,6 +11,8 @@ import useLeaveStore from '../../stores/leaveStore';
 import useIssueStore from '../../stores/issueStore';
 import useAttendanceStore from '../../stores/attendanceStore';
 import { usePerformanceData } from '../../hooks/usePerformanceData';
+import { useFloorData } from '../../hooks/useFloorData';
+import { GreenhousePlan, FloorCtx } from '../FloorPlan';
 
 // ─── 헬퍼 ────────────────────────────────────────────────────────────
 const LEAVE_LABEL = {
@@ -283,15 +285,16 @@ const ApprovalCard = ({ data, stackIdx = 0, accent }) => {
 };
 
 // ═══════════════════════════════════════════════════════════
-// ④ 평면도 탭 — attendanceStore 출근 인원 + 준비 중 안내
-// PC-FLOOR-DATA-001: PC 평면도도 floor-schema.js mock
-// MOBILE-FLOOR-001: QR 위치 추적 Tier 6 예정
+// ④ 평면도 탭 — MOBILE-FLOOR-001 resolved (세션 74-C)
 // ═══════════════════════════════════════════════════════════
 function MobileFloorScreen({ role = 'farm' }) {
   const currentUser = useAuthStore((s) => s.currentUser);
   const records = useAttendanceStore((s) => s.records);
   const fetchRecords = useAttendanceStore((s) => s.fetchRecords);
   const employees = useEmployeeStore((s) => s.employees);
+  const { data: floorData, loading: floorLoading } = useFloorData();
+  const [houseIdx, setHouseIdx] = useState(0);
+  const [selectedGol, setSelectedGol] = useState(null);
 
   useEffect(() => {
     if (currentUser) fetchRecords(currentUser);
@@ -310,6 +313,9 @@ function MobileFloorScreen({ role = 'farm' }) {
       absent: branchEmps.filter((e) => !checkedInIds.has(e.id)).length,
     };
   }, [records, employees, today, branch]);
+
+  const { HOUSE_CONFIG } = floorData;
+  const house = HOUSE_CONFIG[houseIdx]?.id ?? HOUSE_CONFIG[0]?.id;
 
   return (
     <AdminMobileShell role={role} active="floor">
@@ -337,21 +343,27 @@ function MobileFloorScreen({ role = 'farm' }) {
           </div>
 
           <CardBlock title="평면도 현황">
-            <div style={{ padding: '24px 0', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10 }}>
-              <div style={{
-                width: 52, height: 52, borderRadius: 14, background: `${accent}18`,
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-              }}>
-                <Icon d={icons.location} size={24} c={accent} sw={1.8} />
-              </div>
-              <div style={{ fontSize: 15, fontWeight: 700, color: MA.text }}>평면도 뷰 준비 중</div>
-              <div style={{ fontSize: 12, color: MA.muted, textAlign: 'center', lineHeight: 1.6, maxWidth: 240 }}>
-                QR 위치 추적 기능과 함께<br />Tier 6에서 공개됩니다
-              </div>
-              <div style={{ fontSize: 11, color: MA.mutedSoft, padding: '4px 10px', borderRadius: 999, background: MA.bg, fontWeight: 600, marginTop: 4 }}>
-                MOBILE-FLOOR-001
-              </div>
-            </div>
+            {floorLoading ? (
+              <div style={{ padding: '24px 0', textAlign: 'center', fontSize: 13, color: MA.muted }}>로딩 중...</div>
+            ) : !HOUSE_CONFIG.length ? (
+              <div style={{ padding: '24px 0', textAlign: 'center', fontSize: 13, color: MA.muted }}>데이터가 없습니다</div>
+            ) : (
+              <>
+                <div style={{ display: 'flex', gap: 6, padding: '8px 0 4px', overflowX: 'auto' }}>
+                  {HOUSE_CONFIG.map((h, i) => (
+                    <button key={h.id} onClick={() => { setHouseIdx(i); setSelectedGol(null); }} style={{
+                      padding: '5px 12px', borderRadius: 999, border: 0, cursor: 'pointer',
+                      background: i === houseIdx ? accent : MA.bg,
+                      color: i === houseIdx ? '#fff' : MA.muted,
+                      fontSize: 12, fontWeight: 700, whiteSpace: 'nowrap',
+                    }}>{h.label}</button>
+                  ))}
+                </div>
+                <FloorCtx.Provider value={floorData}>
+                  <GreenhousePlan house={house} onSelectGol={setSelectedGol} selectedGol={selectedGol} />
+                </FloorCtx.Provider>
+              </>
+            )}
           </CardBlock>
         </div>
       )}

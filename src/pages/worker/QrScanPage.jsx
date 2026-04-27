@@ -47,7 +47,7 @@ export default function QrScanPage() {
 
     const { data: qrCode } = await supabase
       .from('qr_codes')
-      .select('id, greenhouses(name)')
+      .select('id, gol, side, greenhouse_id, greenhouses(name)')
       .eq('id', decodedText.trim())
       .single();
 
@@ -56,11 +56,37 @@ export default function QrScanPage() {
       return;
     }
 
+    const todayStr = new Date().toISOString().split('T')[0];
+
+    const { data: siblingCodes } = await supabase
+      .from('qr_codes')
+      .select('id')
+      .eq('greenhouse_id', qrCode.greenhouse_id)
+      .eq('gol', qrCode.gol);
+
+    const siblingIds = (siblingCodes || []).map((c) => c.id);
+
+    let scan_type = 'start';
+    if (siblingIds.length > 0) {
+      const { data: priorScans } = await supabase
+        .from('qr_scans')
+        .select('scan_type')
+        .in('qr_code_id', siblingIds)
+        .eq('employee_id', currentUser?.id)
+        .gte('scanned_at', todayStr + 'T00:00:00')
+        .order('scanned_at', { ascending: false })
+        .limit(5);
+
+      const last = priorScans?.[0]?.scan_type;
+      if (last === 'start') scan_type = 'half';
+      else if (last === 'half') scan_type = 'complete';
+    }
+
     const { data: scan, error } = await supabase.from('qr_scans').insert({
       qr_code_id: qrCode.id,
       employee_id: currentUser?.id,
       scanned_at: new Date().toISOString(),
-      scan_type: 'start',
+      scan_type,
     }).select('id, scanned_at, scan_type, qr_code_id').single();
 
     if (error) {
@@ -69,7 +95,8 @@ export default function QrScanPage() {
     }
 
     const ghName = qrCode.greenhouses?.name || '구역';
-    setScanResult({ success: true, message: `${ghName} 스캔 완료` });
+    const scanLabel = scan_type === 'start' ? '작업 시작' : scan_type === 'half' ? '작업 중간' : '작업 완료';
+    setScanResult({ success: true, message: `${ghName} ${scanLabel}` });
     if (scan) setRecentScans((prev) => [scan, ...prev]);
   }, [currentUser?.id, stopScan]);
 
@@ -267,7 +294,7 @@ export default function QrScanPage() {
                 </div>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontSize: 13, fontWeight: 700, color: T.text, marginBottom: 2 }}>
-                    {r.scan_type === 'task_start' ? '작업 시작' : r.scan_type === 'task_end' ? '작업 종료' : '스캔 완료'}
+                    {r.scan_type === 'start' ? '작업 시작' : r.scan_type === 'half' ? '작업 중간' : r.scan_type === 'complete' ? '작업 완료' : r.scan_type === 'switch' ? '작업 전환' : '스캔'}
                   </div>
                   <div style={{ fontSize: 11, color: T.mutedSoft }}>
                     {r.qr_code_id?.slice(0, 8).toUpperCase()}

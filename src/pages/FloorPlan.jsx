@@ -746,4 +746,4 @@ function GolDetail({ g, cfg, onClose }) {
     </Card>
   );
 }
-export { FloorPlanScreen, GreenhousePlan };
+export { FloorPlanScreen, GreenhousePlan, FloorCtx };

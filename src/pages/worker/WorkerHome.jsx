@@ -2,6 +2,7 @@
 // 기존: src/pages/worker/WorkerHome.jsx 교체용
 
 import React, { useEffect, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Avatar, Card, Dot, Icon, Pill, T, icons,
 } from '../../design/primitives';
@@ -27,6 +28,7 @@ const greeting = () => {
 };
 
 export default function WorkerHome({ onNavigate }) {
+  const navigate = useNavigate();
   const currentUser = useAuthStore((s) => s.currentUser);
   const records = useAttendanceStore((s) => s.records);
   const checkIn = useAttendanceStore((s) => s.checkIn);
@@ -187,6 +189,33 @@ export default function WorkerHome({ onNavigate }) {
             </button>
           ))}
         </div>
+      </div>
+
+      {/* QR 스캔 CTA */}
+      <div style={{ padding: '16px 16px 0' }}>
+        <button
+          onClick={() => navigate('/worker/m/qr-scan')}
+          style={{
+            width: '100%', borderRadius: 14, border: 0,
+            background: `linear-gradient(135deg, ${T.primary} 0%, ${T.primaryDark} 100%)`,
+            color: '#fff', padding: '16px 20px',
+            display: 'flex', alignItems: 'center', gap: 14, cursor: 'pointer',
+            boxShadow: '0 4px 12px rgba(99,102,241,0.30)',
+          }}
+        >
+          <div style={{
+            width: 48, height: 48, borderRadius: 12,
+            background: 'rgba(255,255,255,0.18)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+          }}>
+            <Icon d={icons.camera} size={22} c="#fff" sw={2} />
+          </div>
+          <div style={{ flex: 1, textAlign: 'left' }}>
+            <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 2 }}>QR 스캔</div>
+            <div style={{ fontSize: 12, opacity: 0.8 }}>골 위치를 기록하세요</div>
+          </div>
+          <Icon d={<polyline points="9 18 15 12 9 6" />} size={18} c="rgba(255,255,255,0.7)" sw={2} />
+        </button>
       </div>
 
       {/* 오늘의 작업 */}
