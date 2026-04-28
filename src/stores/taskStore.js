@@ -9,15 +9,44 @@ const useTaskStore = create((set, get) => ({
 
   fetchTasks: async (currentUser) => {
     set({ loading: true });
-    let query = supabase.from('tasks').select('*').order('date', { ascending: false });
+    let query = supabase
+      .from('tasks')
+      .select('*, task_assignments(worker_id, role, employees(id, name))')
+      .order('date', { ascending: false });
     if (currentUser?.role === 'farm_admin' && currentUser?.branch) {
       const { data: branchEmps } = await supabase.from('employees').select('id').eq('branch', currentUser.branch).eq('is_active', true);
       const empIds = (branchEmps || []).map((e) => e.id);
       if (empIds.length > 0) query = query.in('worker_id', empIds);
     }
     const { data } = await query;
-    if (data) set({ tasks: data.map(snakeToCamel) });
+    if (data) {
+      const tasks = data.map((row) => {
+        const camel = snakeToCamel(row);
+        camel.workers = (row.task_assignments || []).map((a) => ({
+          id: a.employees?.id || a.worker_id,
+          name: a.employees?.name || '',
+          role: a.role,
+        }));
+        delete camel.taskAssignments;
+        return camel;
+      });
+      set({ tasks });
+    }
     set({ loading: false });
+  },
+
+  assignWorkers: async (taskId, workerIds) => {
+    await supabase.from('task_assignments').delete().eq('task_id', taskId);
+    if (workerIds.length > 0) {
+      const rows = workerIds.map((wid, i) => ({
+        task_id: taskId,
+        worker_id: wid,
+        role: i === 0 ? 'primary' : 'helper',
+      }));
+      await supabase.from('task_assignments').insert(rows);
+    }
+    await supabase.from('tasks').update({ worker_id: workerIds[0] || null }).eq('id', taskId);
+    await get().fetchTasks();
   },
 
   addTask: async (task) => {
