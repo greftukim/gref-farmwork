@@ -280,6 +280,11 @@
 | ZONE-BRANCH-COLUMN-001 | DB 확장 | open | 세션 76-A-2 (2026-04-28) | 별 트랙 | zones에 branch 컬럼 부재 — 다지점 확장(진주/하동) 시 격리 불가. 진주·하동 zones 도입 시점에 ALTER TABLE 추가 + branch 백필. G23 권고로 76-A-2 범위 외. | docs/BACKLOG.md |
 | TASK-CMP-BRANCH-001 | 도메인 확장 | open | 세션 76-A-2 (2026-04-28) | 별 트랙 | 부산 외 지점 cmp 체계 미확정. 다지점 확장 시 박민식·김민국 사실 확인 후 결정. greenhouses 시드 + zones 매핑 패턴 확장. | docs/BACKLOG.md |
 | TASK-WORKER-ID-DROP-001 | DB 정리 | open | 세션 76-A-2 (2026-04-28) | 별 트랙 | tasks.worker_id 컬럼이 task_assignments와 dual-write 중. 76-A-3 안정 검증 후 모든 사용처를 task_assignments 참조로 전환 후 DROP COLUMN. taskStore.addTask·startTask·completeTask 등 worker_id 직접 참조 정리 필요. | docs/BACKLOG.md |
+| TASK-CARD-REDESIGN-001 | UI 재설계 | resolved | 세션 76-A-1 v2 (2026-04-28) 등록·즉시해소 | - | 작업 보드 카드 재설계: 우선순위 UI 제거(DB 컬럼은 G17 보존) + 좌측 4px 동(zone) 라인 + 동 Pill + 작업유형 텍스트 라벨 + 진행바(상태색) + Avatar Stack(workers 배열, G27). 컬럼 4→3(배정 제거, pending→plan 매핑 보존). 상태 단일 포커스 모드(전체=3컬럼/단일=1컬럼 풀뷰). 인라인+T 토큰 패턴 유지. 디자인 산출물 §1·§2 적용. | src/components/task/TaskCard.jsx |
+| TASK-PRIORITY-CLEANUP-001 | 정리 | resolved | 세션 76-A-1 v2 (2026-04-28) 등록·즉시해소 | - | UI에서 priority 사용처 일괄 제거: PRIORITY 상수 / priorityFilter state / 칩 토글 UI / 카드 뱃지 모두 제거. selectByPriority 액션은 사용처 0건 확인되어 store 변경 없음. tasks.priority DB 컬럼 보존(G17). | src/pages/admin/TaskBoardPage.jsx |
+| TASK-ZONE-COLORS-001 | 디자인 시스템 | resolved | 세션 76-A-1 v2 (2026-04-28) 등록·즉시해소 | - | zones.name → 색 매핑 단일 소스 src/lib/zoneColors.js 신설. ZONES 객체(A동=인디고/B동=틸/C동=주황/D동=빨강) + getZone(task) 헬퍼 + ZONE_NAMES 배열. 카드 좌측 라인·Pill·필터 칩 모두 동일 토큰 사용. | src/lib/zoneColors.js |
+| RLS-AUDIT-001 | 보안 부채 | open | 세션 76-A-1 v2 (2026-04-28) | 별 트랙 (G26) | 76-A-2 마무리 의문에서 task_assignments RLS 미정의 확인. 단일 사이트 운영이라 즉시 위험 X, 다지점 확장 시 시급. 범위: tasks/task_assignments/zones/greenhouses/leave_requests/overtime_requests/notices 등 다중 이용 데이터 격리 부채 일제 점검. 처리: 76-A 트랙 종료 후 별 RLS 트랙 지정. SUPABASE_RLS_POLICY.md 신설 + 정책 일괄 적용. | docs/BACKLOG.md |
+| TASK-FOCUS-VIEW-001 | UI 강화 | open | 세션 76-A-1 v2 (2026-04-28) | 76-A-3 후보 | 상태 칩 단일 포커스 모드 시 디자인 산출물 v4의 FocusList(3정보 banner + 2열 카드 그리드) 미구현 — 본 트랙은 단일 컬럼 풀뷰(720px 중앙)로 부분 구현. 디자인 산출물 §2 FocusList 시안을 76-A-3에서 정식 적용. | docs/BACKLOG.md |
 
 ---
 
