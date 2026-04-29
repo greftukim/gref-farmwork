@@ -11,7 +11,7 @@ const useTaskStore = create((set, get) => ({
     set({ loading: true });
     let query = supabase
       .from('tasks')
-      .select('*, task_assignments(worker_id, role, employees(id, name))')
+      .select('*, zones(id, name), task_assignments(worker_id, role, employees(id, name))')
       .order('date', { ascending: false });
     if (currentUser?.role === 'farm_admin' && currentUser?.branch) {
       const { data: branchEmps } = await supabase.from('employees').select('id').eq('branch', currentUser.branch).eq('is_active', true);
