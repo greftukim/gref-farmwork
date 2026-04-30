@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import useAuthStore from '../stores/authStore';
+import { supabase } from '../lib/supabase';
 import { isAdminLevel } from '../lib/permissions';
 
 export default function AuthCallbackPage() {
@@ -18,16 +19,27 @@ export default function AuthCallbackPage() {
       return;
     }
 
-    loginWithToken(token).then((result) => {
-      if (result.success) {
-        const user = useAuthStore.getState().currentUser;
-        const dest = isAdminLevel(user) ? '/admin' : '/worker';
-        navigate(dest, { replace: true });
-      } else {
+    (async () => {
+      try {
+        // 동일 PWA에 잔존 가능한 관리자 세션을 먼저 정리 (worker 세션 우선)
+        // → onAuthStateChange의 SIGNED_OUT 이벤트가 currentUser/isAuthenticated 초기화
+        await supabase.auth.signOut().catch(() => {});
+
+        const result = await loginWithToken(token);
+        if (result?.success) {
+          const user = useAuthStore.getState().currentUser;
+          const dest = isAdminLevel(user) ? '/admin' : '/worker';
+          navigate(dest, { replace: true });
+        } else {
+          setStatus('error');
+          setErrorMsg(result?.error || 'QR 코드가 만료되었거나 유효하지 않습니다. 관리자에게 QR을 재발급 받으세요.');
+        }
+      } catch (err) {
+        console.error('QR 자동 로그인 실패:', err);
         setStatus('error');
-        setErrorMsg('QR 코드가 만료되었거나 유효하지 않습니다. 관리자에게 QR을 재발급 받으세요.');
+        setErrorMsg(`자동 로그인 중 오류: ${err?.message ?? '알 수 없는 오류'}. 관리자에게 문의하세요.`);
       }
-    });
+    })();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (status === 'checking') {

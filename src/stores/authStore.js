@@ -40,13 +40,13 @@ const useAuthStore = create(
           // Supabase 세션 없음 → 작업자 토큰 재검증
           const { currentUser, workerToken } = get();
           if (currentUser?.role === 'worker' && workerToken) {
-            const { data } = await supabase
+            const { data, error } = await supabase
               .from('employees')
               .select('device_token, is_active')
               .eq('id', currentUser.id)
-              .single();
+              .maybeSingle();
 
-            if (!data || data.device_token !== workerToken || !data.is_active) {
+            if (error || !data || data.device_token !== workerToken || !data.is_active) {
               set({ currentUser: null, isAuthenticated: false, workerToken: null, loading: false });
             } else {
               set({ loading: false });
@@ -102,15 +102,17 @@ const useAuthStore = create(
       },
 
       // 작업자용: QR 토큰으로 로그인 (Supabase Auth 미사용)
+      // .maybeSingle(): RLS 0행 영향 시 PostgREST 406 차단 (QR 발급 hot-fix와 동일 패턴)
       loginWithDeviceToken: async (token) => {
         const { data, error } = await supabase
           .from('employees')
           .select('id, name, role, branch, is_active, is_team_leader, device_token, auth_user_id, job_type, work_start_time, work_end_time')
           .eq('device_token', token)
           .eq('is_active', true)
-          .single();
+          .maybeSingle();
 
-        if (error || !data) return { success: false };
+        if (error) return { success: false, error: error.message };
+        if (!data) return { success: false, error: '유효하지 않거나 만료된 QR 코드입니다' };
 
         if (data.role !== 'worker') {
           return { success: false, error: '작업자만 QR 로그인을 사용할 수 있습니다' };
@@ -127,17 +129,18 @@ const useAuthStore = create(
       },
 
       // 앱 로드 시 작업자 토큰 유효성 재검증 (HydrationGate 호환)
+      // .maybeSingle(): 0행 영향 시 silent failure 방지 (QR 발급 hot-fix와 동일 패턴)
       revalidateWorkerToken: async () => {
         const { currentUser, workerToken } = get();
         if (!currentUser || currentUser.role !== 'worker' || !workerToken) return;
 
-        const { data } = await supabase
+        const { data, error } = await supabase
           .from('employees')
           .select('device_token')
           .eq('id', currentUser.id)
-          .single();
+          .maybeSingle();
 
-        if (!data || data.device_token !== workerToken) {
+        if (error || !data || data.device_token !== workerToken) {
           set({ currentUser: null, isAuthenticated: false, workerToken: null });
         }
       },
