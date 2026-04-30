@@ -12,7 +12,13 @@ const STATUS_OPTIONS = [
   { key: 'done',     label: '완료',   dotCls: '#059669' },
 ];
 
-export function TaskFilters({ statusCounts, activeStatus, activeZone, onStatusChange, onZoneChange, branch }) {
+const VIEW_OPTIONS = [
+  { key: 'kanban', label: '칸반' },
+  { key: 'week', label: '주간' },
+  { key: 'focus', label: '집중' },
+];
+
+export function TaskFilters({ statusCounts, activeStatus, activeZone, activeView, onStatusChange, onZoneChange, onViewChange, branch }) {
   const showZone = branch === 'busan' || !branch; // master/HR_admin은 모두 표시
   return (
     <div style={{
@@ -38,6 +44,19 @@ export function TaskFilters({ statusCounts, activeStatus, activeZone, onStatusCh
             {ZONE_NAMES.map((name) => (
               <FilterChip key={name} on={activeZone === name} onClick={() => onZoneChange(name)} dotCls={ZONES[name].dot}>
                 {name}
+              </FilterChip>
+            ))}
+          </FilterGroup>
+        </>
+      )}
+
+      {onViewChange && (
+        <>
+          <span style={{ ...filterLabelStyle, marginLeft: 8 }}>보기</span>
+          <FilterGroup>
+            {VIEW_OPTIONS.map((v) => (
+              <FilterChip key={v.key} on={activeView === v.key} onClick={() => onViewChange(v.key)}>
+                {v.label}
               </FilterChip>
             ))}
           </FilterGroup>
