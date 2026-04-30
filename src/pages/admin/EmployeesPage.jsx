@@ -56,6 +56,8 @@ export default function EmployeesPage() {
     setQrLoading(false);
     if (result?.token) {
       setQrTarget({ id: emp.id, name: emp.name, token: result.token });
+    } else if (result?.error) {
+      alert(`QR 발급 실패: ${result.error.message ?? '알 수 없는 오류'}`);
     }
   };
 
@@ -67,6 +69,8 @@ export default function EmployeesPage() {
     setQrLoading(false);
     if (result?.token) {
       setQrTarget((prev) => ({ ...prev, token: result.token }));
+    } else if (result?.error) {
+      alert(`QR 재발급 실패: ${result.error.message ?? '알 수 없는 오류'}`);
     }
   };
 

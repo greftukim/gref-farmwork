@@ -77,6 +77,7 @@ const useEmployeeStore = create((set, get) => ({
 
   // 작업자 QR 로그인 토큰 발급/재발급
   // 생성된 token → /auth?token={token} URL → QRCodeSVG 렌더링
+  // .maybeSingle(): RLS UPDATE 0행 → 406 차단. 0행 케이스를 명시 에러로 변환.
   issueDeviceToken: async (id) => {
     const token = crypto.randomUUID();
     const { data, error } = await supabase
@@ -84,12 +85,20 @@ const useEmployeeStore = create((set, get) => ({
       .update({ device_token: token })
       .eq('id', id)
       .select()
-      .single();
-    if (!error && data) {
-      set((s) => ({ employees: s.employees.map((e) => (e.id === id ? snakeToCamel(data) : e)) }));
-      return { token };
+      .maybeSingle();
+    if (error) {
+      return { error };
     }
-    return { error };
+    if (!data) {
+      return {
+        error: {
+          message: '권한이 부족합니다. 본인 지점의 작업자에게만 QR을 발급할 수 있습니다.',
+          code: 'RLS_BLOCKED',
+        },
+      };
+    }
+    set((s) => ({ employees: s.employees.map((e) => (e.id === id ? snakeToCamel(data) : e)) }));
+    return { token };
   },
 }));
 
