@@ -1,6 +1,6 @@
 // 작업 칸반 보드 v2 — 동(zone) 분류 + 다중 배정 + 우선순위 제거
-// 트랙 76-A-1 v2 (재설계) + 76-A-3a (모달 + 주간/포커스 뷰)
-// G33 안전 분기: 모달 onSave는 임시 비활성 (76-A-3c에서 활성화)
+// 트랙 76-A-1 v2 (재설계) + 76-A-3a (모달 + 주간/포커스 뷰) + 76-A-3c (onSave 활성화)
+// G33 안전 분기: 76-A-3c에서 해제 (76-A-3b 검증 SQL 3건 모두 통과)
 
 import React, { useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
@@ -27,6 +27,7 @@ const COLUMN_KEYS = ['plan', 'progress', 'done'];
 export default function TaskBoardPage() {
   const tasks = useTaskStore((s) => s.tasks);
   const updateTask = useTaskStore((s) => s.updateTask);
+  const assignWorkers = useTaskStore((s) => s.assignWorkers);
   const currentUser = useAuthStore((s) => s.currentUser);
 
   const [searchParams, setSearchParams] = useSearchParams();
@@ -101,18 +102,18 @@ export default function TaskBoardPage() {
     setDragOver(null);
   };
 
-  // G33-MCP-DISCONNECT-GUARD: BEGIN
-  // 76-A-3c에서 이 블록을 assignWorkers 호출로 대체.
-  // 검증 SQL 3건 통과 후에만 활성화.
-  const handleSaveAssignment = (workerIds) => {
-    alert(
-      'MCP 단절 상황에서 안전을 위해 작업자 배정 저장이 일시 비활성화되어 있습니다.\n' +
-      '관리자가 검증 SQL 3건 통과 후 활성화 예정입니다.\n\n' +
-      `선택된 작업자 ID (저장되지 않음):\n${workerIds.join(', ') || '(없음)'}`
-    );
-    setModalTask(null);
+  // G33-MCP-DISCONNECT-GUARD: 해제 — 76-A-3b 검증 통과 (2026-04-27)
+  // SQL #1 zones FK / #2 task_assignments 백필 / #3 dual-write primary 정합 모두 ✅
+  const handleSaveAssignment = async (workerIds) => {
+    if (!modalTask) return;
+    try {
+      await assignWorkers(modalTask.id, workerIds);
+      setModalTask(null);
+    } catch (err) {
+      console.error('작업자 배정 실패:', err);
+      alert(`작업자 배정 저장에 실패했습니다.\n${err?.message ?? '알 수 없는 오류'}`);
+    }
   };
-  // G33-MCP-DISCONNECT-GUARD: END
 
   return (
     <div style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column', background: T.bg, minWidth: 0 }}>
