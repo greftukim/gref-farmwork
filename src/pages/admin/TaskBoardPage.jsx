@@ -1,12 +1,17 @@
 // 작업 칸반 보드 v2 — 동(zone) 분류 + 다중 배정 + 우선순위 제거
-// 트랙 76-A-1 v2 (디자인 채팅방 산출물 적용)
+// 트랙 76-A-1 v2 (재설계) + 76-A-3a (모달 + 주간/포커스 뷰)
+// G33 안전 분기: 모달 onSave는 임시 비활성 (76-A-3c에서 활성화)
 
 import React, { useMemo, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { Icon, T, TopBar, btnPrimary, icons } from '../../design/primitives';
 import useTaskStore from '../../stores/taskStore';
 import useAuthStore from '../../stores/authStore';
 import { TaskColumn } from '../../components/task/TaskColumn';
 import { TaskFilters } from '../../components/task/TaskFilters';
+import { WeekView } from '../../components/task/WeekView';
+import { FocusList } from '../../components/task/FocusList';
+import { AssignWorkersModal } from '../../components/task/AssignWorkersModal';
 
 // DB status → Kanban columnKey 매핑
 // pending → plan (Q4 발견 매핑 보존)
@@ -24,11 +29,21 @@ export default function TaskBoardPage() {
   const updateTask = useTaskStore((s) => s.updateTask);
   const currentUser = useAuthStore((s) => s.currentUser);
 
+  const [searchParams, setSearchParams] = useSearchParams();
+  const view = searchParams.get('view') || 'kanban'; // 'kanban' | 'week' | 'focus'
+
   const [searchQ, setSearchQ] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [zoneFilter, setZoneFilter] = useState('all');
   const [dragTask, setDragTask] = useState(null);
   const [dragOver, setDragOver] = useState(null);
+  const [modalTask, setModalTask] = useState(null);
+
+  const setView = (v) => {
+    const next = new URLSearchParams(searchParams);
+    next.set('view', v);
+    setSearchParams(next, { replace: true });
+  };
 
   // 검색 + zone 필터 적용
   const filtered = useMemo(() => {
@@ -48,7 +63,7 @@ export default function TaskBoardPage() {
     });
   }, [tasks, searchQ, zoneFilter]);
 
-  // status 필터 적용 + 컬럼별 그룹
+  // status 필터 적용
   const visible = useMemo(() => {
     if (statusFilter === 'all') return filtered;
     return filtered.filter((t) => colOf(t.status) === statusFilter);
@@ -86,6 +101,19 @@ export default function TaskBoardPage() {
     setDragOver(null);
   };
 
+  // G33-MCP-DISCONNECT-GUARD: BEGIN
+  // 76-A-3c에서 이 블록을 assignWorkers 호출로 대체.
+  // 검증 SQL 3건 통과 후에만 활성화.
+  const handleSaveAssignment = (workerIds) => {
+    alert(
+      'MCP 단절 상황에서 안전을 위해 작업자 배정 저장이 일시 비활성화되어 있습니다.\n' +
+      '관리자가 검증 SQL 3건 통과 후 활성화 예정입니다.\n\n' +
+      `선택된 작업자 ID (저장되지 않음):\n${workerIds.join(', ') || '(없음)'}`
+    );
+    setModalTask(null);
+  };
+  // G33-MCP-DISCONNECT-GUARD: END
+
   return (
     <div style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column', background: T.bg, minWidth: 0 }}>
       <TopBar
@@ -98,8 +126,10 @@ export default function TaskBoardPage() {
         statusCounts={statusCounts}
         activeStatus={statusFilter}
         activeZone={zoneFilter}
+        activeView={view}
         onStatusChange={setStatusFilter}
         onZoneChange={setZoneFilter}
+        onViewChange={setView}
         branch={currentUser?.branch}
       />
 
@@ -119,33 +149,57 @@ export default function TaskBoardPage() {
         </div>
       </div>
 
-      {/* 보드 */}
+      {/* 보드 — view 토글 */}
       <div style={{ flex: 1, overflow: 'auto', padding: 24 }}>
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: statusFilter === 'all' ? 'repeat(3, 1fr)' : '1fr',
-          gap: 16, alignItems: 'start',
-          maxWidth: statusFilter === 'all' ? '100%' : 720,
-          margin: statusFilter === 'all' ? 0 : '0 auto',
-        }}>
-          {(statusFilter === 'all' ? COLUMN_KEYS : [statusFilter]).map((k) => (
-            <div
-              key={k}
-              onDragOver={(e) => handleDragOver(e, k)}
-              onDrop={() => handleDrop(k)}
-              style={{ opacity: dragOver === k ? 0.85 : 1, transition: 'opacity 0.15s' }}
-            >
-              <TaskColumn
-                columnKey={k}
-                tasks={byColumn[k]}
-                onCardClick={() => { /* 76-A-3에서 상세 모달 */ }}
-                onAddWorker={() => { /* 76-A-3에서 다중 배정 모달 */ }}
-                onAddTask={() => { /* 신규 작업 모달 */ }}
-              />
-            </div>
-          ))}
-        </div>
+        {view === 'week' && (
+          <WeekView
+            tasks={visible}
+            onCardClick={() => { /* 상세 모달 — 별 트랙 */ }}
+            onAssignClick={(task) => setModalTask(task)}
+          />
+        )}
+        {view === 'focus' && (
+          <FocusList
+            tasks={visible}
+            onCardClick={() => { /* 상세 모달 — 별 트랙 */ }}
+            onAssignClick={(task) => setModalTask(task)}
+          />
+        )}
+        {view === 'kanban' && (
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: statusFilter === 'all' ? 'repeat(3, 1fr)' : '1fr',
+            gap: 16, alignItems: 'start',
+            maxWidth: statusFilter === 'all' ? '100%' : 720,
+            margin: statusFilter === 'all' ? 0 : '0 auto',
+          }}>
+            {(statusFilter === 'all' ? COLUMN_KEYS : [statusFilter]).map((k) => (
+              <div
+                key={k}
+                onDragOver={(e) => handleDragOver(e, k)}
+                onDrop={() => handleDrop(k)}
+                style={{ opacity: dragOver === k ? 0.85 : 1, transition: 'opacity 0.15s' }}
+              >
+                <TaskColumn
+                  columnKey={k}
+                  tasks={byColumn[k]}
+                  onCardClick={() => { /* 상세 모달 — 별 트랙 */ }}
+                  onAddWorker={(task) => setModalTask(task)}
+                  onAddTask={() => { /* 신규 작업 모달 */ }}
+                />
+              </div>
+            ))}
+          </div>
+        )}
       </div>
+
+      {modalTask && (
+        <AssignWorkersModal
+          task={modalTask}
+          onClose={() => setModalTask(null)}
+          onSave={handleSaveAssignment}
+        />
+      )}
     </div>
   );
 }
