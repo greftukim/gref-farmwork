@@ -10,6 +10,7 @@ import useAuthStore from '../../stores/authStore';
 import useAttendanceStore from '../../stores/attendanceStore';
 import useTaskStore from '../../stores/taskStore';
 import useNoticeStore from '../../stores/noticeStore';
+import { supabase } from '../../lib/supabase';
 
 const today = () => new Date().toISOString().split('T')[0];
 
@@ -18,6 +19,41 @@ const fmtTime = (iso) => {
   const d = new Date(iso);
   return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
 };
+
+// 출퇴근 검증 헬퍼 — ATTENDANCE-VALIDATION-HOTFIX-002 (옵션 나: 인프라 우회)
+// 인프라 결함(LOCATION-STORE-MULTI-BRANCH-001 / JUDGE-ATTENDANCE-THRESHOLD-001) 회피
+function haversineDistance(lat1, lng1, lat2, lng2) {
+  const R = 6371000;
+  const toRad = (deg) => (deg * Math.PI) / 180;
+  const dLat = toRad(lat2 - lat1);
+  const dLng = toRad(lng2 - lng1);
+  const a = Math.sin(dLat / 2) ** 2
+    + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLng / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+function getCurrentPosition() {
+  return new Promise((resolve, reject) => {
+    if (!navigator.geolocation) {
+      reject(new Error('이 기기는 GPS를 지원하지 않습니다'));
+      return;
+    }
+    navigator.geolocation.getCurrentPosition(
+      (pos) => resolve({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
+      (err) => reject(err),
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 30000 },
+    );
+  });
+}
+
+function timeStrToTodayDate(timeStr) {
+  if (!timeStr) return null;
+  const [h, m] = String(timeStr).split(':').map(Number);
+  if (Number.isNaN(h) || Number.isNaN(m)) return null;
+  const d = new Date();
+  d.setHours(h, m, 0, 0);
+  return d;
+}
 
 const greeting = () => {
   const h = new Date().getHours();
@@ -71,12 +107,100 @@ export default function WorkerHome({ onNavigate }) {
     ? Math.round(((todayRecord.checkOut ? new Date(todayRecord.checkOut) : now) - new Date(todayRecord.checkIn)) / 60000)
     : 0;
 
+  // 출근/퇴근 공통: 자기 지점 SELECT + GPS 검증 (NULL 지점은 자동 스킵)
+  // 반환: { ok: true, gpsCoords } | { ok: false }
+  const verifyBranchAndGps = async () => {
+    const branchCode = currentUser?.branch;
+    if (!branchCode) return { ok: true, gpsCoords: null };
+
+    const { data: branchData, error } = await supabase
+      .from('branches')
+      .select('code, name, latitude, longitude, radius_meters')
+      .eq('code', branchCode)
+      .maybeSingle();
+    if (error) {
+      alert(`지점 정보 조회 실패: ${error.message ?? '알 수 없는 오류'}`);
+      return { ok: false };
+    }
+
+    const branchHasGeofence =
+      branchData?.latitude != null
+      && branchData?.longitude != null
+      && branchData?.radius_meters != null;
+    if (!branchHasGeofence) return { ok: true, gpsCoords: null };
+
+    let gpsCoords;
+    try {
+      gpsCoords = await getCurrentPosition();
+    } catch (err) {
+      alert(`GPS 위치를 확인할 수 없습니다.\n${err?.message ?? '위치 권한을 확인하세요'}`);
+      return { ok: false };
+    }
+    const distance = haversineDistance(
+      gpsCoords.lat, gpsCoords.lng,
+      branchData.latitude, branchData.longitude,
+    );
+    if (distance > branchData.radius_meters) {
+      alert(`반경 밖입니다.\n현재 위치는 ${branchData.name}에서 ${Math.round(distance)}m 떨어져 있습니다. (반경 ${branchData.radius_meters}m)`);
+      return { ok: false };
+    }
+    return { ok: true, gpsCoords };
+  };
+
   const handlePunch = async () => {
     if (processing) return;
     setProcessing(true);
-    if (state === 'out') await checkIn?.(currentUser.id);
-    else if (state === 'in') await checkOut?.(currentUser.id);
-    setProcessing(false);
+    try {
+      if (state === 'out') {
+        // === 출근 흐름 ===
+        const { ok, gpsCoords } = await verifyBranchAndGps();
+        if (!ok) return;
+
+        // 시간대 status 판정 (인라인 — judgeAttendanceStatus 우회: 임계값 인자 없음)
+        // 정책: 출근 시각 30분 전부터 허용, 5분 후부터 'late'
+        let initialStatus = 'working';
+        const startDate = timeStrToTodayDate(currentUser?.workStartTime);
+        if (startDate) {
+          const nowDate = new Date();
+          const earlyAllowedFrom = new Date(startDate.getTime() - 30 * 60 * 1000);
+          const lateThreshold = new Date(startDate.getTime() + 5 * 60 * 1000);
+          if (nowDate < earlyAllowedFrom) {
+            alert(`출근 가능 시간이 아닙니다.\n출근 시각: ${String(currentUser.workStartTime).slice(0, 5)} (30분 전부터 허용)`);
+            return;
+          }
+          if (nowDate > lateThreshold) {
+            initialStatus = 'late';
+          }
+        }
+
+        const success = await checkIn?.(currentUser.id, gpsCoords, initialStatus);
+        if (success === false) {
+          alert('이미 오늘 출근 기록이 있습니다.');
+          return;
+        }
+        if (initialStatus === 'late') {
+          alert('출근 처리됐습니다. (지각으로 기록)');
+        }
+      } else if (state === 'in') {
+        // === 퇴근 흐름 ===
+        const { ok, gpsCoords } = await verifyBranchAndGps();
+        if (!ok) return;
+
+        // 일찍 퇴근 confirm
+        const endDate = timeStrToTodayDate(currentUser?.workEndTime);
+        if (endDate && new Date() < endDate) {
+          const confirmed = window.confirm(
+            `근무 시간 전입니다.\n퇴근 시각: ${String(currentUser.workEndTime).slice(0, 5)}\n그래도 퇴근 처리하시겠습니까?`,
+          );
+          if (!confirmed) return;
+        }
+
+        await checkOut?.(currentUser.id, gpsCoords);
+      }
+      // state === 'done' 무동작
+    } finally {
+      setProcessing(false);
+    }
   };
 
   const nowLabel = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
