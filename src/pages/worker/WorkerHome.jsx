@@ -12,6 +12,7 @@ import useAttendanceStore from '../../stores/attendanceStore';
 import useTaskStore from '../../stores/taskStore';
 import useNoticeStore from '../../stores/noticeStore';
 import { supabase } from '../../lib/supabase';
+import IssueModal, { IssueFab } from '../../components/worker/IssueModal';
 
 const today = () => new Date().toISOString().split('T')[0];
 
@@ -75,6 +76,7 @@ export default function WorkerHome() {
 
   const [now, setNow] = useState(new Date());
   const [processing, setProcessing] = useState(false);
+  const [showIssueModal, setShowIssueModal] = useState(false);
 
   useEffect(() => {
     const t = setInterval(() => setNow(new Date()), 30000);
@@ -407,6 +409,10 @@ export default function WorkerHome() {
           })()
         )}
       </div>
+
+      {/* Q17 — 이상 신고 FAB (홈 한정, BottomNav 위 floating) */}
+      <IssueFab onClick={() => setShowIssueModal(true)} />
+      <IssueModal open={showIssueModal} onClose={() => setShowIssueModal(false)} />
     </div>
   );
 }

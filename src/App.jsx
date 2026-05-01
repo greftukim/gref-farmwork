@@ -87,7 +87,7 @@ import GrowthSurveyPage from './pages/worker/GrowthSurveyPage';
 import WorkerAttendancePage from './pages/worker/WorkerAttendancePage';
 import WorkerLeavePage from './pages/worker/WorkerLeavePage';
 import IssuePage from './pages/worker/IssuePage';
-import EmergencyCallPage from './pages/worker/EmergencyCallPage';
+// 트랙 77 U5 (Q13): EmergencyCallPage 삭제 (직접도달 부재 + 시안 §5.9 결정)
 import WorkerNoticePage from './pages/worker/WorkerNoticePage';
 import WorkerMorePage from './pages/worker/WorkerMorePage';
 import { MobileHomeScreen, MobileCheckInScreen, MobileTasksScreen, MobileAttendanceScreen, MobileProfileScreen } from './pages/mobile/_screens';
@@ -249,7 +249,6 @@ export default function App() {
             <Route path="attendance" element={<WorkerAttendancePage />} />
             <Route path="leave" element={<WorkerLeavePage />} />
             <Route path="issues" element={<IssuePage />} />
-            <Route path="emergency" element={<EmergencyCallPage />} />
             <Route path="notices" element={<WorkerNoticePage />} />
             <Route path="more" element={<WorkerMorePage />} />
             <Route path="m/home" element={<MobileHomeScreen />} />
