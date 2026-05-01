@@ -29,6 +29,53 @@ const T = {
   infoSoft: '#ECFEFF',
 };
 
+// 작업자 앱 전용 토큰 (트랙 77 U0)
+// 기존 T 토큰은 관리자/작업자 공유 — 작업자 디자인 격리를 위해 별도 토큰 신설.
+// 본 토큰은 작업자 페이지에서만 import 사용. 관리자 페이지 영향 0.
+const T_worker = {
+  // 표면
+  bg: '#F7F8FA',
+  surface: '#FFFFFF',
+  surfaceAlt: '#FAFBFC',
+  border: '#E5E7EB',
+  borderSoft: '#EEF0F3',
+
+  // 텍스트
+  text: '#0F172A',
+  muted: '#64748B',
+  mutedSoft: '#94A3B8',
+
+  // 브랜드
+  primary: '#4F46E5',
+  primaryDark: '#4338CA',
+  primarySoft: '#EEF2FF',
+  primaryText: '#3730A3',
+
+  // 상태
+  success: '#059669',
+  successSoft: '#ECFDF5',
+  warning: '#D97706',
+  warningSoft: '#FFFBEB',
+  danger: '#DC2626',
+  dangerSoft: '#FEF2F2',
+  info: '#0891B2',
+  infoSoft: '#ECFEFF',
+
+  // 의미 별칭
+  holidayText: '#DC2626',
+  holidaySoft: '#FEF2F2',
+  saturdayText: '#4F46E5',
+
+  // 그라데이션
+  gradientFrom: '#4F46E5',
+  gradientTo: '#4338CA',
+
+  // 그림자
+  shadowSm: '0 1px 2px rgba(15,23,42,0.06)',
+  shadowMd: '0 4px 12px rgba(15,23,42,0.08)',
+  shadowLg: '0 6px 16px rgba(15,23,42,0.10)',
+};
+
 // ─────── 재사용 UI 프리미티브 ───────
 const Card = ({ children, style = {}, pad = 20, onClick }) => (
   <div onClick={onClick} style={{
@@ -245,4 +292,4 @@ const btnSecondary = (label, iconD, onClick) => (
   </button>
 );
 
-export { T, Card, Pill, Dot, Icon, icons, Avatar, Sidebar, TopBar, btnPrimary, btnSecondary, btnGhostStyle };
+export { T, T_worker, Card, Pill, Dot, Icon, icons, Avatar, Sidebar, TopBar, btnPrimary, btnSecondary, btnGhostStyle };
