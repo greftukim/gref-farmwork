@@ -241,25 +241,30 @@ export default function QrScanPage() {
         </div>
       </div>
 
-      {/* 뷰파인더 / 카메라 */}
+      {/* 뷰파인더 / 카메라 — 단일 컨테이너 (U6 수정: qr-reader 상시 mount + 명시적 dimensions) */}
       <div style={{ padding: 16 }}>
-        {/* html5-qrcode 마운트 영역 — 항상 DOM에 존재, 스캔 시 카메라 피드 주입됨 */}
-        <div
-          id="qr-reader"
-          style={{
-            display: scanning ? 'block' : 'none',
-            borderRadius: 16, overflow: 'hidden',
-            boxShadow: '0 4px 16px rgba(0,0,0,0.12)',
-          }}
-        />
+        <div style={{
+          position: 'relative', aspectRatio: '1',
+          background: '#0A0F1C',
+          borderRadius: 16, overflow: 'hidden',
+          boxShadow: '0 4px 16px rgba(0,0,0,0.12)',
+        }}>
+          {/* html5-qrcode 마운트 영역 — 항상 DOM + 부모로부터 dimensions 상속.
+              U2까지 display:none 조건부 렌더 → 마운트 시 startScan()이 0×0 부모에
+              video 엘리먼트를 부착해 0×0으로 고정되던 회귀(U6 진단). */}
+          <div
+            id="qr-reader"
+            style={{
+              position: 'absolute', inset: 0,
+              width: '100%', height: '100%',
+            }}
+          />
 
-        {/* 정적 뷰파인더 — 스캔 전 또는 완료 후 */}
-        {!scanning && (
+          {/* 정적 뷰파인더 / 결과 오버레이 — 비스캔 시 카메라 피드 위에 덮음 */}
+          {!scanning && (
           <div style={{
-            position: 'relative', aspectRatio: '1',
+            position: 'absolute', inset: 0,
             background: '#0A0F1C',
-            borderRadius: 16, overflow: 'hidden',
-            boxShadow: '0 4px 16px rgba(0,0,0,0.12)',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
           }}>
             {scanResult ? (
@@ -322,7 +327,8 @@ export default function QrScanPage() {
               </>
             )}
           </div>
-        )}
+          )}
+        </div>
 
         <div style={{ marginTop: 14, textAlign: 'center' }}>
           <div style={{ fontSize: 14, fontWeight: 700, color: T.text, marginBottom: 4 }}>
