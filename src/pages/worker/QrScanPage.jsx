@@ -1,11 +1,15 @@
 // QR 스캔 (모바일) — 작업자
 // 경로: /worker/m/qr-scan
+// 트랙 77 U2: 시안 v2 적용
+//   - Q6: 마운트 시 카메라 자동 시작
+//   - Q7: 권한 거부 fallback (ScreenQrScanDenied)
+//   - 자산 보존(QR-CORE): qr_codes SELECT → qr_scans INSERT 흐름 100% 유지
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Html5Qrcode } from 'html5-qrcode';
 import {
-  Card, Dot, Icon, T, icons,
+  Card, Dot, Icon, T_worker as T, icons,
 } from '../../design/primitives';
 import { supabase } from '../../lib/supabase';
 import useAuthStore from '../../stores/authStore';
@@ -16,6 +20,8 @@ export default function QrScanPage() {
   const [scanning, setScanning] = useState(false);
   const [scanResult, setScanResult] = useState(null); // { success, message }
   const [recentScans, setRecentScans] = useState([]);
+  // Q7: 카메라 권한 상태 추적 — 'denied'일 때 ScreenQrScanDenied 분기
+  const [permissionStatus, setPermissionStatus] = useState('pending');
   const scannerRef = useRef(null);
 
   useEffect(() => {
@@ -29,9 +35,13 @@ export default function QrScanPage() {
       .limit(20)
       .then(({ data }) => { if (data) setRecentScans(data); });
 
+    // Q6: 카메라 자동 시작 (마운트 1회)
+    startScan();
+
     return () => {
       if (scannerRef.current) scannerRef.current.stop().catch(() => {});
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentUser?.id]);
 
   const stopScan = useCallback(async () => {
@@ -112,8 +122,10 @@ export default function QrScanPage() {
       );
       scannerRef.current = scanner;
       setScanning(true);
+      setPermissionStatus('granted');
     } catch {
-      setScanResult({ success: false, message: '카메라 접근 권한이 필요합니다' });
+      // Q7: 권한 거부 또는 디바이스 부재 → fallback UI
+      setPermissionStatus('denied');
     }
   };
 
@@ -123,9 +135,79 @@ export default function QrScanPage() {
     return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
   };
 
+  // Q7: 권한 거부 fallback — 시안 §5.2 C-2 ScreenQrScanDenied
+  if (permissionStatus === 'denied') {
+    return (
+      <div style={{ flex: 1, overflow: 'auto', background: T.bg, display: 'flex', flexDirection: 'column', minHeight: '100%' }}>
+        <div style={{
+          background: `linear-gradient(135deg, ${T.gradientFrom}, ${T.gradientTo})`,
+          color: '#fff', padding: '14px 16px 20px',
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <button onClick={() => navigate(-1)} style={{
+              width: 36, height: 36, borderRadius: 10, border: 0,
+              background: 'rgba(255,255,255,0.18)', color: '#fff', cursor: 'pointer',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+            }}>
+              <Icon d={<polyline points="15 18 9 12 15 6" />} size={16} c="#fff" sw={2.2} />
+            </button>
+            <h1 style={{ fontSize: 15, fontWeight: 700, color: '#fff', margin: 0, flex: 1 }}>QR 스캔</h1>
+          </div>
+          <div style={{ marginTop: 12, display: 'flex', alignItems: 'center', gap: 8, fontSize: 11, opacity: 0.95 }}>
+            <Dot c="rgba(255,255,255,0.5)" />
+            <span style={{ fontWeight: 600 }}>카메라 권한 필요</span>
+          </div>
+        </div>
+
+        <div style={{ padding: 16 }}>
+          <Card pad={20}>
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', padding: '20px 8px' }}>
+              <div style={{
+                width: 64, height: 64, borderRadius: 16, marginBottom: 14,
+                background: T.warningSoft,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+              }}>
+                <Icon d={icons.camera} size={28} c={T.warning} sw={1.8} />
+              </div>
+              <div style={{ fontSize: 16, fontWeight: 700, color: T.text, marginBottom: 6 }}>
+                카메라 권한이 필요합니다
+              </div>
+              <div style={{ fontSize: 13, color: T.muted, lineHeight: 1.6, marginBottom: 18 }}>
+                QR 스캔에 카메라 권한이 필요합니다. 아래 안내에 따라 권한을 허용한 뒤 다시 시도해 주세요.
+              </div>
+              <div style={{ width: '100%', textAlign: 'left', background: T.bg, borderRadius: 10, padding: 14, marginBottom: 16 }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: T.muted, marginBottom: 8, letterSpacing: 0.4 }}>
+                  권한 허용 방법
+                </div>
+                <ol style={{ margin: 0, paddingLeft: 18, fontSize: 12, color: T.text, lineHeight: 1.7 }}>
+                  <li>주소창 좌측 자물쇠 아이콘 또는 사이트 설정 진입</li>
+                  <li>카메라 권한을 <b>허용</b>으로 변경</li>
+                  <li>아래 다시 시도 버튼</li>
+                </ol>
+              </div>
+              <div style={{ display: 'flex', gap: 8, width: '100%' }}>
+                <button onClick={() => navigate(-1)} style={{
+                  flex: 1, height: 44, borderRadius: 10,
+                  border: `1px solid ${T.border}`, background: T.surface, color: T.muted,
+                  fontSize: 14, fontWeight: 600, cursor: 'pointer',
+                }}>뒤로</button>
+                {/* G77-A: window.location.reload() — 사용자 확정 */}
+                <button onClick={() => window.location.reload()} style={{
+                  flex: 2, height: 44, borderRadius: 10, border: 0,
+                  background: T.primary, color: '#fff',
+                  fontSize: 14, fontWeight: 700, cursor: 'pointer', boxShadow: T.shadowSm,
+                }}>다시 시도</button>
+              </div>
+            </div>
+          </Card>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div style={{ flex: 1, overflow: 'auto', background: T.bg, display: 'flex', flexDirection: 'column', minHeight: '100%' }}>
-      {/* 헤더 */}
+      {/* 헤더 — Q6: 자동 시작 + 우상단 카메라 정지 버튼 */}
       <div style={{
         background: `linear-gradient(135deg, ${T.primary} 0%, ${T.primaryDark} 100%)`,
         color: '#fff', padding: '14px 16px 20px',
@@ -139,11 +221,23 @@ export default function QrScanPage() {
             <Icon d={<polyline points="15 18 9 12 15 6" />} size={16} c="#fff" sw={2.2} />
           </button>
           <h1 style={{ fontSize: 15, fontWeight: 700, color: '#fff', margin: 0 }}>QR 스캔</h1>
-          <div style={{ width: 34 }} />
+          {scanning ? (
+            <button onClick={stopScan} aria-label="카메라 정지" style={{
+              width: 34, height: 34, borderRadius: 9, border: 0,
+              background: 'rgba(255,255,255,0.15)', color: '#fff', cursor: 'pointer',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+            }}>
+              <Icon d={icons.stop} size={14} c="#fff" sw={2} />
+            </button>
+          ) : (
+            <div style={{ width: 34 }} />
+          )}
         </div>
         <div style={{ marginTop: 14, display: 'flex', alignItems: 'center', gap: 8, fontSize: 11, opacity: 0.9 }}>
           <Dot c={scanning ? '#fff' : 'rgba(255,255,255,0.5)'} />
-          <span style={{ fontWeight: 600 }}>{scanning ? '스캔 대기 중' : '스캐너 대기'}</span>
+          <span style={{ fontWeight: 600 }}>
+            {scanning ? '스캔 대기 중' : permissionStatus === 'pending' ? '카메라 시작 중...' : '스캐너 일시 정지'}
+          </span>
         </div>
       </div>
 
@@ -232,37 +326,28 @@ export default function QrScanPage() {
 
         <div style={{ marginTop: 14, textAlign: 'center' }}>
           <div style={{ fontSize: 14, fontWeight: 700, color: T.text, marginBottom: 4 }}>
-            {scanning ? '카메라를 QR 코드에 맞추세요' : 'QR 코드를 스캔해 주세요'}
+            {scanning ? '카메라를 QR 코드에 맞추세요' : scanResult ? '스캔 완료' : 'QR 코드를 스캔해 주세요'}
           </div>
           <div style={{ fontSize: 12, color: T.mutedSoft, lineHeight: 1.5 }}>
-            {scanning ? '자동으로 인식됩니다' : '스캔 시작 버튼을 눌러 카메라를 활성화하세요'}
+            {scanning ? '자동으로 인식됩니다' : scanResult ? '다시 스캔하려면 아래 버튼을 누르세요' : '잠시만 기다려 주세요'}
           </div>
         </div>
 
-        <div style={{ display: 'flex', gap: 8, marginTop: 16 }}>
-          {scanning ? (
-            <button onClick={stopScan} style={{
-              flex: 1, height: 44, borderRadius: 10, border: `1px solid ${T.border}`,
-              background: T.surface, color: T.text,
-              fontSize: 13, fontWeight: 600, cursor: 'pointer',
-              display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-            }}>
-              <Icon d={icons.stop} size={14} c={T.muted} sw={2} />
-              중지
-            </button>
-          ) : (
+        {/* Q6: 자동 시작이 기본. 결과 노출 후 사용자 의도로만 재스캔 트리거 */}
+        {!scanning && scanResult && (
+          <div style={{ display: 'flex', gap: 8, marginTop: 16 }}>
             <button onClick={startScan} style={{
               flex: 1, height: 44, borderRadius: 10, border: 0,
               background: T.primary, color: '#fff',
               fontSize: 13, fontWeight: 700, cursor: 'pointer',
               display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-              boxShadow: '0 2px 6px rgba(79,70,229,0.28)',
+              boxShadow: T.shadowSm,
             }}>
               <Icon d={icons.camera} size={14} c="#fff" sw={2} />
-              스캔 시작
+              다시 스캔
             </button>
-          )}
-        </div>
+          </div>
+        )}
       </div>
 
       {/* 최근 스캔 기록 */}
