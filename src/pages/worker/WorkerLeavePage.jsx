@@ -1,5 +1,6 @@
-// 작업자 휴가 신청 — /worker/leave
+// 작업자 근태 신청 — /worker/leave
 // 트랙 77 U3: T_worker 토큰 적용 (관리자 격리)
+// 트랙 77 U7 (Q20): "휴가 신청" → "근태 신청" 명칭 변경
 import React, { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, Icon, Pill, T_worker as T, icons } from '../../design/primitives';
@@ -49,7 +50,7 @@ export default function WorkerLeavePage() {
         </button>
         <div style={{ flex: 1 }}>
           <div style={{ fontSize: 10, fontWeight: 700, color: T.mutedSoft, letterSpacing: 0.5 }}>근태</div>
-          <div style={{ fontSize: 16, fontWeight: 700, color: T.text }}>휴가 신청</div>
+          <div style={{ fontSize: 16, fontWeight: 700, color: T.text }}>근태 신청</div>
         </div>
         <button onClick={() => setShowForm(true)} style={{ height: 32, padding: '0 12px', borderRadius: 7, border: 0, background: T.text, color: T.surface, fontSize: 12, fontWeight: 700, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 5 }}>
           <Icon d={icons.plus} size={11} sw={2.4} />신청

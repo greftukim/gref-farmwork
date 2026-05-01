@@ -1,6 +1,11 @@
-// 작업자 - 내 출퇴근 (모바일) — 트랙 77 U3 시각 재설계
-// 시안: screens/worker-screens-v2.jsx ScreenAttendance + ScreenAttendanceDayModal + ScreenOvertimeModal
-// 적용: Q8 (헤더 신청 버튼+시트), Q9 (공휴일 빨간색), Q10 (자체 캘린더 유지), Q18 (일별 상세 모달)
+// 작업자 - 내 출퇴근 (모바일) — 트랙 77 U7 흐름 변경
+// 시안: screens/worker-screens-v2.jsx ScreenAttendance + ScreenAttendanceDayModal
+// 적용:
+//   - U3: Q8 헤더 신청 버튼, Q9 공휴일 빨간색, Q10 자체 캘린더, Q18 일별 모달
+//   - U7: Q21 헤더 버튼 시트 분기 제거 → /worker/leave 직진
+//          Q22 일별 모달 하단 "근태 신청" 버튼 추가
+//          G77-J 연장근무는 홈에서만 → 본 페이지에서 OvertimeModal 분리
+//          G77-L 사용처 0건이 된 RequestTypeSheet 삭제
 
 import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -39,13 +44,10 @@ export default function WorkerAttendancePage() {
   const leaveRequests = useLeaveStore((s) => s.requests) || [];
   const overtimeRequests = useOvertimeStore((s) => s.requests) || [];
   const fetchOvertime = useOvertimeStore((s) => s.fetchRequests);
-  const submitOvertime = useOvertimeStore((s) => s.submitRequest);
 
   const now = new Date();
   const [ym, setYm] = useState({ y: now.getFullYear(), m: now.getMonth() });
   const [selected, setSelected] = useState(now.toISOString().split('T')[0]);
-  const [showRequestSheet, setShowRequestSheet] = useState(false);
-  const [showOvertimeModal, setShowOvertimeModal] = useState(false);
   const [showDayModal, setShowDayModal] = useState(false);
 
   // 연장근무 기록 fetch (마운트 1회) — 일별 모달에서 노출
@@ -99,19 +101,14 @@ export default function WorkerAttendancePage() {
     setShowDayModal(true);
   };
 
-  // Q8 — 신청 시트
-  const handlePickLeave = () => {
-    setShowRequestSheet(false);
+  // Q21 — 헤더 "근태 신청" 버튼 = 시트 분기 X, 즉시 페이지 이동
+  const handleRequestLeave = () => {
     navigate('/worker/leave');
-  };
-  const handlePickOvertime = () => {
-    setShowRequestSheet(false);
-    setShowOvertimeModal(true);
   };
 
   return (
     <div style={{ flex: 1, overflow: 'auto', background: T.bg, paddingBottom: 80 }}>
-      {/* 헤더 — Q8: 우상단 근태 신청 버튼 */}
+      {/* 헤더 — Q21: 시트 분기 제거, /worker/leave 직진 */}
       <div style={{ background: T.surface, borderBottom: `1px solid ${T.border}`, padding: '12px 16px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <button onClick={() => navigate('/worker')} style={{
@@ -122,7 +119,7 @@ export default function WorkerAttendancePage() {
             <Icon d={<polyline points="15 18 9 12 15 6" />} size={14} sw={2.2} />
           </button>
           <h1 style={{ fontSize: 15, fontWeight: 700, color: T.text, margin: 0, flex: 1 }}>내 출퇴근</h1>
-          <button onClick={() => setShowRequestSheet(true)} style={{
+          <button onClick={handleRequestLeave} style={{
             height: 36, padding: '0 14px', borderRadius: 10, border: 0,
             background: T.primary, color: '#fff',
             fontSize: 13, fontWeight: 700, cursor: 'pointer',
@@ -235,15 +232,6 @@ export default function WorkerAttendancePage() {
         </Card>
       </div>
 
-      {/* Q8 — 근태 신청 시트 (휴가 / 연장근무 선택) */}
-      {showRequestSheet && (
-        <RequestTypeSheet
-          onClose={() => setShowRequestSheet(false)}
-          onPickLeave={handlePickLeave}
-          onPickOvertime={handlePickOvertime}
-        />
-      )}
-
       {/* Q18 — 일별 상세 모달 */}
       {showDayModal && (
         <DayDetailModal
@@ -253,24 +241,9 @@ export default function WorkerAttendancePage() {
           overtimeRequests={overtimeRequests}
           currentUserId={currentUser?.id}
           onClose={() => setShowDayModal(false)}
-        />
-      )}
-
-      {/* 연장근무 신청 모달 */}
-      {showOvertimeModal && (
-        <OvertimeModal
-          defaultDate={todayStr}
-          onClose={() => setShowOvertimeModal(false)}
-          onSubmit={async (payload) => {
-            const result = await submitOvertime?.({
-              employeeId: currentUser?.id,
-              ...payload,
-            });
-            if (result?.error) {
-              alert('연장근무 신청에 실패했습니다.\n' + (result.error.message || ''));
-              return false;
-            }
-            return true;
+          onRequestLeave={() => {
+            setShowDayModal(false);
+            navigate('/worker/leave');
           }}
         />
       )}
@@ -278,65 +251,10 @@ export default function WorkerAttendancePage() {
   );
 }
 
-// ─────────── 근태 신청 시트 (휴가 / 연장근무 선택) ───────────
-function RequestTypeSheet({ onClose, onPickLeave, onPickOvertime }) {
-  return (
-    <div onClick={onClose} style={{
-      position: 'fixed', inset: 0, background: 'rgba(15,23,42,0.55)',
-      display: 'flex', alignItems: 'flex-end', zIndex: 50,
-    }}>
-      <div onClick={(e) => e.stopPropagation()} style={{
-        background: T.surface, width: '100%',
-        borderTopLeftRadius: 20, borderTopRightRadius: 20,
-        padding: 20, paddingBottom: 24,
-      }}>
-        <div style={{ width: 36, height: 4, borderRadius: 999, background: T.borderSoft, margin: '0 auto 14px' }} />
-        <div style={{ fontSize: 16, fontWeight: 700, color: T.text, marginBottom: 16 }}>근태 신청</div>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-          <button onClick={onPickLeave} style={{
-            display: 'flex', alignItems: 'center', gap: 12,
-            padding: '14px 16px', borderRadius: 10,
-            border: `1px solid ${T.border}`, background: T.surface,
-            cursor: 'pointer', textAlign: 'left',
-          }}>
-            <div style={{
-              width: 40, height: 40, borderRadius: 10, background: T.warningSoft,
-              display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
-            }}>
-              <Icon d={icons.leaf} size={18} c={T.warning} sw={2} />
-            </div>
-            <div style={{ flex: 1 }}>
-              <div style={{ fontSize: 14, fontWeight: 700, color: T.text }}>휴가 신청</div>
-              <div style={{ fontSize: 11, color: T.muted, marginTop: 2 }}>연차 / 병가 / 개인 / 경조사</div>
-            </div>
-            <Icon d={<polyline points="9 18 15 12 9 6" />} size={14} c={T.mutedSoft} sw={2} />
-          </button>
-          <button onClick={onPickOvertime} style={{
-            display: 'flex', alignItems: 'center', gap: 12,
-            padding: '14px 16px', borderRadius: 10,
-            border: `1px solid ${T.border}`, background: T.surface,
-            cursor: 'pointer', textAlign: 'left',
-          }}>
-            <div style={{
-              width: 40, height: 40, borderRadius: 10, background: T.infoSoft,
-              display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
-            }}>
-              <Icon d={icons.clock} size={18} c={T.info} sw={2} />
-            </div>
-            <div style={{ flex: 1 }}>
-              <div style={{ fontSize: 14, fontWeight: 700, color: T.text }}>연장근무 신청</div>
-              <div style={{ fontSize: 11, color: T.muted, marginTop: 2 }}>퇴근 전 사전 신청 → 관리자 승인</div>
-            </div>
-            <Icon d={<polyline points="9 18 15 12 9 6" />} size={14} c={T.mutedSoft} sw={2} />
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
+// G77-L (U7): RequestTypeSheet 컴포넌트 삭제 — Q21 흐름 변경으로 사용처 0건.
 
-// ─────────── 일별 상세 모달 (Q18) ───────────
-function DayDetailModal({ date, record, leaveRequests, overtimeRequests, currentUserId, onClose }) {
+// ─────────── 일별 상세 모달 (Q18 + U7 Q22 신청 버튼) ───────────
+function DayDetailModal({ date, record, leaveRequests, overtimeRequests, currentUserId, onClose, onRequestLeave }) {
   const dt = new Date(date);
   const holiday = HOLIDAYS_KR[date];
   const myLeave = (leaveRequests || []).filter(
@@ -453,6 +371,17 @@ function DayDetailModal({ date, record, leaveRequests, overtimeRequests, current
           </div>
         )}
 
+        {/* Q22 — 일별 모달 하단 "근태 신청" 버튼 (G77-K: 풀 width primary) */}
+        <button onClick={onRequestLeave} style={{
+          width: '100%', height: 46, borderRadius: 10, border: 0,
+          background: T.primary, color: '#fff',
+          fontSize: 14, fontWeight: 700, cursor: 'pointer',
+          display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+          boxShadow: T.shadowSm, marginBottom: 8,
+        }}>
+          <Icon d={icons.plus} size={12} c="#fff" sw={2.4} />
+          근태 신청
+        </button>
         <button onClick={onClose} style={{
           width: '100%', height: 44, borderRadius: 10,
           border: `1px solid ${T.border}`, background: T.surface, color: T.muted,
@@ -463,106 +392,6 @@ function DayDetailModal({ date, record, leaveRequests, overtimeRequests, current
   );
 }
 
-// ─────────── 연장근무 신청 모달 ───────────
-function OvertimeModal({ defaultDate, onClose, onSubmit }) {
-  const [date, setDate] = useState(defaultDate);
-  const [startTime, setStartTime] = useState('18:00');
-  const [endTime, setEndTime] = useState('21:00');
-  const [reason, setReason] = useState('');
-  const [submitting, setSubmitting] = useState(false);
-
-  // hours/minutes 자동 계산
-  const duration = useMemo(() => {
-    const [sh, sm] = startTime.split(':').map(Number);
-    const [eh, em] = endTime.split(':').map(Number);
-    const totalMin = (eh * 60 + em) - (sh * 60 + sm);
-    if (totalMin <= 0) return null;
-    return { hours: Math.floor(totalMin / 60), minutes: totalMin % 60, totalMin };
-  }, [startTime, endTime]);
-
-  const valid = !!date && !!duration && reason.trim().length > 0;
-
-  const handleSubmit = async () => {
-    if (!valid || submitting) return;
-    setSubmitting(true);
-    const ok = await onSubmit({
-      date,
-      hours: duration.hours,
-      minutes: duration.minutes,
-      reason: reason.trim(),
-    });
-    setSubmitting(false);
-    if (ok) onClose();
-  };
-
-  return (
-    <div onClick={onClose} style={{
-      position: 'fixed', inset: 0, background: 'rgba(15,23,42,0.55)',
-      display: 'flex', alignItems: 'flex-end', zIndex: 50,
-    }}>
-      <div onClick={(e) => e.stopPropagation()} style={{
-        background: T.surface, width: '100%',
-        borderTopLeftRadius: 20, borderTopRightRadius: 20,
-        padding: 20, paddingBottom: 24,
-      }}>
-        <div style={{ width: 36, height: 4, borderRadius: 999, background: T.borderSoft, margin: '0 auto 14px' }} />
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-          <Icon d={icons.clock} size={18} c={T.info} sw={2} />
-          <div style={{ fontSize: 17, fontWeight: 800, color: T.text }}>연장근무 신청</div>
-        </div>
-        <div style={{ fontSize: 12, color: T.muted, marginBottom: 16 }}>
-          퇴근 전 미리 신청해 주세요. 관리자 승인 후 인정됩니다.
-        </div>
-
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-          <div>
-            <label style={{ fontSize: 11, color: T.muted, fontWeight: 600, display: 'block', marginBottom: 6 }}>날짜</label>
-            <input type="date" value={date} onChange={(e) => setDate(e.target.value)}
-              style={{ width: '100%', height: 42, padding: '0 12px', border: `1px solid ${T.border}`, borderRadius: 8, fontSize: 14 }} />
-          </div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-            <div>
-              <label style={{ fontSize: 11, color: T.muted, fontWeight: 600, display: 'block', marginBottom: 6 }}>시작 시간</label>
-              <input type="time" value={startTime} onChange={(e) => setStartTime(e.target.value)}
-                style={{ width: '100%', height: 42, padding: '0 12px', border: `1px solid ${T.border}`, borderRadius: 8, fontSize: 14, fontFamily: 'ui-monospace,monospace' }} />
-            </div>
-            <div>
-              <label style={{ fontSize: 11, color: T.muted, fontWeight: 600, display: 'block', marginBottom: 6 }}>종료 시간</label>
-              <input type="time" value={endTime} onChange={(e) => setEndTime(e.target.value)}
-                style={{ width: '100%', height: 42, padding: '0 12px', border: `1px solid ${T.border}`, borderRadius: 8, fontSize: 14, fontFamily: 'ui-monospace,monospace' }} />
-            </div>
-          </div>
-          <div style={{
-            background: duration ? T.infoSoft : T.dangerSoft,
-            padding: '8px 10px', borderRadius: 8,
-            fontSize: 12, color: duration ? T.info : T.danger, fontWeight: 600,
-          }}>
-            {duration
-              ? `예상 연장근무 시간: ${duration.hours}시간 ${duration.minutes ? duration.minutes + '분' : ''}`
-              : '종료 시간이 시작 이후여야 합니다'}
-          </div>
-          <div>
-            <label style={{ fontSize: 11, color: T.muted, fontWeight: 600, display: 'block', marginBottom: 6 }}>사유</label>
-            <textarea value={reason} onChange={(e) => setReason(e.target.value)} rows={3}
-              placeholder="연장근무 사유를 입력하세요"
-              style={{ width: '100%', padding: 10, border: `1px solid ${T.border}`, borderRadius: 8, fontSize: 14, fontFamily: 'inherit', resize: 'vertical' }} />
-          </div>
-          <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
-            <button onClick={onClose} disabled={submitting} style={{
-              flex: 1, height: 46, borderRadius: 10,
-              border: `1px solid ${T.border}`, background: T.surface, color: T.muted,
-              fontSize: 14, fontWeight: 600, cursor: submitting ? 'default' : 'pointer',
-              opacity: submitting ? 0.5 : 1,
-            }}>취소</button>
-            <button onClick={handleSubmit} disabled={!valid || submitting} style={{
-              flex: 2, height: 46, borderRadius: 10, border: 0,
-              background: valid && !submitting ? T.info : T.borderSoft,
-              color: valid && !submitting ? '#fff' : T.mutedSoft,
-              fontSize: 14, fontWeight: 700, cursor: valid && !submitting ? 'pointer' : 'not-allowed',
-            }}>{submitting ? '처리 중...' : '신청'}</button>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
+// G77-J (U7): OvertimeModal 컴포넌트 정의는 src/components/worker/OvertimeModal.jsx로 분리.
+//   - 본 페이지는 휴가만 (연장근무는 홈 출퇴근 카드에서만 진입)
+//   - 일별 모달의 연장근무 신청 내역 노출은 유지 (조회만, 신규 신청 없음)

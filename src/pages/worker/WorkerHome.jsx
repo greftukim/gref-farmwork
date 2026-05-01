@@ -13,6 +13,7 @@ import useTaskStore from '../../stores/taskStore';
 import useNoticeStore from '../../stores/noticeStore';
 import { supabase } from '../../lib/supabase';
 import IssueModal, { IssueFab } from '../../components/worker/IssueModal';
+import OvertimeModal from '../../components/worker/OvertimeModal';
 
 const today = () => new Date().toISOString().split('T')[0];
 
@@ -77,6 +78,7 @@ export default function WorkerHome() {
   const [now, setNow] = useState(new Date());
   const [processing, setProcessing] = useState(false);
   const [showIssueModal, setShowIssueModal] = useState(false);
+  const [showOvertimeModal, setShowOvertimeModal] = useState(false);
 
   useEffect(() => {
     const t = setInterval(() => setNow(new Date()), 30000);
@@ -266,13 +268,12 @@ export default function WorkerHome() {
                 boxShadow: T.shadowSm, marginBottom: 8,
                 opacity: processing ? 0.6 : 1,
               }}>{processing ? '처리 중...' : '퇴근하기'}</button>
-              {/* 연장근무 신청 — onClick은 U3에서 모달 연결 */}
-              <button disabled style={{
+              {/* Q19/G77-J: 연장근무 신청은 홈 출퇴근 카드(출근 중)에서만 (U7 활성화) */}
+              <button onClick={() => setShowOvertimeModal(true)} style={{
                 width: '100%', height: 44, borderRadius: 10,
                 border: `1px solid ${T.info}`, background: T.infoSoft, color: T.info,
-                fontSize: 13, fontWeight: 700, cursor: 'not-allowed',
+                fontSize: 13, fontWeight: 700, cursor: 'pointer',
                 display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-                opacity: 0.6,
               }}>
                 <Icon d={icons.clock} size={14} c={T.info} sw={2.2} />
                 연장근무 신청
@@ -413,6 +414,12 @@ export default function WorkerHome() {
       {/* Q17 — 이상 신고 FAB (홈 한정, BottomNav 위 floating) */}
       <IssueFab onClick={() => setShowIssueModal(true)} />
       <IssueModal open={showIssueModal} onClose={() => setShowIssueModal(false)} />
+
+      {/* G77-J (U7) — 연장근무 신청은 홈에서만 진입 */}
+      <OvertimeModal
+        open={showOvertimeModal}
+        onClose={() => setShowOvertimeModal(false)}
+      />
     </div>
   );
 }
