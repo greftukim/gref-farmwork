@@ -1,10 +1,11 @@
-// 작업자 - 내 작업 (모바일) — 프로 SaaS 리디자인
-// 기존: src/pages/worker/WorkerTasksPage.jsx 교체용
+// 작업자 - 내 작업 (모바일) — 트랙 77 U4 시각 재설계
+// 시안: screens/worker-screens-v2.jsx ScreenTasks
+// 적용: T_worker 토큰, 칩 탭 스타일, 76-A 자산 미참조 유지
 
 import React, { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  Card, Dot, Icon, Pill, T, icons,
+  Card, Icon, T_worker as T, icons,
 } from '../../design/primitives';
 import useAuthStore from '../../stores/authStore';
 import useTaskStore from '../../stores/taskStore';
@@ -99,45 +100,48 @@ export default function WorkerTasksPage() {
       {/* 헤더 */}
       <div style={{
         background: T.surface, borderBottom: `1px solid ${T.border}`,
-        padding: '16px 16px 0',
+        padding: '12px 16px',
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <button onClick={() => navigate('/worker')} style={{
-            width: 32, height: 32, borderRadius: 8, border: `1px solid ${T.border}`,
+            width: 36, height: 36, borderRadius: 10, border: `1px solid ${T.border}`,
             background: T.bg, color: T.muted, cursor: 'pointer',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
           }}>
             <Icon d={<polyline points="15 18 9 12 15 6" />} size={14} sw={2.2} />
           </button>
           <h1 style={{ fontSize: 15, fontWeight: 700, color: T.text, margin: 0 }}>내 작업</h1>
-          <div style={{ width: 32 }} />
         </div>
+      </div>
 
-        {/* 탭 */}
-        <div style={{ display: 'flex', gap: 0 }}>
-          {[
-            { v: 'today', l: '오늘', n: counts.today },
-            { v: 'week', l: '이번 주', n: counts.week },
-            { v: 'done', l: '완료', n: counts.done },
-          ].map((t) => {
-            const on = tab === t.v;
-            return (
-              <button key={t.v} onClick={() => setTab(t.v)} style={{
-                flex: 1, padding: '12px 4px', border: 0, background: 'transparent',
-                borderBottom: on ? `2px solid ${T.primary}` : '2px solid transparent',
-                color: on ? T.primary : T.mutedSoft,
-                fontSize: 13, fontWeight: on ? 700 : 600, cursor: 'pointer',
-                display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-              }}>
-                {t.l}
-                <span style={{
-                  fontSize: 10, fontWeight: 700, padding: '1px 6px', borderRadius: 3,
-                  background: on ? T.primarySoft : T.bg, color: on ? T.primaryText : T.mutedSoft,
-                }}>{t.n}</span>
-              </button>
-            );
-          })}
-        </div>
+      {/* 칩 탭 — 시안 v2 §5.6 스타일 */}
+      <div style={{ background: T.surface, padding: '8px 16px', display: 'flex', gap: 8, borderBottom: `1px solid ${T.border}`, overflowX: 'auto' }}>
+        {[
+          { v: 'today', l: '오늘', n: counts.today },
+          { v: 'week', l: '이번 주', n: counts.week },
+          { v: 'done', l: '완료', n: counts.done },
+        ].map((t) => {
+          const on = tab === t.v;
+          return (
+            <button key={t.v} onClick={() => setTab(t.v)} style={{
+              height: 36, padding: '0 14px', borderRadius: 999,
+              border: on ? 0 : `1px solid ${T.border}`,
+              background: on ? T.primary : T.surface,
+              color: on ? '#fff' : T.muted,
+              fontSize: 13, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap',
+              display: 'inline-flex', alignItems: 'center', gap: 6, flexShrink: 0,
+            }}>
+              {t.l}
+              <span style={{
+                minWidth: 18, height: 18, padding: '0 6px', borderRadius: 999,
+                background: on ? 'rgba(255,255,255,0.25)' : T.borderSoft,
+                color: on ? '#fff' : T.muted,
+                fontSize: 10, fontWeight: 700,
+                display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+              }}>{t.n}</span>
+            </button>
+          );
+        })}
       </div>
 
       {/* 목록 */}
