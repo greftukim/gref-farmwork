@@ -1,7 +1,8 @@
 // 작업자 휴가 신청 — /worker/leave
+// 트랙 77 U3: T_worker 토큰 적용 (관리자 격리)
 import React, { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Card, Icon, Pill, T, icons } from '../../design/primitives';
+import { Card, Icon, Pill, T_worker as T, icons } from '../../design/primitives';
 import useLeaveStore from '../../stores/leaveStore';
 import useAuthStore from '../../stores/authStore';
 
