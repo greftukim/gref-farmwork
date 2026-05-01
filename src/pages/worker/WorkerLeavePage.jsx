@@ -1,5 +1,6 @@
 // 작업자 휴가 신청 — /worker/leave
 import React, { useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Card, Icon, Pill, T, icons } from '../../design/primitives';
 import useLeaveStore from '../../stores/leaveStore';
 import useAuthStore from '../../stores/authStore';
@@ -17,7 +18,8 @@ const STATUS = {
   rejected: { l: '반려', tone: 'danger' },
 };
 
-export default function WorkerLeavePage({ onBack }) {
+export default function WorkerLeavePage() {
+  const navigate = useNavigate();
   const requests = useLeaveStore((s) => s.requests);
   const addRequest = useLeaveStore((s) => s.addRequest);
   const user = useAuthStore((s) => s.user);
@@ -41,7 +43,7 @@ export default function WorkerLeavePage({ onBack }) {
   return (
     <div style={{ minHeight: '100vh', background: T.bg, paddingBottom: 24 }}>
       <div style={{ position: 'sticky', top: 0, zIndex: 10, background: T.surface, borderBottom: `1px solid ${T.border}`, padding: '14px 16px', display: 'flex', alignItems: 'center', gap: 12 }}>
-        <button onClick={onBack} style={{ width: 34, height: 34, borderRadius: 8, border: `1px solid ${T.border}`, background: T.surface, cursor: 'pointer', color: T.muted, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <button onClick={() => navigate(-1)} style={{ width: 34, height: 34, borderRadius: 8, border: `1px solid ${T.border}`, background: T.surface, cursor: 'pointer', color: T.muted, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           <Icon d={<polyline points="15 18 9 12 15 6" />} size={14} sw={2} />
         </button>
         <div style={{ flex: 1 }}>

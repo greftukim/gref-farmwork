@@ -2,6 +2,7 @@
 // 기존: src/pages/worker/WorkerAttendancePage.jsx 교체용
 
 import React, { useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Card, Dot, Icon, Pill, T, icons,
 } from '../../design/primitives';
@@ -25,7 +26,8 @@ const STATE_COLOR = {
   leave: T.info,
 };
 
-export default function WorkerAttendancePage({ onNavigate }) {
+export default function WorkerAttendancePage() {
+  const navigate = useNavigate();
   const currentUser = useAuthStore((s) => s.currentUser);
   const records = useAttendanceStore((s) => s.records);
 
@@ -81,7 +83,7 @@ export default function WorkerAttendancePage({ onNavigate }) {
       {/* 헤더 */}
       <div style={{ background: T.surface, borderBottom: `1px solid ${T.border}`, padding: 16 }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <button onClick={() => onNavigate?.('home')} style={{
+          <button onClick={() => navigate('/worker')} style={{
             width: 32, height: 32, borderRadius: 8, border: `1px solid ${T.border}`,
             background: T.bg, color: T.muted, cursor: 'pointer',
             display: 'flex', alignItems: 'center', justifyContent: 'center',

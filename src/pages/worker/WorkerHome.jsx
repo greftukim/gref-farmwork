@@ -63,7 +63,15 @@ const greeting = () => {
   return '오늘도 고생 많으셨어요';
 };
 
-export default function WorkerHome({ onNavigate }) {
+// 트랙 77 U0: onNavigate prop → useNavigate 일괄 변환 (Router prop 미전달 결함 해소)
+const QUICK_ACTION_ROUTES = {
+  tasks: '/worker/tasks',
+  attendance: '/worker/attendance',
+  leave: '/worker/leave',
+  // overtime: 라우트 부재 — U3에서 모달 진입으로 처리 예정
+};
+
+export default function WorkerHome() {
   const navigate = useNavigate();
   const currentUser = useAuthStore((s) => s.currentUser);
   const records = useAttendanceStore((s) => s.records);
@@ -221,7 +229,7 @@ export default function WorkerHome({ onNavigate }) {
               <div style={{ fontSize: 15, fontWeight: 700 }}>{currentUser?.name || '작업자'}님</div>
             </div>
           </div>
-          <button onClick={() => onNavigate?.('notice')} style={{
+          <button onClick={() => navigate('/worker/notices')} style={{
             position: 'relative', width: 36, height: 36, borderRadius: 10, border: 0,
             background: 'rgba(255,255,255,0.15)', color: '#fff', cursor: 'pointer',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -298,7 +306,7 @@ export default function WorkerHome({ onNavigate }) {
             { id: 'leave', l: '휴가 신청', icon: icons.leaf, c: T.warning, soft: T.warningSoft },
             { id: 'overtime', l: '연장근무', icon: icons.clock, c: T.info, soft: T.infoSoft },
           ].map((a) => (
-            <button key={a.id} onClick={() => onNavigate?.(a.id)} style={{
+            <button key={a.id} onClick={() => { const r = QUICK_ACTION_ROUTES[a.id]; if (r) navigate(r); }} style={{
               background: T.surface, border: `1px solid ${T.border}`, borderRadius: 10,
               padding: '12px 6px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6,
               cursor: 'pointer',
@@ -346,7 +354,7 @@ export default function WorkerHome({ onNavigate }) {
       <div style={{ padding: '20px 16px 0' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
           <h3 style={{ fontSize: 14, fontWeight: 700, color: T.text, margin: 0 }}>오늘의 작업</h3>
-          <button onClick={() => onNavigate?.('tasks')} style={{
+          <button onClick={() => navigate('/worker/tasks')} style={{
             background: 'transparent', border: 0, color: T.primary, fontSize: 12, fontWeight: 600, cursor: 'pointer',
           }}>전체 보기 →</button>
         </div>
@@ -393,7 +401,7 @@ export default function WorkerHome({ onNavigate }) {
         <div style={{ padding: '20px 16px 0' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
             <h3 style={{ fontSize: 14, fontWeight: 700, color: T.text, margin: 0 }}>공지사항</h3>
-            <button onClick={() => onNavigate?.('notice')} style={{
+            <button onClick={() => navigate('/worker/notices')} style={{
               background: 'transparent', border: 0, color: T.primary, fontSize: 12, fontWeight: 600, cursor: 'pointer',
             }}>전체 →</button>
           </div>

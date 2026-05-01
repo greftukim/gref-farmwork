@@ -2,6 +2,7 @@
 // 기존: src/pages/worker/WorkerTasksPage.jsx 교체용
 
 import React, { useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Card, Dot, Icon, Pill, T, icons,
 } from '../../design/primitives';
@@ -42,7 +43,8 @@ function isoWeekEnd(d) {
   return x.toISOString().split('T')[0];
 }
 
-export default function WorkerTasksPage({ onNavigate }) {
+export default function WorkerTasksPage() {
+  const navigate = useNavigate();
   const currentUser = useAuthStore((s) => s.currentUser);
   const tasks = useTaskStore((s) => s.tasks);
   const updateTask = useTaskStore((s) => s.updateTask);
@@ -100,7 +102,7 @@ export default function WorkerTasksPage({ onNavigate }) {
         padding: '16px 16px 0',
       }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
-          <button onClick={() => onNavigate?.('home')} style={{
+          <button onClick={() => navigate('/worker')} style={{
             width: 32, height: 32, borderRadius: 8, border: `1px solid ${T.border}`,
             background: T.bg, color: T.muted, cursor: 'pointer',
             display: 'flex', alignItems: 'center', justifyContent: 'center',

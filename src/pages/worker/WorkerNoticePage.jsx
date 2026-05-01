@@ -1,5 +1,6 @@
 // 작업자 공지 확인 — /worker/notice
 import React, { useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Avatar, Card, Icon, Pill, T, icons } from '../../design/primitives';
 import useNoticeStore from '../../stores/noticeStore';
 import useAuthStore from '../../stores/authStore';
@@ -12,7 +13,8 @@ const fmtAgo = (iso) => {
   return `${Math.floor(m / 1440)}일 전`;
 };
 
-export default function WorkerNoticePage({ onBack }) {
+export default function WorkerNoticePage() {
+  const navigate = useNavigate();
   const notices = useNoticeStore((s) => s.notices);
   const markRead = useNoticeStore((s) => s.markRead);
   const user = useAuthStore((s) => s.user);
@@ -29,7 +31,7 @@ export default function WorkerNoticePage({ onBack }) {
   return (
     <div style={{ minHeight: '100vh', background: T.bg, paddingBottom: 24 }}>
       <div style={{ position: 'sticky', top: 0, zIndex: 10, background: T.surface, borderBottom: `1px solid ${T.border}`, padding: '14px 16px', display: 'flex', alignItems: 'center', gap: 12 }}>
-        <button onClick={onBack} style={{ width: 34, height: 34, borderRadius: 8, border: `1px solid ${T.border}`, background: T.surface, cursor: 'pointer', color: T.muted, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <button onClick={() => navigate(-1)} style={{ width: 34, height: 34, borderRadius: 8, border: `1px solid ${T.border}`, background: T.surface, cursor: 'pointer', color: T.muted, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           <Icon d={<polyline points="15 18 9 12 15 6" />} size={14} sw={2} />
         </button>
         <div style={{ flex: 1 }}>
