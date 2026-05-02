@@ -101,10 +101,6 @@ function HydrationGate({ children }) {
   useEffect(() => {
     const afterHydration = () => {
       setHydrated(true);
-      // [TRACK77-U11-DIAG]
-      console.log('[TRACK77-U11-DIAG] HydrationGate hydration finished → revalidateWorkerToken()', {
-        timestamp: new Date().toISOString(),
-      });
       // 작업자 토큰 유효성 백그라운드 재검증 (QR 재발급/해제 감지)
       useAuthStore.getState().revalidateWorkerToken();
     };
@@ -167,12 +163,6 @@ function PlaceholderPage({ title }) {
 
 export default function App() {
   useEffect(() => {
-    // [TRACK77-U11-DIAG]
-    console.log('[TRACK77-U11-DIAG] App mount → initialize()', {
-      timestamp: new Date().toISOString(),
-      isStandalonePWA: window.matchMedia('(display-mode: standalone)').matches,
-      hasGrefAuth: !!localStorage.getItem('gref-auth'),
-    });
     useAuthStore.getState().initialize();
   }, []);
 

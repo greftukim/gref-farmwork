@@ -39,13 +39,6 @@ const useAuthStore = create(
         } else {
           // Supabase 세션 없음 → 작업자 토큰 재검증
           const { currentUser, workerToken } = get();
-          // [TRACK77-U11-DIAG] 진단 로그 — U12 fix 후 제거
-          console.log('[TRACK77-U11-DIAG] initialize() worker revalidation start', {
-            hasCurrentUser: !!currentUser,
-            role: currentUser?.role,
-            hasWorkerToken: !!workerToken,
-            timestamp: new Date().toISOString(),
-          });
           if (currentUser?.role === 'worker' && workerToken) {
             const { data, error } = await supabase
               .from('employees')
@@ -53,18 +46,10 @@ const useAuthStore = create(
               .eq('id', currentUser.id)
               .maybeSingle();
 
-            // [TRACK77-U11-DIAG]
-            console.log('[TRACK77-U11-DIAG] initialize() worker SELECT result', {
-              hasData: !!data,
-              hasError: !!error,
-              errorCode: error?.code,
-              errorMessage: error?.message,
-              tokenMatch: data?.device_token === workerToken,
-              isActive: data?.is_active,
-              willInvalidate: !!(error || !data || data?.device_token !== workerToken || !data?.is_active),
-            });
-
-            if (error || !data || data.device_token !== workerToken || !data.is_active) {
+            // [TRACK77-U12] 일시 오류 보호 — error 또는 data null 시 기존 인증 상태 유지
+            // (네트워크 일시 오류 / PWA 백그라운드 → 포그라운드 전이 시 강제 로그아웃 방지)
+            // 명시적 불일치 (token 갱신, is_active=false) 가 확인된 경우에만 무효화
+            if (!error && data && (data.device_token !== workerToken || !data.is_active)) {
               set({ currentUser: null, isAuthenticated: false, workerToken: null, loading: false });
             } else {
               set({ loading: false });
@@ -152,29 +137,14 @@ const useAuthStore = create(
         const { currentUser, workerToken } = get();
         if (!currentUser || currentUser.role !== 'worker' || !workerToken) return;
 
-        // [TRACK77-U11-DIAG]
-        console.log('[TRACK77-U11-DIAG] revalidateWorkerToken() start', {
-          userId: currentUser.id,
-          timestamp: new Date().toISOString(),
-        });
-
         const { data, error } = await supabase
           .from('employees')
           .select('device_token')
           .eq('id', currentUser.id)
           .maybeSingle();
 
-        // [TRACK77-U11-DIAG]
-        console.log('[TRACK77-U11-DIAG] revalidateWorkerToken() result', {
-          hasData: !!data,
-          hasError: !!error,
-          errorCode: error?.code,
-          errorMessage: error?.message,
-          tokenMatch: data?.device_token === workerToken,
-          willInvalidate: !!(error || !data || data?.device_token !== workerToken),
-        });
-
-        if (error || !data || data.device_token !== workerToken) {
+        // [TRACK77-U12] 일시 오류 보호 — 명시적 token 불일치만 무효화
+        if (!error && data && data.device_token !== workerToken) {
           set({ currentUser: null, isAuthenticated: false, workerToken: null });
         }
       },
