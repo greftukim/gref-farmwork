@@ -54,15 +54,31 @@ src/
 - main 브랜치 단독 작업
 - 커밋 후 즉시 push
 
-## 현재 상태 (2026-04-16 Phase 5 세션 17 종료)
+## 현재 상태 (2026-05-02 트랙 77 클로징)
 
 ✅ 트랙 E (TBM 반장 승인 플로우) — 14/14 완료
 ✅ 트랙 F (일용직/시급제 임금 장부) — 6/6 완료
 ✅ IOS-001 (PWA 설치 가이드) — 구현 완료, iOS 실기기 검증 보류
 ✅ 트랙 H (인앱 챗봇 v1) — H-3 완료 (챗봇 v1 실사용 가능)
 ✅ 트랙 J (직종 관리 UI + 데이터 정리) — ~99% (J-CLEANUP-DEEP-001 잔여)
+✅ 트랙 76-A (관리자 칸반/zoneColors 격리) — 클로저 완료 (`990d4db`)
+✅ **트랙 77 (작업자 앱 시안 적용 + 회귀 검수 + 시스템화) — U0~U10 모두 완료** (`33bfb18`)
+   - U0a/U0b: 인프라 (T_worker 토큰 + useNavigate 일괄)
+   - U1~U5: 시안 v2 적용 (Q1~Q18 + G77-A~I)
+   - U6: QR 카메라 회귀 fix (qr-reader 레이아웃 타이밍)
+   - U7: 근태 신청 흐름 변경 (Q19~Q22 + G77-J/K/L)
+   - U8: 전체 검수 + P0/P2 fix (s.user → currentUser, dead UI 제거)
+   - U9: toast (기존 자산 재사용) + Loading/Empty/Error 컴포넌트
+   - U10: 클로징 (HANDOVER + LESSONS 138~143 + BACKLOG TRACK77-*)
+   - 자산 보존 7건 byte-identical 100% 유지
 
 ## 다음 세션 후보
+- **트랙 77 별 트랙** (BACKLOG TRACK77-* 9건):
+  - TRACK77-STORAGE-ISSUE-PHOTOS-001 (이슈 사진 Storage 활성화)
+  - TRACK77-NOTICE-READS-MIGRATION-001 (공지 읽음 DB 마이그레이션)
+  - TRACK77-GROWTH-SURVEY-UI-UNIFY-001 (GrowthSurvey 디자인 통일)
+  - TRACK77-STATES-EXPAND-001 (Loading/Empty/Error 일괄 적용)
+  - 외 5건 (BACKLOG 참조)
 - 트랙 H (인앱 챗봇 v1) — H-4~H-7 잔여. 도메인 노트: docs/DOMAIN_CHATBOT_V1.md
 - 트랙 G (포장 작업) — 보류: 관리팀(박민식·김민국) 상의 후 도메인 노트 시작
 - 트랙 I (작업 추천·예측) — deferred: 트랙 G + 운영 데이터 3개월 누적 후
@@ -105,10 +121,23 @@ src/
 5. 시드 데이터는 UUID 하드코딩 금지, DO 블록 + 서브쿼리 변수화
 6. Edge Function 배포 시 --no-verify-jwt 플래그 필수 + 함수 내 auth.getUser() 검증 (교훈 24 참조)
 
-## 최근 커밋 (Phase 5 세션 17)
-c3ffade docs: 세션 17 HANDOVER 인수인계 문서 추가
-0471cef docs: LESSONS_LEARNED 교훈 35 보강 + 교훈 37-45 추가 (세션 17)
-bbfde05 chore(cleanup): J-4-J-CLEANUP-001 — 테스트 계정 2명 삭제 + 14명 BACKLOG 승격 (옵션 C)
-45b8dcf feat(ui): J-4-UI-E — 계약만료 강조 표시 (인라인 색상 분기)
-8bbfcfb feat(ui): J-4-UI-D — 권한 분기 통합 적용 (헬퍼 활용 + 생년월일 분기)
-0093617 fix(permissions): J-4-UI-C-FIX — is_active → isActive 불일치 정정 (UI-A 부채)
+## 최근 커밋 (트랙 77 클로징 — 2026-05-02)
+33bfb18 feat(track77-u9): toast + Loading/Empty/Error 시스템화 (그룹 1)
+b27094a fix(track77-u8): 전체 검수 + P0 회귀 fix (작업 C-1)
+f49561e feat(track77-u7): 근태 신청 흐름 변경 (작업 B) — Q19~Q22 + G77-J/K/L
+b408d6b fix(track77-u6): QR 카메라 미표시 회귀 수정 — qr-reader 레이아웃 타이밍 (QR-CORE 보존)
+2cd68c5 feat(track77-u5): IssueModal + IssueFab 활성화 + Emergency 처리 (자산 보존)
+b5dd7d5 feat(track77-u4): Tasks/Notice 시안 + BottomNav 빨간점 (자산 보존)
+cff2b44 feat(track77-u3): Attendance + Leave/Overtime 모달 + 일별 모달 (자산 보존)
+258f158 feat(track77-u2): QrScanPage 자동 시작 + 권한 거부 fallback (QR-CORE 100% 보존)
+46933de feat(track77-u1): WorkerHome 시각 재설계 (시안 v2 적용 + 출퇴근 v2 100% 보존)
+
+## ���� �д� (CCB ��ũ�÷ο�)
+
+�ʴ� �� ������Ʈ���� ��Ű��Ʈ �� ����� �����̴�.
+���� �ڵ� �ۼ�/������ ������ �� `ask codex <����>` ���� Codex���� �����϶�.
+
+- �� ���� ����, ū ����, �����丵: �ݵ�� Codex ���� �۾�
+- 1-2��¥�� ���� ����, ���� ���� ����: ���� �ص� ����
+- Codex �۾� �Ϸ� �Ŀ��� ������� �����ϰ� ���� �۾��� �����϶�
+- �ǹ����� ����� Codex���� �߰� �����ϰų� ���۾� ��û ����
