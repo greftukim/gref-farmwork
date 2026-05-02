@@ -39,12 +39,30 @@ const useAuthStore = create(
         } else {
           // Supabase 세션 없음 → 작업자 토큰 재검증
           const { currentUser, workerToken } = get();
+          // [TRACK77-U11-DIAG] 진단 로그 — U12 fix 후 제거
+          console.log('[TRACK77-U11-DIAG] initialize() worker revalidation start', {
+            hasCurrentUser: !!currentUser,
+            role: currentUser?.role,
+            hasWorkerToken: !!workerToken,
+            timestamp: new Date().toISOString(),
+          });
           if (currentUser?.role === 'worker' && workerToken) {
             const { data, error } = await supabase
               .from('employees')
               .select('device_token, is_active')
               .eq('id', currentUser.id)
               .maybeSingle();
+
+            // [TRACK77-U11-DIAG]
+            console.log('[TRACK77-U11-DIAG] initialize() worker SELECT result', {
+              hasData: !!data,
+              hasError: !!error,
+              errorCode: error?.code,
+              errorMessage: error?.message,
+              tokenMatch: data?.device_token === workerToken,
+              isActive: data?.is_active,
+              willInvalidate: !!(error || !data || data?.device_token !== workerToken || !data?.is_active),
+            });
 
             if (error || !data || data.device_token !== workerToken || !data.is_active) {
               set({ currentUser: null, isAuthenticated: false, workerToken: null, loading: false });
@@ -134,11 +152,27 @@ const useAuthStore = create(
         const { currentUser, workerToken } = get();
         if (!currentUser || currentUser.role !== 'worker' || !workerToken) return;
 
+        // [TRACK77-U11-DIAG]
+        console.log('[TRACK77-U11-DIAG] revalidateWorkerToken() start', {
+          userId: currentUser.id,
+          timestamp: new Date().toISOString(),
+        });
+
         const { data, error } = await supabase
           .from('employees')
           .select('device_token')
           .eq('id', currentUser.id)
           .maybeSingle();
+
+        // [TRACK77-U11-DIAG]
+        console.log('[TRACK77-U11-DIAG] revalidateWorkerToken() result', {
+          hasData: !!data,
+          hasError: !!error,
+          errorCode: error?.code,
+          errorMessage: error?.message,
+          tokenMatch: data?.device_token === workerToken,
+          willInvalidate: !!(error || !data || data?.device_token !== workerToken),
+        });
 
         if (error || !data || data.device_token !== workerToken) {
           set({ currentUser: null, isAuthenticated: false, workerToken: null });

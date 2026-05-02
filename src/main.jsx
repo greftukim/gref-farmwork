@@ -7,6 +7,11 @@ import App from './App.jsx';
 // refreshing 변수는 리로드 후 초기화되므로 sessionStorage로 중복 방지
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.addEventListener('controllerchange', () => {
+    // [TRACK77-U11-DIAG]
+    console.log('[TRACK77-U11-DIAG] SW controllerchange triggered', {
+      timestamp: new Date().toISOString(),
+      alreadyReloaded: !!sessionStorage.getItem('sw-reloaded'),
+    });
     if (sessionStorage.getItem('sw-reloaded')) return;
     sessionStorage.setItem('sw-reloaded', '1');
     window.location.reload();
