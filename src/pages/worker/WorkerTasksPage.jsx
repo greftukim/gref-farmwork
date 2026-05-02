@@ -249,11 +249,7 @@ export default function WorkerTasksPage() {
                       {processing === t.id ? '처리 중...' : '완료 처리'}
                     </button>
                   )}
-                  <button style={{
-                    height: 38, padding: '0 12px', borderRadius: 8,
-                    border: `1px solid ${T.border}`, background: T.surface, color: T.muted,
-                    fontSize: 12, fontWeight: 600, cursor: 'pointer',
-                  }}>상세</button>
+                  {/* U8: dead "상세" 버튼 제거 (task detail 페이지 미신설). 향후 신설은 BACKLOG */}
                 </div>
               )}
             </Card>

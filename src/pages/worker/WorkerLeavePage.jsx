@@ -24,7 +24,8 @@ export default function WorkerLeavePage() {
   const navigate = useNavigate();
   const requests = useLeaveStore((s) => s.requests);
   const addRequest = useLeaveStore((s) => s.addRequest);
-  const user = useAuthStore((s) => s.user);
+  // U8 회귀 fix: authStore는 currentUser만 export. 이전 s.user는 undefined → 본인 신청 미노출 + employeeId NULL INSERT 회귀.
+  const user = useAuthStore((s) => s.currentUser);
 
   const [draft, setDraft] = useState({ type: 'annual', date: '', days: 1, reason: '' });
   const [showForm, setShowForm] = useState(false);
