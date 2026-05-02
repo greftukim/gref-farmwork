@@ -7,12 +7,15 @@ import React, { useState } from 'react';
 import { Card, Icon, T_worker as T, icons } from '../../design/primitives';
 import useIssueStore from '../../stores/issueStore';
 import useAuthStore from '../../stores/authStore';
+import useNotificationStore from '../../stores/notificationStore';
 
 const CATEGORIES = ['병해충', '시설고장', '안전', '환경', '기타'];
 
 export default function IssueModal({ open, onClose, currentLocation = '' }) {
   const addIssue = useIssueStore((s) => s.addIssue);
   const currentUser = useAuthStore((s) => s.currentUser);
+  // U9: alert → toast (notificationStore 활용, 신규 시스템 도입 X)
+  const addNotification = useNotificationStore((s) => s.addNotification);
 
   const [category, setCategory] = useState('병해충');
   const [location, setLocation] = useState(currentLocation);
@@ -40,15 +43,22 @@ export default function IssueModal({ open, onClose, currentLocation = '' }) {
         comment: composedComment,
         photo: null, // G77-H: Storage 버킷 미신설, 본 라운드 미구현
       });
-      // 성공 — 폼 리셋 + 닫기
+      // 성공 — 폼 리셋 + 닫기 + toast
       setCategory('병해충');
       setLocation('');
       setDescription('');
       onClose?.();
-      // toast 대신 alert (기존 패턴)
-      alert('이상신고가 접수되었습니다.\n관리자에게 전달됩니다.');
+      addNotification({
+        type: 'success',
+        title: '이상신고가 접수되었습니다',
+        message: '관리자에게 전달되었습니다.',
+      });
     } catch (err) {
-      alert('이상신고 전송에 실패했습니다.\n' + (err?.message || ''));
+      addNotification({
+        type: 'error',
+        title: '이상신고 전송 실패',
+        message: err?.message || '잠시 후 다시 시도해주세요.',
+      });
     } finally {
       setSubmitting(false);
     }

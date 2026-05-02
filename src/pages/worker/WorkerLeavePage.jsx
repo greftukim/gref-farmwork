@@ -6,6 +6,7 @@ import { useNavigate } from 'react-router-dom';
 import { Card, Icon, Pill, T_worker as T, icons } from '../../design/primitives';
 import useLeaveStore from '../../stores/leaveStore';
 import useAuthStore from '../../stores/authStore';
+import useNotificationStore from '../../stores/notificationStore';
 
 const TYPES = [
   { v: 'annual', l: '연차' },
@@ -26,6 +27,8 @@ export default function WorkerLeavePage() {
   const addRequest = useLeaveStore((s) => s.addRequest);
   // U8 회귀 fix: authStore는 currentUser만 export. 이전 s.user는 undefined → 본인 신청 미노출 + employeeId NULL INSERT 회귀.
   const user = useAuthStore((s) => s.currentUser);
+  // U9: 신청 결과 toast
+  const addNotification = useNotificationStore((s) => s.addNotification);
 
   const [draft, setDraft] = useState({ type: 'annual', date: '', days: 1, reason: '' });
   const [showForm, setShowForm] = useState(false);
@@ -41,6 +44,11 @@ export default function WorkerLeavePage() {
     });
     setDraft({ type: 'annual', date: '', days: 1, reason: '' });
     setShowForm(false);
+    addNotification({
+      type: 'success',
+      title: '휴가 신청이 접수되었습니다',
+      message: '관리자 승인 후 인정됩니다.',
+    });
   };
 
   return (

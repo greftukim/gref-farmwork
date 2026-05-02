@@ -9,6 +9,7 @@ import { Avatar, Card, Icon, Pill, T_worker as T, icons } from '../../design/pri
 import useNoticeStore from '../../stores/noticeStore';
 import useAuthStore from '../../stores/authStore';
 import { getReadIds, markReadLocal } from '../../lib/noticeRead';
+import { Empty } from '../../components/worker/States';
 
 const fmtAgo = (iso) => {
   if (!iso) return '';
@@ -74,15 +75,7 @@ export default function WorkerNoticePage() {
 
       <div style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 10 }}>
         {sorted.length === 0 ? (
-          <Card pad={32} style={{ textAlign: 'center' }}>
-            <div style={{
-              width: 48, height: 48, borderRadius: 12, background: T.bg,
-              display: 'inline-flex', alignItems: 'center', justifyContent: 'center', marginBottom: 10,
-            }}>
-              <Icon d={icons.bell} size={20} c={T.mutedSoft} />
-            </div>
-            <div style={{ fontSize: 13, fontWeight: 600, color: T.muted }}>새 공지가 없어요</div>
-          </Card>
+          <Empty icon={icons.bell} title="새 공지가 없어요" />
         ) : sorted.map((n) => {
           const read = readIds.has(n.id);
           const isUrgent = n.priority === 'urgent' || n.important;

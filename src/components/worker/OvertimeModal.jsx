@@ -9,10 +9,13 @@ import React, { useMemo, useState } from 'react';
 import { Icon, T_worker as T, icons } from '../../design/primitives';
 import useAuthStore from '../../stores/authStore';
 import useOvertimeStore from '../../stores/overtimeStore';
+import useNotificationStore from '../../stores/notificationStore';
 
 export default function OvertimeModal({ open, onClose, defaultDate }) {
   const currentUser = useAuthStore((s) => s.currentUser);
   const submitRequest = useOvertimeStore((s) => s.submitRequest);
+  // U9: alert → toast (notificationStore 활용)
+  const addNotification = useNotificationStore((s) => s.addNotification);
 
   const todayStr = new Date().toISOString().split('T')[0];
   const [date, setDate] = useState(defaultDate || todayStr);
@@ -45,13 +48,21 @@ export default function OvertimeModal({ open, onClose, defaultDate }) {
         reason: reason.trim(),
       });
       if (result?.error) {
-        alert('연장근무 신청에 실패했습니다.\n' + (result.error.message || ''));
+        addNotification({
+          type: 'error',
+          title: '연장근무 신청 실패',
+          message: result.error.message || '잠시 후 다시 시도해주세요.',
+        });
         return;
       }
       // 성공
       setReason('');
       onClose?.();
-      alert('연장근무 신청이 접수되었습니다.\n관리자 승인 후 인정됩니다.');
+      addNotification({
+        type: 'success',
+        title: '연장근무 신청이 접수되었습니다',
+        message: '관리자 승인 후 인정됩니다.',
+      });
     } finally {
       setSubmitting(false);
     }

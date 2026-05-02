@@ -6,6 +6,10 @@ const typeStyles = {
   issue_report: { bg: 'bg-amber-600', icon: '⚠️' },
   info: { bg: 'bg-[#6366F1]', icon: 'ℹ️' },
   fcm_error: { bg: 'bg-rose-700', icon: '🔕' },
+  // 트랙 77 U9 추가 — 작업자 페이지/모달용 success / error / warning
+  success: { bg: 'bg-emerald-600', icon: '✅' },
+  error: { bg: 'bg-rose-600', icon: '⚠️' },
+  warning: { bg: 'bg-amber-500', icon: '⚠️' },
 };
 
 export default function ToastContainer() {
