@@ -172,6 +172,8 @@ const Sidebar = ({ active = 'dashboard', onNavigate }) => {
     { id: 'floor', label: '실시간 평면도', icon: icons.map || icons.dashboard },
     { id: 'growth', label: '생육조사', icon: icons.sprout },
     { id: 'stats', label: '성과 분석', icon: icons.chart },
+    // [TRACK77-U15] 이상신고 메뉴 (U14 정정 — 잘못된 components/layout/Sidebar.jsx dead code 수정 보정)
+    { id: 'issue-call', label: '이상신고', icon: icons.alert },
     { id: 'notice', label: '공지사항', icon: icons.bell },
   ];
   return (

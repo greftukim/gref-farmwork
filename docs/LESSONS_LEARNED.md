@@ -3089,3 +3089,23 @@ const { data } = await supabase.storage.from(BUCKET)
 ```
 
 **예시 트랙**: 트랙 77 followup-u11 publicUrl 박제 → U13 IssueDetailModal에서 broken image 사용자 신고 → U14 `getSignedUrlsForPhotos` 헬퍼 + `useEffect` 발급 패턴 fix (`src/lib/issueStorage.js` + `src/components/admin/IssueDetailModal.jsx`)
+
+## 교훈 146 — 화면→컴포넌트 매핑 검증 없이 파일 수정 지시 금지 (dead code 함정)
+
+동일 이름 컴포넌트가 여러 위치에 존재할 수 있음 (예: `Sidebar`가 `components/layout/Sidebar.jsx`와 `design/primitives.jsx` 양쪽에 정의). 작업 지시 전 반드시 `grep -rn "from.*<filename>" src/`로 import 사용처를 확인해야 함. dead code 수정은 빌드 통과해도 사용자 화면 영향 0 — 빌드 성공만으로 라운드 통과 처리 금지.
+
+**Why:**
+트랙 77 U14에서 운영 세션이 `src/components/layout/Sidebar.jsx` 수정을 지시. 코드 변경 + 빌드 통과 + 보고서 작성 + push 완료. 그러나 `grep -rn "from.*components/layout/Sidebar" src/` 결과 0건 — 어디서도 import 안 되는 dead code였음. 실제 화면의 Sidebar는 `src/design/primitives.jsx:162-`에 정의되어 있고 `AdminLayout.jsx`가 `import { Sidebar } from '../../design/primitives'`로 사용 중. 사용자 캡처 메뉴 항목(대시보드/직원 관리/.../실시간 평면도/생육조사/공지사항)은 primitives.jsx items 배열과 100% 일치. U14는 화면에 영향 0 → U15에서 정정.
+
+**How to apply:**
+파일 수정 작업 지시 전 의무 절차:
+1. `grep -rn "from.*<filename without extension>" src/`로 import 사용처 확인
+2. 사용처 0건 → dead code 또는 별도 진입점 (확인 필요)
+3. 동일 이름 컴포넌트가 여러 위치에 있으면 화면 캡처와 매핑하여 어느 파일이 실제 렌더되는지 식별 (캡처의 텍스트/구조를 grep으로 역추적)
+4. 수정 후 빌드 통과만으로 클로저 금지 — 실제 화면 변화 검증 또는 사용자 검증 시나리오 필수
+
+라운드 보고서 검수 시:
+- `git diff <prev>..HEAD` 결과 + 사용자 화면 매핑 양쪽 검증
+- "빌드 통과" 단독으로 통과 처리 금지
+
+**예시 트랙**: 트랙 77 U14 (`components/layout/Sidebar.jsx` dead code 수정 → 사용자 화면 변화 0 → 사용자 신고) → U15 정정 (`design/primitives.jsx:166` items 배열에 이상신고 추가 + `AdminLayout.jsx:50` FARM_ROUTES 매핑 + `Sidebar.jsx` dead code 삭제)
