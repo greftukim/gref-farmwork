@@ -196,12 +196,14 @@ export default function IssueModal({ open, onClose, currentLocation = '' }) {
               사진 <span style={{ color: T.mutedSoft, fontWeight: 500 }}>(선택, 최대 {MAX_PHOTOS}장)</span>
             </label>
 
-            {/* hidden input — capture="environment"로 모바일 시 후면 카메라 우선, multiple로 갤러리 다중 선택 */}
+            {/* hidden input — accept=image/* + multiple로 카메라/갤러리 양쪽 선택 prompt 노출
+                U13 G77-U B2: capture="environment" 제거 — Android Chrome에서 capture가 카메라
+                강제 실행하여 갤러리 접근 차단되는 사례 회피. iOS/Android 양쪽에서 OS prompt가
+                "사진 보관함 / 카메라 / 파일" 옵션을 표시. */}
             <input
               ref={fileInputRef}
               type="file"
               accept="image/*"
-              capture="environment"
               multiple
               style={{ display: 'none' }}
               onChange={handleFileSelect}

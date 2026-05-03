@@ -1,8 +1,10 @@
 // 이상신고/긴급연락 관리 — /admin/issue-call
+// 트랙 77 후속 U13: 카드 클릭 → IssueDetailModal (사진 표시 포함)
 import React, { useMemo, useState } from 'react';
 import { Avatar, Card, Dot, Icon, Pill, T, TopBar, icons } from '../../design/primitives';
 import useIssueStore from '../../stores/issueStore';
 import useEmployeeStore from '../../stores/employeeStore';
+import IssueDetailModal from '../../components/admin/IssueDetailModal';
 
 const STATUS = {
   pending: { l: '미처리', tone: 'danger', c: T.danger },
@@ -29,6 +31,7 @@ export default function IssueCallPage() {
   const updateIssue = useIssueStore((s) => s.updateIssue);
   const employees = useEmployeeStore((s) => s.employees);
   const [filter, setFilter] = useState('pending');
+  const [selectedIssue, setSelectedIssue] = useState(null); // U13: 카드 클릭 → 상세 모달
   const empMap = useMemo(() => Object.fromEntries(employees.map((e) => [e.id, e])), [employees]);
 
   const counts = useMemo(() => {
@@ -88,12 +91,13 @@ export default function IssueCallPage() {
             const sv = SEVERITY[it.severity] || SEVERITY.normal;
             const st = STATUS[it.status] || STATUS.pending;
             return (
-              <div key={it.id} style={{
+              <div key={it.id} onClick={() => setSelectedIssue(it)} style={{
                 padding: '16px 20px',
                 borderTop: i ? `1px solid ${T.borderSoft}` : 'none',
                 borderLeft: it.severity === 'critical' ? `3px solid ${T.danger}` : '3px solid transparent',
                 background: it.severity === 'critical' && it.status !== 'resolved' ? 'rgba(220,38,38,0.03)' : T.surface,
                 display: 'flex', alignItems: 'flex-start', gap: 14,
+                cursor: 'pointer', transition: 'background 0.15s',
               }}>
                 <Avatar name={emp?.name || '?'} color={it.severity === 'critical' ? 'rose' : 'indigo'} size={36} />
                 <div style={{ flex: 1, minWidth: 0 }}>
@@ -101,6 +105,12 @@ export default function IssueCallPage() {
                     <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 7px', borderRadius: 4, background: sv.soft, color: sv.c }}>{sv.l}</span>
                     <span style={{ fontSize: 13, fontWeight: 700, color: T.text }}>{emp?.name || '익명'}</span>
                     <span style={{ fontSize: 11, color: T.mutedSoft }}>· {it.category || '기타'}</span>
+                    {/* 사진 첨부 표시 (U13) */}
+                    {Array.isArray(it.photos) && it.photos.length > 0 && (
+                      <span style={{ fontSize: 11, color: T.mutedSoft, display: 'inline-flex', alignItems: 'center', gap: 3 }}>
+                        <Icon d={icons.camera} size={11} c={T.mutedSoft} sw={2} />{it.photos.length}
+                      </span>
+                    )}
                     <span style={{ fontSize: 11, color: T.mutedSoft, marginLeft: 'auto' }}>{fmtAgo(it.createdAt)}</span>
                   </div>
                   <div style={{ fontSize: 13, color: T.muted, lineHeight: 1.5 }}>{it.comment}</div>
@@ -112,9 +122,9 @@ export default function IssueCallPage() {
                   <Pill tone={st.tone}><Dot c={st.c} />{st.l}</Pill>
                   {it.status !== 'resolved' && (
                     <div style={{ display: 'flex', gap: 6 }}>
-                      {it.status === 'pending' && <button onClick={() => updateIssue?.(it.id, { status: 'in_progress' })}
+                      {it.status === 'pending' && <button onClick={(e) => { e.stopPropagation(); updateIssue?.(it.id, { status: 'in_progress' }); }}
                         style={{ height: 28, padding: '0 10px', borderRadius: 6, border: `1px solid ${T.border}`, background: T.surface, color: T.primary, fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>처리 시작</button>}
-                      <button onClick={() => updateIssue?.(it.id, { status: 'resolved', resolvedAt: new Date().toISOString() })}
+                      <button onClick={(e) => { e.stopPropagation(); updateIssue?.(it.id, { status: 'resolved', resolvedAt: new Date().toISOString() }); }}
                         style={{ height: 28, padding: '0 10px', borderRadius: 6, border: 0, background: T.success, color: '#fff', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>완료</button>
                     </div>
                   )}
@@ -124,6 +134,14 @@ export default function IssueCallPage() {
           })}
         </Card>
       </div>
+
+      {/* U13: 카드 클릭 → 상세 모달 (사진 그리드 + 라이트박스 + 처리 액션) */}
+      <IssueDetailModal
+        open={!!selectedIssue}
+        onClose={() => setSelectedIssue(null)}
+        issue={selectedIssue}
+        employee={selectedIssue ? empMap[selectedIssue.workerId] : null}
+      />
     </div>
   );
 }

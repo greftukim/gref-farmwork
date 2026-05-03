@@ -13,14 +13,35 @@ const useIssueStore = create((set) => ({
 
   fetchIssues: async (currentUser) => {
     set({ loading: true });
-    let query = supabase.from('issues').select('*').order('created_at', { ascending: false });
+    // [TRACK77-U13] issue_photos LEFT JOIN — 관리자 상세 모달에서 사진 표시
+    // PostgREST nested resource 문법: photos:issue_photos(...)
+    // photo_order는 클라이언트 측 정렬 (G77-W: PostgREST nested ORDER BY 환경 차이 회피)
+    let query = supabase
+      .from('issues')
+      .select('*, photos:issue_photos(id, photo_url, photo_path, photo_order, created_at)')
+      .order('created_at', { ascending: false });
     if (currentUser?.role === 'farm_admin' && currentUser?.branch) {
       const { data: branchEmps } = await supabase.from('employees').select('id').eq('branch', currentUser.branch);
       const empIds = (branchEmps || []).map((e) => e.id);
       if (empIds.length > 0) query = query.in('worker_id', empIds);
     }
     const { data } = await query;
-    if (data) set({ issues: data.map((d) => ({ ...snakeToCamel(d), status: d.is_resolved ? 'resolved' : 'pending' })) });
+    if (data) {
+      set({
+        issues: data.map((d) => {
+          const camel = snakeToCamel(d);
+          // photos 키 유지 (snakeToCamel 후에도 nested 배열은 그대로) + photo_order 클라이언트 정렬
+          const sortedPhotos = Array.isArray(camel.photos)
+            ? [...camel.photos].sort((a, b) => (a.photoOrder ?? 0) - (b.photoOrder ?? 0))
+            : [];
+          return {
+            ...camel,
+            photos: sortedPhotos,
+            status: d.is_resolved ? 'resolved' : 'pending',
+          };
+        }),
+      });
+    }
     set({ loading: false });
   },
 
