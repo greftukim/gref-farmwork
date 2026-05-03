@@ -183,4 +183,76 @@ photos state의 previewUrl은 `URL.createObjectURL(file)` 생성. 모달 닫힘 
 
 ---
 
+## 10. SQL 실행 결과 (사후 추가, 2026-05-03)
+
+### 10.1 실행 경로 — Supabase Management API
+
+`.mcp.json`에 등록된 `SUPABASE_ACCESS_TOKEN` + `--project-ref=yzqdpfauadbtutkhxzeu`를 활용하여 Management API (`POST /v1/projects/{ref}/database/query`)로 SQL 직접 실행.
+
+- 권한: `current_user = postgres` (superuser, RLS 우회 + DDL 가능)
+- 헬퍼 스크립트 신설: `scripts/run-sql.cjs` (향후 모든 마이그레이션 자동화 인프라)
+
+### 10.2 사전 상태 확인
+```json
+[{"table_exists": null, "bucket_exists": false}]
+```
+→ 신규 적용 OK (충돌 없음).
+
+### 10.3 Migration 실행
+- 명령: `node scripts/run-sql.cjs docs/migrations/U11_issue_photos.sql`
+- 결과: `[]` (DDL 정상 — 결과 셋 반환 없음)
+
+### 10.4 검증 쿼리 4건 결과
+
+#### (1) issue_photos 테이블 컬럼 (6건)
+| column_name | data_type | nullable |
+|---|---|---|
+| id | uuid | NO |
+| issue_id | uuid | NO |
+| photo_url | text | NO |
+| photo_path | text | NO |
+| photo_order | integer | NO |
+| created_at | timestamp with time zone | NO |
+
+#### (2) issue_photos RLS 정책 (3건)
+| policyname | cmd | roles | qual | with_check |
+|---|---|---|---|---|
+| issue_photos_anon_insert | INSERT | {anon} | null | true |
+| issue_photos_anon_select | SELECT | {anon} | true | null |
+| issue_photos_authenticated_all | ALL | {authenticated} | true | true |
+
+추가 — RLS 활성 여부:
+| relname | relrowsecurity |
+|---|---|
+| issue_photos | **true** ✅ |
+
+#### (3) Storage 버킷
+| id | name | public | file_size_limit | allowed_mime_types |
+|---|---|---|---|---|
+| issue_photos | issue_photos | **false** ✅ | null | null |
+
+#### (4) Storage RLS 정책 (3건)
+| policyname | cmd | roles | qual | with_check |
+|---|---|---|---|---|
+| issue_photos_storage_anon_insert | INSERT | {anon} | null | (bucket_id = 'issue_photos') |
+| issue_photos_storage_anon_select | SELECT | {anon} | (bucket_id = 'issue_photos') | null |
+| issue_photos_storage_authenticated_all | ALL | {authenticated} | (bucket_id = 'issue_photos') | (bucket_id = 'issue_photos') |
+
+### 10.5 종합
+
+✅ **모든 검증 통과** — 테이블 / RLS 정책 / Storage 버킷 / Storage RLS / RLS 활성 5축 모두 정상.
+
+작업자(anon) PWA에서 이상 신고 사진 업로드 즉시 가능 상태. 사용자는 Vercel `f76ea25` 배포 Ready 후 강제 새로고침 + 시나리오 1~13 검증만 수행하면 됨 (대시보드 SQL 실행 단계 생략).
+
+### 10.6 향후 흐름 박제 (사용자 지시 반영)
+
+- **마이그레이션 SQL은 모두 `node scripts/run-sql.cjs <file>`로 자율 실행**
+- `docs/migrations/` 박제는 유지 (감사 추적용)
+- `.mcp.json`은 `.gitignore` 처리되어 token 노출 위험 0
+- service_role 키 .env에 보관 불필요 — Management API access_token이 RLS 우회 + DDL 가능
+- 첫 적용: 본 라운드 (track77-followup-u11)
+- LESSONS 144 박제 (별도)
+
+---
+
 **끝.**
