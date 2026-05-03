@@ -35,7 +35,8 @@ export default function IssueDetailModal({ open, onClose, issue, employee }) {
   const photos = Array.isArray(issue?.photos) ? issue.photos : [];
 
   // [TRACK77-U14] 모달 오픈 + 사진 있을 때 Signed URL 발급 (G77-AA TTL=3600)
-  // [TRACK77-U15-DIAG] 사진 미렌더 진단 로그 — U16 fix 후 grep 일괄 제거
+  // [TRACK77-U16] U15 진단 로그 일괄 제거 (G77-NN — fix 완료 후 약속 이행)
+  //   원인 확정: snakeToCamel shallow → issueStore.fetchIssues에서 nested photos 변환 누락 (LESSONS 147)
   useEffect(() => {
     let cancelled = false;
     if (!open || !issue || photos.length === 0) {
@@ -44,33 +45,15 @@ export default function IssueDetailModal({ open, onClose, issue, employee }) {
       return;
     }
     const paths = photos.map((p) => p.photoPath).filter(Boolean);
-    // [TRACK77-U15-DIAG]
-    console.log('[TRACK77-U15-DIAG] IssueDetailModal photos input', {
-      issueId: issue?.id,
-      photoCount: photos.length,
-      photos: photos.map((p) => ({ id: p.id, photoPath: p.photoPath, photoUrl: p.photoUrl })),
-      pathsCount: paths.length,
-    });
-    if (paths.length === 0) {
-      console.warn('[TRACK77-U15-DIAG] photoPath 없음 — DB 저장 누락 의심');
-      return;
-    }
+    if (paths.length === 0) return;
 
     setSignedLoading(true);
     setFailedPaths({});
     getSignedUrlsForPhotos(paths)
       .then((map) => {
-        // [TRACK77-U15-DIAG]
-        console.log('[TRACK77-U15-DIAG] Signed URL 발급 결과', {
-          requestedPaths: paths,
-          receivedKeys: Object.keys(map),
-          sample: Object.entries(map).slice(0, 1).map(([k, v]) => ({ path: k, url: (v || '').substring(0, 80) + '...' })),
-        });
         if (!cancelled) setSignedUrls(map);
       })
-      .catch((err) => {
-        // [TRACK77-U15-DIAG]
-        console.error('[TRACK77-U15-DIAG] Signed URL 발급 실패', err);
+      .catch(() => {
         if (!cancelled) setSignedUrls({});
       })
       .finally(() => {
@@ -190,15 +173,7 @@ export default function IssueDetailModal({ open, onClose, issue, employee }) {
                               src={src}
                               alt="첨부 사진"
                               loading="lazy"
-                              onError={(e) => {
-                                // [TRACK77-U15-DIAG]
-                                console.error('[TRACK77-U15-DIAG] img onError', {
-                                  photoPath: p.photoPath,
-                                  attemptedSrc: (src || '').substring(0, 100),
-                                  naturalWidth: e.target?.naturalWidth,
-                                });
-                                setFailedPaths((prev) => ({ ...prev, [p.photoPath]: true }));
-                              }}
+                              onError={() => setFailedPaths((prev) => ({ ...prev, [p.photoPath]: true }))}
                               style={{
                                 width: '100%', height: '100%', objectFit: 'cover', display: 'block',
                               }}

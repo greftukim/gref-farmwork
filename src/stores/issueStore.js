@@ -30,9 +30,11 @@ const useIssueStore = create((set) => ({
       set({
         issues: data.map((d) => {
           const camel = snakeToCamel(d);
-          // photos 키 유지 (snakeToCamel 후에도 nested 배열은 그대로) + photo_order 클라이언트 정렬
+          // [TRACK77-U16] snakeToCamel은 shallow — nested photos 배열의 각 요소(photo_url/photo_path/photo_order/created_at)는
+          //   snake_case 그대로 유지. 명시적 .map(snakeToCamel)으로 각 요소 camelCase 변환.
+          //   미적용 시 photos[i].photoPath = undefined → IssueDetailModal Signed URL 발급 호출 자체 안 됨.
           const sortedPhotos = Array.isArray(camel.photos)
-            ? [...camel.photos].sort((a, b) => (a.photoOrder ?? 0) - (b.photoOrder ?? 0))
+            ? camel.photos.map(snakeToCamel).sort((a, b) => (a.photoOrder ?? 0) - (b.photoOrder ?? 0))
             : [];
           return {
             ...camel,

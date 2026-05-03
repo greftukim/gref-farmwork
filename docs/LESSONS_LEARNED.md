@@ -3109,3 +3109,54 @@ const { data } = await supabase.storage.from(BUCKET)
 - "빌드 통과" 단독으로 통과 처리 금지
 
 **예시 트랙**: 트랙 77 U14 (`components/layout/Sidebar.jsx` dead code 수정 → 사용자 화면 변화 0 → 사용자 신고) → U15 정정 (`design/primitives.jsx:166` items 배열에 이상신고 추가 + `AdminLayout.jsx:50` FARM_ROUTES 매핑 + `Sidebar.jsx` dead code 삭제)
+
+## 교훈 147 — snakeToCamel shallow 한계 + Supabase Management API 자율 진단 패턴
+
+PostgREST nested resource (예: `select=*, photos:issue_photos(*)`)로 받은 응답에서 nested 배열의 각 요소는 snake_case 그대로 유지. 코드베이스의 `snakeToCamel`이 shallow 변환만 수행 (top-level 키만 변환, value는 그대로) → nested 객체 키 접근 시 `undefined` 함정. **명시적으로 `nested.map(snakeToCamel)` 호출하거나 deep recursion 헬퍼 사용**.
+
+또한 사용자 F12 부담 회피 + 빠른 회전을 위해 **Supabase Management API + node script로 자율 진단** 패턴 활용 가능. 4패턴 매칭표 사전 박제 후 30초~5분 내 식별.
+
+**Why:**
+트랙 77 U16에서 사용자가 사진 미렌더 신고. 4패턴(DB 저장 누락 / Storage RLS / Signed URL 권한 / JOIN 실패) 사전 박제 후 자율 진단 진행:
+1. SQL: `LEFT JOIN issue_photos`로 매칭 검증 — DB 정상 (사진 1건씩 박제, photo_path 정상)
+2. SQL: `storage.objects` 직접 조회 — 실제 jpg 파일 존재
+3. SQL: `pg_policies` — RLS 정책 모두 존재 (anon insert/select + authenticated all)
+4. PostgREST 시뮬: anon nested SELECT — `photos` 배열 정상 반환
+5. SDK 시뮬: `createSignedUrls` — `signedUrl` 키로 full URL 발급, HEAD 200
+
+→ DB/Storage/RLS/PostgREST/SDK 모두 정상. 그래도 사진 미렌더.
+
+원인 추적: `snakeToCamel(d)` 후 `camel.photos[0].photoPath`가 `undefined`. dbHelpers.js 분석:
+```js
+export function snakeToCamel(obj) {
+  if (Array.isArray(obj)) return obj.map(snakeToCamel);  // 배열은 recursive
+  if (obj === null || typeof obj !== 'object') return obj;
+  const result = {};
+  for (const [key, value] of Object.entries(obj)) {
+    const camelKey = key.replace(/_([a-z])/g, (_, c) => c.toUpperCase());
+    result[camelKey] = value;  // ← value 그대로! nested 객체 미변환
+  }
+  return result;
+}
+```
+
+→ `issueStore.fetchIssues`에서 `camel.photos`는 배열이지만 각 요소(객체)의 키는 snake_case 유지. `IssueDetailModal`의 `photos.map((p) => p.photoPath).filter(Boolean)`이 모두 falsy → `paths = []` → Signed URL 발급 호출 자체 안 됨 → 사진 미렌더.
+
+**fix**: 1줄 추가 — `camel.photos.map(snakeToCamel)`로 nested 변환.
+
+**How to apply:**
+1. **PostgREST nested resource 사용 시 변환 의무**:
+   - `snakeToCamel(d)` 후 nested 배열 명시적 `.map(snakeToCamel)` 변환
+   - 또는 deep recursion 헬퍼 신설 (`snakeToCamelDeep`)
+   - 코드 리뷰 시 nested SELECT가 있는 store fetch 함수는 nested 변환 검증 필수
+
+2. **Supabase Management API 자율 진단 패턴** (사용자 F12 부담 회피):
+   - 사전 박제: 4패턴 매칭표 (DB / Storage / RLS / PostgREST / SDK)
+   - SQL 1~3 (Management API): DB 매칭 + Storage 객체 + RLS 정책
+   - PostgREST 시뮬 (anon key + fetch): 클라이언트 동일 흐름
+   - SDK 시뮬 (anon key + supabase-js): SDK 변환 동작 검증
+   - Playwright 시뮬은 위 단계로 식별 안 될 때만 (자격증명 + production 위험)
+
+3. **단일 라운드 진단 + fix**: 4패턴 매칭으로 원인 식별 시 즉시 fix. 별 라운드 분리하지 말고 진단 결과 → 즉시 코드 변경 → 빌드 → 검증 → push.
+
+**예시 트랙**: 트랙 77 U16 (사용자 신고 → SQL 3건 + PostgREST/SDK 시뮬 → snakeToCamel shallow 원인 확정 → `issueStore.js` 1줄 fix → 진단 로그 일괄 제거 → push 단일 라운드)
