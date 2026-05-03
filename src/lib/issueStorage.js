@@ -71,3 +71,30 @@ export async function uploadIssuePhotos({ workerId, issueId, photos }) {
     ),
   );
 }
+
+/**
+ * [TRACK77-U14] 비공개 버킷 사진 표시용 Signed URL 발급.
+ *
+ * 배경:
+ *   - 버킷 issue_photos는 public=false (followup-u11 박제, U11 SQL 검증 결과 (3))
+ *   - upload 시 저장한 photo_url 컬럼은 getPublicUrl() 결과 — 비공개 버킷에서는 401/403 (broken image)
+ *   - 표시 시점에 createSignedUrls()로 인증된 단기 URL 발급 (TTL 1시간)
+ *
+ * @param {string[]} photoPaths - issue_photos.photo_path 컬럼 값 배열
+ * @param {number} expiresInSec - TTL (default 3600 = 1시간) — G77-AA
+ * @returns {Promise<Record<string, string>>} - { path: signedUrl } 매핑. 실패 시 빈 매핑
+ */
+export async function getSignedUrlsForPhotos(photoPaths, expiresInSec = 3600) {
+  if (!Array.isArray(photoPaths) || photoPaths.length === 0) return {};
+  const { data, error } = await supabase.storage
+    .from(BUCKET)
+    .createSignedUrls(photoPaths, expiresInSec);
+  if (error || !Array.isArray(data)) return {};
+  const map = {};
+  for (const item of data) {
+    if (item?.path && item?.signedUrl) {
+      map[item.path] = item.signedUrl;
+    }
+  }
+  return map;
+}

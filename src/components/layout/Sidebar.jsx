@@ -39,7 +39,7 @@ const productionCategory = {
     { label: '작업 현황', to: '/admin/board', icon: ICONS.board },
     { label: '작물 관리', to: '/admin/crops', icon: ICONS.crops },
     { label: '생육 조사', to: '/admin/survey', icon: ICONS.survey },
-    { label: '신고·호출', to: '/admin/records', icon: ICONS.records },
+    { label: '이상신고', to: '/admin/issue-call', icon: ICONS.records },
     { label: '성과 분석', to: '/admin/performance', icon: ICONS.stats },
     { label: '일일 보고서', to: '/admin/report', icon: ICONS.report },
   ],
@@ -73,6 +73,7 @@ const farmCategorizedMenu = [
     label: '안전 관리',
     items: [
       { label: 'TBM 현황', to: '/admin/safety-checks', icon: ICONS.shield },
+      { label: '이상신고', to: '/admin/issue-call', icon: ICONS.records },
       { label: '안전 이슈', to: '/admin/safety-issues', icon: ICONS.safetyAlert },
     ],
   },
@@ -124,6 +125,7 @@ const mgmtCategorizedMenu = [
     label: '안전 관리',
     items: [
       { label: 'TBM 현황', to: '/admin/safety-checks', icon: ICONS.shield },
+      { label: '이상신고', to: '/admin/issue-call', icon: ICONS.records },
       { label: '안전 이슈', to: '/admin/safety-issues', icon: ICONS.safetyAlert },
     ],
   },
@@ -183,6 +185,7 @@ const masterCategorizedMenu = [
     label: '안전 관리',
     items: [
       { label: 'TBM 현황', to: '/admin/safety-checks', icon: ICONS.shield },
+      { label: '이상신고', to: '/admin/issue-call', icon: ICONS.records },
       { label: '안전 이슈', to: '/admin/safety-issues', icon: ICONS.safetyAlert },
     ],
   },

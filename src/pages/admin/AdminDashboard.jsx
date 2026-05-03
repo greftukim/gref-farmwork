@@ -446,7 +446,7 @@ function AdminDashboardScreen() {
                 <h3 style={{ fontSize: 14, fontWeight: 700, color: T.text, margin: 0 }}>긴급 호출 · 이상 신고</h3>
                 <Pill tone="danger">{openIssues.length + unconfirmedCalls.length || 0}</Pill>
               </div>
-              <span onClick={() => navigate('/admin/records')} style={{ fontSize: 11, color: T.primary, fontWeight: 600, cursor: 'pointer' }}>모두 보기</span>
+              <span onClick={() => navigate('/admin/issue-call')} style={{ fontSize: 11, color: T.primary, fontWeight: 600, cursor: 'pointer' }}>모두 보기</span>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               {alertItems.length > 0 ? alertItems.map((a, i) => (

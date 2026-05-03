@@ -185,7 +185,10 @@ export default function App() {
             <Route path="schedule" element={<SchedulePage />} />
             <Route path="crops" element={<CropZonePage />} />
             <Route path="tasks" element={<TaskBoardPage />} />
-            <Route path="records" element={<IssueCallPage />} />
+            {/* [TRACK77-U14] 라우트 통일 — /admin/issue-call (페이지 헤더 일치) */}
+            <Route path="issue-call" element={<IssueCallPage />} />
+            {/* 기존 사용자 북마크 호환 — /admin/records → /admin/issue-call */}
+            <Route path="records" element={<Navigate to="/admin/issue-call" replace />} />
             <Route path="work-stats" element={<WorkStatsPage />} />
             <Route path="report" element={<DailyReportPage />} />
             <Route path="notices" element={<NoticePage />} />

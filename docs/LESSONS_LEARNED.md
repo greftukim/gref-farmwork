@@ -3061,3 +3061,31 @@ Supabase MCP 서버가 등록된 프로젝트에서는 `.mcp.json`의 `SUPABASE_
 5. 사후 검증 쿼리 (`pg_policies` / `storage.buckets` / `pg_class.relrowsecurity` 등) 결과 raw 보고서에 박제
 
 **예시 트랙**: 트랙 77 후속 U11 (`docs/migrations/U11_issue_photos.sql` 자율 실행 + 검증 5축 통과 + `scripts/run-sql.cjs` 향후 라운드 자동화 인프라 박제)
+
+## 교훈 145 — 비공개 Storage 버킷 + getPublicUrl() 호환 함정
+
+비공개 Supabase Storage 버킷에서 `getPublicUrl()` 호출은 에러 없이 URL 반환하지만 그 URL은 401/403 반환 → 표시 시점에 broken image. 비공개 버킷은 반드시 `createSignedUrl` / `createSignedUrls` / `download` 중 택1 + TTL 명시. 업로드 시 publicUrl 컬럼 저장은 fallback 정보로만 의미.
+
+**Why:**
+트랙 77 followup-u11에서 `issueStorage.uploadIssuePhotoOnce`가 `supabase.storage.from(BUCKET).getPublicUrl(path).data.publicUrl`을 반환 → `issue_photos.photo_url` 컬럼에 저장. 그러나 버킷은 `public=false` (followup-u11 SQL 검증 5축 (3) 명시). U13에서 관리자 IssueDetailModal이 그 photo_url을 그대로 `<img src>`에 사용 → 사용자 신고: "첨부 사진 보이지 않음" (브라우저는 401/403 응답을 broken image로만 표시, 콘솔에 silent로 숨김). U14에서 `createSignedUrls()` + `useEffect` 동적 발급 패턴으로 fix.
+
+**How to apply:**
+Supabase Storage 사용 시 패턴 분류:
+1. **공개 버킷 (`public=true`)**: `getPublicUrl()` 직접 사용 OK. URL 영구 유효
+2. **비공개 버킷 (`public=false`)**: `createSignedUrl(path, TTL)` 또는 `createSignedUrls(paths, TTL)`로 표시 시점 발급. TTL 만료 처리 필요 (재발급 또는 모달 unmount 시 invalidate)
+3. **혼합 사용 금지**: 비공개 버킷에 대해 `getPublicUrl()`은 broken URL 반환 함정 — 코드 리뷰 시 `bucket public 속성` vs `URL 생성 함수` 매칭 검증
+
+코드 패턴:
+```js
+// 1. 업로드 시점 — path만 저장 (publicUrl은 fallback 정보)
+const path = `${userId}/${itemId}/${index}.jpg`;
+await supabase.storage.from(BUCKET).upload(path, file);
+await db.from(TABLE).insert({ photo_path: path });
+
+// 2. 표시 시점 — Signed URL 동적 발급
+const { data } = await supabase.storage.from(BUCKET)
+  .createSignedUrls(paths, 3600);  // 1시간 TTL
+// data: [{ path, signedUrl, error }]
+```
+
+**예시 트랙**: 트랙 77 followup-u11 publicUrl 박제 → U13 IssueDetailModal에서 broken image 사용자 신고 → U14 `getSignedUrlsForPhotos` 헬퍼 + `useEffect` 발급 패턴 fix (`src/lib/issueStorage.js` + `src/components/admin/IssueDetailModal.jsx`)

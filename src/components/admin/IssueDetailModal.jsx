@@ -3,10 +3,14 @@
 // 자산: useIssueStore.updateIssue 활용 (페이지 inline 핸들러 → 모달 위임)
 //
 // G77-V: 라이트박스 단순 클릭 확대 (좌우 스와이프 / pinch-zoom 미구현 — BACKLOG 후보)
+// [TRACK77-U14] 비공개 버킷 사진 표시 — getPublicUrl 대신 createSignedUrls 사용
+//   issueStore의 photo_url(저장 시점 publicUrl)은 비공개 버킷에서 401/403 → broken image
+//   표시 시점에 useEffect로 Signed URL 동적 발급 (TTL 1시간)
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { T, Avatar, Pill, Dot, Icon, icons } from '../../design/primitives';
 import useIssueStore from '../../stores/issueStore';
+import { getSignedUrlsForPhotos } from '../../lib/issueStorage';
 
 const SEVERITY = {
   critical: { l: '긴급', c: T.danger, soft: T.dangerSoft },
@@ -23,12 +27,44 @@ const STATUS = {
 export default function IssueDetailModal({ open, onClose, issue, employee }) {
   const updateIssue = useIssueStore((s) => s.updateIssue);
   const [lightbox, setLightbox] = useState(null); // 클릭한 사진 URL (없으면 null)
+  // [TRACK77-U14] Signed URL 매핑 (path -> signedUrl)
+  const [signedUrls, setSignedUrls] = useState({});
+  const [signedLoading, setSignedLoading] = useState(false);
+  const [failedPaths, setFailedPaths] = useState({}); // path -> true (이미지 onError 추적)
+
+  const photos = Array.isArray(issue?.photos) ? issue.photos : [];
+
+  // [TRACK77-U14] 모달 오픈 + 사진 있을 때 Signed URL 발급 (G77-AA TTL=3600)
+  useEffect(() => {
+    let cancelled = false;
+    if (!open || !issue || photos.length === 0) {
+      setSignedUrls({});
+      setFailedPaths({});
+      return;
+    }
+    const paths = photos.map((p) => p.photoPath).filter(Boolean);
+    if (paths.length === 0) return;
+
+    setSignedLoading(true);
+    setFailedPaths({});
+    getSignedUrlsForPhotos(paths)
+      .then((map) => {
+        if (!cancelled) setSignedUrls(map);
+      })
+      .catch(() => {
+        if (!cancelled) setSignedUrls({});
+      })
+      .finally(() => {
+        if (!cancelled) setSignedLoading(false);
+      });
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, issue?.id, photos.length]);
 
   if (!open || !issue) return null;
 
   const sv = SEVERITY[issue.severity] || SEVERITY.normal;
   const st = STATUS[issue.status] || STATUS.pending;
-  const photos = Array.isArray(issue.photos) ? issue.photos : [];
 
   const handleStart = () => {
     updateIssue?.(issue.id, { status: 'in_progress' });
@@ -106,18 +142,46 @@ export default function IssueDetailModal({ open, onClose, issue, employee }) {
                   첨부된 사진이 없습니다
                 </div>
               ) : (
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
-                  {photos.map((p) => (
-                    <div key={p.id} onClick={() => setLightbox(p.photoUrl)} style={{
-                      aspectRatio: '1 / 1', borderRadius: 8, overflow: 'hidden', cursor: 'pointer',
-                      background: T.bg, border: `1px solid ${T.borderSoft}`,
-                    }}>
-                      <img src={p.photoUrl} alt="첨부 사진" loading="lazy" style={{
-                        width: '100%', height: '100%', objectFit: 'cover', display: 'block',
-                      }} />
-                    </div>
-                  ))}
-                </div>
+                <>
+                  {signedLoading && (
+                    <div style={{ fontSize: 11, color: T.mutedSoft, marginBottom: 6 }}>사진 불러오는 중…</div>
+                  )}
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
+                    {photos.map((p) => {
+                      // [TRACK77-U14] Signed URL 우선 (비공개 버킷). 발급 실패 시 fallback = 저장된 photoUrl (broken 가능성)
+                      const src = signedUrls[p.photoPath] || p.photoUrl;
+                      const failed = !!failedPaths[p.photoPath];
+                      return (
+                        <div
+                          key={p.id}
+                          onClick={() => !failed && setLightbox(src)}
+                          style={{
+                            aspectRatio: '1 / 1', borderRadius: 8, overflow: 'hidden',
+                            cursor: failed ? 'default' : 'pointer',
+                            background: T.bg, border: `1px solid ${T.borderSoft}`,
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          }}
+                        >
+                          {failed ? (
+                            <div style={{ fontSize: 10, color: T.mutedSoft, textAlign: 'center', padding: 8, lineHeight: 1.4 }}>
+                              사진 로드<br />실패
+                            </div>
+                          ) : (
+                            <img
+                              src={src}
+                              alt="첨부 사진"
+                              loading="lazy"
+                              onError={() => setFailedPaths((prev) => ({ ...prev, [p.photoPath]: true }))}
+                              style={{
+                                width: '100%', height: '100%', objectFit: 'cover', display: 'block',
+                              }}
+                            />
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </>
               )}
             </div>
 

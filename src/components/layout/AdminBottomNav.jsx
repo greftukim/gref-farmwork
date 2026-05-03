@@ -16,8 +16,8 @@ const farmCoreTabs = [
     icon: 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2',
   },
   {
-    to: '/admin/records',
-    label: '신고·호출',
+    to: '/admin/issue-call',
+    label: '이상신고',
     icon: 'M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.34 16.5c-.77.833.192 2.5 1.732 2.5z',
   },
   {
@@ -204,7 +204,7 @@ export default function AdminBottomNav() {
     : isMasterOrSupervisor
       ? [...mgmtMoreItems, ...farmMoreItems.filter((item) =>
           ['/admin/tasks', '/admin/board', '/admin/crops', '/admin/survey',
-           '/admin/records', '/admin/performance', '/admin/report',
+           '/admin/issue-call', '/admin/performance', '/admin/report',
            '/admin/overtime-approval'].includes(item.to)
         )]
       : mgmtMoreItems;
