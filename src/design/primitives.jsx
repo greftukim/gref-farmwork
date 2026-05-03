@@ -171,6 +171,8 @@ const Sidebar = ({ active = 'dashboard', onNavigate }) => {
     { id: 'tasks', label: '작업 관리', icon: icons.clipboard },
     { id: 'floor', label: '실시간 평면도', icon: icons.map || icons.dashboard },
     { id: 'growth', label: '생육조사', icon: icons.sprout },
+    // [TRACK77-U20] 온실 정보 (생산 관리) — zone_specs / zone_crops / 재식밀도 계산
+    { id: 'zone-info', label: '온실 정보', icon: icons.home },
     { id: 'stats', label: '성과 분석', icon: icons.chart },
     // [TRACK77-U15] 이상신고 메뉴 (U14 정정 — 잘못된 components/layout/Sidebar.jsx dead code 수정 보정)
     { id: 'issue-call', label: '이상신고', icon: icons.alert },

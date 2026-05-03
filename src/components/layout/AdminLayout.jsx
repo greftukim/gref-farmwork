@@ -55,6 +55,8 @@ const FARM_ROUTES = {
   tasks: '/admin/tasks',
   floor: '/admin/floor',
   growth: '/admin/growth',
+  // [TRACK77-U20] 온실 정보 라우트
+  'zone-info': '/admin/zone-info',
   stats: '/admin/performance',
   // [TRACK77-U15] 이상신고 라우트 매핑 (Sidebar items.id와 일치)
   'issue-call': '/admin/issue-call',

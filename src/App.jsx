@@ -80,6 +80,8 @@ import DailyWorkLogsPage from './pages/admin/DailyWorkLogsPage';
 import TaskCreatePage from './pages/admin/TaskCreatePage';
 import HarvestRecordPage from './pages/admin/HarvestRecordPage';
 import MarkerPlantManagePage from './pages/admin/MarkerPlantManagePage';
+// [TRACK77-U20] 온실 정보 관리 (별 트랙 TRACK77-FOLLOWUP-ZONE-METADATA-001)
+import ZoneInfoPage from './pages/admin/ZoneInfoPage';
 import QrScanPage from './pages/worker/QrScanPage';
 import WorkerHome from './pages/worker/WorkerHome';
 import WorkerTasksPage from './pages/worker/WorkerTasksPage';
@@ -213,6 +215,8 @@ export default function App() {
             <Route path="growth/heatmap" element={<GrowthHeatmapScreen />} />
             <Route path="growth/markers" element={<MarkerPlantManagePage />} />
             <Route path="harvest" element={<HarvestRecordPage />} />
+            {/* [TRACK77-U20] 온실 정보 관리 — 3탭 (동 작물 / 온실 기초 / 재식밀도 계산) */}
+            <Route path="zone-info" element={<ZoneInfoPage />} />
             <Route path="tasks/new" element={<TaskCreatePage />} />
             <Route path="performance" element={<BranchPerformanceScreen />} />
             <Route path="performance/detail" element={<PerformanceDetailScreen />} />
