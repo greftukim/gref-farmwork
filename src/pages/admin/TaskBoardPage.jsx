@@ -1,20 +1,27 @@
-// 작업 칸반 보드 v2 — 동(zone) 분류 + 다중 배정 + 우선순위 제거
-// 트랙 76-A-1 v2 (재설계) + 76-A-3a (모달 + 주간/포커스 뷰) + 76-A-3c (onSave 활성화)
-// G33 안전 분기: 76-A-3c에서 해제 (76-A-3b 검증 SQL 3건 모두 통과)
+// 작업 관리 (재설계) — 트랙 77 후속 U18
+// 시안: 운영 채팅방 합의 (동×날짜 매트릭스 + 일별 동×카드)
+// 칸반 제거 (TaskColumn / 기존 WeekView / FocusList → dead code 후보, 별 라운드 삭제)
+//
+// 자산 보존 7건:
+//   - 자산 4번 (76-A): zoneColors.js 미참조, AssignWorkersModal 재사용 only
+//   - zoneMatrixColors.js 별 파일 사용 (G77-YY)
+//
+// 표준 §4 (CCB/Codex 자율 협업): 본 환경 단일 Claude Code → Codex 위임 0건.
+//   향후 CCB 환경에서 WeekMatrixView/DayView/zoneMatrixColors는 Codex 위임 적합.
 
 import React, { useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Icon, T, TopBar, btnPrimary, icons } from '../../design/primitives';
 import useTaskStore from '../../stores/taskStore';
 import useAuthStore from '../../stores/authStore';
-import { TaskColumn } from '../../components/task/TaskColumn';
+import useZoneStore from '../../stores/zoneStore';
 import { TaskFilters } from '../../components/task/TaskFilters';
-import { WeekView } from '../../components/task/WeekView';
-import { FocusList } from '../../components/task/FocusList';
+import WeekMatrixView from '../../components/task/WeekMatrixView';
+import DayView from '../../components/task/DayView';
+import TaskDetailModal from '../../components/task/TaskDetailModal';
 import { AssignWorkersModal } from '../../components/task/AssignWorkersModal';
 
-// DB status → Kanban columnKey 매핑
-// pending → plan (Q4 발견 매핑 보존)
+// DB status → 상태 칩 키 매핑 (TaskFilters 재사용 호환)
 const colOf = (s) => {
   if (s === 'pending' || s === 'planned' || s === 'assigned') return 'plan';
   if (s === 'in_progress') return 'progress';
@@ -22,23 +29,22 @@ const colOf = (s) => {
   return 'plan';
 };
 
-const COLUMN_KEYS = ['plan', 'progress', 'done'];
-
 export default function TaskBoardPage() {
   const tasks = useTaskStore((s) => s.tasks);
-  const updateTask = useTaskStore((s) => s.updateTask);
   const assignWorkers = useTaskStore((s) => s.assignWorkers);
+  const zones = useZoneStore((s) => s.zones);
   const currentUser = useAuthStore((s) => s.currentUser);
 
   const [searchParams, setSearchParams] = useSearchParams();
-  const view = searchParams.get('view') || 'kanban'; // 'kanban' | 'week' | 'focus'
+  // [TRACK77-U18] view = 'week' | 'day'. 'kanban'/'focus' 북마크 → 'week' fallback (G77-ZZ)
+  const rawView = searchParams.get('view');
+  const view = rawView === 'day' ? 'day' : 'week';
 
   const [searchQ, setSearchQ] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [zoneFilter, setZoneFilter] = useState('all');
-  const [dragTask, setDragTask] = useState(null);
-  const [dragOver, setDragOver] = useState(null);
-  const [modalTask, setModalTask] = useState(null);
+  const [detailTask, setDetailTask] = useState(null);
+  const [assignTask, setAssignTask] = useState(null);
 
   const setView = (v) => {
     const next = new URLSearchParams(searchParams);
@@ -46,7 +52,7 @@ export default function TaskBoardPage() {
     setSearchParams(next, { replace: true });
   };
 
-  // 검색 + zone 필터 적용
+  // 검색 + zone + status 필터
   const filtered = useMemo(() => {
     const q = searchQ.trim();
     return (tasks || []).filter((t) => {
@@ -64,20 +70,10 @@ export default function TaskBoardPage() {
     });
   }, [tasks, searchQ, zoneFilter]);
 
-  // status 필터 적용
   const visible = useMemo(() => {
     if (statusFilter === 'all') return filtered;
     return filtered.filter((t) => colOf(t.status) === statusFilter);
   }, [filtered, statusFilter]);
-
-  const byColumn = useMemo(() => {
-    const map = { plan: [], progress: [], done: [] };
-    visible.forEach((t) => {
-      const k = colOf(t.status);
-      if (map[k]) map[k].push(t);
-    });
-    return map;
-  }, [visible]);
 
   const statusCounts = useMemo(() => ({
     all: filtered.length,
@@ -86,29 +82,19 @@ export default function TaskBoardPage() {
     done: filtered.filter((t) => colOf(t.status) === 'done').length,
   }), [filtered]);
 
-  const handleDragStart = (task) => setDragTask(task);
-  const handleDragOver = (e, colKey) => {
-    e.preventDefault();
-    if (dragOver !== colKey) setDragOver(colKey);
-  };
-  const handleDrop = async (colKey) => {
-    if (dragTask) {
-      const dbStatus = colKey === 'plan' ? 'pending' : colKey === 'progress' ? 'in_progress' : 'completed';
-      if (dragTask.status !== dbStatus) {
-        await updateTask(dragTask.id, { status: dbStatus });
-      }
-    }
-    setDragTask(null);
-    setDragOver(null);
+  // [TRACK77-U18] 카드 클릭 → 상세 모달
+  const handleCardClick = (task) => setDetailTask(task);
+
+  // [TRACK77-U18] 빈 셀 + 클릭 → 신규 작성 모달 (zoneId + date prefill, G77-DDD)
+  const handleAddClick = (zoneId, date) => {
+    setDetailTask({ __new: true, zoneId, date });
   };
 
-  // G33-MCP-DISCONNECT-GUARD: 해제 — 76-A-3b 검증 통과 (2026-04-27)
-  // SQL #1 zones FK / #2 task_assignments 백필 / #3 dual-write primary 정합 모두 ✅
   const handleSaveAssignment = async (workerIds) => {
-    if (!modalTask) return;
+    if (!assignTask) return;
     try {
-      await assignWorkers(modalTask.id, workerIds);
-      setModalTask(null);
+      await assignWorkers(assignTask.id, workerIds);
+      setAssignTask(null);
     } catch (err) {
       console.error('작업자 배정 실패:', err);
       alert(`작업자 배정 저장에 실패했습니다.\n${err?.message ?? '알 수 없는 오류'}`);
@@ -119,8 +105,8 @@ export default function TaskBoardPage() {
     <div style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column', background: T.bg, minWidth: 0 }}>
       <TopBar
         subtitle="작업 관리"
-        title="작업 칸반"
-        actions={btnPrimary('새 작업', icons.plus)}
+        title="작업 관리"
+        actions={btnPrimary('새 작업', icons.plus, () => setDetailTask({ __new: true }))}
       />
 
       <TaskFilters
@@ -134,73 +120,104 @@ export default function TaskBoardPage() {
         branch={currentUser?.branch}
       />
 
-      {/* 검색 + 총 건수 */}
-      <div style={{ padding: '10px 28px', display: 'flex', alignItems: 'center', gap: 10, borderBottom: `1px solid ${T.border}`, background: T.surface }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '7px 10px', background: T.bg, border: `1px solid ${T.border}`, borderRadius: 7, width: 280 }}>
+      {/* 검색 + view 토글 + 총 건수 */}
+      <div style={{
+        padding: '10px 28px',
+        display: 'flex', alignItems: 'center', gap: 10,
+        borderBottom: `1px solid ${T.border}`, background: T.surface,
+      }}>
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: 6,
+          padding: '7px 10px', background: T.bg, border: `1px solid ${T.border}`, borderRadius: 7,
+          width: 280,
+        }}>
           <Icon d={icons.search} size={14} c={T.mutedSoft} />
           <input
             value={searchQ}
             onChange={(e) => setSearchQ(e.target.value)}
             placeholder="작업명·작물·작업자 검색"
-            style={{ border: 0, background: 'transparent', outline: 'none', flex: 1, fontSize: 13, color: T.text }}
+            style={{
+              border: 0, background: 'transparent', outline: 'none', flex: 1,
+              fontSize: 13, color: T.text,
+            }}
           />
         </div>
+
+        {/* [TRACK77-U18] view 토글 (주간 / 일별) */}
+        <div style={{
+          display: 'inline-flex', background: T.bg, border: `1px solid ${T.border}`, borderRadius: 7, padding: 2,
+        }}>
+          <ViewToggleBtn label="주간" active={view === 'week'} onClick={() => setView('week')} />
+          <ViewToggleBtn label="일별" active={view === 'day'} onClick={() => setView('day')} />
+        </div>
+
         <div style={{ marginLeft: 'auto', fontSize: 12, color: T.mutedSoft, fontWeight: 600 }}>
           총 <b style={{ color: T.text }}>{tasks?.length || 0}</b>건 · 표시 <b style={{ color: T.text }}>{visible.length}</b>건
         </div>
       </div>
 
-      {/* 보드 — view 토글 */}
+      {/* 보드 — week / day */}
       <div style={{ flex: 1, overflow: 'auto', padding: 24 }}>
         {view === 'week' && (
-          <WeekView
+          <WeekMatrixView
             tasks={visible}
-            onCardClick={() => { /* 상세 모달 — 별 트랙 */ }}
-            onAssignClick={(task) => setModalTask(task)}
+            zones={zones}
+            onCardClick={handleCardClick}
+            onAddClick={handleAddClick}
           />
         )}
-        {view === 'focus' && (
-          <FocusList
+        {view === 'day' && (
+          <DayView
             tasks={visible}
-            onCardClick={() => { /* 상세 모달 — 별 트랙 */ }}
-            onAssignClick={(task) => setModalTask(task)}
+            zones={zones}
+            onCardClick={handleCardClick}
+            onAddClick={handleAddClick}
           />
-        )}
-        {view === 'kanban' && (
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: statusFilter === 'all' ? 'repeat(3, 1fr)' : '1fr',
-            gap: 16, alignItems: 'start',
-            maxWidth: statusFilter === 'all' ? '100%' : 720,
-            margin: statusFilter === 'all' ? 0 : '0 auto',
-          }}>
-            {(statusFilter === 'all' ? COLUMN_KEYS : [statusFilter]).map((k) => (
-              <div
-                key={k}
-                onDragOver={(e) => handleDragOver(e, k)}
-                onDrop={() => handleDrop(k)}
-                style={{ opacity: dragOver === k ? 0.85 : 1, transition: 'opacity 0.15s' }}
-              >
-                <TaskColumn
-                  columnKey={k}
-                  tasks={byColumn[k]}
-                  onCardClick={() => { /* 상세 모달 — 별 트랙 */ }}
-                  onAddWorker={(task) => setModalTask(task)}
-                  onAddTask={() => { /* 신규 작업 모달 */ }}
-                />
-              </div>
-            ))}
-          </div>
         )}
       </div>
 
-      {modalTask && (
+      {/* 작업 상세 / 신규 작성 모달 */}
+      {detailTask && (
+        <TaskDetailModal
+          task={detailTask}
+          zones={zones}
+          onClose={() => setDetailTask(null)}
+          onSaved={() => setDetailTask(null)}
+          onAssignClick={() => {
+            // 신규 작성 모드는 배정 불가 (id 없음). 기존 task만 배정 변경 가능.
+            if (!detailTask?.__new) {
+              setAssignTask(detailTask);
+              setDetailTask(null);
+            }
+          }}
+        />
+      )}
+
+      {/* 배정 변경 모달 (자산 4번 — 변경 0, 재사용 only) */}
+      {assignTask && (
         <AssignWorkersModal
-          task={modalTask}
-          onClose={() => setModalTask(null)}
+          task={assignTask}
+          onClose={() => setAssignTask(null)}
           onSave={handleSaveAssignment}
         />
       )}
     </div>
+  );
+}
+
+function ViewToggleBtn({ label, active, onClick }) {
+  return (
+    <button
+      onClick={onClick}
+      aria-pressed={active}
+      style={{
+        height: 28, padding: '0 12px', borderRadius: 5,
+        border: 0,
+        background: active ? T.surface : 'transparent',
+        color: active ? T.text : T.mutedSoft,
+        fontSize: 12, fontWeight: 700, cursor: 'pointer',
+        boxShadow: active ? '0 1px 2px rgba(0,0,0,0.06)' : 'none',
+      }}
+    >{label}</button>
   );
 }

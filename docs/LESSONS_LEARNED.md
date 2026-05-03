@@ -3194,3 +3194,32 @@ export function snakeToCamel(obj) {
 cleanup 라운드 commit message: `docs(track77-uN): cleanup 검증 + 운영 인덱스 박제` (잔존 0건이면 docs only). chore/fix는 잔존 발견 정리 시.
 
 **예시 트랙**: 트랙 77 U17 (`8025e55`+1) — 6건 검증 모두 ✅ + `TRACK77_FOLLOWUP_INDEX.md` 신규 + LESSONS 148 박제. src/ 변경 0건. 사용자 검증 부담 0.
+
+## 교훈 149 — 자산 보존 인접 변경 시 별 파일 분리 정책
+
+자산 보존 7건 중 일부(예: 76-A `zoneColors.js`)에 새 사용처가 필요한 경우, **기존 파일 수정 금지** + **별 파일에 신규 헬퍼 박제**. byte-identical 보장 + 다른 사용처 회귀 위험 0. 신규 파일은 의미 분리 명확한 이름(`<원본>Matrix.js` / `<원본>Admin.js` 등) 권고.
+
+**Why:**
+트랙 77 U18에서 작업 관리 재설계 시 동별 색상 매핑 필요. 기존 `src/lib/zoneColors.js`(76-A 자산, A동→인디고/B동→틸/C동→주황/D동→빨강 박제)는 다른 페이지에서도 사용 중일 수 있고 byte-identical 보존 필요. 시안 매트릭스용 색상(빨강/노랑/초록/파랑)은 의미상 다른 매핑 — 같은 파일에 추가 시 혼란.
+
+해결: `src/lib/zoneMatrixColors.js` 신규 파일 + `getMatrixZoneColor(index)` index 기반 cycle. 기존 `zoneColors.js` byte-identical (diff 0줄). 자산 4번 100% 보존.
+
+**How to apply:**
+자산 보존 7건 인접 변경 시 의무 절차:
+1. 변경 대상이 자산 7건 중 하나인지 확인 (LESSONS 143 byte-identical)
+2. 자산이면:
+   - 기존 export 미변경 권고
+   - 신규 함수 추가만 가능한지 검토
+   - 또는 **별 파일** 신규 (의미 분리 명확)
+3. 별 파일 분리 시 명명:
+   - `<원본>Matrix.js` (특정 화면 전용)
+   - `<원본>Admin.js` / `<원본>Worker.js` (역할 분리)
+   - `<원본>V2.js` (마이그레이션 중)
+4. 사용처에서 import 분기 — 자산은 기존, 신규는 별 파일
+
+byte-identical 검증:
+```bash
+diff <(git show <baseline>:<asset_file>) <asset_file> | wc -l   # 0이어야 함
+```
+
+**예시 트랙**: 트랙 77 U18 (`zoneColors.js` 76-A 자산 보존 → `zoneMatrixColors.js` 별 파일 신규 + `getMatrixZoneColor` 함수 — `WeekMatrixView` / `DayView` 양쪽에서 사용. byte-identical 검증 diff 0줄)
