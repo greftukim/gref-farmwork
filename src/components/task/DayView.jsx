@@ -1,8 +1,10 @@
-// 작업 일별 뷰 — 트랙 77 후속 U18
+// 작업 일별 뷰 — 트랙 77 후속 U18 + U19
 // 시안: 운영 채팅방 합의 — 동(row) × 작업카드(가로 flex) + 카드는 상태 Pill + 작업명 + 작물 + 시간 + 배정자 + 진행률
 //
+// U19: zoneFilter prop — 선택된 동 row만 표시 (사용자 의견 2). 완료 task opacity 0.55 (G77-JJJ).
+//
 // props:
-//   tasks, zones, onCardClick(task), onAddClick(zoneId, dateStr)
+//   tasks, zones, zoneFilter, onCardClick(task), onAddClick(zoneId, dateStr)
 
 import React, { useMemo, useState } from 'react';
 import { Avatar, T } from '../../design/primitives';
@@ -28,12 +30,18 @@ function statusPill(status) {
   return STATUS_PILL[status] || STATUS_PILL.pending;
 }
 
-export default function DayView({ tasks, zones, onCardClick, onAddClick }) {
+export default function DayView({ tasks, zones, zoneFilter = 'all', onCardClick, onAddClick }) {
   const [day, setDay] = useState(() => {
     const d = new Date();
     d.setHours(0, 0, 0, 0);
     return d;
   });
+
+  // [TRACK77-U19] 동 필터 적용 시 해당 zone row만 표시 (사용자 의견 2)
+  const visibleZones = useMemo(() => {
+    if (zoneFilter === 'all') return zones || [];
+    return (zones || []).filter((z) => z.id === zoneFilter);
+  }, [zones, zoneFilter]);
 
   const dayKey = fmtDateKey(day);
   const todayKey = fmtDateKey(new Date());
@@ -96,13 +104,15 @@ export default function DayView({ tasks, zones, onCardClick, onAddClick }) {
         background: T.surface, border: `1px solid ${T.border}`, borderRadius: 8,
         overflow: 'hidden',
       }}>
-        {(zones || []).map((zone, zIdx) => {
-          const color = getMatrixZoneColor(zIdx);
+        {visibleZones.map((zone, vIdx) => {
+          // [TRACK77-U19] 색상 index = 원본 zones 배열 index (필터 무관 일관성)
+          const zIdx = (zones || []).findIndex((z) => z.id === zone.id);
+          const color = getMatrixZoneColor(zIdx >= 0 ? zIdx : 0);
           const cards = byZone[zone.id] || [];
           return (
             <div key={zone.id} style={{
               display: 'flex', alignItems: 'stretch',
-              borderBottom: zIdx < zones.length - 1 ? `1px solid ${T.borderSoft}` : 'none',
+              borderBottom: vIdx < visibleZones.length - 1 ? `1px solid ${T.borderSoft}` : 'none',
             }}>
               {/* 동 헤더 (왼쪽 고정) */}
               <div style={{
@@ -135,6 +145,8 @@ export default function DayView({ tasks, zones, onCardClick, onAddClick }) {
                     const sp = statusPill(t.status);
                     const workers = t.workers || [];
                     const progress = t.progress ?? (t.status === 'completed' ? 100 : t.status === 'in_progress' ? 40 : 0);
+                    // [TRACK77-U19] 완료 task 시각 약화 (G77-JJJ)
+                    const isDone = t.status === 'completed' || t.status === 'done';
                     return (
                       <div
                         key={t.id}
@@ -149,6 +161,7 @@ export default function DayView({ tasks, zones, onCardClick, onAddClick }) {
                           padding: 12,
                           cursor: 'pointer',
                           boxShadow: '0 1px 2px rgba(0,0,0,0.04)',
+                          opacity: isDone ? 0.55 : 1,
                         }}
                       >
                         {/* 상태 Pill */}
@@ -212,9 +225,9 @@ export default function DayView({ tasks, zones, onCardClick, onAddClick }) {
           );
         })}
 
-        {(!zones || zones.length === 0) && (
+        {visibleZones.length === 0 && (
           <div style={{ padding: 40, textAlign: 'center', color: T.mutedSoft, fontSize: 13 }}>
-            동(zone) 정보가 없습니다
+            {(!zones || zones.length === 0) ? '동(zone) 정보가 없습니다' : '선택된 동에 해당하는 항목이 없습니다'}
           </div>
         )}
       </div>

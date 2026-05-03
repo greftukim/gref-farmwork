@@ -3223,3 +3223,32 @@ diff <(git show <baseline>:<asset_file>) <asset_file> | wc -l   # 0이어야 함
 ```
 
 **예시 트랙**: 트랙 77 U18 (`zoneColors.js` 76-A 자산 보존 → `zoneMatrixColors.js` 별 파일 신규 + `getMatrixZoneColor` 함수 — `WeekMatrixView` / `DayView` 양쪽에서 사용. byte-identical 검증 diff 0줄)
+
+---
+
+## 교훈 150 — 필터 UI는 row 숨김 + 카운트 갱신 패턴
+
+목록/매트릭스 뷰에 적용된 카테고리 필터(예: 동/지역 칩)는 **매칭되지 않는 행을 숨김** + **카운트 차이로 사용자 인지** 패턴이 가장 미니멀하고 직관적이다. 매칭 안 되는 행을 회색·옅은색으로 남기는 패턴은 레이아웃 낭비 + 시각 혼란. 별도 안내 텍스트("3개가 숨겨졌습니다") 도 불필요 — 카운트(`총 N건 · 표시 N건`)가 차이를 자연스럽게 인지시킨다.
+
+**Why:**
+트랙 77 U19에서 사용자 의견: "동 칩 선택 시 그냥 해당 동만 보이게, 다른 동은 아예 안보이게 해야 하지 않을까". 기존 U18 구현은 task만 필터링했고 zone row는 모두 표시 → 빈 row가 시각 낭비. 사용자 요구 = 동 row 자체 숨김.
+
+해결: `WeekMatrixView`/`DayView`에 `zoneFilter` prop + `visibleZones = zoneFilter==='all' ? zones : zones.filter(z=>z.id===zoneFilter)` + 우상단 카운트 `총 N건 · 표시 N건`. 별도 안내 텍스트 없음.
+
+**How to apply:**
+1. 필터 UI 설계 시 **숨김 vs 비활성**:
+   - 카테고리 필터 (동/지역/타입): **숨김** (해당 row만 표시)
+   - 검색 필터 (텍스트): **숨김** (매칭 안 되는 항목 비표시)
+   - 상태 필터 (예: 진행중/완료): 본 트랙은 **상태 칩 자체 제거** (매트릭스 셀이 task 단위라 칩 카운트 가치 약함)
+2. 카운트 박제: `총 N건 · 표시 N건` 형식 (필터 차이 인지)
+3. 안내 텍스트 생략 — 카운트로 충분
+4. 필터 후 visible 0건이면 `"선택된 동에 해당하는 항목이 없습니다"` empty state
+
+빈 visible empty state:
+```jsx
+{visibleZones.length === 0 && (
+  <div>{zones.length === 0 ? '동 정보가 없습니다' : '선택된 동에 해당하는 항목이 없습니다'}</div>
+)}
+```
+
+**예시 트랙**: 트랙 77 U19 (TaskBoardPage 동 칩 + WeekMatrixView/DayView visibleZones — `zoneFilter !== 'all'` 시 해당 zone row만 표시. 우상단 카운트 `총 N건 · 표시 N건`. 별도 안내 텍스트 0건. 자산 보존 7건 byte-identical)
