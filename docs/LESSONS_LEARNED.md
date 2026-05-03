@@ -3160,3 +3160,37 @@ export function snakeToCamel(obj) {
 3. **단일 라운드 진단 + fix**: 4패턴 매칭으로 원인 식별 시 즉시 fix. 별 라운드 분리하지 말고 진단 결과 → 즉시 코드 변경 → 빌드 → 검증 → push.
 
 **예시 트랙**: 트랙 77 U16 (사용자 신고 → SQL 3건 + PostgREST/SDK 시뮬 → snakeToCamel shallow 원인 확정 → `issueStore.js` 1줄 fix → 진단 로그 일괄 제거 → push 단일 라운드)
+
+## 교훈 148 — cleanup 라운드 표준 패턴
+
+다중 라운드 영역 종료 후 **단일 cleanup 라운드**(변경 0건 또는 최소)를 두어 약속 박제(G77-*) 이행 검증 + 잔존물 정리 + 운영 흐름 정비. 사용자 검증 부담 0 — 보고서 검수만으로 충분.
+
+**Why:**
+트랙 77 U13~U16에서 사진/메뉴 흐름 4라운드 누적. U11 진단 라운드의 진단 로그(G77-LL/P), U15의 진단 로그(G77-NN), U16의 임시 진단 스크립트(G77-PP), U16의 자격증명 흔적(G77-QQ), U15의 dead code 삭제(G77-II) 등 약속이 라운드별 분산. 다음 의견 진입 전 잔존물 grep 검증 필요. U17에서 6건 검증 → 모두 ✅ 확인 + 후속 라운드 인덱스(`TRACK77_FOLLOWUP_INDEX.md`) 박제 + CCB/Codex 자율 협업 표준 §N 박제.
+
+**How to apply:**
+다중 라운드 영역 종료 후 cleanup 라운드 진입 의무 절차:
+
+1. **잔존물 grep 검증** (각 라운드 G77-* 약속 매칭):
+   - 진단 로그: `grep -rn "TRACK77-U[0-9]+-DIAG" src/`
+   - 진단 임시 스크립트: `find scripts/ -name "diag-*"`
+   - 자격증명: `git ls-files | grep -E "^\.env"` + `.gitignore` 확인
+   - dead code: 삭제 파일 부재 + import 사용처 0건 (LESSONS 146 절차)
+
+2. **LESSONS / BACKLOG 일관성 검증**:
+   - LESSONS 신규 박제 번호 연속성
+   - BACKLOG 신규 항목 status 일관성 (open / in-progress / resolved / wontfix)
+
+3. **후속 라운드 인덱스 박제** (옵션 A: HANDOVER 부록 / 옵션 B: 별 파일):
+   - 라운드별 커밋 SHA + 핵심 + 보고서 위치
+   - 사용자 의견 매칭표
+   - 운영 흐름 표준 (CCB/Codex 자율 협업)
+
+4. **사용자 부담 0**:
+   - 코드 변경은 잔존 발견 시만
+   - 보고서 검수만으로 충분
+   - 다음 의견 진입 전 클린 베이스 확보
+
+cleanup 라운드 commit message: `docs(track77-uN): cleanup 검증 + 운영 인덱스 박제` (잔존 0건이면 docs only). chore/fix는 잔존 발견 정리 시.
+
+**예시 트랙**: 트랙 77 U17 (`8025e55`+1) — 6건 검증 모두 ✅ + `TRACK77_FOLLOWUP_INDEX.md` 신규 + LESSONS 148 박제. src/ 변경 0건. 사용자 검증 부담 0.
