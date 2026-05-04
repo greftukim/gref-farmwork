@@ -3327,3 +3327,27 @@ UI 필드 제거 결정 시 의무 절차:
 6. DB 마이그레이션은 별 라운드 (UI 제거 후 운영 안정성 확인 후)
 
 **예시 트랙**: 트랙 77 U21 (`task.cropId` 보존 + `cropDerive.js` zone+date → zone_crops 매칭. `task.rowRange` 항상 NULL. SafetyCheck TBM 매칭 회귀 0건. UI 제거 + DB 컬럼 보존 패턴 박제)
+
+---
+
+## 교훈 157 — Antigravity + MCP 서버 hot-add 한계 + 다음 세션 활성화 패턴
+
+Antigravity Claude Code 세션 진행 중 `claude mcp add` 명령으로 신규 MCP 서버를 등록하면 `.mcp.json` 박제 + 서버 수준 연결(`claude mcp list ✓ Connected`)까지 즉시 성공한다. 단 **현 세션의 도구 스키마(ToolSearch에서 검색되는 deferred tool 목록)는 갱신되지 않는다** — 도구 스키마는 세션 시작 시점에 한 번 로드. 운영 절차는 "셋업 → 다음 세션부터 자동 활성화"로 박제. 셋업 직후 시연은 fallback(curl/WebFetch 등)으로 public 도달성만 확인.
+
+**Why:**
+U-INFRA-PLAYWRIGHT-001에서 `claude mcp add playwright --scope project -- npx -y @playwright/mcp@latest` 실행 → 서버는 즉시 ✓ Connected. 그러나 ToolSearch에서 `browser_navigate`/`browser_snapshot`/`browser_screenshot` 모두 "No matching deferred tools found". Antigravity는 세션 시작 시점에만 MCP 서버 도구 스키마를 로드하기 때문. 명시적 reload 명령 부재.
+
+해결: 셋업 명령은 자율 진행 + 보고서 §1에 raw 결과 박제 + 다음 세션 진입 시 자동 활성화 절차 박제. 셋업 직후 시연은 curl로 public 페이지 도달성(HTTP 200 + title 추출)만 확인. 본격 시연(브라우저 자동화 / 스크린샷)은 다음 세션에서 즉시 가능.
+
+**How to apply:**
+세션 진행 중 신규 MCP 서버 추가 절차:
+1. `claude mcp add <name> --scope project -- <command>` (또는 `--scope user`)
+2. `claude mcp list`로 서버 수준 연결 확인 (`✓ Connected`)
+3. ToolSearch로 도구 노출 테스트 — **노출 안 되면 다음 세션 진입 시까지 대기**
+4. 시연 fallback:
+   - HTTP 도달성 = `curl -sS -L <URL> -o /dev/null -w "%{http_code}"`
+   - HTML 추출 = `curl ... | grep -oE "<title>[^<]+</title>"`
+5. 보고서에 다음 세션 활용 절차 박제 (수동 작업 0)
+6. `.mcp.json`은 `.gitignore`에 박제됨 → 커밋 영향 없음 (자격증명 노출 0건)
+
+**예시 트랙**: U-INFRA-PLAYWRIGHT-001 (Playwright MCP 셋업 ✅ / 서버 connected / ToolSearch 미노출 / curl fallback `https://gref-farmwork.vercel.app/login` HTTP 200 + `<title>GREF FarmWork</title>` / 다음 세션 활용 절차 박제)
