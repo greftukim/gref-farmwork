@@ -29,7 +29,8 @@
 | U17 | `9885f97` | cleanup | 잔존물 검증 + 운영 인덱스 박제 + 표준 §N |
 | U18 | `96f3549` | 작업 관리 재설계 | 칸반 제거 + 주간 매트릭스 + 일별 뷰 + TaskDetailModal |
 | U19 | `6e419bd` | 작업 관리 툴바 정리 | 상태 칩 제거 + 동 row 숨김 + 완료 opacity + §5 시안 정책 박제 |
-| U20 | (본 라운드) | 온실 정보 관리 | 별 트랙 1 — 3탭 (동 작물 / 온실 기초 / 재식밀도 계산) + 신규 3 테이블 + zoneCalc 헬퍼 |
+| U20 | `d661ef6` | 온실 정보 관리 | 별 트랙 1 — 3탭 (동 작물 / 온실 기초 / 재식밀도 계산) + 신규 3 테이블 + zoneCalc 헬퍼 |
+| U21 | (본 라운드) | 작업 모달 정리 | 작물·줄범위 UI 제거 + crop_id 자동 derive (zone+date) + LESSONS 153 |
 
 ## 2. 라운드별 산출물 위치
 
@@ -46,6 +47,7 @@
 | U18 | `docs/TRACK77_U18_REPORT.md` |
 | U19 | `docs/TRACK77_U19_REPORT.md` |
 | U20 | `docs/TRACK77_U20_REPORT.md` |
+| U21 | `docs/TRACK77_U21_REPORT.md` |
 
 LESSONS 138~147 박제 위치: `docs/LESSONS_LEARNED.md` line 2933~3113
 
@@ -61,6 +63,7 @@ LESSONS 138~147 박제 위치: `docs/LESSONS_LEARNED.md` line 2933~3113
 | 작업 관리 재설계 (의견 4) | U18 | ✅ kanban 제거 + 매트릭스 + 일별 |
 | 작업 관리 툴바 정리 (의견 5: 1+2+3) | U19 | ✅ 상태 칩 제거 + 동 row 숨김 + 시안 정책 박제 |
 | 온실 정보 관리 (별 트랙 1, AI 학습 누적) | U20 | ✅ 3탭 + 신규 3 테이블 + zoneCalc P0+P1 |
+| 작업 모달 정리 (의견 6) | U21 | ✅ 작물·줄범위 UI 제거 + crop_id 자동 derive |
 
 ## 4. 운영 채팅방 흐름 (CCB / Codex 자율 협업 표준)
 
@@ -200,6 +203,7 @@ LESSONS 138~147 박제 위치: `docs/LESSONS_LEARNED.md` line 2933~3113
 | U18 | G77-YY~EEE (작업 관리 재설계 결정 7건) |
 | U19 | G77-FFF~KKK (툴바 정리 결정 6건) |
 | U20 | G77-LLL~SSS + LLL-1 (온실 정보 결정 9건) |
+| U21 | G77-TTT~YYY (작업 모달 정리 결정 6건) |
 
 각 라운드 보고서 §자율 결정 자율 처리 내역에 상세 박제.
 

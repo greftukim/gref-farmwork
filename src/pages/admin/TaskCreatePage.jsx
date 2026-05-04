@@ -1,7 +1,11 @@
 // 작업 생성 — 관리자
 // 경로: /admin/tasks/new
+//
+// U21: 작물·줄범위 UI 제거 (사용자 의견 6).
+//   - cropId 자동 derive (zone+date → 활성 zone_crops). DB 컬럼 보존 (SafetyCheck TBM 매칭).
+//   - rowRange UI 제거, 항상 NULL (현장 자율 + QR 스캔 추적).
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Card, Icon, T, TopBar, icons,
@@ -10,6 +14,8 @@ import useEmployeeStore from '../../stores/employeeStore';
 import useCropStore from '../../stores/cropStore';
 import useZoneStore from '../../stores/zoneStore';
 import useTaskStore from '../../stores/taskStore';
+import useZoneCropStore from '../../stores/zoneCropStore';
+import { deriveCropForTask, formatDerivedCropLabel } from '../../lib/cropDerive';
 
 const TASK_TYPES = ['수확', '적엽', '유인', '정식', '적화', '적과', '줄 내리기', '측지제거', '선별·포장', '방제'];
 
@@ -30,11 +36,14 @@ export default function TaskCreatePage() {
   const navigate = useNavigate();
   const employees = useEmployeeStore((s) => s.employees);
   const crops = useCropStore((s) => s.crops);
+  const fetchCrops = useCropStore((s) => s.fetchCrops);
   const zones = useZoneStore((s) => s.zones);
   const addTask = useTaskStore((s) => s.addTask);
+  const zoneCrops = useZoneCropStore((s) => s.zoneCrops);
+  const fetchZoneCrops = useZoneCropStore((s) => s.fetchZoneCrops);
 
   const [form, setForm] = useState({
-    title: '', workerId: '', cropId: '', zoneId: '', rowRange: '',
+    title: '', workerId: '', zoneId: '',
     taskType: '', date: new Date().toISOString().split('T')[0],
     estimatedMinutes: '', description: '',
   });
@@ -43,7 +52,25 @@ export default function TaskCreatePage() {
 
   const set = (k) => (e) => setForm({ ...form, [k]: e.target.value });
 
-  const canSubmit = form.title && form.workerId && form.taskType && form.cropId && form.zoneId && form.date;
+  // [TRACK77-U21] 작기·작물 데이터 idempotent 로드
+  useEffect(() => {
+    if (!Array.isArray(zoneCrops) || zoneCrops.length === 0) fetchZoneCrops({ activeOnly: false });
+    if (!Array.isArray(crops) || crops.length === 0) fetchCrops();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // [TRACK77-U21] zone+date 기반 자동 derive
+  const derivedCrop = useMemo(
+    () => deriveCropForTask(zoneCrops, form.zoneId, form.date),
+    [zoneCrops, form.zoneId, form.date]
+  );
+  const derivedCropLabel = useMemo(
+    () => formatDerivedCropLabel(derivedCrop, crops),
+    [derivedCrop, crops]
+  );
+
+  // [TRACK77-U21] cropId 폼 검증 제외 (자동 derive)
+  const canSubmit = form.title && form.workerId && form.taskType && form.zoneId && form.date;
 
   const handleSubmit = async () => {
     if (!canSubmit || submitting) return;
@@ -53,9 +80,11 @@ export default function TaskCreatePage() {
       await addTask({
         title: form.title,
         workerId: form.workerId,
-        cropId: form.cropId,
+        // [TRACK77-U21] 자동 derive (DB 컬럼 보존, SafetyCheck 매칭)
+        cropId: derivedCrop.cropId,
         zoneId: form.zoneId,
-        rowRange: form.rowRange,
+        // [TRACK77-U21] UI 제거 — 항상 NULL (G77-XXX)
+        rowRange: null,
         taskType: form.taskType,
         date: form.date,
         estimatedMinutes: form.estimatedMinutes ? Number(form.estimatedMinutes) : null,
@@ -135,14 +164,6 @@ export default function TaskCreatePage() {
             </div>
 
             <div>
-              <Label required>작물</Label>
-              <select value={form.cropId} onChange={set('cropId')} style={inputStyle}>
-                <option value="">선택하세요</option>
-                {crops.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-              </select>
-            </div>
-
-            <div>
               <Label required>구역</Label>
               <select value={form.zoneId} onChange={set('zoneId')} style={inputStyle}>
                 <option value="">선택하세요</option>
@@ -151,15 +172,31 @@ export default function TaskCreatePage() {
             </div>
 
             <div>
-              <Label>열 범위</Label>
-              <input value={form.rowRange} onChange={set('rowRange')}
-                placeholder="예: 1-8열" style={inputStyle} />
-            </div>
-
-            <div>
               <Label required>작업 날짜</Label>
               <input type="date" value={form.date} onChange={set('date')} style={inputStyle} />
             </div>
+
+            {/* [TRACK77-U21] 작물 자동 매칭 힌트 (작물 selector + 열 범위 input 제거) */}
+            {form.zoneId && form.date && (
+              <div style={{
+                gridColumn: '1 / -1',
+                padding: '10px 12px',
+                background: derivedCrop.cropId ? '#ECFDF5' : '#FEF3C7',
+                border: `1px solid ${derivedCrop.cropId ? '#10B981' : '#F59E0B'}`,
+                borderRadius: 8,
+                fontSize: 12,
+                color: derivedCrop.cropId ? '#065F46' : '#854F0B',
+                display: 'flex', alignItems: 'flex-start', gap: 8,
+              }}>
+                <span style={{ fontSize: 14, lineHeight: 1, marginTop: 1 }}>
+                  {derivedCrop.cropId ? '✓' : '⚠'}
+                </span>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontWeight: 700, marginBottom: 2 }}>작물 자동 매칭</div>
+                  <div>{derivedCropLabel}</div>
+                </div>
+              </div>
+            )}
 
             <div>
               <Label>예상 소요 시간 (분)</Label>

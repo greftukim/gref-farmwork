@@ -3298,3 +3298,32 @@ diff <(git show <baseline>:<asset_file>) <asset_file> | wc -l   # 0이어야 함
 6. 검증 = 사용자 제공 엑셀 사례로 주요 수치 매칭 보고서 §7 박제
 
 **예시 트랙**: 트랙 77 U20 (`src/lib/zoneCalc.js` — 1+2단계 derive. 자재(P2)/발주(P3) 별 트랙 분리. 산식 박제 footer + 사용자 검증 시나리오 박제)
+
+---
+
+## 교훈 153 — UI 필드 제거 시 DB 컬럼 / 다른 흐름 의존성 검증 필수
+
+UI 입력 필드 제거 ≠ DB 컬럼 제거. 다른 페이지 / 흐름에서 그 컬럼을 사용 중일 수 있다 (TBM 매칭, 통계, 알림, 보고서 등). UI만 제거하고 컬럼은 보존 + 자동 derive 또는 NULL 박제가 안전한 패턴.
+
+**Why:**
+트랙 77 U21에서 사용자 의견: 작업 모달의 "작물" / "줄 범위" 필드 제거. 단 정적 grep 결과:
+- `task.cropId` 가 `src/components/worker/SafetyCheckBottomSheet.jsx` + `src/utils/tbmRiskMatcher.js`에서 TBM 위험 매칭에 사용 중 — 컬럼 제거 시 매칭 0건으로 회귀.
+- `task.rowRange` 는 다른 사용처 0건 → 항상 NULL 박제 안전.
+
+해결: UI 입력 필드는 모두 제거 + DB 컬럼 보존 + `task.cropId` 는 zone+date 기반 자동 derive (`src/lib/cropDerive.js`) → SafetyCheck 회귀 0건. `task.rowRange` 는 항상 NULL.
+
+**How to apply:**
+UI 필드 제거 결정 시 의무 절차:
+1. **컬럼 사용처 grep** 전수 검사:
+   ```bash
+   grep -rn "task\.<column>\|tasks\.<column>" src/
+   ```
+2. 사용처별 영향 분류:
+   - **다른 흐름 의존**: 컬럼 보존 필수 + 대체 채움 전략 (자동 derive / 기본값 / NULL)
+   - **사용처 0건**: NULL 박제 또는 별 라운드에서 컬럼 삭제 후보
+3. 자동 derive 헬퍼는 별 파일 (`<도메인>Derive.js`) — 단일 책임
+4. 편집 모드는 박제된 값 우선 (사용자 명시 입력 보존, G77-TTT 패턴)
+5. 매칭 결과를 사용자에게 시각 피드백 (✓ 녹색 / ⚠ 노란색)
+6. DB 마이그레이션은 별 라운드 (UI 제거 후 운영 안정성 확인 후)
+
+**예시 트랙**: 트랙 77 U21 (`task.cropId` 보존 + `cropDerive.js` zone+date → zone_crops 매칭. `task.rowRange` 항상 NULL. SafetyCheck TBM 매칭 회귀 0건. UI 제거 + DB 컬럼 보존 패턴 박제)
